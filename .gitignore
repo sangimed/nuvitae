@@ -1,0 +1,36 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencies
+node_modules/
+.venv/
+venv/
+
+# Build and coverage
+dist/
+build/
+coverage/
+.tmp/
+.cache/
+
+# Logs
+*.log
+logs/
+
+# IDE and OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.DS_Store
+Thumbs.db
+
+# Uploaded and generated documents
+uploads/
+generated/
+storage/
+*.local.pdf
