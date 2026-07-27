@@ -1,0 +1,288 @@
+# Feature Specification: Import Existing Resume
+
+**Feature Branch**: `main`
+
+**Created**: 2026-07-28
+
+**Status**: Draft
+
+**Input**: User description: "Create Nuvitae's first product feature specification: importing an existing resume."
+
+## Clarifications
+
+### Session 2026-07-28
+
+- Q: Which document formats, languages, text requirements, and upload limits are supported in the initial resume-import release? → A: PDF and DOCX only; French, English, and bilingual French-English; selectable text required; max 10 MB and 5 rendered pages.
+- Q: How long should uploaded documents and unconfirmed import drafts be retained, and can users delete the source independently? → A: Source documents and all temporary or derived extraction artifacts are deleted no later than 7 days after original upload; confirmation does not restart or extend this period; users may delete the source earlier without deleting the confirmed structured resume.
+- Q: How should extraction uncertainty be presented and resolved before structured resume creation? → A: Mark uncertain, missing, duplicate, and conflicting fields as “needs review”; user must confirm, edit, exclude, or intentionally leave each warning before creating the structured resume.
+- Q: How should multiple roles within one employer and ongoing roles without an end date be represented? → A: Preserve each role as a separate work-experience role under the same employer; ongoing roles have no end date and display as “Present”.
+- Q: What extraction strategy, progress, and timeout behaviour should the initial release use? → A: Deterministic extraction first; optional AI may classify sections or flag ambiguity after deterministic extraction; timeout after 3 minutes and show threshold-qualified partial extraction results plus retry/manual-entry options.
+
+## User Scenarios & Testing *(mandatory)*
+
+### User Story 1 - Start From an Existing Resume (Priority: P1)
+
+A non-technical user who chooses to create a resume is prominently offered the option to import an existing resume, can upload a supported document, and receives clear progress updates while Nuvitae validates and extracts information.
+
+**Why this priority**: Import-first onboarding is the core value of the first-session experience; users should not have to recreate a resume manually before seeing value.
+
+**Independent Test**: Can be tested by starting resume creation, selecting import, uploading a supported resume document, and verifying that the user sees understandable validation, processing progress, and a draft extraction result without seeing technical internals.
+
+**Acceptance Scenarios**:
+
+1. **Given** a user starts creating a resume, **When** the creation flow opens, **Then** importing an existing resume is presented as the primary recommended path while manual entry remains available.
+2. **Given** a visitor is not authenticated, **When** they try to upload a resume, **Then** Nuvitae requires sign-in before accepting a file.
+3. **Given** a user selects import, **When** the upload step appears, **Then** the user sees that the initial release accepts PDF and DOCX resumes in French, English, or bilingual French-English up to 10 MB and 5 rendered pages, plus privacy guidance and a clear way to choose a file.
+4. **Given** a user uploads a supported resume document, **When** validation and extraction are in progress, **Then** the user sees plain-language progress states such as checking document, reading content, organizing resume sections, and preparing review.
+5. **Given** deterministic extraction associates at least one supported resume field with explicit document content and a source location, **When** extraction completes, **Then** the user is taken to a review interface containing the extracted resume information.
+6. **Given** extraction has not completed within 3 minutes, **When** the processing limit is reached, **Then** the user sees a timeout state with any partial extraction results that meet the draft creation threshold, retry, replacement upload, and manual-entry options.
+
+---
+
+### User Story 2 - Review and Correct Extracted Information (Priority: P1)
+
+A user reviews the extracted personal information, headline, summary, work experience, education, skills, languages, projects, certifications, and professional links in a simple visual interface where uncertain or incomplete fields are clearly marked.
+
+**Why this priority**: Extracted content is untrusted and unverified until the user confirms it; the feature only creates value if users can detect and correct mistakes easily.
+
+**Independent Test**: Can be tested by importing a resume with complete, missing, and ambiguous information and verifying that every extracted field can be corrected, removed, completed, or left out before confirmation.
+
+**Acceptance Scenarios**:
+
+1. **Given** extraction produced structured resume data from at least one explicitly sourced supported field, **When** the review screen opens, **Then** information is grouped into recognizable resume sections rather than raw data structures.
+2. **Given** a field was missing, ambiguous, duplicated, unusually formatted, or extracted with low confidence, **When** the user reviews the relevant section, **Then** the issue is visually identified as needing review with plain-language guidance and a clear action to confirm, edit, exclude, or intentionally leave it.
+3. **Given** any extracted field is visible in review, **When** the user edits, removes, or completes that field, **Then** the review state updates without changing the uploaded source document.
+4. **Given** a section contains no explicitly sourced supported fields, **When** review is shown, **Then** the user can leave the section empty, add information manually, or remove the section from the imported resume draft.
+5. **Given** the imported resume contains multiple roles at the same employer, **When** review is shown, **Then** each role is preserved as a separate work-experience role grouped under that employer.
+6. **Given** extracted information is semantically grouped, ambiguously classified, or associated with a work experience by inference, **When** review is shown, **Then** that inference is marked as needing confirmation before structured resume creation.
+
+---
+
+### User Story 3 - Confirm Creation of Structured Resume (Priority: P1)
+
+A user explicitly confirms the reviewed extraction before Nuvitae creates structured resume data, and can understand that the original uploaded document remains distinct from the structured resume.
+
+**Why this priority**: The master resume must not be silently created from unverified extraction, and the source document must remain a separate artifact.
+
+**Independent Test**: Can be tested by completing import review, confirming creation, and verifying that structured resume data is created only after confirmation and that the uploaded document is still represented as an import source rather than an editable resume.
+
+**Acceptance Scenarios**:
+
+1. **Given** the review contains warnings that have not been addressed, **When** the user attempts to create the resume, **Then** Nuvitae blocks confirmation, explains what still needs review, and allows the user to confirm, edit, exclude, or intentionally leave each warning.
+2. **Given** the user confirms the reviewed information, **When** creation succeeds, **Then** Nuvitae creates structured resume data from the confirmed fields and marks those fields as user-confirmed.
+3. **Given** the structured resume has been created, **When** the user views resume content, **Then** edits affect the structured resume data and not the uploaded source document.
+4. **Given** the user leaves the import flow before confirmation, **When** they return within 7 days of upload, **Then** they can resume review or discard the import draft.
+5. **Given** the user confirms the structured resume, **When** the original upload reaches 7 days old, **Then** the uploaded source document and all source-reconstructing extraction artifacts are deleted while the confirmed structured resume remains available until the user deletes it.
+
+---
+
+### User Story 4 - Recover From Partial Extraction or Failure (Priority: P2)
+
+A user receives understandable next steps when a document cannot be fully imported, including partial results, retry, replacement upload, manual entry, and deletion options.
+
+**Why this priority**: A threshold-qualified partial extraction is better than a complete failure, and recovery paths preserve user trust when parsing is imperfect.
+
+**Independent Test**: Can be tested with unreadable, unsupported, password-protected, image-heavy, oversized, duplicate, and partially readable documents and verifying that each case gives a clear outcome and recovery path.
+
+**Acceptance Scenarios**:
+
+1. **Given** at least one supported resume field can be explicitly extracted with a source location but one or more expected sections are missing or unprocessed, **When** processing completes, **Then** Nuvitae shows a partial extraction for review and identifies missing or unprocessed sections.
+2. **Given** the uploaded document is unsupported or cannot be safely processed, **When** validation fails, **Then** the user sees a non-technical explanation and can upload a different file or continue manually.
+3. **Given** processing fails after upload, **When** the failure state appears, **Then** the user can retry, replace the document, delete the uploaded document, or continue with manual entry.
+4. **Given** optional AI assistance is unavailable or declined, **When** deterministic extraction produces partial results, **Then** the user can still review and create a structured resume from those results.
+5. **Given** deterministic extraction completes without validation failure, **When** optional AI assistance is available and allowed, **Then** AI assistance may only classify sections or flag ambiguity for review without replacing deterministic extraction as the required path.
+6. **Given** the user closes the page or temporarily loses connectivity after upload, **When** they return before the 7-day expiry, **Then** the accepted upload, processing state, and saved review draft can be resumed by that same user.
+7. **Given** the user explicitly cancels an import, **When** cancellation is confirmed, **Then** processing stops and the source document plus all temporary or derived extraction artifacts are scheduled for deletion.
+8. **Given** the user returns to an expired import draft, **When** the draft is opened, **Then** Nuvitae shows an explicit expiry message and offers re-upload or manual entry.
+9. **Given** no supported field can be associated with explicit source content, **When** extraction completes, **Then** no review draft is created and Nuvitae offers another upload or manual entry.
+10. **Given** a document contains a resume plus unrelated pages, **When** resume content can be clearly separated, **Then** only the identified resume content is proposed and excluded content is disclosed.
+11. **Given** a document contains mixed resume and unrelated content that cannot be clearly separated, **When** validation or extraction detects the ambiguity, **Then** Nuvitae asks the user to upload a resume-only document or continue manually.
+
+---
+
+### User Story 5 - Complete Import Accessibly (Priority: P1)
+
+A user can complete upload, processing, review, confirmation, retry, and deletion flows with accessible labels, screen-reader status updates, keyboard-only navigation, and recoverable focus behaviour.
+
+**Why this priority**: Accessibility and recovery are constitutional release gates for core flows, and import is a primary onboarding path.
+
+**Independent Test**: Can be tested by completing upload, validation failure, processing, warning review, confirmation, retry, cancellation, and source deletion with keyboard-only navigation and assistive technology checks.
+
+**Acceptance Scenarios**:
+
+1. **Given** any upload, review, retry, confirmation, cancellation, or deletion control is shown, **When** inspected with assistive technology, **Then** it has an accessible name and label that identifies its purpose.
+2. **Given** processing starts, succeeds, times out, is cancelled, or fails, **When** the state changes, **Then** the state is announced to screen-reader users without exposing technical internals.
+3. **Given** a field or section warning is displayed, **When** colour is unavailable or not perceived, **Then** the warning remains identifiable through text and non-colour visual treatment.
+4. **Given** upload validation fails, **When** the error is shown, **Then** focus moves to an error summary that explains the problem and available recovery actions.
+5. **Given** the user closes a confirmation, cancellation, retry, or deletion dialog, **When** the dialog closes, **Then** focus returns to the control or next logical step that preserves task context.
+6. **Given** the user uses only a keyboard, **When** they complete import review, explicit confirmation, retry, cancellation, or source deletion, **Then** all required actions are reachable, operable, and visibly focused.
+
+---
+
+### User Story 6 - Protect Imported Resume Data (Priority: P1)
+
+A user's imported resume, extracted content, processing state, and review draft remain private to that user and are removed according to explicit retention and deletion rules.
+
+**Why this priority**: Resume imports contain sensitive personal data, so authorization, isolation, resource limits, and deletion are release-blocking product behaviours.
+
+**Independent Test**: Can be tested by attempting cross-user access, exceeding upload and processing limits, importing hostile documents, deleting source documents, and checking that only allowed structured resume provenance remains.
+
+**Acceptance Scenarios**:
+
+1. **Given** User A initiates an import, **When** User B attempts to access, resume, confirm, or delete User A's source document, processing state, temporary artifacts, or draft, **Then** access is denied without exposing personal data.
+2. **Given** a user exceeds upload or processing attempt limits, **When** they attempt another upload or extraction, **Then** Nuvitae prevents the attempt and shows a plain-language recovery message.
+3. **Given** a document contains macros, scripts, active objects, links, hidden instructions, or prompt-injection text, **When** validation and extraction run, **Then** that content is not executed or treated as application or AI instructions.
+4. **Given** a malformed or hostile document is processed, **When** validation or extraction fails, **Then** no other user's documents, processing state, import draft, or temporary artifacts are exposed or affected.
+5. **Given** the user deletes the source document before automatic expiry, **When** deletion completes, **Then** extracted raw text, field source snippets, page references, thumbnails, temporary files, cached parsing results, future OCR outputs, embeddings if any, and equivalent source-reconstructing artifacts are deleted.
+6. **Given** the source document has been deleted and a structured resume remains, **When** the user views the structured resume, **Then** it contains no raw source snippets and may show only minimal non-sensitive provenance such as “imported from initial resume” and “confirmed by user”.
+
+### Edge Cases
+
+- The uploaded file is not one of the supported resume document formats.
+- The file is empty, corrupted, unreadable, password-protected, encrypted, or contains no extractable text.
+- The file is image-only, scanned, or otherwise lacks selectable text.
+- The file is larger than 10 MB, has more than 5 rendered pages, or extraction reaches the 3-minute processing timeout.
+- The DOCX rendered page count exceeds the 5-page limit.
+- The document is in an unsupported language, or language detection cannot identify French, English, or bilingual French-English content.
+- The document contains multiple resumes, cover letters, references, portfolios, or unrelated pages.
+- The same information appears in several places with conflicting values, such as different phone numbers, employers, or dates.
+- Dates are partial, ambiguous, inconsistent, future-dated, or expressed in different regional formats.
+- The same employer contains multiple roles, promotions, overlapping role dates, or an ongoing role without an end date.
+- Contact details, links, certifications, skills, or languages are embedded in headers, footers, tables, columns, icons, or unusual layouts.
+- The document contains malicious content, hidden text, prompt-injection instructions, macros, scripts, active objects, links to unsafe locations, or misleading instructions aimed at the extraction process.
+- The user cancels upload, closes the page during processing, loses connectivity, or returns more than 7 days after upload.
+- A user wants to delete the uploaded document before confirming structured resume creation.
+- Another user attempts to access, resume, confirm, or delete the import.
+- Upload or processing attempts exceed product rate limits or concurrent work limits.
+- Extraction cannot associate any supported field with explicit source content, but the user still wants to create a resume manually.
+
+## Requirements *(mandatory)*
+
+### Functional Requirements
+
+- **FR-001**: Nuvitae MUST present importing an existing resume as the primary recommended path when a user chooses to create a resume, while keeping manual creation available.
+- **FR-002**: Nuvitae MUST explain supported document formats, languages, upload limits, expected processing behavior, and privacy handling before upload in language understandable to non-technical users.
+- **FR-003**: Nuvitae MUST accept only PDF and DOCX resume documents in French, English, or bilingual French-English for the initial release.
+- **FR-003a**: Nuvitae MUST enforce a maximum file size of 10 MB and a maximum rendered document length of 5 pages for both PDF and DOCX uploads.
+- **FR-003b**: Nuvitae MUST explain that semantic extraction is unsupported for other languages and offer another upload or manual entry, while explicitly detectable contact information MAY still be proposed with a warning.
+- **FR-004**: Nuvitae MUST reject unsupported, empty, unsafe, unreadable, password-protected, oversized, over-page-limit, or corrupted files with plain-language reasons and recovery actions.
+- **FR-005**: Nuvitae MUST treat every uploaded document and all extracted content as untrusted input until validated and confirmed by the user.
+- **FR-005a**: Nuvitae MUST require authentication before accepting a resume upload.
+- **FR-005b**: Nuvitae MUST allow only the user who initiated an import to access, resume, confirm, or delete its source document, processing state, temporary artifacts, and import draft.
+- **FR-005c**: Nuvitae MUST rate-limit upload and processing attempts and show a plain-language recovery message when the limit is reached.
+- **FR-006**: Nuvitae MUST validate uploaded documents before extraction and prevent unsafe document content from executing or influencing product behavior outside the import task.
+- **FR-006a**: Nuvitae MUST require selectable text for import; scanned, image-only, or non-selectable documents MUST be rejected with recovery actions, while documents containing selectable text mixed with images MAY be processed using only the selectable text.
+- **FR-006b**: Nuvitae MUST never execute or treat embedded macros, scripts, active objects, links, hidden instructions, or document text as application instructions or AI instructions.
+- **FR-006c**: Nuvitae MUST enforce processing limits for file size, rendered page count, processing time, memory consumption, and concurrent work.
+- **FR-006d**: Nuvitae MUST isolate document processing so a malformed or hostile document cannot expose or affect another user's documents, processing state, import draft, or temporary artifacts.
+- **FR-007**: Nuvitae MUST show understandable progress states for validation, extraction, review preparation, success, timeout, cancellation, retry, and failure.
+- **FR-007a**: Nuvitae MUST stop foreground extraction after 3 minutes and show any partial extraction results that meet the draft creation threshold with retry, replacement upload, and manual-entry options.
+- **FR-008**: Nuvitae MUST extract available information into structured resume draft fields for personal and contact information, professional headline, summary, work experiences, education, skills, languages, projects, certifications, and professional links.
+- **FR-008a**: Nuvitae MUST preserve multiple roles within the same employer as separate work-experience roles grouped under that employer when the relationship is explicit in the document; inferred grouping MUST be marked as needing review.
+- **FR-008b**: Nuvitae MUST represent ongoing roles with no end date in structured data and display them as “Present” in the review flow.
+- **FR-009**: Nuvitae MUST preserve source traceability during review by indicating whether each field came from explicit document content, was inferred, was added by the user, or was changed by the user during review.
+- **FR-009a**: Nuvitae MUST NOT retain raw source snippets, page references, thumbnails, extracted raw text, cached parsing results, future OCR outputs, embeddings, or other source-reconstructing artifacts after source document deletion.
+- **FR-010**: Nuvitae MUST identify missing, ambiguous, conflicting, duplicate, and low-confidence information in the review interface using plain-language labels and visual emphasis.
+- **FR-010a**: Nuvitae MUST mark uncertain, missing, duplicate, and conflicting fields as needing review until the user confirms, edits, excludes, or intentionally leaves each warning.
+- **FR-011**: Nuvitae MUST allow the user to edit, remove, complete, or exclude every extracted field before creating the structured resume.
+- **FR-012**: Nuvitae MUST allow users to leave optional sections empty when the uploaded resume does not contain relevant information.
+- **FR-013**: Nuvitae MUST create a review draft only when at least one supported resume field is explicitly extracted from document content and associated with a source location.
+- **FR-013a**: Nuvitae MUST define partial extraction as at least one explicitly sourced supported field plus one or more expected sections that are missing or cannot be processed.
+- **FR-013b**: Nuvitae MUST NOT create a review draft from inferred-only information.
+- **FR-013c**: Nuvitae MUST follow the no-supported-field failure path when extraction cannot associate any supported field with explicit source content.
+- **FR-014**: Nuvitae MUST create the structured resume only after the user explicitly confirms the reviewed extraction.
+- **FR-015**: Nuvitae MUST mark extracted information as unverified until explicit user confirmation.
+- **FR-016**: Nuvitae MUST keep the uploaded source document distinct from the structured resume data and MUST NOT directly modify the source document.
+- **FR-017**: Nuvitae MUST delete the uploaded source document and all temporary or derived extraction artifacts no later than 7 days after the original upload.
+- **FR-017a**: Nuvitae MUST NOT restart or extend source document or extraction artifact retention when the user confirms the structured resume.
+- **FR-017b**: Nuvitae MUST retain the confirmed structured resume until the user deletes it, independent of source document expiry or deletion.
+- **FR-018**: Nuvitae MUST provide a way to delete the uploaded source document before automatic expiry.
+- **FR-018a**: Deleting the uploaded source document MUST also delete extracted raw text, field source snippets, page references, thumbnails, temporary files, cached parsing results, future OCR outputs, embeddings if any, and any other derived artifact capable of reconstructing source content.
+- **FR-018b**: After source deletion, the structured resume MAY retain only minimal non-sensitive provenance such as “imported from initial resume” and “confirmed by user”.
+- **FR-018c**: Nuvitae MUST allow source document deletion after a structured resume has been created without deleting the confirmed structured resume unless the user separately chooses to delete it.
+- **FR-019**: Nuvitae MUST avoid showing raw JSON, YAML, prompts, parsing internals, AI provider details, model names, or provider configuration in the end-user import flow.
+- **FR-020**: Nuvitae MUST run deterministic extraction first and MUST support completing import review without requiring an AI provider whenever deterministic extraction produces at least one explicitly sourced supported field.
+- **FR-021**: Nuvitae MAY use optional AI-assisted extraction after deterministic extraction to improve section classification or ambiguous-field detection, but AI assistance MUST remain provider-independent and MUST NOT be required for completing the import.
+- **FR-022**: Nuvitae MUST ignore instructions inside uploaded documents that attempt to control extraction behavior, bypass validation, hide content, alter privacy handling, or invent facts.
+- **FR-023**: Nuvitae MUST NOT invent employers, roles, dates, skills, certifications, education, links, achievements, metrics, languages, or contact details that are not present in the source document or provided by the user.
+- **FR-023a**: Nuvitae MAY automatically normalize whitespace, line breaks, reasonable casing, phone numbers, email addresses, URLs, date formats, explicit ongoing-role terms such as Present, Current, or Aujourd'hui, and French, English, or bilingual French-English language detection.
+- **FR-023b**: Nuvitae MUST mark semantic grouping, ambiguous date interpretation, section classification, and association of a text block with a work experience as inferred and require user confirmation.
+- **FR-023c**: Nuvitae MUST NOT infer skills from job titles, seniority, responsibilities, achievements, metrics, dates, or professional relationships.
+- **FR-024**: Nuvitae MUST prevent structured resume creation while any warning remains unaddressed, and MUST allow the user to intentionally continue with incomplete structured data only after every warning is explicitly addressed and at least one supported field is user-confirmed.
+- **FR-025**: Nuvitae MUST provide cancellation, retry, replacement upload, manual-entry fallback, and discard-import options wherever those states can occur.
+- **FR-025a**: Nuvitae MUST preserve an accepted upload, processing state, and saved review draft when the user closes the page or temporarily loses connectivity, provided the user returns before the 7-day expiry.
+- **FR-025b**: Explicit cancellation MUST stop processing and schedule the source document plus all temporary or derived extraction artifacts for deletion.
+- **FR-025c**: Expired drafts MUST display an explicit expiry message and offer re-upload or manual entry.
+- **FR-025d**: If a document contains a resume plus unrelated pages, Nuvitae MUST propose only clearly identified resume content and disclose excluded content.
+- **FR-025e**: If resume content cannot be clearly separated from unrelated content, Nuvitae MUST ask the user to upload a resume-only document or continue manually.
+- **FR-026**: Nuvitae MUST prevent full resume contents, uploaded documents, authentication tokens, provider credentials, and unnecessary personal data from appearing in user-visible diagnostics or operational logs.
+- **FR-027**: Nuvitae MUST communicate the 7-day import deletion and retention policy before upload and whenever the user discards or confirms an import.
+- **FR-028**: Nuvitae MUST keep adapting to a job description, AI rewriting, template selection, visual customization, final PDF generation, ATS scoring, cover letters, job tracking, payment, subscriptions, and automatic job applications out of this feature.
+- **FR-029**: Nuvitae MUST make the entire upload, processing, review, confirmation, retry, cancellation, and deletion flow meet WCAG 2.2 AA expectations and be completable with keyboard-only navigation.
+- **FR-029a**: Nuvitae MUST provide accessible names and labels for all import controls.
+- **FR-029b**: Nuvitae MUST announce processing, success, timeout, cancellation, validation error, and processing failure states to screen-reader users.
+- **FR-029c**: Nuvitae MUST identify warnings using text and non-colour visual treatment, not colour alone.
+- **FR-029d**: Nuvitae MUST move focus to an error summary after failed validation and restore focus logically after confirmation, cancellation, retry, or deletion dialogs close.
+
+### Key Entities *(include if feature involves data)*
+
+- **Imported Document**: The uploaded source file supplied by the user. It has an initiating user, visible filename, upload status, validation status, deletion status, and retention expiry based on the original upload time. It remains distinct from the structured resume, is never directly modified, and is deleted no later than 7 days after original upload unless the user deletes it earlier.
+- **Derived Extraction Artifact**: Any temporary or derived data capable of reconstructing source content, including extracted raw text, field source snippets, page references, thumbnails, temporary files, cached parsing results, future OCR outputs, embeddings if any, and equivalent artifacts. It has the same owner and retention deadline as the imported document.
+- **Import Draft**: A temporary reviewable workspace containing extracted resume fields, warnings, source references while the source exists, and user corrections before structured resume creation. It belongs to the initiating user, may be resumed only before the 7-day expiry, and is retained for up to 7 days after original upload unless the user deletes it earlier.
+- **Extracted Field**: A candidate resume value found during import, such as a phone number, role title, employer, education item, skill, language, project, certification, or link. It has a section, value, source status, explicit source location while the source exists, confidence status, review status, and optional warning.
+- **Import Warning**: A user-facing notice about missing, ambiguous, conflicting, duplicate, low-confidence, unsafe, unsupported, or incomplete information that may require user attention. It has a review state showing whether the user confirmed, edited, excluded, intentionally left, or has not yet addressed the warning.
+- **Work Experience**: A structured employment history item containing an employer and one or more roles. Each role has its own title, location if available, start date, optional end date, ongoing status, responsibilities, achievements, inference status, and review state.
+- **Structured Resume**: The confirmed resume data created from reviewed import fields. It becomes the editable source of truth only after explicit user confirmation, remains until deleted by the user, and after source deletion may retain only minimal non-sensitive provenance such as “imported from initial resume” and “confirmed by user”.
+- **User Correction**: A change made by the user during review, including editing, removing, adding, excluding, or confirming an extracted field.
+
+## Constitutional Requirements *(mandatory)*
+
+- **Non-technical UX**: The import journey is visual, guided, and written in plain language. Users never see JSON, YAML, prompts, parsing internals, provider names, model names, technical diagnostics, or configuration details.
+- **Import-first onboarding**: The feature directly implements the preferred onboarding path by making resume import the prominent option when creating a resume, while preserving manual entry as a fallback.
+- **Structured data source of truth**: Imported content enters an unconfirmed import draft first. The structured resume becomes the editable source of truth only after explicit user confirmation. The uploaded document remains a separate source artifact and is never modified.
+- **Rendering and ATS readability**: The feature does not generate final documents or change templates. It must preserve resume section relationships such as role, employer, date, location, education, links, and headings in structured data so later rendering can remain human-readable and ATS-readable.
+- **AI behavior and provenance**: Optional AI assistance may classify or clarify extracted information, but it must only produce reviewable candidate fields and warnings. It must not invent facts, silently apply changes, expose prompts, follow document-internal instructions, or create the structured resume without user approval.
+- **Protected templates**: Templates and visual customization are out of scope. Import must not modify template source code, template configuration, generated PDFs, raw PDF structures, or rendering components.
+- **Security and privacy**: Uploaded resumes contain sensitive personal data. Upload requires authentication, import artifacts are available only to the initiating user, uploads and processing are rate-limited, hostile documents are isolated, active content and document instructions are never executed, source-reconstructing artifacts are deleted no later than 7 days after original upload, and full resumes, credentials, and unnecessary personal data must not be logged.
+- **Provider independence and no-AI fallback**: Deterministic extraction must run first and provide reviewable results without AI whenever it can extract at least one explicitly sourced supported field. Any AI-assisted extraction must be provider-independent, limited to reviewable classification or ambiguity warnings after deterministic extraction, and unavailable AI must not block upload, review, correction, confirmation, or manual entry.
+- **Accessibility and recovery**: Upload controls, progress states, warning labels, review fields, correction controls, retry, cancel, discard, deletion, and confirmation must meet WCAG 2.2 AA expectations, be accessible by label, and be keyboard operable. Failure states must explain what happened and give a recoverable next step.
+- **Documentation and failure states**: User-facing help must explain supported files, supported languages, bilingual support, upload limits, rendered page limits, selectable-text requirements, unsupported-language handling, import privacy, retention, deletion, partial extraction, unsupported documents, and confirmation. Failure states must cover authentication required, validation failure, unreadable content, partial extraction, no-supported-field extraction, processing failure, cancellation, retry, timeout, rate limiting, unsupported language, ambiguous mixed documents, and expired import drafts.
+
+## Success Criteria *(mandatory)*
+
+### Measurable Outcomes
+
+- **SC-001**: At least 85% of authenticated users with a supported existing resume can reach the extraction review screen or a recoverable timeout state within 3 minutes of starting resume creation in moderated usability testing.
+- **SC-002**: At least 90% of supported resume uploads containing at least one explicit supported field with a source location produce a partial or complete reviewable extraction instead of a total failure.
+- **SC-003**: At least 95% of review participants can identify which extracted fields need attention without external explanation.
+- **SC-004**: At least 90% of review participants can correct or remove an incorrect extracted field within 30 seconds of locating it.
+- **SC-005**: 100% of structured resumes created through import require an explicit user confirmation action after review.
+- **SC-006**: 100% of imported fields in a structured resume have a review status showing whether they were source-extracted, user-confirmed, user-edited, user-added, or excluded before confirmation.
+- **SC-006a**: 100% of imported structured resumes with extraction warnings have every warning addressed by user confirmation, edit, exclusion, or intentional leave-before-confirmation action before creation.
+- **SC-006b**: 100% of supported resumes in test fixtures with multiple roles at one employer preserve each role as a distinct role under that employer unless the relationship is marked as needing review.
+- **SC-007**: 100% of unsupported, unsafe, unreadable, password-protected, malformed, corrupted, oversized, over-page-limit, unsupported-language, no-supported-field, and rate-limited failures show a plain-language reason and at least one next action: retry, replace file, delete upload, re-upload, or continue manually.
+- **SC-008**: 0 confirmed imports modify the uploaded source document.
+- **SC-009**: In usability testing, at least 90% of users understand that the uploaded document and the structured resume are distinct after confirmation.
+- **SC-010**: 100% of import drafts and uploaded documents can be deleted through a visible user action before structured resume confirmation, and retained source documents plus source-reconstructing extraction artifacts can be deleted without deleting the confirmed structured resume after confirmation.
+- **SC-011**: 100% of tested prompt-injection attempts embedded in uploaded documents fail to produce invented facts, bypass review, expose internals, or change product behavior outside extraction.
+- **SC-012**: Users can complete the import flow without AI assistance for at least one representative French resume, one representative English resume, and one representative bilingual French-English resume in each supported document format.
+- **SC-013**: 100% of uploaded source documents, unconfirmed import drafts, and source-reconstructing extraction artifacts are unavailable more than 7 days after original upload, regardless of whether a structured resume was confirmed.
+- **SC-014**: 100% of extraction attempts that reach the 3-minute foreground processing limit show a timeout state with any partial extraction results that meet the draft creation threshold and retry, replacement upload, or manual-entry options.
+- **SC-015**: 100% of upload attempts require authentication, and 100% of tested cross-user access attempts to import source documents, processing state, temporary artifacts, or drafts are denied.
+- **SC-016**: 100% of source deletion tests remove extracted raw text, field source snippets, page references, thumbnails, temporary files, cached parsing results, future OCR outputs, embeddings if any, and any other source-reconstructing artifacts.
+- **SC-017**: 100% of tested upload and processing attempts that exceed rate limits, memory limits, concurrent work limits, file size limits, rendered page count limits, or processing time limits fail without exposing or affecting another user's import data.
+- **SC-018**: 100% of expired drafts show an expiry message with re-upload and manual-entry options, and 100% of explicit cancellations stop processing and schedule source-reconstructing artifacts for deletion.
+- **SC-019**: 100% of validation tests for documents containing macros, scripts, active objects, unsafe links, hidden instructions, or prompt-injection text show that the content is not executed or treated as application or AI instructions.
+- **SC-020**: 100% of accessibility acceptance tests for upload, processing, review, confirmation, retry, cancellation, and deletion meet WCAG 2.2 AA expectations, including keyboard-only completion, accessible names and labels, screen-reader state announcements, non-colour warning indicators, error-summary focus after failed validation, and logical focus recovery after dialogs.
+- **SC-021**: 100% of non-French, non-English, and non-bilingual documents show unsupported-language guidance with another-upload or manual-entry options; explicitly detectable contact information may be proposed only with a warning.
+- **SC-022**: 100% of documents that contain a resume plus unrelated content either propose only clearly identified resume content with disclosed exclusions or ask the user to upload a resume-only document when separation is unclear.
+
+## Assumptions
+
+- Supported resume documents for this feature are PDF and DOCX files in French, English, or bilingual French-English, up to 10 MB and 5 rendered pages. Import requires selectable text; scanned, image-only, or non-selectable documents are rejected, while documents containing selectable text mixed with images can be processed from the selectable text.
+- The initial import flow is for an authenticated user creating a resume for themselves.
+- Manual resume creation already exists or will be available as a parallel fallback in the create-resume journey.
+- Imported source documents, unconfirmed import drafts, and source-reconstructing extraction artifacts are retained for up to 7 days after original upload for review and recovery, subject to visible user deletion controls.
+- Confirming a structured resume does not restart or extend source document or extraction artifact retention. Deleting the uploaded source document does not delete the confirmed structured resume unless the user separately deletes the resume.
+- Confirmed structured resumes remain until deleted by the user and may retain only minimal non-sensitive provenance after source deletion.
+- This feature creates structured resume data only; it does not rewrite content, tailor content to jobs, choose templates, generate final documents, score ATS compatibility, create cover letters, track jobs, process payments, or submit applications.
