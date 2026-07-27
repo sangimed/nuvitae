@@ -40,7 +40,35 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Document PASS/FAIL for each Nuvitae constitutional gate. Any FAIL must be
+resolved before Phase 0 research unless a documented, approved exception exists.
+
+- **Non-technical UX**: Standard user flow remains visual and avoids YAML, JSON,
+  MCP, prompts, API keys, model internals, and command-line concepts.
+- **Import-first onboarding**: Feature preserves upload, extraction review, and
+  correction where onboarding or resume creation is affected.
+- **Structured source of truth**: Resume content changes are represented as
+  validated structured data operations; exported PDFs remain generated artifacts.
+- **Deterministic rendering**: Content/configuration changes regenerate through
+  the controlled rendering engine with regression coverage for equivalent output.
+- **AI reviewability and provenance**: AI behavior uses typed operations, clear
+  diffs, explicit approval, no silent master overwrite, and provenance checks.
+- **Protected templates**: Content-related AI or user flows only use validated
+  template configuration options.
+- **Human and ATS readability**: Rendering preserves selectable text, reading
+  order, typography limits, headings, textual contact data, and role/date
+  associations.
+- **Security and privacy**: Personal-data handling, authorization, upload
+  security, validation, secrets, retention/deletion, logging, rate limits, and
+  resource isolation are specified.
+- **Provider independence and no-AI usability**: Core domain, import, rendering,
+  manual editing, customization, and export do not depend on a single AI provider
+  or any AI provider.
+- **Accessibility and recovery**: Core flows include labels, keyboard navigation,
+  progress states, error recovery, and destructive-action confirmation.
+- **Quality gates**: Tests, security implications, accessibility implications,
+  documentation, failure states, and required rendering/AI regressions are
+  identified.
 
 ## Project Structure
 

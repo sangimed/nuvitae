@@ -103,6 +103,38 @@
 - **[Entity 1]**: [What it represents, key attributes without implementation]
 - **[Entity 2]**: [What it represents, relationships to other entities]
 
+## Constitutional Requirements *(mandatory)*
+
+<!--
+  ACTION REQUIRED: Capture Nuvitae constitution impacts in product language.
+  Use "Not applicable because..." only when the feature truly cannot affect the
+  area. Do not defer security, privacy, accessibility, AI, rendering, or failure
+  state decisions to implementation without an explicit reason.
+-->
+
+- **Non-technical UX**: [How the standard flow stays visual, guided, and free of
+  technical concepts]
+- **Import-first onboarding**: [How upload, extraction review, correction, or
+  manual entry are affected]
+- **Structured data source of truth**: [Which structured resume data changes, if
+  any, and how generated artifacts remain non-editable]
+- **Rendering and ATS readability**: [Human readability, selectable text,
+  reading order, headings, contact text, role/date associations, and readability
+  limits]
+- **AI behavior and provenance**: [Typed operations, diff review, user approval,
+  missing facts, unsupported claims, prompt injection, and provenance handling]
+- **Protected templates**: [Validated template configuration options affected, or
+  why templates are unaffected]
+- **Security and privacy**: [Personal data processed, authorization, upload
+  security, validation, secrets, retention/deletion, logging, rate limits, and
+  resource isolation]
+- **Provider independence and no-AI fallback**: [How the feature works without AI
+  and without coupling core behavior to one provider]
+- **Accessibility and recovery**: [Labels, keyboard navigation, progress states,
+  retry/cancel/error recovery, and destructive-action confirmation]
+- **Documentation and failure states**: [User-facing or developer documentation
+  and explicit failure modes]
+
 ## Success Criteria *(mandatory)*
 
 <!--
