@@ -6,6 +6,16 @@
 
 **Alternatives considered**: Forking Reactive Resume was rejected because its PDF/DOCX import requires AI and creates resumes immediately. Using Resuml as the application foundation was rejected because its inspected repository is CLI/package/MCP-oriented and YAML-centered. A polyglot first implementation was rejected because this repository has no source yet and the first feature needs tight domain/API/UI contract alignment.
 
+## Decision: Use a container-only development, build, test, and runtime workflow
+
+**Rationale**: Docker is the only supported environment for installing and executing Nuvitae application dependencies. This gives the project reproducible dependency resolution, host independence, dependency isolation, parser security, CI parity, and easier self-hosting. It also keeps Windows with WSL 2, Linux, and macOS on one documented workflow without assuming a developer-specific home directory.
+
+The development workspace image contains pinned Node.js, Corepack, pnpm, and shared development tools. PostgreSQL, the Redis-compatible queue, and local private object storage run as Compose services. LibreOffice headless and parser dependencies run only in the worker image or an isolated parser image. Playwright browsers run in a dedicated test image or test stage. Source is mounted into `/workspace` inside development containers, while dependency caches, pnpm store, and `node_modules` use Docker-managed volumes.
+
+**Alternatives considered**: Host-side Node.js/pnpm installation was rejected because it makes behavior depend on developer machines and creates a second workflow that can drift from CI. Host-side PostgreSQL, Redis, LibreOffice, and Playwright installation was rejected because it increases setup burden and weakens parser/browser isolation. A remote-only development environment was rejected for the initial plan because local self-hosted development remains a project requirement.
+
+**Trade-offs**: Cold image builds can be slower than host installs. File watching under Docker Desktop can require polling or WSL 2 filesystem placement. Docker-managed caches and volumes need reset and cleanup guidance. Images require version pinning and maintenance. Windows support depends on correctly configured WSL 2 integration.
+
 ## Decision: Use deterministic extraction as the required first pass
 
 **Rationale**: The specification and constitution require import review to work without AI whenever at least one supported field can be explicitly sourced. Deterministic extraction provides auditable source locations, supports no-AI usability, and prevents uploaded document text from becoming application or AI instructions.
