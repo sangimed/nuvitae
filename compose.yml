@@ -1,0 +1,204 @@
+name: nuvitae
+
+services:
+  workspace:
+    build:
+      context: .
+      dockerfile: docker/dev/Dockerfile
+      args:
+        USER_ID: ${LOCAL_UID:-1000}
+        GROUP_ID: ${LOCAL_GID:-1000}
+        PNPM_VERSION: 11.15.1
+    image: nuvitae-workspace:0.1.0
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - pnpm-store:/pnpm/store
+      - root-node-modules:/workspace/node_modules
+      - web-node-modules:/workspace/apps/web/node_modules
+      - api-node-modules:/workspace/apps/api/node_modules
+      - worker-node-modules:/workspace/apps/worker/node_modules
+      - contracts-node-modules:/workspace/packages/contracts/node_modules
+      - domain-node-modules:/workspace/packages/domain/node_modules
+      - extraction-node-modules:/workspace/packages/extraction/node_modules
+      - persistence-node-modules:/workspace/packages/persistence/node_modules
+      - storage-node-modules:/workspace/packages/storage/node_modules
+      - fixtures-node-modules:/workspace/packages/test-fixtures/node_modules
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-nuvitae}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nuvitae_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-nuvitae}
+      QUEUE_HOST: queue
+      QUEUE_PORT: 6379
+      QUEUE_PASSWORD: ${QUEUE_PASSWORD:-nuvitae_queue_password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      queue:
+        condition: service_healthy
+    profiles:
+      - tools
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+      args:
+        PNPM_VERSION: 11.15.1
+    image: nuvitae-web:0.1.0
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(''http://127.0.0.1:3000/health'').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+      args:
+        PNPM_VERSION: 11.15.1
+    image: nuvitae-api:0.1.0
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-nuvitae}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nuvitae_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-nuvitae}
+      POSTGRES_SSL: "false"
+    ports:
+      - "3001:3001"
+    volumes:
+      - private-storage:/var/lib/nuvitae/private
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(''http://127.0.0.1:3001/health'').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  worker:
+    build:
+      context: .
+      dockerfile: docker/worker/Dockerfile
+      args:
+        PNPM_VERSION: 11.15.1
+    image: nuvitae-worker:0.1.0
+    environment:
+      NODE_ENV: production
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-nuvitae}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nuvitae_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-nuvitae}
+      QUEUE_HOST: queue
+      QUEUE_PORT: 6379
+      QUEUE_PASSWORD: ${QUEUE_PASSWORD:-nuvitae_queue_password}
+      WORKER_READY_FILE: /tmp/nuvitae-worker-ready
+    volumes:
+      - private-storage:/var/lib/nuvitae/private
+    depends_on:
+      postgres:
+        condition: service_healthy
+      queue:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -s /tmp/nuvitae-worker-ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+  postgres:
+    image: postgres:17.10-alpine3.24
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nuvitae}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nuvitae_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-nuvitae}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  queue:
+    image: valkey/valkey:8.1.9-alpine3.24
+    command:
+      [
+        "valkey-server",
+        "--appendonly",
+        "yes",
+        "--requirepass",
+        "${QUEUE_PASSWORD:-nuvitae_queue_password}",
+      ]
+    volumes:
+      - queue-data:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'valkey-cli -a "$${QUEUE_PASSWORD:-nuvitae_queue_password}" ping | grep PONG',
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  test:
+    build:
+      context: .
+      dockerfile: docker/test/Dockerfile
+      args:
+        USER_ID: ${LOCAL_UID:-1000}
+        GROUP_ID: ${LOCAL_GID:-1000}
+        PNPM_VERSION: 11.15.1
+    image: nuvitae-test:0.1.0
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - pnpm-store:/pnpm/store
+      - root-node-modules:/workspace/node_modules
+    profiles:
+      - test
+
+volumes:
+  pnpm-store:
+  root-node-modules:
+  web-node-modules:
+  api-node-modules:
+  worker-node-modules:
+  contracts-node-modules:
+  domain-node-modules:
+  extraction-node-modules:
+  persistence-node-modules:
+  storage-node-modules:
+  fixtures-node-modules:
+  postgres-data:
+  queue-data:
+  private-storage:

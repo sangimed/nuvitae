@@ -1,0 +1,9 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+allowBuilds:
+  "@scarf/scarf": false
+  msgpackr-extract: true
+  sharp: true
+minimumReleaseAgeExclude:
+  - "@types/node@26.1.2"
