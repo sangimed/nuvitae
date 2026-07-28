@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 FROM node:24.15.0-bookworm-slim AS base
 
 ARG PNPM_VERSION=11.15.1
@@ -7,13 +8,15 @@ ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 WORKDIR /workspace
 
 RUN corepack enable \
-  && corepack prepare pnpm@${PNPM_VERSION} --activate
+  && corepack prepare pnpm@${PNPM_VERSION} --activate \
+  && pnpm config set store-dir /pnpm/store
 
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json turbo.json ./
 COPY apps/api/package.json apps/api/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
-RUN pnpm install --frozen-lockfile
+RUN --mount=type=cache,id=nuvitae-api-pnpm-store,target=/pnpm/store \
+  pnpm install --frozen-lockfile
 
 FROM deps AS builder
 COPY apps/api apps/api
@@ -25,7 +28,8 @@ FROM base AS prod-deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/api/package.json apps/api/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
-RUN pnpm install --frozen-lockfile --prod
+RUN --mount=type=cache,id=nuvitae-api-prod-pnpm-store,target=/pnpm/store \
+  pnpm install --frozen-lockfile --prod
 
 FROM node:24.15.0-bookworm-slim AS runtime
 ENV NODE_ENV=production

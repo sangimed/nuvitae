@@ -33,6 +33,7 @@ services:
       QUEUE_HOST: queue
       QUEUE_PORT: 6379
       QUEUE_PASSWORD: ${QUEUE_PASSWORD:-nuvitae_queue_password}
+      NEXT_TELEMETRY_DISABLED: 1
     depends_on:
       postgres:
         condition: service_healthy
@@ -149,6 +150,8 @@ services:
 
   queue:
     image: valkey/valkey:8.1.9-alpine3.24
+    environment:
+      QUEUE_PASSWORD: ${QUEUE_PASSWORD:-nuvitae_queue_password}
     command:
       [
         "valkey-server",
@@ -163,7 +166,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'valkey-cli -a "$${QUEUE_PASSWORD:-nuvitae_queue_password}" ping | grep PONG',
+          'REDISCLI_AUTH="$${QUEUE_PASSWORD}" valkey-cli ping | grep PONG',
         ]
       interval: 10s
       timeout: 3s
@@ -180,6 +183,8 @@ services:
         PNPM_VERSION: 11.15.1
     image: nuvitae-test:0.1.0
     working_dir: /workspace
+    environment:
+      NEXT_TELEMETRY_DISABLED: 1
     volumes:
       - .:/workspace
       - pnpm-store:/pnpm/store

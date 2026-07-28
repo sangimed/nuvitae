@@ -17,6 +17,7 @@ build/
 coverage/
 .tmp/
 .cache/
+*.tsbuildinfo
 
 # Logs
 *.log
@@ -31,7 +32,7 @@ logs/
 Thumbs.db
 
 # Uploaded and generated documents
-uploads/
-generated/
-storage/
+/uploads/
+/generated/
+/storage/
 *.local.pdf
