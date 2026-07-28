@@ -2,7 +2,17 @@
 
 ## Status
 
-Proposed
+Accepted
+
+Accepted date: 2026-07-28
+
+Rationale: The architecture direction is accepted because the reviewed
+governance artifacts consistently require Nuvitae to own its application,
+domain, import, rendering, AI-operation, and user-experience boundaries while
+using Reactive Resume and Resuml only as constrained references. Individual
+source-code reuse decisions remain conditional on implementation spikes,
+license review, dependency review, attribution planning, and API-boundary
+review.
 
 ## Context
 
@@ -39,7 +49,11 @@ Adopt Option 4 as a Nuvitae-owned hybrid architecture.
 
 This does not mean composing Reactive Resume and Resuml directly as runtime foundations. Nuvitae will own the application shell, resume domain, import pipeline, rendering boundary, AI orchestration boundary, persistence model, and user experience. Reactive Resume will be used as the primary reference for visual editing, deterministic template rendering, PDF regeneration, auth/persistence patterns, MCP integration patterns, and self-hosting. Resuml will be used as the primary reference for ATS analysis, job-description matching, skill taxonomy, knockout signals, and agent workflow ergonomics.
 
-The decision remains Proposed because several proof points are not established by repository evidence. Nuvitae-specific import drafts, career inventory, master resume variants, ChangeSets, tenant isolation, managed-cloud controls, and provider-independent AI operations still need validation before this ADR can be accepted.
+This decision accepts the architecture direction, not blanket source-code reuse.
+Nuvitae-specific import drafts, career inventory, master resume variants,
+ChangeSets, tenant isolation, managed-cloud controls, and provider-independent AI
+operations still require validation through implementation spikes before any
+specific reused component is adopted.
 
 The decision preserves these boundaries:
 
