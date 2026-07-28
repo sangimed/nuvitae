@@ -271,7 +271,24 @@ unsupported-language fixtures.
 
 **Expected Outcome**: Source document and all source-reconstructing artifacts are deleted. The structured resume remains available and contains only minimal non-sensitive provenance. Confirmation does not extend the original retention deadline.
 
-### 11. Accessibility Pass
+### 11. Duplicate Uploads And Deletion Races
+
+1. Upload the same supported source twice as the same user.
+2. Verify each upload has a separate import id, draft state, rate-limit accounting, and retention deadline.
+3. Start processing, then cancel or delete source while processing is active.
+4. Repeat delete, cancel, discard, expiry, and retention cleanup actions after deletion is already scheduled.
+
+**Expected Outcome**: Duplicate uploads do not merge drafts or share source-reconstructing artifacts. Cancellation and deletion are idempotent, stop future artifact commits where possible, preserve any separately confirmed structured resume, and never extend retention.
+
+### 12. Source-Deleted Review Before Confirmation
+
+1. Reach review with a threshold-qualified draft.
+2. Delete the source document before confirming structured resume creation.
+3. Return to the draft before the original expiry.
+
+**Expected Outcome**: Review shows no raw snippets, page references, thumbnails, extracted raw text, cached parser output, or source-location previews. It may show saved field values, user corrections, warning states, and minimal non-sensitive provenance. Confirmation is possible only if warning resolution and at least one user-confirmed supported field remain valid without source artifacts; otherwise discard and manual entry are offered.
+
+### 13. Accessibility Pass
 
 Complete upload, validation failure, processing, timeout, review, warning
 resolution, confirmation, cancellation, retry, and source deletion using the
@@ -281,10 +298,10 @@ containerized browser/accessibility test environment.
 
 ## Required Test Groups
 
-- Domain unit tests for state transitions, warning resolution, confirmation blocking, source deletion, and retention.
+- Domain unit tests for state transitions, warning resolution, confirmation blocking, source deletion, duplicate uploads, deletion idempotency, and retention.
 - Extraction fixture tests for supported languages, formats, partial results, selectable-text requirements, no-supported-field failures, and hostile documents.
 - REST API/contract tests for authorization, rate limits, validation failures, retry, cancellation, deletion, and confirmation.
-- Worker integration tests for timeout, cancellation, deletion verification, and expired drafts.
+- Worker integration tests for timeout, cancellation, deletion verification, deletion races, and expired drafts.
 - Persistence tests for TypeORM migrations, explicit transactions, database constraints, unique indexes, foreign keys, lifecycle constraints, repository ownership behavior, and domain/persistence mapper behavior.
 - Accessibility tests for labels, keyboard operation, live regions, error focus, dialog focus restoration, and non-colour warning treatment.
 - Logging/security tests proving raw resumes, source snippets, uploaded files, credentials, prompts, tokens, and unnecessary personal data are not logged.

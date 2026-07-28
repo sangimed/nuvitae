@@ -44,7 +44,7 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Required Actions**: Confirm transfer to manual entry, discard contact preview, upload another file, continue manually without transfer.
 
-**Rules**: Contact-only detection does not satisfy the import-draft creation threshold. Contact fields transfer to `/resumes/new/manual` only after explicit user confirmation and are marked as user-added. Temporary contact data follows the same deletion and logging restrictions as other extraction artifacts.
+**Rules**: Contact-only detection is limited to deterministic name, email address, phone number, location, and professional-link detection and does not satisfy the import-draft creation threshold. Contact fields transfer to `/resumes/new/manual` only after explicit user confirmation and are marked as user-added. Temporary contact data follows the same deletion and logging restrictions as other extraction artifacts.
 
 ### Confirmation Step
 
@@ -130,7 +130,7 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Output**: new processing state or new imported document id.
 
-**Rules**: Retry respects rate limits and processing limits. Replacement upload does not extend the original document's retention; it creates a new imported document with its own retention deadline.
+**Rules**: Retry respects rate limits and processing limits. Replacement upload does not extend the original document's retention; it creates a new imported document with its own retention deadline. Re-uploading the same file or materially identical source content counts as a separate attempt, receives its own retention deadline, and must not merge drafts or share source-reconstructing artifacts with prior imports.
 
 ### Cancel or Discard Import
 
@@ -148,10 +148,26 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Rules**: Deletes source file, extracted raw text, field source snippets, page references, thumbnails, temporary files, cached parsing results, future OCR outputs, embeddings if any, and equivalent source-reconstructing artifacts.
 
+### Source-Deleted Review
+
+**Input**: authenticated user, import draft id whose source artifacts are deleted before confirmation.
+
+**Output**: limited review state, current warning statuses, minimal non-sensitive provenance, and available discard or manual-entry actions.
+
+**Rules**: The response must not include raw snippets, page references, thumbnails, extracted raw text, cached parsing output, or source-location previews. Confirmation remains blocked unless every warning can still be addressed without source artifacts and at least one supported field is user-confirmed.
+
+### Deletion Idempotency
+
+**Input**: authenticated user, import id, draft id, or deletion job id for cancellation, discard, source deletion, expiry, or retention cleanup.
+
+**Output**: current deletion state and verification summary.
+
+**Rules**: Repeated deletion, cancellation, discard, expiry, or retention actions return the current state, do not recreate artifacts, do not extend retention, and do not delete a separately confirmed structured resume.
+
 ## Authorization Contract
 
 Every import operation must verify that the authenticated user owns the imported document, draft, extracted fields, warnings, corrections, deletion job, and resulting structured resume. Forbidden responses must not reveal personal data from another user's import.
 
 ## Logging Contract
 
-Logs may include event ids, status codes, timing, file size bucket, page count bucket, language category, and non-sensitive error categories. Logs must not include full resumes, raw extracted text, source snippets, uploaded documents, authentication tokens, provider credentials, prompts, or unnecessary personal data.
+Logs may include event ids, status codes, timing, file size bucket, page count bucket, language category, and non-sensitive error categories. Logs must not include full resumes, raw extracted text, source snippets, uploaded documents, authentication tokens, provider credentials, prompts, technical parser internals, or unnecessary personal data.

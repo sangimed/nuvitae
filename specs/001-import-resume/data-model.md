@@ -18,9 +18,11 @@ Represents the uploaded source file. It is distinct from the import draft and an
 
 **Validation Rules**: Owner must be authenticated. File must be PDF or DOCX, 10 MB or smaller, 5 rendered pages or fewer, selectable text, and French, English, or bilingual French-English. Unsafe, unreadable, password-protected, corrupted, empty, image-only, unsupported, over-limit, or ambiguous mixed documents fail validation with recovery actions.
 
-**State Transitions**: `pending_upload` -> `uploaded` -> `validating` -> `accepted` or `rejected`; accepted documents move through `processing`, `ready_for_review`, `timeout_partial`, `failed`, `cancelled`, `expired`, or `deleted`.
+**State Transitions**: `pending_upload` -> `uploaded` -> `validating` -> `accepted` or `rejected`; accepted documents move through `processing`, `ready_for_review`, `timeout_partial`, `failed`, `cancelled`, `expired`, `deletion_scheduled`, or `deleted`. Repeated deletion, cancellation, discard, expiry, or retention actions are idempotent and return the current lifecycle state without recreating source-reconstructing artifacts.
 
 **Resource Limits**: Validation and processing are subject to 10 MB maximum file size, 5 rendered pages maximum, 3 minutes maximum foreground processing, 512 MiB maximum isolated parser-process memory, 1 active and 2 queued processing jobs per user, and 5 upload or processing-start attempts per rolling 10-minute window per authenticated user.
+
+**Repeated Upload Rule**: Re-uploading the same file or materially identical source content creates a separate `ImportedDocument`, counts against the initiating user's rolling attempt and concurrency limits, and receives an independent `retentionExpiresAt` based on that upload. Duplicate uploads do not merge drafts, share source-reconstructing artifacts, or extend another import's retention.
 
 ## DerivedExtractionArtifact
 
@@ -42,7 +44,7 @@ Review workspace containing extracted fields, warnings, and user corrections bef
 
 **Relationships**: Belongs to one `ImportedDocument`; contains many `ExtractedField`, `ImportWarning`, and `UserCorrection` records; may create one `StructuredResume`.
 
-**Validation Rules**: Draft creation requires at least one supported field explicitly extracted from source content with a source location. Inferred-only data must not create a draft. Draft can be resumed only by the owner before retention expiry.
+**Validation Rules**: Draft creation requires at least one supported field explicitly extracted from source content with a source location. Inferred-only data must not create a draft. Draft can be resumed only by the owner before retention expiry. If source artifacts are deleted before confirmation, review may show saved field values, user corrections, warning states, and minimal non-sensitive provenance, but must not show raw snippets, page references, thumbnails, extracted raw text, or source-location previews. Confirmation is allowed only when every warning remains addressable without source artifacts and at least one supported field is user-confirmed; otherwise the user must discard or continue manually.
 
 **State Transitions**: `preparing` -> `review_required` -> `ready_to_confirm` -> `confirmed`; alternate states are `discarded`, `cancelled`, `expired`, and `source_deleted_limited_review`.
 
@@ -66,7 +68,7 @@ Candidate resume value shown during review.
 
 **Relationships**: Belongs to one `ImportDraft`; may be linked to one `ImportWarning`; may be superseded by `UserCorrection`.
 
-**Validation Rules**: Supported sections are personal/contact information, professional headline, summary, work experience, education, skills, languages, projects, certifications, and professional links. Source location exists only while the source document exists. PDF source locations include page number and text-item geometry. DOCX source locations include package part plus paragraph/table/cell/run indexes and character offsets; rendered DOCX coordinates are not guaranteed. Semantic grouping, ambiguous date interpretation, section classification, and work-experience association by inference require review. Skills must not be inferred from titles, responsibilities, seniority, metrics, or relationships.
+**Validation Rules**: Supported sections are personal/contact information, professional headline, summary, work experience, education, skills, languages, projects, certifications, and professional links. Source location exists only while the source document exists. PDF source locations include page number and text-item geometry. DOCX source locations include package part plus paragraph/table/cell/run indexes and character offsets; rendered DOCX coordinates are not guaranteed. Confidence status values are `high`, `medium`, `low`, and `not_applicable`; low confidence means explicit source content exists but deterministic extraction cannot reliably classify the field, date meaning, section, role association, duplicate, or conflict without review. Semantic grouping, ambiguous date interpretation, section classification, and work-experience association by inference require review. Skills must not be inferred from titles, responsibilities, seniority, metrics, or relationships.
 
 **State Transitions**: `unreviewed` -> `confirmed`, `edited`, `excluded`, or `intentionally_left`; all warnings must leave `unreviewed` before structured resume confirmation.
 
@@ -134,11 +136,11 @@ User review action applied to a draft field or warning.
 
 Lifecycle task for removing source and source-reconstructing artifacts.
 
-**Fields**: `id`, `importedDocumentId`, `ownerUserId`, `reason`, `status`, `scheduledAt`, `completedAt`, `verificationStatus`.
+**Fields**: `id`, `importedDocumentId`, `ownerUserId`, `reason`, `status`, `scheduledAt`, `completedAt`, `verificationStatus`, `verificationSummary`.
 
 **Relationships**: Deletes one imported document and all related derived extraction artifacts. May also discard an unconfirmed import draft.
 
-**Validation Rules**: Jobs are scheduled for cancellation, explicit source deletion, discard, expiry, or retention deadline. Confirmation does not restart or extend the retention deadline.
+**Validation Rules**: Jobs are scheduled for cancellation, explicit source deletion, discard, expiry, or retention deadline. Confirmation does not restart or extend the retention deadline. Jobs are idempotent; repeated scheduling or execution records the current state and must not recreate artifacts. Verification records each source-reconstructing artifact category as removed, already absent, or failed before the 7-day deadline.
 
 ## ParserProcess
 

@@ -8,78 +8,90 @@
 
 ## Requirement Completeness
 
-- [ ] CHK001 Are upload eligibility requirements complete for authentication, accepted formats, supported languages, selectable text, file size, rendered page count, and privacy notice timing? [Completeness, Spec §FR-002, §FR-003, §FR-003a, §FR-005a]
-- [ ] CHK002 Are deterministic extraction requirements complete for threshold-qualified draft creation, partial extraction, no-supported-field failure, and no-AI operation? [Completeness, Spec §FR-013, §FR-013a, §FR-013c, §FR-020]
-- [ ] CHK003 Are review requirements complete for every supported resume section: contact information, headline, summary, work experience, education, skills, languages, projects, certifications, and professional links? [Completeness, Spec §FR-008, User Story 2]
-- [ ] CHK004 Are requirements defined for every review action: confirm, edit, remove, complete, add, exclude, intentionally leave, discard, retry, replace upload, delete source, and continue manually? [Completeness, Spec §FR-010a, §FR-011, §FR-025]
-- [ ] CHK005 Are lifecycle requirements complete for upload, validation, processing, timeout, review, confirmation, cancellation, retry, discard, source deletion, expiry, and structured resume retention? [Completeness, Spec §FR-007, §FR-017, §FR-018, §FR-025]
-- [ ] CHK006 Are requirements complete for preserving multiple roles under one employer and representing ongoing roles without end dates? [Completeness, Spec §FR-008a, §FR-008b]
+- [x] CHK001 Are upload eligibility requirements complete for authentication, accepted formats, supported languages, selectable text, file size, rendered page count, and privacy notice timing? [Completeness, Spec §FR-002, §FR-003, §FR-003a, §FR-005a]
+- [x] CHK002 Are deterministic extraction requirements complete for threshold-qualified draft creation, partial extraction, no-supported-field failure, and no-AI operation? [Completeness, Spec §FR-013, §FR-013a, §FR-013c, §FR-020]
+- [x] CHK003 Are review requirements complete for every supported resume section: contact information, headline, summary, work experience, education, skills, languages, projects, certifications, and professional links? [Completeness, Spec §FR-008, User Story 2]
+- [x] CHK004 Are requirements defined for every review action: confirm, edit, remove, complete, add, exclude, intentionally leave, discard, retry, replace upload, delete source, and continue manually? [Completeness, Spec §FR-010a, §FR-011, §FR-025]
+- [x] CHK005 Are lifecycle requirements complete for upload, validation, processing, timeout, review, confirmation, cancellation, retry, discard, source deletion, expiry, and structured resume retention? [Completeness, Spec §FR-007, §FR-017, §FR-018, §FR-025]
+- [x] CHK006 Are requirements complete for preserving multiple roles under one employer and representing ongoing roles without end dates? [Completeness, Spec §FR-008a, §FR-008b]
 
 ## Requirement Clarity
 
-- [ ] CHK007 Is "primary recommended path" defined with enough product-placement or hierarchy criteria to avoid ambiguous import-vs-manual onboarding decisions? [Ambiguity, Spec §FR-001]
-- [ ] CHK008 Is "selectable text" defined well enough to distinguish fully scanned, mixed image/text, and partially selectable PDF/DOCX documents? [Clarity, Spec §FR-006a]
-- [ ] CHK009 Is "source location" specified with enough detail for both PDF and DOCX references while source artifacts still exist? [Clarity, Spec §FR-009, §FR-013]
-- [ ] CHK010 Is "confidence status" or "low confidence" defined with explicit criteria or allowed qualitative categories? [Ambiguity, Spec §FR-010, Data Model §ExtractedField]
-- [ ] CHK011 Are "semantic grouping", "section classification", and "association with a work experience" clearly distinguished from deterministic explicit extraction? [Clarity, Spec §FR-023b]
-- [ ] CHK012 Is "threshold-qualified partial extraction" defined precisely enough to determine when a draft may be shown after timeout or incomplete processing? [Clarity, Spec §FR-007a, §FR-013a]
-- [ ] CHK013 Is the rule for "explicitly detectable contact information MAY still be proposed with a warning" in unsupported-language documents bounded by field types, review state, and draft threshold rules? [Ambiguity, Spec §FR-003b, §FR-013b]
+- [x] CHK007 Is "primary recommended path" defined with enough product-placement or hierarchy criteria to avoid ambiguous import-vs-manual onboarding decisions? [Ambiguity, Spec §FR-001]
+  - Evidence: FR-001 now defines first/most-prominent import placement and visible secondary manual entry.
+- [x] CHK008 Is "selectable text" defined well enough to distinguish fully scanned, mixed image/text, and partially selectable PDF/DOCX documents? [Clarity, Spec §FR-006a]
+  - Evidence: FR-006a distinguishes fully non-selectable rejection from selectable mixed/partial processing.
+- [x] CHK009 Is "source location" specified with enough detail for both PDF and DOCX references while source artifacts still exist? [Clarity, Spec §FR-009, §FR-013]
+  - Evidence: FR-009b and Data Model §ExtractedField define PDF and DOCX source-location forms.
+- [x] CHK010 Is "confidence status" or "low confidence" defined with explicit criteria or allowed qualitative categories? [Ambiguity, Spec §FR-010, Data Model §ExtractedField]
+  - Evidence: FR-010b and Data Model §ExtractedField define `high`, `medium`, `low`, and `not_applicable`.
+- [x] CHK011 Are "semantic grouping", "section classification", and "association with a work experience" clearly distinguished from deterministic explicit extraction? [Clarity, Spec §FR-023b]
+- [x] CHK012 Is "threshold-qualified partial extraction" defined precisely enough to determine when a draft may be shown after timeout or incomplete processing? [Clarity, Spec §FR-007a, §FR-013a]
+- [x] CHK013 Is the rule for "explicitly detectable contact information MAY still be proposed with a warning" in unsupported-language documents bounded by field types, review state, and draft threshold rules? [Ambiguity, Spec §FR-003b, §FR-013b]
+  - Evidence: FR-003c and Contract §Unsupported-Language Contact Preview bound field types, transfer, user-added status, and no-draft threshold.
 
 ## Requirement Consistency
 
-- [ ] CHK014 Are unsupported-language requirements consistent between rejecting unsupported semantic extraction and allowing explicitly detectable contact information with a warning? [Consistency, Spec §FR-003b, Edge Cases]
-- [ ] CHK015 Are retention requirements consistent across source documents, derived artifacts, unconfirmed drafts, confirmed structured resumes, explicit deletion, and expiry? [Consistency, Spec §FR-017, §FR-017a, §FR-017b, §FR-018a]
-- [ ] CHK016 Are source deletion requirements consistent with review traceability requirements after page references, snippets, raw text, and thumbnails are removed? [Consistency, Spec §FR-009, §FR-009a, §FR-018b]
-- [ ] CHK017 Are AI assistance requirements consistent across optional classification, provider independence, no-AI fallback, prompt-injection handling, and no invented facts? [Consistency, Spec §FR-020, §FR-021, §FR-022, §FR-023]
-- [ ] CHK018 Are mixed-content document requirements consistent between "propose only clearly identified resume content" and the requirement to reject or reroute inseparable mixed content? [Consistency, Spec §FR-025d, §FR-025e]
+- [x] CHK014 Are unsupported-language requirements consistent between rejecting unsupported semantic extraction and allowing explicitly detectable contact information with a warning? [Consistency, Spec §FR-003b, Edge Cases]
+- [x] CHK015 Are retention requirements consistent across source documents, derived artifacts, unconfirmed drafts, confirmed structured resumes, explicit deletion, and expiry? [Consistency, Spec §FR-017, §FR-017a, §FR-017b, §FR-018a]
+- [x] CHK016 Are source deletion requirements consistent with review traceability requirements after page references, snippets, raw text, and thumbnails are removed? [Consistency, Spec §FR-009, §FR-009a, §FR-018b]
+- [x] CHK017 Are AI assistance requirements consistent across optional classification, provider independence, no-AI fallback, prompt-injection handling, and no invented facts? [Consistency, Spec §FR-020, §FR-021, §FR-022, §FR-023]
+- [x] CHK018 Are mixed-content document requirements consistent between "propose only clearly identified resume content" and the requirement to reject or reroute inseparable mixed content? [Consistency, Spec §FR-025d, §FR-025e]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK019 Are success criteria tied to measurable user or extraction outcomes rather than implementation mechanisms? [Measurability, Spec §SC-001, §SC-002, §SC-003, §SC-004]
-- [ ] CHK020 Are the criteria for "recoverable timeout state" measurable enough for moderated usability evaluation? [Measurability, Spec §SC-001, §FR-007a]
-- [ ] CHK021 Are review usability outcomes measurable for identifying fields needing attention and correcting/removing incorrect fields? [Measurability, Spec §SC-003, §SC-004]
-- [ ] CHK022 Are 100% confirmation and provenance outcomes objectively traceable to specific requirements and entities? [Measurability, Spec §SC-005, §SC-006, Key Entities]
+- [x] CHK019 Are success criteria tied to measurable user or extraction outcomes rather than implementation mechanisms? [Measurability, Spec §SC-001, §SC-002, §SC-003, §SC-004]
+- [x] CHK020 Are the criteria for "recoverable timeout state" measurable enough for moderated usability evaluation? [Measurability, Spec §SC-001, §FR-007a]
+- [x] CHK021 Are review usability outcomes measurable for identifying fields needing attention and correcting/removing incorrect fields? [Measurability, Spec §SC-003, §SC-004]
+- [x] CHK022 Are 100% confirmation and provenance outcomes objectively traceable to specific requirements and entities? [Measurability, Spec §SC-005, §SC-006, Key Entities]
 
 ## Scenario Coverage
 
-- [ ] CHK023 Are primary onboarding, upload, progress, review, warning resolution, confirmation, and structured-resume creation scenarios all represented with independent acceptance scenarios? [Coverage, User Stories 1-3]
-- [ ] CHK024 Are alternate paths for manual entry, optional empty sections, no-AI operation, replacement upload, retry, and resume-before-expiry documented consistently? [Coverage, Spec §FR-012, §FR-020, §FR-025, §FR-025a]
-- [ ] CHK025 Are exception paths for unsupported, unreadable, hostile, ambiguous, oversized, over-page-limit, timeout, no-supported-field, and expired-draft scenarios complete and non-overlapping? [Coverage, User Story 4, Edge Cases]
-- [ ] CHK026 Are recovery actions defined for every failure state listed in the documentation and failure-state constitutional requirement? [Coverage, Spec §FR-004, §FR-025, Constitutional Requirements]
-- [ ] CHK027 Are cross-user access and same-user resume/review/delete scenarios specified for every import resource type, including derived artifacts and deletion jobs? [Coverage, Spec §FR-005b, User Story 6, Contract §Authorization]
+- [x] CHK023 Are primary onboarding, upload, progress, review, warning resolution, confirmation, and structured-resume creation scenarios all represented with independent acceptance scenarios? [Coverage, User Stories 1-3]
+- [x] CHK024 Are alternate paths for manual entry, optional empty sections, no-AI operation, replacement upload, retry, and resume-before-expiry documented consistently? [Coverage, Spec §FR-012, §FR-020, §FR-025, §FR-025a]
+- [x] CHK025 Are exception paths for unsupported, unreadable, hostile, ambiguous, oversized, over-page-limit, timeout, no-supported-field, and expired-draft scenarios complete and non-overlapping? [Coverage, User Story 4, Edge Cases]
+- [x] CHK026 Are recovery actions defined for every failure state listed in the documentation and failure-state constitutional requirement? [Coverage, Spec §FR-004, §FR-025, Constitutional Requirements]
+- [x] CHK027 Are cross-user access and same-user resume/review/delete scenarios specified for every import resource type, including derived artifacts and deletion jobs? [Coverage, Spec §FR-005b, User Story 6, Contract §Authorization]
 
 ## Edge Case Coverage
 
-- [ ] CHK028 Are date edge cases complete for partial, ambiguous, inconsistent, future-dated, regional-format, overlapping, and ongoing-role dates? [Edge Case, Spec §FR-008b, §FR-023a, §FR-023b]
-- [ ] CHK029 Are unusual document layout cases complete for headers, footers, tables, columns, icons, embedded links, and mixed resume/unrelated content? [Edge Case, Edge Cases]
-- [ ] CHK030 Are hostile input requirements complete for macros, scripts, active objects, links, hidden instructions, prompt injection, malformed files, and resource isolation? [Edge Case, Spec §FR-006b, §FR-006d, §FR-022]
-- [ ] CHK031 Are cancellation and deletion edge cases specified for processing already in progress, source already deleted, confirmed resume already created, and retention job already scheduled? [Gap, Spec §FR-018c, §FR-025b]
+- [x] CHK028 Are date edge cases complete for partial, ambiguous, inconsistent, future-dated, regional-format, overlapping, and ongoing-role dates? [Edge Case, Spec §FR-008b, §FR-023a, §FR-023b]
+- [x] CHK029 Are unusual document layout cases complete for headers, footers, tables, columns, icons, embedded links, and mixed resume/unrelated content? [Edge Case, Edge Cases]
+- [x] CHK030 Are hostile input requirements complete for macros, scripts, active objects, links, hidden instructions, prompt injection, malformed files, and resource isolation? [Edge Case, Spec §FR-006b, §FR-006d, §FR-022]
+- [x] CHK031 Are cancellation and deletion edge cases specified for processing already in progress, source already deleted, confirmed resume already created, and retention job already scheduled? [Gap, Spec §FR-018c, §FR-025b]
+  - Evidence: FR-018e/FR-018f, Data Model §DeletionJob, Contract §Deletion Idempotency, and Tasks T135/T137 cover races.
 
 ## Non-Functional Requirements
 
-- [ ] CHK032 Are performance and resource-limit requirements quantified for file size, page count, processing time, memory consumption, concurrent work, and partial-result behavior? [Clarity, Spec §FR-006c, §FR-007a, Plan §Technical Context]
-- [ ] CHK033 Are rate-limit requirements specific enough to determine per-user or per-import limits, cooldowns, and recovery messaging? [Ambiguity, Spec §FR-005c]
-- [ ] CHK034 Are accessibility requirements complete for labels, keyboard operation, live status announcements, non-colour warning identification, error-summary focus, and dialog focus restoration? [Completeness, Spec §FR-029, §FR-029a, §FR-029b, §FR-029c, §FR-029d]
-- [ ] CHK035 Are privacy and logging requirements complete for user-visible diagnostics, operational logs, source snippets, uploaded files, credentials, tokens, prompts, and unnecessary personal data? [Completeness, Spec §FR-026, Contract §Logging]
-- [ ] CHK036 Are deletion-verification requirements explicit enough to prove source-reconstructing artifacts are removed within the 7-day retention deadline? [Measurability, Spec §FR-017, §FR-018a, Data Model §DeletionJob]
+- [x] CHK032 Are performance and resource-limit requirements quantified for file size, page count, processing time, memory consumption, concurrent work, and partial-result behavior? [Clarity, Spec §FR-006c, §FR-007a, Plan §Technical Context]
+- [x] CHK033 Are rate-limit requirements specific enough to determine per-user or per-import limits, cooldowns, and recovery messaging? [Ambiguity, Spec §FR-005c]
+- [x] CHK034 Are accessibility requirements complete for labels, keyboard operation, live status announcements, non-colour warning identification, error-summary focus, and dialog focus restoration? [Completeness, Spec §FR-029, §FR-029a, §FR-029b, §FR-029c, §FR-029d]
+- [x] CHK035 Are privacy and logging requirements complete for user-visible diagnostics, operational logs, source snippets, uploaded files, credentials, tokens, prompts, and unnecessary personal data? [Completeness, Spec §FR-026, Contract §Logging]
+  - Evidence: FR-026/FR-026a and Contract §Logging separate user-facing categories from operational diagnostics.
+- [x] CHK036 Are deletion-verification requirements explicit enough to prove source-reconstructing artifacts are removed within the 7-day retention deadline? [Measurability, Spec §FR-017, §FR-018a, Data Model §DeletionJob]
+  - Evidence: FR-017c and Data Model §DeletionJob define verification per artifact category.
 
 ## Dependencies & Assumptions
 
-- [ ] CHK037 Are dependencies on PDF/DOCX page counting, selectable-text detection, language detection, deterministic extraction adapters, object storage, queues, and rate limiting documented as assumptions or decisions? [Dependency, Plan §Technical Context, Research]
-- [ ] CHK038 Are assumptions about private object storage and source artifact isolation aligned with both self-hosted and managed cloud deployment targets? [Assumption, Plan §Technical Context, Spec §FR-006d]
-- [ ] CHK039 Are optional AI provider assumptions bounded so unavailable AI cannot change upload, review, correction, confirmation, or manual-entry requirements? [Assumption, Spec §FR-020, §FR-021]
-- [ ] CHK044 Are concrete PDF and DOCX adapter tasks present for parser implementation, page counting, source-location provenance, fixture coverage, and malformed/password-protected/scanned/mixed-language cases? [Coverage, Research §PDF.js, §DOCX adapter, Tasks §T099-T108]
-- [ ] CHK045 Are processing resource limits quantified, configurable but not production-disableable, and covered by implementation and tests for memory, timeout, per-user active/queued jobs, rolling attempts, HTTP 429, Retry-After, cleanup, and parser isolation? [Coverage, Spec §FR-005c, §FR-005d, §FR-006c, §FR-006f, Tasks §T109-T115]
-- [ ] CHK046 Is `/resumes/new/manual` specified as a functional route that creates a blank editable manual structured-resume draft without imported document or import job and is reachable from every required recovery state? [Coverage, Spec §FR-025f, §FR-025g, Contract §Manual Entry Step, Tasks §T116-T121]
-- [ ] CHK047 Are unsupported-language contact-only preview rules bounded so no import draft is created, transfer requires explicit confirmation, contact fields become user-added in manual entry, and temporary data follows deletion/logging restrictions? [Coverage, Spec §FR-003c, Contract §Unsupported-Language Contact Preview, Tasks §T122-T125]
-- [ ] CHK048 Does the SC-009 usability protocol verify source-vs-structured-resume separation, source edits/deletion semantics, and seven-day source/artifact expiry using the defined 90% threshold? [Coverage, Spec §SC-009, Tasks §T097]
+- [x] CHK037 Are dependencies on PDF/DOCX page counting, selectable-text detection, language detection, deterministic extraction adapters, object storage, queues, and rate limiting documented as assumptions or decisions? [Dependency, Plan §Technical Context, Research]
+- [x] CHK038 Are assumptions about private object storage and source artifact isolation aligned with both self-hosted and managed cloud deployment targets? [Assumption, Plan §Technical Context, Spec §FR-006d]
+- [x] CHK039 Are optional AI provider assumptions bounded so unavailable AI cannot change upload, review, correction, confirmation, or manual-entry requirements? [Assumption, Spec §FR-020, §FR-021]
+- [x] CHK044 Are concrete PDF and DOCX adapter tasks present for parser implementation, page counting, source-location provenance, fixture coverage, and malformed/password-protected/scanned/mixed-language cases? [Coverage, Research §PDF.js, §DOCX adapter, Tasks §T099-T108]
+- [x] CHK045 Are processing resource limits quantified, configurable but not production-disableable, and covered by implementation and tests for memory, timeout, per-user active/queued jobs, rolling attempts, HTTP 429, Retry-After, cleanup, and parser isolation? [Coverage, Spec §FR-005c, §FR-005d, §FR-006c, §FR-006f, Tasks §T109-T115]
+- [x] CHK046 Is `/resumes/new/manual` specified as a functional route that creates a blank editable manual structured-resume draft without imported document or import job and is reachable from every required recovery state? [Coverage, Spec §FR-025f, §FR-025g, Contract §Manual Entry Step, Tasks §T116-T121]
+- [x] CHK047 Are unsupported-language contact-only preview rules bounded so no import draft is created, transfer requires explicit confirmation, contact fields become user-added in manual entry, and temporary data follows deletion/logging restrictions? [Coverage, Spec §FR-003c, Contract §Unsupported-Language Contact Preview, Tasks §T122-T125]
+- [x] CHK048 Does the SC-009 usability protocol verify source-vs-structured-resume separation, source edits/deletion semantics, and seven-day source/artifact expiry using the defined 90% threshold? [Coverage, Spec §SC-009, Tasks §T097]
+  - Evidence: SC-009 now includes source edits/deletion and 7-day expiry understanding; T097 defines the protocol.
 
 ## Ambiguities & Conflicts
 
-- [ ] CHK040 Is there an explicit requirement for what review can show after source deletion but before structured resume confirmation? [Gap, Spec §FR-009a, §FR-018]
-- [ ] CHK041 Is there an explicit requirement for how duplicate imports or repeated uploads of the same source should affect drafts, rate limits, and retention deadlines? [Gap, Spec §FR-005c, §FR-017]
-- [ ] CHK042 Is the boundary between user-facing privacy guidance and technical diagnostics clear enough to prevent leaking implementation details while still explaining failures? [Ambiguity, Spec §FR-002, §FR-019, §FR-026]
-- [ ] CHK043 Are the exclusions for templates, final PDF generation, ATS scoring, AI rewriting, and job-adaptation consistent with any data captured for later rendering or provenance? [Consistency, Spec §FR-028, Constitutional Requirements]
+- [x] CHK040 Is there an explicit requirement for what review can show after source deletion but before structured resume confirmation? [Gap, Spec §FR-009a, §FR-018]
+  - Evidence: FR-018d, Data Model §ImportDraft, and Contract §Source-Deleted Review define limited review.
+- [x] CHK041 Is there an explicit requirement for how duplicate imports or repeated uploads of the same source should affect drafts, rate limits, and retention deadlines? [Gap, Spec §FR-005c, §FR-017]
+  - Evidence: FR-005e, Data Model §ImportedDocument, Contract §Retry or Replace Upload, and Tasks T134/T136 define duplicate behavior.
+- [x] CHK042 Is the boundary between user-facing privacy guidance and technical diagnostics clear enough to prevent leaking implementation details while still explaining failures? [Ambiguity, Spec §FR-002, §FR-019, §FR-026]
+  - Evidence: FR-026a and Contract §Logging define allowed and forbidden diagnostics.
+- [x] CHK043 Are the exclusions for templates, final PDF generation, ATS scoring, AI rewriting, and job-adaptation consistent with any data captured for later rendering or provenance? [Consistency, Spec §FR-028, Constitutional Requirements]
 
 ## Notes
 

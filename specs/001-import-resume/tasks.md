@@ -200,6 +200,8 @@
 - [ ] T111 [P] [US6] Add per-user active-job, queued-job, upload-attempt, processing-start, HTTP 429, and Retry-After behavior tests in `tests/security/import-resume/rate-limit-retry-after.security.test.ts`
 - [ ] T112 [P] [US6] Add parser isolation tests proving one terminated memory-limit or timeout job does not affect another user's or same user's independent job in `tests/security/import-resume/parser-job-isolation.security.test.ts`
 - [ ] T113 [P] [US6] Add cleanup tests proving files, converted DOCX PDFs, raw text, snippets, page references, cached parser output, and temporary contact data are deleted after resource-limit failure in `tests/security/import-resume/resource-failure-cleanup.security.test.ts`
+- [ ] T134 [P] [US6] Add duplicate-upload tests proving same-file and materially identical uploads create independent imports, count against rolling limits, do not merge drafts, do not share source-reconstructing artifacts, and keep independent retention deadlines in `tests/security/import-resume/duplicate-uploads.security.test.ts`
+- [ ] T135 [P] [US6] Add deletion race and idempotency tests for processing-active deletion, already-deleted source, confirmed structured resume, scheduled retention job, repeated cancel/discard/delete requests, and no retention extension in `tests/security/import-resume/deletion-races.security.test.ts`
 
 ### Implementation for User Story 6
 
@@ -212,6 +214,8 @@
 - [ ] T075 [US6] Wire privacy-safe logging into import routes, workers, storage, extraction, deletion, and confirmation services in `apps/api/src/observability/import-events.ts`
 - [ ] T114 [US6] Implement resource-limit failure cleanup service for parser workspaces, converted PDFs, extracted raw text, snippets, page references, cached parser output, and temporary contact data in `apps/api/src/services/import-resume/resource-failure-cleanup.ts`
 - [ ] T115 [US6] Implement NestJS REST response mapping for memory-limit, timeout, active-job, queued-job, upload-attempt, processing-start, HTTP 429, Retry-After, and plain-language recovery messages in `apps/api/src/import-resume/limit-responses.ts`
+- [ ] T136 [US6] Implement duplicate-upload handling that creates independent imports, applies rolling attempt limits, keeps separate retention deadlines, prevents cross-import artifact reuse, and may show user guidance without merging drafts in `apps/api/src/services/import-resume/duplicate-upload-policy.ts`
+- [ ] T137 [US6] Implement idempotent deletion lifecycle handling for cancellation, discard, source deletion, expiry, retention jobs, processing-active cleanup, already-deleted source, and confirmed structured resume preservation in `apps/api/src/services/import-resume/deletion-lifecycle.ts`
 
 **Checkpoint**: User Story 6 is independently testable as authorization, isolation, rate-limit, deletion, retention, and logging protection.
 
