@@ -16,7 +16,7 @@ The implementation plan adopts a container-only workflow for development, build,
 
 **Language/Version**: TypeScript on pinned Node.js 20+ executed only inside Docker images for web, API, workers, domain packages, and extraction orchestration.
 
-**Primary Dependencies**: React-based web UI; Node API service; PostgreSQL for relational domain state; private object storage for source documents and derived artifacts; Redis-compatible queue/rate-limit backend for processing jobs; PDF.js (`pdfjs-dist`) for deterministic PDF page counting and text extraction with page and coordinate provenance; a DOCX adapter using `yauzl` plus `fast-xml-parser` for Office Open XML text extraction with package/paragraph/run provenance; isolated LibreOffice headless conversion to PDF only for DOCX rendered-page-count validation; optional provider-independent AI classifier adapter after deterministic extraction. All application dependencies are installed and executed in containers.
+**Primary Dependencies**: Next.js App Router, React, and strict TypeScript for `apps/web`; NestJS with the default Express platform for the REST-first `apps/api`; NestJS standalone application plus BullMQ for `apps/worker`; Zod runtime schemas in `packages/contracts`; TypeORM with `@nestjs/typeorm`, the PostgreSQL `pg` driver, TypeORM migrations, and the Data Mapper pattern in shared `packages/persistence`; PostgreSQL for relational domain state; private object storage for source documents and derived artifacts; Redis-compatible queue/rate-limit backend for processing jobs; PDF.js (`pdfjs-dist`) for deterministic PDF page counting and text extraction with page and coordinate provenance; a DOCX adapter using `yauzl` plus `fast-xml-parser` for Office Open XML text extraction with package/paragraph/run provenance; isolated LibreOffice headless conversion to PDF only for DOCX rendered-page-count validation; optional provider-independent AI classifier adapter after deterministic extraction. All application dependencies are installed and executed in containers.
 
 **Storage**: PostgreSQL for users, imported documents, import drafts, warnings, extracted fields, structured resumes, deletion jobs, and audit events. PostgreSQL runs as a Compose service in development and test. Phase 1 uses a Docker-managed named volume as the local private storage implementation for uploaded files and temporary source-reconstructing artifacts, with keys scoped by user/import and retention deadline. The named private-storage volume is mounted only into services that require private source/artifact access. A managed-cloud S3-compatible storage adapter remains a later implementation boundary and is not introduced during bootstrap. The Redis-compatible queue/rate-limit backend runs as a Compose service.
 
@@ -74,26 +74,42 @@ apps/
 ├── web/
 │   ├── src/
 │   │   ├── app/
+│   │   │   └── **/page.tsx
 │   │   ├── features/import-resume/
 │   │   ├── components/
 │   │   └── services/
 │   └── tests/
 ├── api/
 │   ├── src/
-│   │   ├── routes/import-resume/
-│   │   ├── services/import-resume/
-│   │   ├── workers/
+│   │   ├── main.ts
+│   │   ├── app.module.ts
+│   │   ├── health/
+│   │   ├── import-resume/
 │   │   └── auth/
 │   └── tests/
 └── worker/
     ├── src/
+    │   ├── main.ts
+    │   ├── worker.module.ts
+    │   └── import-resume/
     └── tests/
 
 packages/
+├── contracts/
+│   └── src/
 ├── domain/
 │   └── src/resume-import/
 ├── extraction/
 │   └── src/
+├── persistence/
+│   ├── src/
+│   │   ├── data-source.ts
+│   │   ├── typeorm-options.ts
+│   │   ├── entities/
+│   │   ├── repositories/
+│   │   ├── mappers/
+│   │   ├── migrations/
+│   │   └── index.ts
 ├── storage/
 │   └── src/
 └── test-fixtures/
@@ -106,7 +122,7 @@ tests/
 └── security/
 ```
 
-**Structure Decision**: Use a Nuvitae-owned full-stack TypeScript monorepo with separate web, API, worker, domain, extraction, storage, and fixture packages. The current repository does not yet contain these directories; implementation tasks must create them. Reactive Resume and Resuml remain references only, not imported runtime foundations.
+**Structure Decision**: Use a Nuvitae-owned full-stack TypeScript monorepo with `apps/web` as a Next.js App Router application using `src/app`, `apps/api` as a NestJS REST API on Express, `apps/worker` as a separate NestJS standalone BullMQ worker, and separate contracts, domain, extraction, persistence, storage, and fixture packages. Product routes in the web app use `app/**/page.tsx`; `apps/web/src/main.tsx` is not part of the plan. The API bootstrap uses `apps/api/src/main.ts`, `apps/api/src/app.module.ts`, and NestJS controllers/services; `apps/api/src/server.ts` is not part of the plan. Shared TypeORM DataSource configuration, entities, repositories, mappers, and migrations live in `packages/persistence`, not `apps/api/src/db`, whenever API and worker access is required. The API uses `TypeOrmModule.forRootAsync` or an equivalent asynchronous configuration, `TypeOrmModule.forFeature` where appropriate, environment-validated PostgreSQL configuration, injectable repository abstractions or persistence services, and database health checks that do not expose secrets. The worker uses the same persistence package and compatible TypeORM DataSource configuration, does not import API implementation modules, and acknowledges queue jobs only after required persistence operations succeed. The domain package must not depend on Next.js, NestJS, Zod transport schemas, TypeORM, PostgreSQL drivers, database decorators, or BullMQ. TypeORM entities are persistence models, not business-domain entities; explicit mappers convert persistence rows before they enter the domain layer. Reactive Resume and Resuml remain references only, not imported runtime foundations.
 
 ### Container Artifacts (repository root)
 
@@ -123,7 +139,9 @@ compose.dev.yml
 .dockerignore
 ```
 
-**Container Structure Decision**: Phase 1 tasks must define the Docker-first monorepo bootstrap before application feature work starts. Planned artifacts include a pinned workspace image, multi-stage or distinct production images for web/API/worker, a dedicated Playwright test image or stage in `docker/test/Dockerfile`, Compose services for PostgreSQL, Redis-compatible queue, a Docker-managed named `private-storage` volume mounted only into services that require private source/artifact access, Docker-managed pnpm store and `node_modules` volumes, health checks, non-root runtime users, entrypoints, and container-based lint, format, typecheck, test, migration, and build commands. Phase 1 must not introduce an additional local S3-compatible server; the managed-cloud S3-compatible adapter remains a later implementation boundary. These files are design/planning targets only in this phase and must not be implemented until implementation work begins.
+**Container Structure Decision**: Phase 1 tasks must define the Docker-first monorepo bootstrap before application feature work starts. Planned artifacts include a pinned workspace image; multi-stage or distinct production images for the Next.js web app, NestJS API, and NestJS standalone worker; Docker build inputs for `apps/web`, `apps/api`, `apps/worker`, `packages/contracts`, `packages/domain`, `packages/extraction`, `packages/persistence`, `packages/storage`, and `packages/test-fixtures`; a dedicated Playwright test image or stage in `docker/test/Dockerfile`; Compose services for PostgreSQL, Redis-compatible queue, a Docker-managed named `private-storage` volume mounted only into services that require private source/artifact access, Docker-managed pnpm store and `node_modules` volumes, health checks, non-root runtime users, entrypoints, and container-based lint, format, typecheck, test, migration, and build commands. Phase 1 must not introduce an additional local S3-compatible server; the managed-cloud S3-compatible adapter remains a later implementation boundary. These files are design/planning targets only in this phase and must not be implemented until implementation work begins.
+
+**Migration Decision**: TypeORM migrations are versioned and run only through project-local tooling inside Docker, using commands such as `docker compose run --rm workspace pnpm db:migration:generate`, `docker compose run --rm workspace pnpm db:migration:create`, `docker compose run --rm workspace pnpm db:migration:run`, `docker compose run --rm workspace pnpm db:migration:revert`, and `docker compose run --rm workspace pnpm db:migration:show`. `synchronize` must be false outside explicitly disposable test databases, and application startup must not silently mutate production or shared development schemas.
 
 ## Complexity Tracking
 

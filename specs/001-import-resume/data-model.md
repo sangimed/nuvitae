@@ -1,5 +1,13 @@
 # Data Model: Import Existing Resume
 
+This document describes business/domain concepts and lifecycle rules. It does
+not define TypeORM entities, database decorators, or persistence-only fields.
+Persistence concerns belong behind `packages/persistence`, where TypeORM
+entities, database tables, repositories, migrations, and explicit mappers are
+planned separately from domain concepts. TypeORM entities are persistence models,
+not business-domain entities, and rows must be mapped explicitly before entering
+the domain layer.
+
 ## ImportedDocument
 
 Represents the uploaded source file. It is distinct from the import draft and any structured resume.

@@ -6,6 +6,30 @@
 
 **Alternatives considered**: Forking Reactive Resume was rejected because its PDF/DOCX import requires AI and creates resumes immediately. Using Resuml as the application foundation was rejected because its inspected repository is CLI/package/MCP-oriented and YAML-centered. A polyglot first implementation was rejected because this repository has no source yet and the first feature needs tight domain/API/UI contract alignment.
 
+## Decision: Use Next.js App Router for the web application
+
+**Rationale**: `apps/web` uses Next.js App Router, React, strict TypeScript, and the `src/app` convention so product routes can be planned as `app/**/page.tsx`. This gives the initial application a concrete React framework, allows server-side rendering for public and application-shell pages, and still supports client components for the visual resume editor where interactivity requires them.
+
+**Alternatives considered**: A generic React entrypoint at `apps/web/src/main.tsx` was rejected because it conflicts with the App Router bootstrap. Vite was rejected as the product web framework for this application stack, though it may be referenced only as a rejected alternative.
+
+## Decision: Use NestJS REST API and a separate NestJS standalone worker
+
+**Rationale**: `apps/api` uses NestJS with the default Express platform, REST-first controllers, and NestJS OpenAPI generation. Controllers stay thin and use-case logic is placed behind providers/services. `apps/worker` is a separate NestJS standalone application that uses BullMQ with the Compose-managed Redis-compatible service and does not expose the main product HTTP API.
+
+**Alternatives considered**: A generic Node API service with `apps/api/src/server.ts` was rejected because the bootstrap must target NestJS. GraphQL was rejected for this feature bootstrap because the API is REST-first. Next.js route handlers containing Nuvitae business logic were rejected because Next.js must not become a second business backend.
+
+## Decision: Add shared contracts and TypeORM persistence packages
+
+**Rationale**: `packages/contracts` uses Zod runtime schemas shared by web, API, worker, and tests. PostgreSQL remains the primary database, while TypeORM, `@nestjs/typeorm`, the PostgreSQL `pg` driver, TypeORM migrations, and the Data Mapper pattern live behind shared `packages/persistence` so API and worker can share one persistence package and compatible configuration model. TypeORM has mature direct NestJS integration, repositories and data sources can be injected through standard NestJS dependency-injection patterns, and it supports PostgreSQL transactions, migrations, repositories, and QueryBuilder. The project owner already has production experience with NestJS, TypeORM, and PostgreSQL, so choosing the better-integrated and already-mastered technology reduces implementation and operational risk. Transport and persistence mappings are explicit, `synchronize` is false for non-disposable environments, and versioned migrations are required for production and shared development.
+
+**Alternatives considered**:
+
+1. TypeORM - selected for this project because it is the best fit for the accepted NestJS API and worker stack, shared API/worker persistence, explicit repositories, transactions, QueryBuilder, and the team's existing production experience.
+2. Drizzle - rejected for now. Its lower-level SQL-like API is useful, but it does not currently justify additional NestJS integration work for this project.
+3. Prisma - rejected for now. Its generated client and separate schema language would add a new workflow without a sufficiently strong benefit for this project.
+
+Persistence schemas owned only by `apps/api/src/db` were rejected where worker access is required. Letting the domain package depend on Zod transport schemas, TypeORM, BullMQ, Next.js, NestJS, PostgreSQL drivers, or database decorators was rejected because the domain must remain framework-independent.
+
 ## Decision: Use a container-only development, build, test, and runtime workflow
 
 **Rationale**: Docker is the only supported environment for installing and executing Nuvitae application dependencies. This gives the project reproducible dependency resolution, host independence, dependency isolation, parser security, CI parity, and easier self-hosting. It also keeps Windows with WSL 2, Linux, and macOS on one documented workflow without assuming a developer-specific home directory.

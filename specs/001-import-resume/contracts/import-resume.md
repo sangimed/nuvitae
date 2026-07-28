@@ -1,6 +1,6 @@
 # Contract: Import Existing Resume
 
-This contract describes the user-facing flow and service boundaries for the initial resume import feature. Exact transport paths may be implemented as REST, RPC, or framework actions, but the behavior and states below are required.
+This contract describes the user-facing flow and service boundaries for the initial resume import feature. Product API transport is REST-first through the dedicated NestJS API, with OpenAPI generated from the NestJS integration. Next.js route handlers must not contain Nuvitae business logic or replace the dedicated API. The behavior and states below are required.
 
 ## UI Flow Contract
 

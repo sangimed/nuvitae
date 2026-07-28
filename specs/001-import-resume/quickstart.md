@@ -1,9 +1,10 @@
 # Quickstart: Import Existing Resume Validation
 
 This guide defines container-only validation scenarios for the import feature. It
-assumes implementation tasks will create the web app, API service, worker,
-storage, database, queue, fixture packages, Dockerfiles, Compose files, and test
-images described in [plan.md](./plan.md).
+assumes implementation tasks will create the Next.js web app, NestJS REST API,
+NestJS standalone BullMQ worker, shared contracts, persistence, storage,
+database, queue, fixture packages, Dockerfiles, Compose files, and test images
+described in [plan.md](./plan.md).
 
 ## Prerequisites
 
@@ -30,7 +31,8 @@ Start the local stack:
 docker compose up
 ```
 
-The planned stack includes web, API, worker, PostgreSQL, Redis-compatible queue,
+The planned stack includes Next.js web, NestJS API, NestJS standalone worker,
+PostgreSQL, Redis-compatible queue, shared contracts and persistence packages,
 and a Docker-managed named private-storage volume for local private source and
 artifact storage. Source code is mounted into `/workspace` inside development
 containers. Dependency caches, pnpm store, `node_modules`, database data, queue
@@ -108,13 +110,21 @@ image or test stage, not by a host installation.
 
 ## Migrations
 
-Run database migrations through Compose:
+Run TypeORM database migrations through Compose and project-local tooling:
 
 ```bash
-docker compose run --rm workspace pnpm db:migrate
+docker compose run --rm workspace pnpm db:migration:generate
+docker compose run --rm workspace pnpm db:migration:create
+docker compose run --rm workspace pnpm db:migration:run
+docker compose run --rm workspace pnpm db:migration:revert
+docker compose run --rm workspace pnpm db:migration:show
 ```
 
-Migration commands use the Compose PostgreSQL service.
+The exact package scripts may be finalized during bootstrap, but they must call
+project-local TypeORM tooling inside Docker and use the Compose PostgreSQL
+service. Do not use a globally installed TypeORM CLI or host-side Node.js
+dependencies. `synchronize` must be false outside explicitly disposable test
+databases.
 
 ## Build
 
@@ -146,8 +156,12 @@ docker compose up --wait
 docker compose down
 ```
 
-Health verification must cover web, API, worker, PostgreSQL, and queue services
-after `docker compose up --wait`.
+Health verification must cover the Next.js web app, NestJS API health
+controller, NestJS standalone worker readiness, PostgreSQL, and queue services
+after `docker compose up --wait`. Typecheck, lint, test, and build validation
+must include `apps/web`, `apps/api`, `apps/worker`, `packages/contracts`,
+`packages/domain`, `packages/extraction`, `packages/persistence`,
+`packages/storage`, and `packages/test-fixtures`.
 
 ## Cleanup
 
@@ -269,7 +283,8 @@ containerized browser/accessibility test environment.
 
 - Domain unit tests for state transitions, warning resolution, confirmation blocking, source deletion, and retention.
 - Extraction fixture tests for supported languages, formats, partial results, selectable-text requirements, no-supported-field failures, and hostile documents.
-- API/contract tests for authorization, rate limits, validation failures, retry, cancellation, deletion, and confirmation.
+- REST API/contract tests for authorization, rate limits, validation failures, retry, cancellation, deletion, and confirmation.
 - Worker integration tests for timeout, cancellation, deletion verification, and expired drafts.
+- Persistence tests for TypeORM migrations, explicit transactions, database constraints, unique indexes, foreign keys, lifecycle constraints, repository ownership behavior, and domain/persistence mapper behavior.
 - Accessibility tests for labels, keyboard operation, live regions, error focus, dialog focus restoration, and non-colour warning treatment.
 - Logging/security tests proving raw resumes, source snippets, uploaded files, credentials, prompts, tokens, and unnecessary personal data are not logged.
