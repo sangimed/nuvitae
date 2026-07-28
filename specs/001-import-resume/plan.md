@@ -18,7 +18,7 @@ The implementation plan adopts a container-only workflow for development, build,
 
 **Primary Dependencies**: React-based web UI; Node API service; PostgreSQL for relational domain state; private object storage for source documents and derived artifacts; Redis-compatible queue/rate-limit backend for processing jobs; PDF.js (`pdfjs-dist`) for deterministic PDF page counting and text extraction with page and coordinate provenance; a DOCX adapter using `yauzl` plus `fast-xml-parser` for Office Open XML text extraction with package/paragraph/run provenance; isolated LibreOffice headless conversion to PDF only for DOCX rendered-page-count validation; optional provider-independent AI classifier adapter after deterministic extraction. All application dependencies are installed and executed in containers.
 
-**Storage**: PostgreSQL for users, imported documents, import drafts, warnings, extracted fields, structured resumes, deletion jobs, and audit events. PostgreSQL runs as a Compose service in development and test. Private object storage for uploaded files and temporary source-reconstructing artifacts with keys scoped by user/import and retention deadline uses a containerized or Docker-volume-backed local implementation for development and test. The Redis-compatible queue/rate-limit backend runs as a Compose service.
+**Storage**: PostgreSQL for users, imported documents, import drafts, warnings, extracted fields, structured resumes, deletion jobs, and audit events. PostgreSQL runs as a Compose service in development and test. Phase 1 uses a Docker-managed named volume as the local private storage implementation for uploaded files and temporary source-reconstructing artifacts, with keys scoped by user/import and retention deadline. The named private-storage volume is mounted only into services that require private source/artifact access. A managed-cloud S3-compatible storage adapter remains a later implementation boundary and is not introduced during bootstrap. The Redis-compatible queue/rate-limit backend runs as a Compose service.
 
 **Testing**: Unit tests for domain validation and extraction mapping; integration tests for upload validation, processing state transitions, authorization, retention, deletion, and confirmation; contract tests for API/UI flows; fixture-based extraction tests for English, French, bilingual, hostile, unsupported, partial, and timeout cases; accessibility checks for keyboard, screen-reader state announcements, focus, labels, and non-colour warnings. Lint, format, typecheck, unit, integration, browser, accessibility, fixture, parser, migration, and build checks run through Docker Compose, with Playwright browsers supplied by a dedicated test image or test stage.
 
@@ -78,12 +78,15 @@ apps/
 │   │   ├── components/
 │   │   └── services/
 │   └── tests/
-└── api/
+├── api/
+│   ├── src/
+│   │   ├── routes/import-resume/
+│   │   ├── services/import-resume/
+│   │   ├── workers/
+│   │   └── auth/
+│   └── tests/
+└── worker/
     ├── src/
-    │   ├── routes/import-resume/
-    │   ├── services/import-resume/
-    │   ├── workers/
-    │   └── auth/
     └── tests/
 
 packages/
@@ -103,7 +106,7 @@ tests/
 └── security/
 ```
 
-**Structure Decision**: Use a Nuvitae-owned full-stack TypeScript monorepo with separate web, API, domain, extraction, storage, and fixture packages. The current repository does not yet contain these directories; implementation tasks must create them. Reactive Resume and Resuml remain references only, not imported runtime foundations.
+**Structure Decision**: Use a Nuvitae-owned full-stack TypeScript monorepo with separate web, API, worker, domain, extraction, storage, and fixture packages. The current repository does not yet contain these directories; implementation tasks must create them. Reactive Resume and Resuml remain references only, not imported runtime foundations.
 
 ### Container Artifacts (repository root)
 
@@ -120,7 +123,7 @@ compose.dev.yml
 .dockerignore
 ```
 
-**Container Structure Decision**: Phase 1 tasks must define the Docker-first monorepo bootstrap before application feature work starts. Planned artifacts include a pinned workspace image, multi-stage or distinct production images for web/API/worker, a dedicated Playwright test image or stage, Compose services for PostgreSQL, Redis-compatible queue, local private object storage, Docker-managed pnpm store and `node_modules` volumes, health checks, non-root runtime users, entrypoints, and container-based lint, format, typecheck, test, migration, and build commands. These files are design/planning targets only in this phase and must not be implemented until implementation work begins.
+**Container Structure Decision**: Phase 1 tasks must define the Docker-first monorepo bootstrap before application feature work starts. Planned artifacts include a pinned workspace image, multi-stage or distinct production images for web/API/worker, a dedicated Playwright test image or stage in `docker/test/Dockerfile`, Compose services for PostgreSQL, Redis-compatible queue, a Docker-managed named `private-storage` volume mounted only into services that require private source/artifact access, Docker-managed pnpm store and `node_modules` volumes, health checks, non-root runtime users, entrypoints, and container-based lint, format, typecheck, test, migration, and build commands. Phase 1 must not introduce an additional local S3-compatible server; the managed-cloud S3-compatible adapter remains a later implementation boundary. These files are design/planning targets only in this phase and must not be implemented until implementation work begins.
 
 ## Complexity Tracking
 

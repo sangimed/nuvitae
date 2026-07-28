@@ -31,10 +31,12 @@ docker compose up
 ```
 
 The planned stack includes web, API, worker, PostgreSQL, Redis-compatible queue,
-and local private object storage services. Source code is mounted into
-`/workspace` inside development containers. Dependency caches, pnpm store,
-`node_modules`, database data, queue data, and local object-storage data use
-Docker-managed volumes.
+and a Docker-managed named private-storage volume for local private source and
+artifact storage. Source code is mounted into `/workspace` inside development
+containers. Dependency caches, pnpm store, `node_modules`, database data, queue
+data, and local private-storage data use Docker-managed volumes. The
+private-storage volume is mounted only into services that require private
+source/artifact access.
 
 ## Dependency Installation
 
@@ -84,7 +86,7 @@ docker compose run --rm workspace pnpm test
 ## Integration Tests
 
 Run integration tests against the Compose-managed PostgreSQL,
-Redis-compatible queue, worker, API, and local private object storage services:
+Redis-compatible queue, worker, API, and named private-storage volume:
 
 ```bash
 docker compose run --rm workspace pnpm test:integration
@@ -93,15 +95,16 @@ docker compose run --rm workspace pnpm test:integration
 ## Browser And Accessibility Tests
 
 Browser and accessibility tests must run in the containerized Playwright test
-environment:
+environment built from `docker/test/Dockerfile`:
 
 ```bash
-docker compose run --rm workspace pnpm test:browser
-docker compose run --rm workspace pnpm test:a11y
+docker compose build test
+docker compose run --rm test pnpm test:browser
+docker compose run --rm test pnpm test:a11y
 ```
 
-The Playwright browsers are provided by the planned test image or test stage, not
-by a host installation.
+The Playwright browsers and browser binaries are provided by the planned test
+image or test stage, not by a host installation.
 
 ## Migrations
 
@@ -122,6 +125,30 @@ docker compose run --rm workspace pnpm build
 Production builds are expected to use the same Docker build definitions wherever
 practical, with non-root runtime images or stages for web, API, and worker.
 
+## Phase 1 Bootstrap Validation
+
+Phase 1 bootstrap is accepted only when the following commands run without
+host-side Node.js, npm, pnpm, application dependencies, Playwright browsers, or
+service dependencies:
+
+```bash
+docker compose config
+docker compose build workspace
+docker compose build web api worker
+docker compose build test
+docker compose run --rm workspace pnpm install
+docker compose run --rm workspace pnpm format:check
+docker compose run --rm workspace pnpm lint
+docker compose run --rm workspace pnpm typecheck
+docker compose run --rm workspace pnpm test
+docker compose run --rm workspace pnpm build
+docker compose up --wait
+docker compose down
+```
+
+Health verification must cover web, API, worker, PostgreSQL, and queue services
+after `docker compose up --wait`.
+
 ## Cleanup
 
 Stop the stack without deleting named volumes:
@@ -133,7 +160,7 @@ docker compose down
 ## Resetting Volumes
 
 Reset dependency caches, `node_modules`, database data, queue data, and local
-object-storage data by removing Compose volumes:
+private-storage data by removing Compose volumes:
 
 ```bash
 docker compose down --volumes

@@ -23,10 +23,11 @@
 - [ ] T001 Create monorepo workspace manifests with pinned package-manager configuration and container-only scripts in `package.json`, `pnpm-workspace.yaml`, and `tsconfig.base.json`
 - [ ] T002 Create Docker development workspace image definition with pinned Node.js, Corepack, pnpm, shared tools, `/workspace` working directory, and no host dependency assumptions in `docker/dev/Dockerfile`
 - [ ] T003 [P] Create production Docker image definitions or multi-stage targets for non-root web, API, and worker runtimes in `docker/web/Dockerfile`, `docker/api/Dockerfile`, and `docker/worker/Dockerfile`
-- [ ] T004 [P] Create Compose service definitions for `workspace`, web, API, worker, PostgreSQL, Redis-compatible queue, local private object storage, Docker-managed pnpm store, and Docker-managed `node_modules` volumes in `compose.yml` and `compose.dev.yml`
-- [ ] T005 [P] Create Docker build context rules and container entrypoint targets for workspace, web, API, worker, parser, and test commands in `.dockerignore` and `docker/entrypoints`
-- [ ] T006 [P] Create application and package directory structure in `apps/web`, `apps/api`, `packages/domain`, `packages/extraction`, `packages/storage`, and `packages/test-fixtures`
-- [ ] T007 [P] Configure container-based lint, format, typecheck, unit, integration, browser/accessibility, migration, and build commands plus setup checks using `docker compose run --rm workspace ...` in `package.json`, `vitest.config.ts`, and `tests`
+- [ ] T004 [P] Create Compose service definitions for `workspace`, web, API, worker, PostgreSQL, Redis-compatible queue, a Docker-managed named `private-storage` volume mounted only into services that require private source/artifact access, Docker-managed pnpm store, and Docker-managed `node_modules` volumes in `compose.yml` and `compose.dev.yml`
+- [ ] T005 [P] Create Docker build context rules, container entrypoint targets for workspace, web, API, worker, parser, and test commands, and the dedicated Playwright test image definition in `.dockerignore`, `docker/entrypoints`, and `docker/test/Dockerfile`
+- [ ] T006 [P] Create application and package directory structure in `apps/web`, `apps/api`, `apps/worker`, `packages/domain`, `packages/extraction`, `packages/storage`, and `packages/test-fixtures`
+- [ ] T007 [P] Create minimum buildable TypeScript workspace scaffolding with minimal bootstrap and health entrypoints but no resume-import business logic in `apps/web/package.json`, `apps/web/tsconfig.json`, `apps/web/src/main.tsx`, `apps/api/package.json`, `apps/api/tsconfig.json`, `apps/api/src/server.ts`, `apps/worker/package.json`, `apps/worker/tsconfig.json`, `apps/worker/src/worker.ts`, `packages/domain/package.json`, `packages/domain/tsconfig.json`, `packages/extraction/package.json`, `packages/extraction/tsconfig.json`, `packages/storage/package.json`, `packages/storage/tsconfig.json`, `packages/test-fixtures/package.json`, and `packages/test-fixtures/tsconfig.json`
+- [ ] T126 Configure and document Phase 1 container-only bootstrap validation requiring `docker compose config`, `docker compose build workspace`, `docker compose build web api worker`, `docker compose build test`, `docker compose run --rm workspace pnpm install`, `docker compose run --rm workspace pnpm format:check`, `docker compose run --rm workspace pnpm lint`, `docker compose run --rm workspace pnpm typecheck`, `docker compose run --rm workspace pnpm test`, `docker compose run --rm workspace pnpm build`, `docker compose up --wait`, health verification for web, API, worker, PostgreSQL and queue services, and `docker compose down` in `package.json`, `vitest.config.ts`, and `tests`
 
 ---
 
@@ -41,7 +42,7 @@
 - [ ] T010 Define persistence schema for import and structured resume entities in `apps/api/src/db/schema/resume-import.ts`
 - [ ] T011 [P] Implement privacy-safe logger with redaction for resumes, raw text, snippets, files, tokens, credentials, prompts, and unnecessary personal data in `apps/api/src/observability/privacy-logger.ts`
 - [ ] T012 [P] Implement authenticated user context and ownership guard utilities in `apps/api/src/auth/user-context.ts` and `apps/api/src/auth/ownership.ts`
-- [ ] T013 [P] Implement private object storage key policy and signed internal access helpers for a containerized or Docker-volume-backed local private storage implementation in `packages/storage/src/private-import-storage.ts`
+- [ ] T013 [P] Implement private object storage key policy and signed internal access helpers for the Docker-volume-backed local private storage implementation in `packages/storage/src/private-import-storage.ts`
 - [ ] T014 [P] Implement import rate-limit and concurrent-work guard interfaces for 5 attempts per rolling 10 minutes, 1 active job, and 2 queued jobs per user in `apps/api/src/services/import-resume/import-limits.ts`
 - [ ] T015 Implement background job queue contracts for validation, extraction, cancellation, retry, and deletion jobs in `apps/api/src/workers/import-jobs.ts`
 - [ ] T016 [P] Create deterministic extraction adapter interfaces for PDF, DOCX, language detection, page counting, selectable text, and source locations in `packages/extraction/src/adapters.ts`
@@ -293,7 +294,7 @@
 
 ## Parallel Opportunities
 
-- Setup tasks T003-T007 can run in parallel after T001-T002 define the workspace manifest and development image.
+- Setup tasks T003-T007 can run in parallel after T001-T002 define the workspace manifest and development image; T126 runs after T001-T007 provide the bootstrap targets.
 - Foundational tasks T011-T014, T016-T020, T099-T101, and T103 can run in parallel after T008-T010 establish shared domain and schema; T102 integrates parser execution after T099-T101.
 - US1 test tasks T021-T025, T104-T108, and T116 can run in parallel after fixtures and adapter contracts exist.
 - US2 test tasks T035-T039 and UI component tasks T044-T045 can run in parallel.
@@ -333,7 +334,7 @@ Task: "T068 [P] [US6] Add privacy logging tests in tests/security/import-resume/
 
 ### MVP First (User Story 1 Only)
 
-1. Complete Phase 1: Setup.
+1. Complete Phase 1: Setup, including T126 container-only bootstrap validation.
 2. Complete Phase 2: Foundational.
 3. Complete Phase 3: US1 Start From an Existing Resume.
 4. Stop and validate upload, authentication gate, validation, progress, draft creation, and timeout recovery independently.
