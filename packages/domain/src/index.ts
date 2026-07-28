@@ -7,3 +7,6 @@ export const domainBootstrapStatus: DomainBootstrapStatus = {
   packageName: "@nuvitae/domain",
   ready: true,
 };
+
+export * from "./resume-import/types.js";
+export * from "./resume-import/validation.js";
