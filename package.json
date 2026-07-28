@@ -8,13 +8,19 @@
     "pnpm": "11.15.1"
   },
   "scripts": {
-    "format": "prettier --write \"*.{json,mjs,ts,yml,yaml}\" \"apps/**/*.{json,ts,tsx,css}\" \"packages/**/*.{json,ts}\" \"README.md\"",
-    "format:check": "prettier --check \"*.{json,mjs,ts,yml,yaml}\" \"apps/**/*.{json,ts,tsx,css}\" \"packages/**/*.{json,ts}\" \"README.md\"",
+    "format": "prettier --write \"*.{json,mjs,ts,yml,yaml}\" \"apps/**/*.{json,ts,tsx,css}\" \"packages/**/*.{json,ts}\" \"tests/**/*.ts\" \"README.md\"",
+    "format:check": "prettier --check \"*.{json,mjs,ts,yml,yaml}\" \"apps/**/*.{json,ts,tsx,css}\" \"packages/**/*.{json,ts}\" \"tests/**/*.ts\" \"README.md\"",
     "lint": "eslint .",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm -r typecheck && tsc --noEmit -p tsconfig.integration.json",
     "test": "vitest run",
+    "test:integration:persistence": "vitest run --config vitest.persistence.config.ts",
     "build": "pnpm -r build",
-    "dev": "turbo dev --parallel"
+    "dev": "turbo dev --parallel",
+    "db:migration:generate": "pnpm --filter @nuvitae/persistence db:migration:generate",
+    "db:migration:create": "pnpm --filter @nuvitae/persistence db:migration:create",
+    "db:migration:run": "pnpm --filter @nuvitae/persistence db:migration:run",
+    "db:migration:revert": "pnpm --filter @nuvitae/persistence db:migration:revert",
+    "db:migration:show": "pnpm --filter @nuvitae/persistence db:migration:show"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

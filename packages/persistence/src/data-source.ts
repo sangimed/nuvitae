@@ -2,9 +2,11 @@ import "reflect-metadata";
 import { DataSource } from "typeorm";
 import {
   createTypeOrmOptions,
-  readPersistenceConfigFromEnv,
+  type PersistenceConfig,
 } from "./typeorm-options.js";
 
-export const AppDataSource = new DataSource(
-  createTypeOrmOptions(readPersistenceConfigFromEnv()),
-);
+export function createPersistenceDataSource(
+  config: PersistenceConfig,
+): DataSource {
+  return new DataSource(createTypeOrmOptions(config));
+}

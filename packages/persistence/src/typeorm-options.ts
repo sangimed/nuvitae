@@ -1,14 +1,125 @@
+import type { TypeOrmModuleOptions } from "@nestjs/typeorm";
 import type { DataSourceOptions } from "typeorm";
+import { persistenceEntities } from "./entities/import-resume.entities.js";
+import { InitialImportResumePersistence1722168000000 } from "./migrations/1722168000000-InitialImportResumePersistence.js";
 
-export type PersistenceConfig = {
+export interface PersistenceConfig {
   readonly host: string;
   readonly port: number;
   readonly username: string;
   readonly password: string;
   readonly database: string;
   readonly ssl: boolean;
-  readonly synchronize?: false;
-};
+  readonly logging: boolean;
+  readonly poolMax: number;
+  readonly connectionTimeoutMs: number;
+  readonly statementTimeoutMs: number;
+  readonly schema?: string;
+}
+
+export class PersistenceConfigError extends Error {
+  readonly code = "invalid_persistence_configuration";
+
+  constructor(readonly fields: readonly string[]) {
+    super(`Invalid persistence configuration: ${fields.join(", ")}.`);
+    this.name = "PersistenceConfigError";
+  }
+}
+
+function required(
+  env: NodeJS.ProcessEnv,
+  key: string,
+  fallback: string | undefined,
+  invalid: string[],
+): string {
+  const value = env[key] ?? fallback;
+  if (value === undefined || value.trim() === "") {
+    invalid.push(key);
+    return "";
+  }
+  return value;
+}
+
+function positiveInteger(
+  env: NodeJS.ProcessEnv,
+  key: string,
+  fallback: number,
+  invalid: string[],
+  maximum: number,
+): number {
+  const raw = env[key] ?? String(fallback);
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value <= 0 || value > maximum) {
+    invalid.push(key);
+    return fallback;
+  }
+  return value;
+}
+
+function booleanValue(
+  env: NodeJS.ProcessEnv,
+  key: string,
+  fallback: boolean,
+  invalid: string[],
+): boolean {
+  const raw = env[key];
+  if (raw === undefined) return fallback;
+  if (raw === "true") return true;
+  if (raw === "false") return false;
+  invalid.push(key);
+  return fallback;
+}
+
+export function readPersistenceConfigFromEnv(
+  env: NodeJS.ProcessEnv,
+): PersistenceConfig {
+  const production = env.NODE_ENV === "production";
+  const invalid: string[] = [];
+  const local = (value: string): string | undefined =>
+    production ? undefined : value;
+  const host = required(env, "POSTGRES_HOST", local("postgres"), invalid);
+  const username = required(env, "POSTGRES_USER", local("nuvitae"), invalid);
+  const password = required(
+    env,
+    "POSTGRES_PASSWORD",
+    local("nuvitae_dev_password"),
+    invalid,
+  );
+  const database = required(env, "POSTGRES_DB", local("nuvitae"), invalid);
+  const schema = env.POSTGRES_SCHEMA?.trim();
+  if (schema !== undefined && !/^[a-z_][a-z0-9_]*$/.test(schema)) {
+    invalid.push("POSTGRES_SCHEMA");
+  }
+  const config: PersistenceConfig = {
+    host,
+    port: positiveInteger(env, "POSTGRES_PORT", 5432, invalid, 65_535),
+    username,
+    password,
+    database,
+    ssl: booleanValue(env, "POSTGRES_SSL", false, invalid),
+    logging: booleanValue(env, "POSTGRES_LOGGING", false, invalid),
+    poolMax: positiveInteger(env, "POSTGRES_POOL_MAX", 10, invalid, 100),
+    connectionTimeoutMs: positiveInteger(
+      env,
+      "POSTGRES_CONNECTION_TIMEOUT_MS",
+      5_000,
+      invalid,
+      120_000,
+    ),
+    statementTimeoutMs: positiveInteger(
+      env,
+      "POSTGRES_STATEMENT_TIMEOUT_MS",
+      30_000,
+      invalid,
+      600_000,
+    ),
+    ...(schema === undefined || schema === "" ? {} : { schema }),
+  };
+  if (invalid.length > 0) {
+    throw new PersistenceConfigError([...new Set(invalid)].sort());
+  }
+  return config;
+}
 
 export function createTypeOrmOptions(
   config: PersistenceConfig,
@@ -21,22 +132,26 @@ export function createTypeOrmOptions(
     password: config.password,
     database: config.database,
     ssl: config.ssl,
-    entities: [],
-    migrations: [],
+    logging: config.logging,
+    entities: [...persistenceEntities],
+    migrations: [InitialImportResumePersistence1722168000000],
+    migrationsTableName: "typeorm_migrations",
+    migrationsRun: false,
     synchronize: false,
+    extra: {
+      max: config.poolMax,
+      connectionTimeoutMillis: config.connectionTimeoutMs,
+      statement_timeout: config.statementTimeoutMs,
+      ...(config.schema === undefined
+        ? {}
+        : { options: `-c search_path=${config.schema},public` }),
+    },
+    ...(config.schema === undefined ? {} : { schema: config.schema }),
   };
 }
 
-export function readPersistenceConfigFromEnv(
-  env: NodeJS.ProcessEnv = process.env,
-): PersistenceConfig {
-  return {
-    host: env.POSTGRES_HOST ?? "postgres",
-    port: Number(env.POSTGRES_PORT ?? "5432"),
-    username: env.POSTGRES_USER ?? "nuvitae",
-    password: env.POSTGRES_PASSWORD ?? "nuvitae_dev_password",
-    database: env.POSTGRES_DB ?? "nuvitae",
-    ssl: env.POSTGRES_SSL === "true",
-    synchronize: false,
-  };
+export function createTypeOrmModuleOptions(
+  config: PersistenceConfig,
+): TypeOrmModuleOptions {
+  return createTypeOrmOptions(config) as TypeOrmModuleOptions;
 }

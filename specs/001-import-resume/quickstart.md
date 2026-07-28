@@ -110,9 +110,7 @@ image or test stage, not by a host installation.
 
 ## Migrations
 
-After shared persistence, API TypeORM integration, and worker TypeORM
-integration are implemented, run TypeORM database migrations through Compose and
-project-local tooling:
+Shared persistence migrations run through Compose and project-local tooling:
 
 ```bash
 docker compose run --rm workspace pnpm db:migration:generate
@@ -122,11 +120,21 @@ docker compose run --rm workspace pnpm db:migration:revert
 docker compose run --rm workspace pnpm db:migration:show
 ```
 
-The exact package scripts may be finalized during persistence integration, but
-they must call project-local TypeORM tooling inside Docker and use the Compose
-PostgreSQL service. Do not use a globally installed TypeORM CLI or host-side
-Node.js dependencies. `synchronize` must be false outside explicitly disposable
-test databases. Migration lifecycle validation is not a Phase 1 bootstrap gate.
+The commands call the package-local TypeORM CLI and shared DataSource. `show` is
+read-only; `run` and `revert` mutate the configured database. `generate` and
+`create` write disposable files below `.tmp/migrations` so they cannot overwrite
+the committed initial migration. Do not use a globally installed TypeORM CLI or
+host-side Node.js dependencies. `synchronize` and automatic migration execution
+are always false. API and worker TypeORM wiring remain deferred to T132 and T133,
+and integrated persistence validation remains deferred to T134.
+
+Persistence integration tests require `POSTGRES_TEST_DB` to end in `_test`.
+Every suite uses a unique schema within that database and drops it during
+cleanup:
+
+```bash
+docker compose run --rm workspace pnpm test:integration:persistence
+```
 
 ## Build
 
