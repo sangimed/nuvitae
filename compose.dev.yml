@@ -1,0 +1,18 @@
+services:
+  web:
+    build:
+      target: runtime
+    environment:
+      NODE_ENV: production
+
+  api:
+    build:
+      target: runtime
+    environment:
+      NODE_ENV: production
+
+  worker:
+    build:
+      target: runtime
+    environment:
+      NODE_ENV: production

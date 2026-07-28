@@ -1,0 +1,18 @@
+{
+  "name": "@nuvitae/persistence",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@nestjs/typeorm": "11.0.3",
+    "pg": "8.22.0",
+    "reflect-metadata": "0.2.2",
+    "typeorm": "0.3.28"
+  }
+}

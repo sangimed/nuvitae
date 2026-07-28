@@ -13,6 +13,7 @@ venv/
 # Build and coverage
 dist/
 build/
+.next/
 coverage/
 .tmp/
 .cache/
