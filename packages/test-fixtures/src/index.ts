@@ -7,3 +7,5 @@ export const fixtureBootstrapStatus: FixtureBootstrapStatus = {
   packageName: "@nuvitae/test-fixtures",
   resumeFixturesImplemented: false,
 };
+
+export * from "./resume-import/manifest.js";

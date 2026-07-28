@@ -110,7 +110,9 @@ image or test stage, not by a host installation.
 
 ## Migrations
 
-Run TypeORM database migrations through Compose and project-local tooling:
+After shared persistence, API TypeORM integration, and worker TypeORM
+integration are implemented, run TypeORM database migrations through Compose and
+project-local tooling:
 
 ```bash
 docker compose run --rm workspace pnpm db:migration:generate
@@ -120,11 +122,11 @@ docker compose run --rm workspace pnpm db:migration:revert
 docker compose run --rm workspace pnpm db:migration:show
 ```
 
-The exact package scripts may be finalized during bootstrap, but they must call
-project-local TypeORM tooling inside Docker and use the Compose PostgreSQL
-service. Do not use a globally installed TypeORM CLI or host-side Node.js
-dependencies. `synchronize` must be false outside explicitly disposable test
-databases.
+The exact package scripts may be finalized during persistence integration, but
+they must call project-local TypeORM tooling inside Docker and use the Compose
+PostgreSQL service. Do not use a globally installed TypeORM CLI or host-side
+Node.js dependencies. `synchronize` must be false outside explicitly disposable
+test databases. Migration lifecycle validation is not a Phase 1 bootstrap gate.
 
 ## Build
 
@@ -146,7 +148,7 @@ docker compose config
 docker compose build workspace
 docker compose build web api worker
 docker compose build test
-docker compose run --rm workspace pnpm install
+docker compose run --rm workspace pnpm install --frozen-lockfile
 docker compose run --rm workspace pnpm format:check
 docker compose run --rm workspace pnpm lint
 docker compose run --rm workspace pnpm typecheck
@@ -154,14 +156,36 @@ docker compose run --rm workspace pnpm test
 docker compose run --rm workspace pnpm build
 docker compose up --wait
 docker compose down
+docker compose down --volumes
+docker compose build
+docker compose run --rm workspace pnpm install --frozen-lockfile
+docker compose up --wait
+docker compose down
 ```
 
-Health verification must cover the Next.js web app, NestJS API health
-controller, NestJS standalone worker readiness, PostgreSQL, and queue services
-after `docker compose up --wait`. Typecheck, lint, test, and build validation
-must include `apps/web`, `apps/api`, `apps/worker`, `packages/contracts`,
-`packages/domain`, `packages/extraction`, `packages/persistence`,
-`packages/storage`, and `packages/test-fixtures`.
+Health verification must cover bootstrap liveness/readiness for the Next.js web
+app, the NestJS API bootstrap health endpoint without database-aware TypeORM
+health integration, NestJS standalone worker readiness without database
+transaction integration, PostgreSQL service readiness, and queue service
+readiness after `docker compose up --wait`. Typecheck, lint, unit/bootstrap
+tests, and build validation must include `apps/web`, `apps/api`, `apps/worker`,
+`packages/contracts`, `packages/domain`, `packages/extraction`,
+`packages/persistence`, `packages/storage`, and `packages/test-fixtures`.
+
+Phase 1 bootstrap validation explicitly excludes TypeORM migration generation,
+TypeORM migration creation, TypeORM migration run, TypeORM migration revert,
+TypeORM migration show, database-aware NestJS health integration, and API/worker
+shared TypeORM DataSource validation.
+
+## Integrated Persistence Validation
+
+After T010 and T127-T133 are complete, run the final integrated persistence
+validation through Docker only. This validation covers project-local TypeORM
+migration generate/create/run/revert/show workflows against the Compose
+PostgreSQL service, shared TypeORM DataSource configuration, `synchronize:
+false`, API database connectivity health, worker database connectivity and
+transaction integration, and complete Docker-only validation after persistence
+integration.
 
 ## Cleanup
 

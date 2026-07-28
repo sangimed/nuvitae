@@ -27,7 +27,7 @@
 - [X] T005 [P] Create Docker build context rules, container entrypoint targets for workspace, web, API, worker, parser, and test commands, and the dedicated Playwright test image definition in `.dockerignore`, `docker/entrypoints`, and `docker/test/Dockerfile`
 - [X] T006 [P] Create application and package directory structure in `apps/web`, `apps/api`, `apps/worker`, `packages/contracts`, `packages/domain`, `packages/extraction`, `packages/persistence`, `packages/storage`, and `packages/test-fixtures`
 - [X] T007 [P] Create minimum buildable real framework scaffolding with no resume-import business logic in Next.js files `apps/web/package.json`, `apps/web/tsconfig.json`, `apps/web/next.config.ts`, `apps/web/src/app/layout.tsx`, `apps/web/src/app/page.tsx`; NestJS API files `apps/api/package.json`, `apps/api/tsconfig.json`, `apps/api/nest-cli.json`, `apps/api/src/main.ts`, `apps/api/src/app.module.ts`, `apps/api/src/health/health.controller.ts`; NestJS standalone worker files `apps/worker/package.json`, `apps/worker/tsconfig.json`, `apps/worker/nest-cli.json`, `apps/worker/src/main.ts`, `apps/worker/src/worker.module.ts`; shared package scaffolding `packages/contracts/package.json`, `packages/contracts/tsconfig.json`, `packages/domain/package.json`, `packages/domain/tsconfig.json`, `packages/extraction/package.json`, `packages/extraction/tsconfig.json`, `packages/persistence/package.json`, `packages/persistence/tsconfig.json`, `packages/persistence/src/data-source.ts`, `packages/persistence/src/typeorm-options.ts`, `packages/persistence/src/entities`, `packages/persistence/src/repositories`, `packages/persistence/src/mappers`, `packages/persistence/src/migrations`, `packages/persistence/src/index.ts`, `packages/storage/package.json`, `packages/storage/tsconfig.json`, `packages/test-fixtures/package.json`, and `packages/test-fixtures/tsconfig.json`
-- [ ] T126 Configure and document Phase 1 container-only bootstrap validation requiring `docker compose config`, `docker compose build workspace`, `docker compose build web api worker`, `docker compose build test`, `docker compose run --rm workspace pnpm install`, `docker compose run --rm workspace pnpm format:check`, `docker compose run --rm workspace pnpm lint`, `docker compose run --rm workspace pnpm typecheck`, `docker compose run --rm workspace pnpm test`, `docker compose run --rm workspace pnpm build`, `docker compose run --rm workspace pnpm db:migration:generate`, `docker compose run --rm workspace pnpm db:migration:create`, `docker compose run --rm workspace pnpm db:migration:run`, `docker compose run --rm workspace pnpm db:migration:revert`, `docker compose run --rm workspace pnpm db:migration:show`, `docker compose up --wait`, health verification for the Next.js web app, NestJS API health controller with PostgreSQL connectivity, NestJS standalone worker readiness, PostgreSQL and queue services, and `docker compose down` in `package.json`, `vitest.config.ts`, `tests`, and package scripts/build inputs covering `apps/web`, `apps/api`, `apps/worker`, `packages/contracts`, `packages/domain`, `packages/extraction`, `packages/persistence`, `packages/storage`, and `packages/test-fixtures`
+- [X] T126 Configure and document Phase 1 container-only bootstrap validation requiring `docker compose config`, `docker compose build workspace`, `docker compose build web api worker`, `docker compose build test`, `docker compose run --rm workspace pnpm install --frozen-lockfile`, `docker compose run --rm workspace pnpm format:check`, `docker compose run --rm workspace pnpm lint`, `docker compose run --rm workspace pnpm typecheck`, `docker compose run --rm workspace pnpm test`, `docker compose run --rm workspace pnpm build`, application image builds, `docker compose up --wait`, bootstrap liveness/readiness for the Next.js web app, NestJS API bootstrap health endpoint without database-aware TypeORM health integration, NestJS standalone worker readiness without database transaction integration, PostgreSQL service readiness, queue service readiness, `docker compose down`, and documented clean-volume rebuild. This Phase 1 bootstrap validation explicitly excludes TypeORM migration generation, TypeORM migration creation, TypeORM migration run, TypeORM migration revert, TypeORM migration show, database-aware NestJS health integration, and API/worker shared TypeORM DataSource validation.
 
 ---
 
@@ -37,8 +37,8 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T008 Define import domain types and enums for imported documents, artifacts, drafts, fields, warnings, work experience, corrections, structured resumes, and deletion jobs in `packages/domain/src/resume-import/types.ts`
-- [ ] T009 Define domain validation helpers for upload limits, draft thresholds, warning review states, retention deadlines, and confirmation blocking in `packages/domain/src/resume-import/validation.ts`
+- [X] T008 Define import domain types and enums for imported documents, artifacts, drafts, fields, warnings, work experience, corrections, structured resumes, and deletion jobs in `packages/domain/src/resume-import/types.ts`
+- [X] T009 Define domain validation helpers for upload limits, draft thresholds, warning review states, retention deadlines, and confirmation blocking in `packages/domain/src/resume-import/validation.ts`
 - [ ] T010 Define TypeORM Data Mapper persistence entities, database constraints, unique indexes, foreign keys, lifecycle constraints, explicit mappers, and repository interfaces for import and structured resume state in the shared API/worker persistence boundary at `packages/persistence/src/entities`, `packages/persistence/src/mappers`, and `packages/persistence/src/repositories`
 - [ ] T127 [P] Add TypeORM migration workflow tests for generate/create/run/revert/show commands using project-local tooling inside Docker and the Compose PostgreSQL service in `tests/integration/persistence/typeorm-migrations.integration.test.ts`
 - [ ] T128 [P] Add persistence tests for explicit transactions across multi-record import lifecycle operations in `tests/integration/persistence/import-lifecycle-transactions.integration.test.ts`
@@ -48,22 +48,23 @@
 - [ ] T012 [P] Implement authenticated user context and ownership guard utilities in `apps/api/src/auth/user-context.ts` and `apps/api/src/auth/ownership.ts`
 - [ ] T013 [P] Implement private object storage key policy and signed internal access helpers for the Docker-volume-backed local private storage implementation in `packages/storage/src/private-import-storage.ts`
 - [ ] T014 [P] Implement import rate-limit and concurrent-work guard interfaces for 5 attempts per rolling 10 minutes, 1 active job, and 2 queued jobs per user in `apps/api/src/services/import-resume/import-limits.ts`
-- [ ] T015 Implement Zod-backed background job payload contracts for validation, extraction, cancellation, retry, and deletion jobs in `packages/contracts/src/import-resume/jobs.ts`
-- [ ] T016 [P] Create deterministic extraction adapter interfaces for PDF, DOCX, language detection, page counting, selectable text, and source locations in `packages/extraction/src/adapters.ts`
-- [ ] T017 [P] Create optional AI classifier adapter interface that accepts deterministic extraction output and returns only classifications and ambiguity warnings in `packages/extraction/src/ai-classifier.ts`
-- [ ] T018 Create fixture manifest covering PDF, DOCX, French, English, bilingual, partial, unsupported-language, oversized, over-page-limit, malformed, corrupted, password-protected, image-only/scanned, mixed text-and-image, hostile, mixed-content, and no-supported-field resumes in `packages/test-fixtures/src/resume-import/manifest.ts`
-- [ ] T019 [P] Define Zod-backed REST response envelopes and plain-language error categories for import flows in `packages/contracts/src/import-resume/responses.ts`
-- [ ] T020 [P] Define web route shell and import feature state machine types in `apps/web/src/features/import-resume/state.ts`
+- [X] T015 Implement Zod-backed background job payload contracts for validation, extraction, cancellation, retry, and deletion jobs in `packages/contracts/src/import-resume/jobs.ts`
+- [X] T016 [P] Create deterministic extraction adapter interfaces for PDF, DOCX, language detection, page counting, selectable text, and source locations in `packages/extraction/src/adapters.ts`
+- [X] T017 [P] Create optional AI classifier adapter interface that accepts deterministic extraction output and returns only classifications and ambiguity warnings in `packages/extraction/src/ai-classifier.ts`
+- [X] T018 Create fixture manifest covering PDF, DOCX, French, English, bilingual, partial, unsupported-language, oversized, over-page-limit, malformed, corrupted, password-protected, image-only/scanned, mixed text-and-image, hostile, mixed-content, and no-supported-field resumes in `packages/test-fixtures/src/resume-import/manifest.ts`
+- [X] T019 [P] Define Zod-backed REST response envelopes and plain-language error categories for import flows in `packages/contracts/src/import-resume/responses.ts`
+- [X] T020 [P] Define web route shell and import feature state machine types in `apps/web/src/features/import-resume/state.ts`
 - [ ] T099 [P] Implement concrete PDF.js PDF extraction adapter for page count and text extraction with page, bounding-box, and text-item source-location provenance in `packages/extraction/src/pdf/pdfjs-pdf-adapter.ts`
 - [ ] T100 [P] Implement concrete DOCX Office Open XML extraction adapter with package part, paragraph/table/cell/run, and character-offset source-location provenance in `packages/extraction/src/docx/ooxml-docx-adapter.ts`
 - [ ] T101 [P] Implement isolated DOCX rendered-page-count validator that runs LibreOffice headless only inside the worker or parser container and uses PDF page counting in `packages/extraction/src/docx/libreoffice-rendered-page-count.ts`
 - [ ] T102 Implement isolated parser runner contract for worker/parser container execution with configurable 512 MiB memory limit, 3-minute foreground timeout, process termination, and no-partial-output commit semantics in `packages/extraction/src/isolated-parser-runner.ts`
-- [ ] T103 [P] Define production-safe processing limit configuration schema that can tune but not disable file size, page count, timeout, memory, concurrency, queue, and rolling attempt limits in `apps/api/src/config/import-processing-limits.ts`
+- [X] T103 [P] Define production-safe processing limit configuration schema that can tune but not disable file size, page count, timeout, memory, concurrency, queue, and rolling attempt limits in `apps/api/src/config/import-processing-limits.ts`
 - [ ] T131 Configure shared TypeORM DataSource, asynchronous NestJS TypeORM options, environment-validated PostgreSQL settings, `synchronize: false` defaults for non-disposable environments, and project-local migration entrypoints in `packages/persistence/src/data-source.ts`, `packages/persistence/src/typeorm-options.ts`, and `packages/persistence/src/index.ts`
 - [ ] T132 Wire `apps/api` to the shared persistence package through `TypeOrmModule.forRootAsync`, `TypeOrmModule.forFeature` where appropriate, injectable repository abstractions or persistence services, and database connectivity health checks without exposing secrets in `apps/api/src/app.module.ts` and `apps/api/src/health/health.controller.ts`
 - [ ] T133 Wire `apps/worker` to the shared persistence package with compatible TypeORM DataSource configuration, no imports from API implementation modules, explicit transaction support for worker jobs, and queue acknowledgement only after required persistence operations succeed in `apps/worker/src/worker.module.ts`
+- [ ] T134 Run final integrated persistence validation after T010 and T127-T133 using Docker-only commands for project-local TypeORM migration generate/create/run/revert/show workflows against the Compose PostgreSQL service, shared TypeORM DataSource configuration, `synchronize: false`, API database connectivity health, worker database connectivity and transaction integration, and complete Docker-only validation after persistence integration in `tests/integration/persistence` and documented validation results.
 
-**Checkpoint**: Foundation ready, including concrete PDF/DOCX adapters and isolated parser limits. User story implementation can now begin.
+**Checkpoint**: Foundation ready, including concrete PDF/DOCX adapters, isolated parser limits, and final integrated persistence validation T134. User story implementation can now begin only after all Phase 2 foundation tasks, including T134, are complete.
 
 ---
 
@@ -200,7 +201,7 @@
 - [ ] T111 [P] [US6] Add per-user active-job, queued-job, upload-attempt, processing-start, HTTP 429, and Retry-After behavior tests in `tests/security/import-resume/rate-limit-retry-after.security.test.ts`
 - [ ] T112 [P] [US6] Add parser isolation tests proving one terminated memory-limit or timeout job does not affect another user's or same user's independent job in `tests/security/import-resume/parser-job-isolation.security.test.ts`
 - [ ] T113 [P] [US6] Add cleanup tests proving files, converted DOCX PDFs, raw text, snippets, page references, cached parser output, and temporary contact data are deleted after resource-limit failure in `tests/security/import-resume/resource-failure-cleanup.security.test.ts`
-- [ ] T134 [P] [US6] Add duplicate-upload tests proving same-file and materially identical uploads create independent imports, count against rolling limits, do not merge drafts, do not share source-reconstructing artifacts, and keep independent retention deadlines in `tests/security/import-resume/duplicate-uploads.security.test.ts`
+- [ ] T138 [P] [US6] Add duplicate-upload tests proving same-file and materially identical uploads create independent imports, count against rolling limits, do not merge drafts, do not share source-reconstructing artifacts, and keep independent retention deadlines in `tests/security/import-resume/duplicate-uploads.security.test.ts`
 - [ ] T135 [P] [US6] Add deletion race and idempotency tests for processing-active deletion, already-deleted source, confirmed structured resume, scheduled retention job, repeated cancel/discard/delete requests, and no retention extension in `tests/security/import-resume/deletion-races.security.test.ts`
 
 ### Implementation for User Story 6
@@ -279,7 +280,7 @@
 ### Phase Dependencies
 
 - **Setup (Phase 1)**: No dependencies; can start immediately.
-- **Foundational (Phase 2)**: Depends on Setup completion; blocks all user stories. T099-T103 and T127-T133 are foundational despite their appended IDs and must complete before tasks that depend on concrete extraction, resource-limit enforcement, persistence, migrations, transactions, repository behavior, or API/worker database integration.
+- **Foundational (Phase 2)**: Depends on corrected Phase 1 bootstrap validation T126. Phase 2 blocks all user stories. T099-T103, T127-T133, and T134 are foundational despite their appended IDs and must complete before tasks that depend on concrete extraction, resource-limit enforcement, persistence, migrations, transactions, repository behavior, API/worker database integration, or complete persistence validation.
 - **User Stories (Phases 3-8)**: Depend on Foundational completion.
 - **Polish (Phase 9)**: Depends on all desired user stories being complete.
 
@@ -289,7 +290,7 @@
 - **US2 Review and Correct Extracted Information (P1)**: Depends on US1 draft creation path for end-to-end behavior; domain and UI work can begin after Foundation.
 - **US3 Confirm Creation of Structured Resume (P1)**: Depends on US2 review states and warning resolution.
 - **US5 Complete Import Accessibly (P1)**: Can run alongside US1-US3 after Foundation; final integration depends on those UI surfaces.
-- **US6 Protect Imported Resume Data (P1)**: Can run alongside US1-US3 after Foundation; final enforcement touches all import routes, parser processes, workers, persistence repositories, and cleanup services. Resource-limit tests T109-T113 and implementation tasks T114-T115 depend on T102-T103. Persistence-sensitive enforcement depends on T010 and T127-T133.
+- **US6 Protect Imported Resume Data (P1)**: Can run alongside US1-US3 after Foundation; final enforcement touches all import routes, parser processes, workers, persistence repositories, and cleanup services. Resource-limit tests T109-T113 and implementation tasks T114-T115 depend on T102-T103. Persistence-sensitive enforcement depends on T010 and T127-T134.
 - **US4 Recover From Partial Extraction or Failure (P2)**: Depends on US1 processing states and integrates with US5 accessibility and US6 deletion/retention protections. Manual-entry recovery tasks T117-T118 and T121 depend on T119-T120. Unsupported-language contact preview tasks T122-T125 depend on the validation and recovery contracts.
 
 ### Within Each User Story
@@ -305,8 +306,8 @@
 
 ## Parallel Opportunities
 
-- Setup tasks T003-T007 can run in parallel after T001-T002 define the workspace manifest and development image; T126 runs after T001-T007 provide the bootstrap targets.
-- Foundational tasks T011-T014, T016-T020, T099-T101, T103, and T127-T130 can run in parallel after T008-T010 establish shared domain and persistence targets; T102 integrates parser execution after T099-T101, and T131-T133 integrate TypeORM configuration after T010 and the migration/constraint tests are defined.
+- Setup tasks T003-T007 can run in parallel after T001-T002 define the workspace manifest and development image; T126 runs after T001-T007 provide the bootstrap targets and covers bootstrap-only container validation.
+- Foundational tasks T011-T014, T016-T020, T099-T101, T103, and T127-T130 can run in parallel after T008-T010 establish shared domain and persistence targets; T102 integrates parser execution after T099-T101, T131-T133 integrate TypeORM configuration after T010 and the migration/constraint tests are defined, and T134 runs after T010 and T127-T133 complete.
 - US1 test tasks T021-T025, T104-T108, and T116 can run in parallel after fixtures and adapter contracts exist.
 - US2 test tasks T035-T039 and UI component tasks T044-T045 can run in parallel.
 - US3 test tasks T047-T050 and UI tasks T054-T055 can run in parallel.
@@ -376,7 +377,7 @@ After Foundation:
 
 - `[P]` tasks use different files and avoid direct dependency on incomplete tasks.
 - `[US#]` labels map tasks to user stories from `spec.md`.
-- `T099`-`T125` were appended during specification-analysis remediation to preserve existing task references; dependency notes above define their execution order.
+- `T099`-`T125` and `T127`-`T138` were appended during specification-analysis remediation to preserve existing task references where possible; dependency notes above define their execution order.
 - Each user story includes required tests/evaluations/regression checks before implementation tasks.
 - No rendering-generation task is included because this feature does not generate final PDFs or modify templates; protected-template regression is included to enforce that boundary.
 - Optional AI tasks are limited to classification and ambiguity warnings after deterministic extraction.

@@ -1,0 +1,165 @@
+import { z } from "zod";
+
+export const importResumeJobSchemaVersion = "2026-07-28" as const;
+
+const uuidSchema = z.string().uuid();
+const idempotencyKeySchema = z
+  .string()
+  .min(8)
+  .max(128)
+  .regex(/^[A-Za-z0-9:_-]+$/);
+const storageKeySchema = z
+  .string()
+  .min(1)
+  .max(512)
+  .regex(/^[A-Za-z0-9/._=-]+$/);
+const correlationIdSchema = uuidSchema;
+
+const ownerContextSchema = z
+  .object({
+    ownerUserId: uuidSchema,
+    tenantId: uuidSchema.optional(),
+  })
+  .strict();
+
+const jobBaseSchema = z
+  .object({
+    schemaVersion: z.literal(importResumeJobSchemaVersion),
+    importId: uuidSchema,
+    owner: ownerContextSchema,
+    correlationId: correlationIdSchema,
+    idempotencyKey: idempotencyKeySchema,
+    requestedAt: z.string().datetime(),
+  })
+  .strict();
+
+const retryAttemptSchema = z
+  .object({
+    attemptNumber: z.number().int().min(1).max(5),
+    maxAttempts: z.number().int().min(1).max(5),
+    previousAttemptStartedAt: z.string().datetime().optional(),
+    previousFailureCategory: z
+      .enum([
+        "malformed_document",
+        "corrupted_document",
+        "password_protected",
+        "image_only_or_scanned",
+        "unsupported_language",
+        "processing_timeout",
+        "parser_memory_limit",
+        "resource_limit",
+        "unexpected_failure",
+      ])
+      .optional(),
+  })
+  .strict()
+  .refine((value) => value.attemptNumber <= value.maxAttempts, {
+    message: "attemptNumber cannot exceed maxAttempts",
+    path: ["attemptNumber"],
+  });
+
+export const documentValidationJobPayloadSchema = jobBaseSchema
+  .extend({
+    jobType: z.literal("document_validation"),
+    documentFormat: z.enum(["pdf", "docx"]),
+    sourceStorageKey: storageKeySchema,
+    uploadedAt: z.string().datetime(),
+    sizeBytes: z
+      .number()
+      .int()
+      .positive()
+      .max(10 * 1024 * 1024),
+  })
+  .strict();
+
+export const deterministicExtractionJobPayloadSchema = jobBaseSchema
+  .extend({
+    jobType: z.literal("deterministic_extraction"),
+    documentFormat: z.enum(["pdf", "docx"]),
+    sourceStorageKey: storageKeySchema,
+    validationCompletedAt: z.string().datetime(),
+    abortTokenId: uuidSchema.optional(),
+  })
+  .strict();
+
+export const cancellationJobPayloadSchema = jobBaseSchema
+  .extend({
+    jobType: z.literal("cancellation"),
+    target: z
+      .object({
+        kind: z.enum(["import", "draft", "validation_job", "extraction_job"]),
+        id: uuidSchema,
+      })
+      .strict(),
+    reason: z.enum([
+      "user_cancelled",
+      "replacement_upload",
+      "discarded_import",
+      "expired",
+    ]),
+  })
+  .strict();
+
+export const retryJobPayloadSchema = jobBaseSchema
+  .extend({
+    jobType: z.literal("retry"),
+    target: z
+      .object({
+        kind: z.enum(["document_validation", "deterministic_extraction"]),
+        id: uuidSchema,
+      })
+      .strict(),
+    retry: retryAttemptSchema,
+    cooldownUntil: z.string().datetime().optional(),
+  })
+  .strict();
+
+export const sourceArtifactDeletionJobPayloadSchema = jobBaseSchema
+  .extend({
+    jobType: z.literal("source_artifact_deletion"),
+    target: z
+      .object({
+        kind: z.enum([
+          "source_document",
+          "derived_artifacts",
+          "source_and_derived_artifacts",
+        ]),
+        id: uuidSchema,
+      })
+      .strict(),
+    reason: z.enum([
+      "user_deleted_source",
+      "user_cancelled_import",
+      "user_discarded_import",
+      "draft_expired",
+      "retention_deadline",
+      "resource_limit_cleanup",
+    ]),
+    deleteNoLaterThan: z.string().datetime(),
+  })
+  .strict();
+
+export const importResumeJobPayloadSchema = z.discriminatedUnion("jobType", [
+  documentValidationJobPayloadSchema,
+  deterministicExtractionJobPayloadSchema,
+  cancellationJobPayloadSchema,
+  retryJobPayloadSchema,
+  sourceArtifactDeletionJobPayloadSchema,
+]);
+
+export type DocumentValidationJobPayload = z.infer<
+  typeof documentValidationJobPayloadSchema
+>;
+export type DeterministicExtractionJobPayload = z.infer<
+  typeof deterministicExtractionJobPayloadSchema
+>;
+export type CancellationJobPayload = z.infer<
+  typeof cancellationJobPayloadSchema
+>;
+export type RetryJobPayload = z.infer<typeof retryJobPayloadSchema>;
+export type SourceArtifactDeletionJobPayload = z.infer<
+  typeof sourceArtifactDeletionJobPayloadSchema
+>;
+export type ImportResumeJobPayload = z.infer<
+  typeof importResumeJobPayloadSchema
+>;
