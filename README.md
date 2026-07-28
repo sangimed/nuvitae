@@ -101,9 +101,34 @@ Format files through Docker when needed:
 docker compose run --rm workspace pnpm format
 ```
 
-TypeORM migrations, migration lifecycle commands, persistence entities, product
-tables, and database-aware application health checks remain deferred. The
-current API health endpoint is liveness-only and does not check PostgreSQL.
+The shared TypeORM Data Mapper persistence package provides explicit entities,
+mappers, repositories, a validated DataSource factory, and a versioned initial
+migration. `synchronize` and automatic migration execution are always disabled.
+API and worker TypeORM wiring and database-aware readiness remain deferred; the
+current API health endpoint is still liveness-only.
+
+Run project-local migration tooling only through Docker:
+
+```bash
+docker compose run --rm workspace pnpm db:migration:show
+docker compose run --rm workspace pnpm db:migration:run
+docker compose run --rm workspace pnpm db:migration:revert
+docker compose run --rm workspace pnpm db:migration:generate
+docker compose run --rm workspace pnpm db:migration:create
+```
+
+`show` is read-only. `run` and `revert` mutate the configured database.
+`generate` and `create` write disposable files under `.tmp/migrations`; they do
+not overwrite the committed initial migration. Move and review an intentional
+generated migration before committing it.
+
+Persistence integration tests require `POSTGRES_TEST_DB` to end in `_test`.
+They create a unique schema per suite, run migrations there, and drop the schema
+afterward, leaving the development database schema untouched:
+
+```bash
+docker compose run --rm workspace pnpm test:integration:persistence
+```
 
 ### Reset Volumes
 

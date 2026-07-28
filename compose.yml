@@ -30,6 +30,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-nuvitae}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nuvitae_dev_password}
       POSTGRES_DB: ${POSTGRES_DB:-nuvitae}
+      POSTGRES_TEST_DB: ${POSTGRES_TEST_DB:-nuvitae_test}
       QUEUE_HOST: queue
       QUEUE_PORT: 6379
       QUEUE_PASSWORD: ${QUEUE_PASSWORD:-nuvitae_queue_password}

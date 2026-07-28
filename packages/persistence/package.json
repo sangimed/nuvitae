@@ -7,9 +7,15 @@
   "types": "src/index.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "db:migration:generate": "pnpm build && typeorm -d dist/cli-data-source.js migration:generate ../../.tmp/migrations/Generated",
+    "db:migration:create": "typeorm migration:create ../../.tmp/migrations/Empty",
+    "db:migration:run": "pnpm build && typeorm -d dist/cli-data-source.js migration:run",
+    "db:migration:revert": "pnpm build && typeorm -d dist/cli-data-source.js migration:revert",
+    "db:migration:show": "pnpm build && typeorm -d dist/cli-data-source.js migration:show"
   },
   "dependencies": {
+    "@nuvitae/domain": "workspace:*",
     "@nestjs/typeorm": "11.0.3",
     "pg": "8.22.0",
     "reflect-metadata": "0.2.2",
