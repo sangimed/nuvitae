@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-28
 
-**Status**: Draft
+**Status**: Ready for Planning
 
 **Input**: User description: "Create Nuvitae's first product feature specification: importing an existing resume."
 
