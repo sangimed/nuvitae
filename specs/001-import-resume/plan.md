@@ -1,6 +1,6 @@
 # Implementation Plan: Import Existing Resume
 
-**Branch**: `001-import-resume` | **Date**: 2026-07-28 | **Spec**: [spec.md](./spec.md)
+**Branch**: `main` | **Date**: 2026-07-28 | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/001-import-resume/spec.md`
 
@@ -14,7 +14,7 @@ The repository currently contains specifications and architecture decisions, not
 
 **Language/Version**: TypeScript on Node.js 20+ for web, API, workers, domain packages, and extraction orchestration.
 
-**Primary Dependencies**: React-based web UI; Node API service; PostgreSQL for relational domain state; private object storage for source documents and derived artifacts; Redis-compatible queue/rate-limit backend for processing jobs; deterministic PDF and DOCX text extraction libraries selected behind adapter interfaces; optional provider-independent AI classifier adapter after deterministic extraction.
+**Primary Dependencies**: React-based web UI; Node API service; PostgreSQL for relational domain state; private object storage for source documents and derived artifacts; Redis-compatible queue/rate-limit backend for processing jobs; PDF.js (`pdfjs-dist`) for deterministic PDF page counting and text extraction with page and coordinate provenance; a DOCX adapter using `yauzl` plus `fast-xml-parser` for Office Open XML text extraction with package/paragraph/run provenance; isolated LibreOffice headless conversion to PDF only for DOCX rendered-page-count validation; optional provider-independent AI classifier adapter after deterministic extraction.
 
 **Storage**: PostgreSQL for users, imported documents, import drafts, warnings, extracted fields, structured resumes, deletion jobs, and audit events. Private object storage for uploaded files and temporary source-reconstructing artifacts with keys scoped by user/import and retention deadline.
 
@@ -26,9 +26,11 @@ The repository currently contains specifications and architecture decisions, not
 
 **Performance Goals**: Accepted uploads either reach review or a recoverable timeout state within 3 minutes. Supported documents are limited to 10 MB and 5 rendered pages. At least 90% of supported uploads with one explicitly sourced supported field produce a reviewable partial or complete extraction.
 
-**Constraints**: Authentication required before upload; PDF/DOCX only; French, English, and bilingual French-English only; selectable text required; deterministic extraction required before optional AI; no structured resume creation from inferred-only data; all warnings must be addressed before confirmation; source and source-reconstructing artifacts deleted within 7 days of original upload; source deletion does not delete confirmed structured resumes; raw source content, credentials, and full resumes must not be logged.
+**Constraints**: Authentication required before upload; PDF/DOCX only; French, English, and bilingual French-English only; selectable text required; deterministic extraction required before optional AI; no structured resume creation from inferred-only data or abruptly terminated partial parser output; all warnings must be addressed before confirmation; source and source-reconstructing artifacts deleted within 7 days of original upload; source deletion does not delete confirmed structured resumes; raw source content, credentials, and full resumes must not be logged.
 
-**Scale/Scope**: First product feature for resume creation onboarding. Scope covers upload, validation, processing, review, confirmation, cancellation, retry, source deletion, expiry, and manual-entry fallback. It excludes job-description adaptation, AI rewriting, templates, final PDF generation, ATS scoring, cover letters, job tracking, payments, subscriptions, and automatic applications.
+**Initial Configurable Resource Limits**: Maximum uploaded file size 10 MB; maximum rendered length 5 pages; maximum foreground processing duration 3 minutes; maximum parser-process memory 512 MiB; maximum per user 1 active processing job and 2 queued processing jobs; maximum 5 upload or processing-start attempts per rolling 10-minute window per authenticated user. Limits must be configurable by environment but must not be disabled in production. Rate or concurrency limit responses reject the operation, return a rate-limit response such as HTTP 429, include `Retry-After` where applicable, and show a plain-language recovery message. Parser memory and timeout enforcement terminate the isolated parser process, clean up files and source-reconstructing artifacts for the failed attempt, and offer retry, replacement upload, and manual-entry recovery. Memory-limit breaches must not create an import review draft from partial output produced before termination.
+
+**Scale/Scope**: First product feature for resume creation onboarding. Scope covers upload, validation, processing, review, confirmation, cancellation, retry, source deletion, expiry, and a real manual-entry route at `/resumes/new/manual`. It excludes job-description adaptation, AI rewriting, templates, final PDF generation, ATS scoring, cover letters, job tracking, payments, subscriptions, and automatic applications.
 
 ## Constitution Check
 

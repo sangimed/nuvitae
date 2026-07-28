@@ -1,5 +1,7 @@
 # Tasks: Import Existing Resume
 
+**Feature Branch**: `main`
+
 **Input**: Design documents from `/specs/001-import-resume/`
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/import-resume.md, quickstart.md
@@ -30,7 +32,7 @@
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Implement shared domain, persistence, storage, authorization, worker, logging, and fixture foundations that all user stories depend on.
+**Purpose**: Implement shared domain, persistence, storage, authorization, worker, logging, concrete extraction adapters, resource-limit enforcement foundations, and fixture foundations that all user stories depend on.
 
 **CRITICAL**: No user story work can begin until this phase is complete.
 
@@ -40,23 +42,28 @@
 - [ ] T011 [P] Implement privacy-safe logger with redaction for resumes, raw text, snippets, files, tokens, credentials, prompts, and unnecessary personal data in `/home/mibrihen/Repositories/nuvitae/apps/api/src/observability/privacy-logger.ts`
 - [ ] T012 [P] Implement authenticated user context and ownership guard utilities in `/home/mibrihen/Repositories/nuvitae/apps/api/src/auth/user-context.ts` and `/home/mibrihen/Repositories/nuvitae/apps/api/src/auth/ownership.ts`
 - [ ] T013 [P] Implement private object storage key policy and signed internal access helpers in `/home/mibrihen/Repositories/nuvitae/packages/storage/src/private-import-storage.ts`
-- [ ] T014 [P] Implement import rate-limit and concurrent-work guard interfaces in `/home/mibrihen/Repositories/nuvitae/apps/api/src/services/import-resume/import-limits.ts`
+- [ ] T014 [P] Implement import rate-limit and concurrent-work guard interfaces for 5 attempts per rolling 10 minutes, 1 active job, and 2 queued jobs per user in `/home/mibrihen/Repositories/nuvitae/apps/api/src/services/import-resume/import-limits.ts`
 - [ ] T015 Implement background job queue contracts for validation, extraction, cancellation, retry, and deletion jobs in `/home/mibrihen/Repositories/nuvitae/apps/api/src/workers/import-jobs.ts`
 - [ ] T016 [P] Create deterministic extraction adapter interfaces for PDF, DOCX, language detection, page counting, selectable text, and source locations in `/home/mibrihen/Repositories/nuvitae/packages/extraction/src/adapters.ts`
 - [ ] T017 [P] Create optional AI classifier adapter interface that accepts deterministic extraction output and returns only classifications and ambiguity warnings in `/home/mibrihen/Repositories/nuvitae/packages/extraction/src/ai-classifier.ts`
-- [ ] T018 Create fixture manifest covering supported, partial, unsupported, oversized, over-page-limit, password-protected, image-only, corrupted, hostile, mixed-content, and no-supported-field resumes in `/home/mibrihen/Repositories/nuvitae/packages/test-fixtures/src/resume-import/manifest.ts`
+- [ ] T018 Create fixture manifest covering PDF, DOCX, French, English, bilingual, partial, unsupported-language, oversized, over-page-limit, malformed, corrupted, password-protected, image-only/scanned, mixed text-and-image, hostile, mixed-content, and no-supported-field resumes in `/home/mibrihen/Repositories/nuvitae/packages/test-fixtures/src/resume-import/manifest.ts`
 - [ ] T019 [P] Define API response envelope and plain-language error categories for import flows in `/home/mibrihen/Repositories/nuvitae/apps/api/src/routes/import-resume/responses.ts`
 - [ ] T020 [P] Define web route shell and import feature state machine types in `/home/mibrihen/Repositories/nuvitae/apps/web/src/features/import-resume/state.ts`
+- [ ] T099 [P] Implement concrete PDF.js PDF extraction adapter for page count and text extraction with page, bounding-box, and text-item source-location provenance in `/home/mibrihen/Repositories/nuvitae/packages/extraction/src/pdf/pdfjs-pdf-adapter.ts`
+- [ ] T100 [P] Implement concrete DOCX Office Open XML extraction adapter with package part, paragraph/table/cell/run, and character-offset source-location provenance in `/home/mibrihen/Repositories/nuvitae/packages/extraction/src/docx/ooxml-docx-adapter.ts`
+- [ ] T101 [P] Implement isolated DOCX rendered-page-count validator using LibreOffice headless conversion plus PDF page counting in `/home/mibrihen/Repositories/nuvitae/packages/extraction/src/docx/libreoffice-rendered-page-count.ts`
+- [ ] T102 Implement isolated parser runner with configurable 512 MiB memory limit, 3-minute foreground timeout, process termination, and no-partial-output commit semantics in `/home/mibrihen/Repositories/nuvitae/packages/extraction/src/isolated-parser-runner.ts`
+- [ ] T103 [P] Define production-safe processing limit configuration schema that can tune but not disable file size, page count, timeout, memory, concurrency, queue, and rolling attempt limits in `/home/mibrihen/Repositories/nuvitae/apps/api/src/config/import-processing-limits.ts`
 
-**Checkpoint**: Foundation ready. User story implementation can now begin.
+**Checkpoint**: Foundation ready, including concrete PDF/DOCX adapters and isolated parser limits. User story implementation can now begin.
 
 ---
 
 ## Phase 3: User Story 1 - Start From an Existing Resume (Priority: P1) MVP
 
-**Goal**: A user starting resume creation sees import as the recommended path, can authenticate before upload, can upload a supported PDF/DOCX, and receives plain-language validation/extraction progress through draft creation or timeout.
+**Goal**: A user starting resume creation sees import as the recommended path, can choose functional manual entry, can authenticate before upload, can upload a supported PDF/DOCX, and receives plain-language validation/extraction progress through draft creation or timeout.
 
-**Independent Test**: Start resume creation, choose import, sign in if needed, upload a supported document, and reach either review draft creation or a recoverable timeout state within the 3-minute foreground limit.
+**Independent Test**: Start resume creation, choose manual entry and verify `/resumes/new/manual`, then choose import, sign in if needed, upload a supported document, and reach either review draft creation or a recoverable timeout state within the 3-minute foreground limit.
 
 ### Tests for User Story 1
 
@@ -65,6 +72,12 @@
 - [ ] T023 [P] [US1] Add integration test for unauthenticated upload requiring sign-in before file acceptance in `/home/mibrihen/Repositories/nuvitae/tests/integration/import-resume/authentication-gate.integration.test.ts`
 - [ ] T024 [P] [US1] Add fixture tests for PDF/DOCX file type, 10 MB limit, 5 rendered page limit, selectable text, and French/English/bilingual language validation in `/home/mibrihen/Repositories/nuvitae/tests/integration/import-resume/upload-validation.integration.test.ts`
 - [ ] T025 [P] [US1] Add accessibility test for upload labels, keyboard focus, and progress live announcements in `/home/mibrihen/Repositories/nuvitae/tests/accessibility/import-resume/upload-progress.a11y.test.ts`
+- [ ] T104 [P] [US1] Add PDF fixture tests for page-count extraction and PDF text extraction with page and source-location provenance in `/home/mibrihen/Repositories/nuvitae/packages/extraction/src/pdf/pdfjs-pdf-adapter.test.ts`
+- [ ] T105 [P] [US1] Add DOCX fixture tests for rendered-page-count validation and text extraction with source-location provenance in `/home/mibrihen/Repositories/nuvitae/packages/extraction/src/docx/ooxml-docx-adapter.test.ts`
+- [ ] T106 [P] [US1] Add malformed, corrupted, and password-protected document fixture tests for PDF and DOCX validation failures in `/home/mibrihen/Repositories/nuvitae/tests/integration/import-resume/malformed-protected-documents.integration.test.ts`
+- [ ] T107 [P] [US1] Add image-only/scanned PDF detection and mixed text-and-image PDF fixture tests in `/home/mibrihen/Repositories/nuvitae/tests/integration/import-resume/pdf-selectable-text.integration.test.ts`
+- [ ] T108 [P] [US1] Add French, English, and bilingual fixture tests for each supported document format in `/home/mibrihen/Repositories/nuvitae/tests/integration/import-resume/supported-language-fixtures.integration.test.ts`
+- [ ] T116 [P] [US1] Add contract tests proving `/resumes/new/manual` creates a blank manual structured-resume draft without imported document or import job in `/home/mibrihen/Repositories/nuvitae/tests/contract/manual-resume/create-manual-draft.contract.test.ts`
 
 ### Implementation for User Story 1
 
@@ -77,6 +90,8 @@
 - [ ] T032 [US1] Implement worker handlers for validation, extraction, timeout, and progress state persistence in `/home/mibrihen/Repositories/nuvitae/apps/api/src/workers/import-processing-worker.ts`
 - [ ] T033 [US1] Implement web polling/subscription client for processing status and timeout recovery actions in `/home/mibrihen/Repositories/nuvitae/apps/web/src/services/import-resume/import-status-client.ts`
 - [ ] T034 [US1] Wire import flow route from create entry through upload and processing states in `/home/mibrihen/Repositories/nuvitae/apps/web/src/app/import-resume/page.tsx`
+- [ ] T119 [US1] Implement `/resumes/new/manual` route that creates a blank editable structured-resume draft without import records in `/home/mibrihen/Repositories/nuvitae/apps/web/src/app/resumes/new/manual/page.tsx`
+- [ ] T120 [P] [US1] Implement reusable structured-resume section editing components shared by manual entry and import review where appropriate in `/home/mibrihen/Repositories/nuvitae/apps/web/src/features/resume-editor/StructuredResumeSections.tsx`
 
 **Checkpoint**: User Story 1 is independently testable as the MVP import entry, upload, validation, progress, and draft/timeout path.
 
@@ -102,7 +117,7 @@
 - [ ] T041 [US2] Implement read import draft service with grouped resume sections, source status, confidence status, inference status, and available review actions in `/home/mibrihen/Repositories/nuvitae/apps/api/src/services/import-resume/read-draft.ts`
 - [ ] T042 [US2] Implement update review service for confirm, edit, remove, complete, add, exclude, and intentionally leave actions in `/home/mibrihen/Repositories/nuvitae/apps/api/src/services/import-resume/update-review.ts`
 - [ ] T043 [US2] Implement read draft and update review API routes in `/home/mibrihen/Repositories/nuvitae/apps/api/src/routes/import-resume/review.ts`
-- [ ] T044 [P] [US2] Implement sectioned review UI for personal/contact, headline, summary, work experience, education, skills, languages, projects, certifications, and links in `/home/mibrihen/Repositories/nuvitae/apps/web/src/features/import-resume/ReviewStep.tsx`
+- [ ] T044 [P] [US2] Implement sectioned review UI for personal/contact, headline, summary, work experience, education, skills, languages, projects, certifications, and links using shared structured-resume section components where appropriate in `/home/mibrihen/Repositories/nuvitae/apps/web/src/features/import-resume/ReviewStep.tsx`
 - [ ] T045 [P] [US2] Implement warning and provenance UI components in `/home/mibrihen/Repositories/nuvitae/apps/web/src/features/import-resume/ReviewWarning.tsx` and `/home/mibrihen/Repositories/nuvitae/apps/web/src/features/import-resume/FieldProvenance.tsx`
 - [ ] T046 [US2] Implement review API client and optimistic review state updates without source-document mutation in `/home/mibrihen/Repositories/nuvitae/apps/web/src/services/import-resume/review-client.ts`
 
@@ -161,9 +176,9 @@
 
 ## Phase 7: User Story 6 - Protect Imported Resume Data (Priority: P1)
 
-**Goal**: Imported documents, extracted content, processing state, drafts, temporary artifacts, and deletion jobs are private to the initiating user, isolated from hostile content, rate-limited, and removed according to retention/deletion rules.
+**Goal**: Imported documents, extracted content, processing state, drafts, temporary contact previews, temporary artifacts, parser processes, and deletion jobs are private to the initiating user, isolated from hostile content, rate-limited, resource-limited, and removed according to retention/deletion rules.
 
-**Independent Test**: Attempt cross-user access, exceed upload/processing limits, import hostile documents, delete source documents, and verify only minimal structured resume provenance remains.
+**Independent Test**: Attempt cross-user access, exceed upload/processing/concurrency/memory/time limits, import hostile documents, delete source documents, and verify only minimal structured resume provenance remains.
 
 ### Tests for User Story 6
 
@@ -172,16 +187,23 @@
 - [ ] T066 [P] [US6] Add hostile document safety tests for macros, scripts, active objects, links, hidden text, prompt injection, malformed files, and parser isolation in `/home/mibrihen/Repositories/nuvitae/tests/security/import-resume/hostile-documents.security.test.ts`
 - [ ] T067 [P] [US6] Add deletion and retention verification tests for source files, raw text, snippets, page references, thumbnails, cached parsing output, embeddings, and minimal provenance in `/home/mibrihen/Repositories/nuvitae/tests/security/import-resume/deletion-retention.security.test.ts`
 - [ ] T068 [P] [US6] Add privacy logging test proving full resumes, source snippets, uploaded files, credentials, prompts, tokens, and unnecessary personal data are excluded from logs in `/home/mibrihen/Repositories/nuvitae/tests/security/import-resume/privacy-logging.security.test.ts`
+- [ ] T109 [P] [US6] Add hard parser memory enforcement tests proving 512 MiB excess terminates the isolated parser process and creates no review draft from abrupt partial output in `/home/mibrihen/Repositories/nuvitae/tests/security/import-resume/parser-memory-limit.security.test.ts`
+- [ ] T110 [P] [US6] Add timeout enforcement tests proving the 3-minute foreground limit returns only threshold-qualified partial results with retry, replacement-upload, and manual-entry options in `/home/mibrihen/Repositories/nuvitae/tests/security/import-resume/parser-timeout.security.test.ts`
+- [ ] T111 [P] [US6] Add per-user active-job, queued-job, upload-attempt, processing-start, HTTP 429, and Retry-After behavior tests in `/home/mibrihen/Repositories/nuvitae/tests/security/import-resume/rate-limit-retry-after.security.test.ts`
+- [ ] T112 [P] [US6] Add parser isolation tests proving one terminated memory-limit or timeout job does not affect another user's or same user's independent job in `/home/mibrihen/Repositories/nuvitae/tests/security/import-resume/parser-job-isolation.security.test.ts`
+- [ ] T113 [P] [US6] Add cleanup tests proving files, converted DOCX PDFs, raw text, snippets, page references, cached parser output, and temporary contact data are deleted after resource-limit failure in `/home/mibrihen/Repositories/nuvitae/tests/security/import-resume/resource-failure-cleanup.security.test.ts`
 
 ### Implementation for User Story 6
 
 - [ ] T069 [US6] Enforce ownership checks on all import routes and services in `/home/mibrihen/Repositories/nuvitae/apps/api/src/routes/import-resume/index.ts`
-- [ ] T070 [US6] Implement rate-limit and concurrent-work enforcement in `/home/mibrihen/Repositories/nuvitae/apps/api/src/services/import-resume/import-limits.ts`
-- [ ] T071 [US6] Implement parser isolation, no-execution safeguards, and prompt-injection ignoring in `/home/mibrihen/Repositories/nuvitae/packages/extraction/src/safety.ts`
+- [ ] T070 [US6] Implement rate-limit and concurrent-work enforcement with 5 attempts per rolling 10 minutes, 1 active job, 2 queued jobs, HTTP 429, Retry-After where applicable, and plain-language recovery messages in `/home/mibrihen/Repositories/nuvitae/apps/api/src/services/import-resume/import-limits.ts`
+- [ ] T071 [US6] Implement parser isolation, no-execution safeguards, prompt-injection ignoring, 512 MiB hard memory enforcement, timeout termination, and no abrupt partial-output commit behavior in `/home/mibrihen/Repositories/nuvitae/packages/extraction/src/safety.ts`
 - [ ] T072 [US6] Implement source deletion service for source documents and all source-reconstructing artifacts in `/home/mibrihen/Repositories/nuvitae/apps/api/src/services/import-resume/delete-source.ts`
 - [ ] T073 [US6] Implement retention worker for 7-day expiry and deletion verification in `/home/mibrihen/Repositories/nuvitae/apps/api/src/workers/import-retention-worker.ts`
 - [ ] T074 [P] [US6] Implement delete source UI and privacy-safe confirmation copy in `/home/mibrihen/Repositories/nuvitae/apps/web/src/features/import-resume/DeleteSourceControl.tsx`
 - [ ] T075 [US6] Wire privacy-safe logging into import routes, workers, storage, extraction, deletion, and confirmation services in `/home/mibrihen/Repositories/nuvitae/apps/api/src/observability/import-events.ts`
+- [ ] T114 [US6] Implement resource-limit failure cleanup service for parser workspaces, converted PDFs, extracted raw text, snippets, page references, cached parser output, and temporary contact data in `/home/mibrihen/Repositories/nuvitae/apps/api/src/services/import-resume/resource-failure-cleanup.ts`
+- [ ] T115 [US6] Implement API response mapping for memory-limit, timeout, active-job, queued-job, upload-attempt, processing-start, HTTP 429, Retry-After, and plain-language recovery messages in `/home/mibrihen/Repositories/nuvitae/apps/api/src/routes/import-resume/limit-responses.ts`
 
 **Checkpoint**: User Story 6 is independently testable as authorization, isolation, rate-limit, deletion, retention, and logging protection.
 
@@ -189,9 +211,9 @@
 
 ## Phase 8: User Story 4 - Recover From Partial Extraction or Failure (Priority: P2)
 
-**Goal**: A user receives understandable recovery paths for partial extraction, validation failure, processing failure, timeout, cancellation, retry, replacement upload, manual entry, expired drafts, no-supported-field extraction, and mixed-content documents.
+**Goal**: A user receives understandable recovery paths for partial extraction, validation failure, processing failure, timeout, cancellation, retry, replacement upload, manual entry, expired drafts, unsupported-language contact-only preview, no-supported-field extraction, and mixed-content documents.
 
-**Independent Test**: Run unreadable, unsupported, password-protected, image-heavy, oversized, duplicate, partially readable, mixed-content, and expired-draft fixtures and verify each failure state has a clear outcome and recovery path.
+**Independent Test**: Run unreadable, unsupported, password-protected, image-heavy, oversized, duplicate, partially readable, unsupported-language contact-only, mixed-content, and expired-draft fixtures and verify each failure state has a clear outcome and recovery path.
 
 ### Tests for User Story 4
 
@@ -201,6 +223,10 @@
 - [ ] T079 [P] [US4] Add integration tests for cancellation, discard, expired drafts, and retention-scheduled deletion in `/home/mibrihen/Repositories/nuvitae/tests/integration/import-resume/cancel-expiry.integration.test.ts`
 - [ ] T080 [P] [US4] Add fixture tests for unrelated pages, separable resume content, inseparable mixed content, and no-supported-field extraction in `/home/mibrihen/Repositories/nuvitae/tests/integration/import-resume/mixed-content.integration.test.ts`
 - [ ] T081 [P] [US4] Add no-AI fallback and optional AI classifier degradation tests in `/home/mibrihen/Repositories/nuvitae/tests/integration/import-resume/no-ai-fallback.integration.test.ts`
+- [ ] T117 [P] [US4] Add navigation and integration tests proving manual-entry actions from unsupported-file, no-usable-extraction, timeout, processing-failure, expired-draft, and unsupported-language states reach `/resumes/new/manual` in `/home/mibrihen/Repositories/nuvitae/tests/integration/manual-resume/manual-entry-navigation.integration.test.ts`
+- [ ] T118 [P] [US4] Add accessibility tests proving every manual-entry action has an accessible name, keyboard focus, and reaches the functional manual route in `/home/mibrihen/Repositories/nuvitae/tests/accessibility/manual-resume/manual-entry-route.a11y.test.ts`
+- [ ] T122 [P] [US4] Add contract tests for unsupported-language contact-only preview, explicit transfer confirmation, no import draft creation, discard, and temporary data deletion in `/home/mibrihen/Repositories/nuvitae/tests/contract/import-resume/unsupported-language-contact-preview.contract.test.ts`
+- [ ] T123 [P] [US4] Add integration tests for unsupported-language contact preview warning, manual-entry transfer, user-added field marking, and no draft-threshold satisfaction in `/home/mibrihen/Repositories/nuvitae/tests/integration/import-resume/unsupported-language-contact-preview.integration.test.ts`
 
 ### Implementation for User Story 4
 
@@ -211,6 +237,9 @@
 - [ ] T086 [US4] Implement recovery API routes for retry, replace upload, cancel, discard, expired draft, manual fallback, and no-supported-field states in `/home/mibrihen/Repositories/nuvitae/apps/api/src/routes/import-resume/recovery.ts`
 - [ ] T087 [P] [US4] Implement retry, replacement upload, cancellation, discard, manual-entry fallback, expired draft, and no-supported-field UI states in `/home/mibrihen/Repositories/nuvitae/apps/web/src/features/import-resume/RecoveryActions.tsx`
 - [ ] T088 [US4] Wire optional AI classifier after deterministic extraction without blocking deterministic review or manual entry in `/home/mibrihen/Repositories/nuvitae/apps/api/src/services/import-resume/optional-ai-classification.ts`
+- [ ] T121 [US4] Wire manual-entry recovery actions from unsupported-file, no-usable-extraction, timeout, processing-failure, expired-draft, and unsupported-language states to `/resumes/new/manual` in `/home/mibrihen/Repositories/nuvitae/apps/web/src/features/import-resume/RecoveryActions.tsx`
+- [ ] T124 [US4] Implement unsupported-language contact-only preview service with explicit confirmation before manual-entry transfer and no import-draft creation in `/home/mibrihen/Repositories/nuvitae/apps/api/src/services/import-resume/unsupported-language-contact-preview.ts`
+- [ ] T125 [P] [US4] Implement unsupported-language warning and contact-only preview UI with confirm-transfer, discard, upload-another, and manual-without-transfer actions in `/home/mibrihen/Repositories/nuvitae/apps/web/src/features/import-resume/UnsupportedLanguageContactPreview.tsx`
 
 **Checkpoint**: User Story 4 is independently testable as full import recovery and failure handling.
 
@@ -228,7 +257,7 @@
 - [ ] T094 [P] Add constitution gate regression proving templates, visual customization, generated PDFs, raw PDF structures, and rendering components are untouched by import in `/home/mibrihen/Repositories/nuvitae/tests/integration/import-resume/protected-templates.integration.test.ts`
 - [ ] T095 [P] Add AI behavior evaluation for missing facts, prompt injection, unsupported claims, provenance handling, and no silent structured resume creation in `/home/mibrihen/Repositories/nuvitae/tests/integration/import-resume/ai-behavior.integration.test.ts`
 - [ ] T096 [P] Add extraction outcome evaluation measuring English, French, bilingual, partial, hostile, unsupported, and mixed-content fixture coverage against SC-001 and SC-002 in `/home/mibrihen/Repositories/nuvitae/tests/integration/import-resume/extraction-outcomes.integration.test.ts`
-- [ ] T097 [P] Add usability evaluation protocol for SC-003 and SC-004 review-warning identification and correction timing in `/home/mibrihen/Repositories/nuvitae/docs/research/import-review-usability-protocol.md`
+- [ ] T097 [P] Add usability evaluation protocol for SC-003, SC-004, and SC-009 covering review-warning identification, correction timing, and participant understanding that the uploaded source is not the editable resume, structured edits do not modify the source file, source deletion does not delete a separately confirmed structured resume, and source plus reconstructable extraction artifacts expire under the 7-day policy in `/home/mibrihen/Repositories/nuvitae/docs/research/import-review-usability-protocol.md`
 - [ ] T098 Perform final cleanup of import feature exports, route registrations, and package public APIs in `/home/mibrihen/Repositories/nuvitae/apps/api/src/routes/import-resume/index.ts` and `/home/mibrihen/Repositories/nuvitae/apps/web/src/features/import-resume/index.ts`
 
 ---
@@ -238,18 +267,18 @@
 ### Phase Dependencies
 
 - **Setup (Phase 1)**: No dependencies; can start immediately.
-- **Foundational (Phase 2)**: Depends on Setup completion; blocks all user stories.
+- **Foundational (Phase 2)**: Depends on Setup completion; blocks all user stories. T099-T103 are foundational despite their appended IDs and must complete before tasks that depend on concrete extraction or resource-limit enforcement.
 - **User Stories (Phases 3-8)**: Depend on Foundational completion.
 - **Polish (Phase 9)**: Depends on all desired user stories being complete.
 
 ### User Story Dependencies
 
-- **US1 Start From an Existing Resume (P1)**: First MVP story after Foundation.
+- **US1 Start From an Existing Resume (P1)**: First MVP story after Foundation. PDF/DOCX adapter fixture tests T104-T108 depend on T099-T102 and T018.
 - **US2 Review and Correct Extracted Information (P1)**: Depends on US1 draft creation path for end-to-end behavior; domain and UI work can begin after Foundation.
 - **US3 Confirm Creation of Structured Resume (P1)**: Depends on US2 review states and warning resolution.
 - **US5 Complete Import Accessibly (P1)**: Can run alongside US1-US3 after Foundation; final integration depends on those UI surfaces.
-- **US6 Protect Imported Resume Data (P1)**: Can run alongside US1-US3 after Foundation; final enforcement touches all import routes and workers.
-- **US4 Recover From Partial Extraction or Failure (P2)**: Depends on US1 processing states and integrates with US5 accessibility and US6 deletion/retention protections.
+- **US6 Protect Imported Resume Data (P1)**: Can run alongside US1-US3 after Foundation; final enforcement touches all import routes, parser processes, workers, and cleanup services. Resource-limit tests T109-T113 and implementation tasks T114-T115 depend on T102-T103.
+- **US4 Recover From Partial Extraction or Failure (P2)**: Depends on US1 processing states and integrates with US5 accessibility and US6 deletion/retention protections. Manual-entry recovery tasks T117-T118 and T121 depend on T119-T120. Unsupported-language contact preview tasks T122-T125 depend on the validation and recovery contracts.
 
 ### Within Each User Story
 
@@ -265,13 +294,13 @@
 ## Parallel Opportunities
 
 - Setup tasks T003-T007 can run in parallel after T001-T002 create the workspace.
-- Foundational tasks T011-T014 and T016-T020 can run in parallel after T008-T010 establish shared domain and schema.
-- US1 test tasks T021-T025 can run in parallel.
+- Foundational tasks T011-T014, T016-T020, T099-T101, and T103 can run in parallel after T008-T010 establish shared domain and schema; T102 integrates parser execution after T099-T101.
+- US1 test tasks T021-T025, T104-T108, and T116 can run in parallel after fixtures and adapter contracts exist.
 - US2 test tasks T035-T039 and UI component tasks T044-T045 can run in parallel.
 - US3 test tasks T047-T050 and UI tasks T054-T055 can run in parallel.
 - US5 tests T057-T059 and components T060-T062 can run in parallel.
-- US6 tests T064-T068 can run in parallel, and T074 can run in parallel with backend enforcement tasks after contracts are stable.
-- US4 tests T076-T081 can run in parallel, and T087 can run in parallel with backend recovery services after route contracts are stable.
+- US6 tests T064-T068 and T109-T113 can run in parallel, and T074-T075 plus T114-T115 can run in parallel with backend enforcement tasks after contracts are stable.
+- US4 tests T076-T081, T117-T118, and T122-T123 can run in parallel, and T087, T121, and T125 can run in parallel with backend recovery services after route contracts are stable.
 - Polish tasks T089-T091 and T093-T097 can run in parallel.
 
 ---
@@ -335,6 +364,7 @@ After Foundation:
 
 - `[P]` tasks use different files and avoid direct dependency on incomplete tasks.
 - `[US#]` labels map tasks to user stories from `spec.md`.
+- `T099`-`T125` were appended during specification-analysis remediation to preserve existing task references; dependency notes above define their execution order.
 - Each user story includes required tests/evaluations/regression checks before implementation tasks.
 - No rendering-generation task is included because this feature does not generate final PDFs or modify templates; protected-template regression is included to enforce that boundary.
 - Optional AI tasks are limited to classification and ambiguity warnings after deterministic extraction.

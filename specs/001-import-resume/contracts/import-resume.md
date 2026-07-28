@@ -8,13 +8,21 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Trigger**: Authenticated or unauthenticated user starts resume creation.
 
-**Required Behavior**: Present import as the recommended path and manual entry as an available fallback. If the user is not authenticated and chooses upload, require sign-in before accepting the file.
+**Required Behavior**: Present import as the recommended path and manual entry as an available fallback. Manual entry routes to `/resumes/new/manual` and creates a blank editable structured-resume draft without creating an imported document or import job. If the user is not authenticated and chooses upload, require sign-in before accepting the file.
 
 ### Upload Step
 
 **Required Copy Topics**: Supported file types PDF and DOCX; French, English, bilingual French-English; selectable text required; 10 MB limit; 5 rendered page limit; 3-minute processing timeout; 7-day source/artifact retention; early source deletion option; manual fallback.
 
 **Required Controls**: Choose file, continue manually, cancel import. All controls need accessible names and keyboard focus.
+
+### Manual Entry Step
+
+**Route**: `/resumes/new/manual`
+
+**Required Behavior**: Create a blank editable structured-resume draft, mark manually entered fields as user-added, and use the same section-editing components as import review where appropriate. This route must be reachable from initial resume creation and from unsupported-file, no-usable-extraction, timeout, processing-failure, expired-draft, and unsupported-language states.
+
+**Import Boundary**: Manual entry does not create an `ImportedDocument`, `ImportDraft`, derived extraction artifact, or import processing job.
 
 ### Processing Step
 
@@ -29,6 +37,14 @@ This contract describes the user-facing flow and service boundaries for the init
 **Required Actions**: Confirm, edit, remove, add, exclude, intentionally leave warning, retry, replace upload, delete source, discard import, continue manually, create structured resume.
 
 **Blocking Rule**: Create structured resume is disabled or blocked until every warning is addressed and at least one supported field is user-confirmed.
+
+### Unsupported-Language Contact Preview
+
+**Required Behavior**: Documents outside French, English, or bilingual French-English do not create an import review draft. If explicitly detectable contact information is available, Nuvitae may show a temporary contact-only preview with a clear unsupported-language warning.
+
+**Required Actions**: Confirm transfer to manual entry, discard contact preview, upload another file, continue manually without transfer.
+
+**Rules**: Contact-only detection does not satisfy the import-draft creation threshold. Contact fields transfer to `/resumes/new/manual` only after explicit user confirmation and are marked as user-added. Temporary contact data follows the same deletion and logging restrictions as other extraction artifacts.
 
 ### Confirmation Step
 
@@ -46,7 +62,9 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Output**: `ImportedDocument` id, initial upload status, retention expiry.
 
-**Errors**: unauthenticated, rate limited, unsupported file type, size over 10 MB, unsafe upload, storage unavailable.
+**Errors**: unauthenticated, rate limited, active job limit reached, queued job limit reached, unsupported file type, size over 10 MB, unsafe upload, storage unavailable.
+
+**Limit Behavior**: Rate and concurrency rejections use an appropriate response such as HTTP 429, include `Retry-After` where applicable, and include a plain-language recovery message.
 
 ### Validate Document
 
@@ -56,13 +74,31 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Errors**: not found, forbidden, password protected, unreadable, corrupted, empty, image-only, over 5 pages, unsupported language, unsafe content, ambiguous mixed document.
 
+**Rules**: PDF page count and selectable-text validation use the PDF adapter. DOCX rendered-page validation uses isolated headless LibreOffice conversion to PDF followed by PDF page counting. Unsupported-language validation may produce only a temporary contact-only preview and never an import review draft.
+
 ### Process Extraction
 
 **Input**: accepted `ImportedDocument` id, optional AI assistance availability flag.
 
 **Output**: processing state, partial/complete extraction summary, draft id when threshold is met, warnings, recovery actions.
 
-**Rules**: Deterministic extraction runs first. Optional AI can only classify sections or flag ambiguity after deterministic extraction. Foreground processing times out after 3 minutes and returns threshold-qualified partial results when available.
+**Rules**: Deterministic extraction runs first through concrete PDF and DOCX extraction adapters. PDF extraction must include page and text-item source-location provenance. DOCX extraction must include package part, paragraph/table/cell/run, and character-offset provenance. Optional AI can only classify sections or flag ambiguity after deterministic extraction. Foreground processing times out after 3 minutes and returns threshold-qualified partial results when available. A parser memory-limit breach terminates the isolated parser process, creates no review draft from abruptly terminated partial output, cleans up files and source-reconstructing artifacts for the failed attempt, and returns retry, replacement-upload, and manual-entry recovery actions.
+
+### Enforce Processing Limits
+
+**Input**: authenticated user, upload or processing-start request, current active/queued job counts, rolling 10-minute attempt history, deployment limit configuration.
+
+**Output**: allowed operation or rejected operation with recovery message.
+
+**Rules**: Initial limits are 10 MB file size, 5 rendered pages, 3 minutes foreground processing, 512 MiB parser-process memory, 1 active processing job per user, 2 queued processing jobs per user, and 5 upload or processing-start attempts per rolling 10-minute window. Limits are configurable but cannot be disabled in production. Rejections use an appropriate rate-limit response such as HTTP 429 where applicable and include `Retry-After` where applicable.
+
+### Create Manual Structured Resume Draft
+
+**Input**: authenticated user, optional explicitly confirmed temporary contact fields.
+
+**Output**: manual structured-resume draft id and editable section state.
+
+**Rules**: Creates no imported document, import draft, derived extraction artifact, or import processing job. Fields entered manually or transferred from a confirmed contact-only preview are marked as user-added.
 
 ### Read Import Draft
 

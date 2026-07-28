@@ -68,6 +68,11 @@
 - [ ] CHK037 Are dependencies on PDF/DOCX page counting, selectable-text detection, language detection, deterministic extraction adapters, object storage, queues, and rate limiting documented as assumptions or decisions? [Dependency, Plan §Technical Context, Research]
 - [ ] CHK038 Are assumptions about private object storage and source artifact isolation aligned with both self-hosted and managed cloud deployment targets? [Assumption, Plan §Technical Context, Spec §FR-006d]
 - [ ] CHK039 Are optional AI provider assumptions bounded so unavailable AI cannot change upload, review, correction, confirmation, or manual-entry requirements? [Assumption, Spec §FR-020, §FR-021]
+- [ ] CHK044 Are concrete PDF and DOCX adapter tasks present for parser implementation, page counting, source-location provenance, fixture coverage, and malformed/password-protected/scanned/mixed-language cases? [Coverage, Research §PDF.js, §DOCX adapter, Tasks §T099-T108]
+- [ ] CHK045 Are processing resource limits quantified, configurable but not production-disableable, and covered by implementation and tests for memory, timeout, per-user active/queued jobs, rolling attempts, HTTP 429, Retry-After, cleanup, and parser isolation? [Coverage, Spec §FR-005c, §FR-005d, §FR-006c, §FR-006f, Tasks §T109-T115]
+- [ ] CHK046 Is `/resumes/new/manual` specified as a functional route that creates a blank editable manual structured-resume draft without imported document or import job and is reachable from every required recovery state? [Coverage, Spec §FR-025f, §FR-025g, Contract §Manual Entry Step, Tasks §T116-T121]
+- [ ] CHK047 Are unsupported-language contact-only preview rules bounded so no import draft is created, transfer requires explicit confirmation, contact fields become user-added in manual entry, and temporary data follows deletion/logging restrictions? [Coverage, Spec §FR-003c, Contract §Unsupported-Language Contact Preview, Tasks §T122-T125]
+- [ ] CHK048 Does the SC-009 usability protocol verify source-vs-structured-resume separation, source edits/deletion semantics, and seven-day source/artifact expiry using the defined 90% threshold? [Coverage, Spec §SC-009, Tasks §T097]
 
 ## Ambiguities & Conflicts
 
