@@ -2,6 +2,7 @@
 **/.next/
 coverage/
 **/dist/
+**/*.tsbuildinfo
 node_modules/
 apps/*/node_modules/
 packages/*/node_modules/
@@ -13,6 +14,6 @@ Dockerfile*
 .dockerignore
 docker-compose*.yml
 compose*.yml
-storage/
-uploads/
-generated/
+/storage/
+/uploads/
+/generated/

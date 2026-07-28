@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { BullModule } from "@nestjs/bullmq";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { bootstrapHealthSchema } from "@nuvitae/contracts";
 
@@ -19,6 +19,10 @@ export function writeWorkerReadinessFile(path = workerReadinessPath): void {
     ),
     "utf8",
   );
+}
+
+export function removeWorkerReadinessFile(path = workerReadinessPath): void {
+  rmSync(path, { force: true });
 }
 
 @Module({

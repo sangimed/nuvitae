@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@11.15.1",
+  "engines": {
+    "node": "24.15.0",
+    "pnpm": "11.15.1"
+  },
   "scripts": {
     "format": "prettier --write \"*.{json,mjs,ts,yml,yaml}\" \"apps/**/*.{json,ts,tsx,css}\" \"packages/**/*.{json,ts}\" \"README.md\"",
     "format:check": "prettier --check \"*.{json,mjs,ts,yml,yaml}\" \"apps/**/*.{json,ts,tsx,css}\" \"packages/**/*.{json,ts}\" \"README.md\"",

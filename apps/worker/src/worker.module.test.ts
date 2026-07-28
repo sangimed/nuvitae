@@ -1,8 +1,11 @@
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { writeWorkerReadinessFile } from "./worker.module";
+import {
+  removeWorkerReadinessFile,
+  writeWorkerReadinessFile,
+} from "./worker.module";
 
 describe("worker readiness", () => {
   it("writes a liveness payload for Docker health checks", () => {
@@ -14,5 +17,14 @@ describe("worker readiness", () => {
       service: "worker",
       status: "ok",
     });
+  });
+
+  it("removes stale readiness state for shutdown and restart", () => {
+    const path = join(mkdtempSync(join(tmpdir(), "nuvitae-worker-")), "ready");
+
+    writeWorkerReadinessFile(path);
+    removeWorkerReadinessFile(path);
+
+    expect(existsSync(path)).toBe(false);
   });
 });

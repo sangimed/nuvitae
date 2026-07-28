@@ -1,8 +1,14 @@
 import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
-import { WorkerModule, writeWorkerReadinessFile } from "./worker.module";
+import {
+  WorkerModule,
+  removeWorkerReadinessFile,
+  writeWorkerReadinessFile,
+} from "./worker.module";
 
 async function bootstrap() {
+  removeWorkerReadinessFile();
+
   const app = await NestFactory.createApplicationContext(WorkerModule, {
     logger: ["log", "error", "warn"],
   });
@@ -17,6 +23,7 @@ async function bootstrap() {
 
     const shutdown = async () => {
       clearInterval(keepAlive);
+      removeWorkerReadinessFile();
       await app.close();
       resolve();
     };
