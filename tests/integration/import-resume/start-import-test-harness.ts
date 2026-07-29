@@ -18,6 +18,7 @@ import {
   START_IMPORT_PRIVATE_STORAGE,
   START_IMPORT_PROCESSING_LIMITS,
   START_IMPORT_REQUEST_ID_GENERATOR,
+  START_IMPORT_QUEUE_PUBLISHER,
 } from "../../../apps/api/src/import-resume/start-import.tokens.js";
 import {
   API_IMPORT_RESUME_REPOSITORY,
@@ -41,6 +42,9 @@ export interface HarnessOptions {
   };
   readonly storageFailure?: string;
   readonly persistenceFailure?: string;
+  readonly queuePublisher?: {
+    readonly addBulk: ReturnType<typeof vi.fn>;
+  };
 }
 
 export async function createHttpHarness(options: HarnessOptions = {}): Promise<{
@@ -63,6 +67,7 @@ export async function createHttpHarness(options: HarnessOptions = {}): Promise<{
     readonly rollbackReservation: ReturnType<typeof vi.fn>;
   };
   readonly logs: unknown[];
+  readonly queuePublisher: { readonly addBulk: ReturnType<typeof vi.fn> };
 }> {
   const storageObjects = new Map<string, Uint8Array>();
   const logs: unknown[] = [];
@@ -73,6 +78,8 @@ export async function createHttpHarness(options: HarnessOptions = {}): Promise<{
       }
       return aggregate;
     }),
+    findImportByOwner: vi.fn(async () => null),
+    saveImportLifecycle: vi.fn(async (document: unknown) => document),
   };
   const transactionRunner = {
     transaction: vi.fn(async (work: (manager: never) => Promise<unknown>) =>
@@ -109,6 +116,9 @@ export async function createHttpHarness(options: HarnessOptions = {}): Promise<{
     ),
     releaseReservation: vi.fn(async () => undefined),
     rollbackReservation: vi.fn(async () => undefined),
+  };
+  const queuePublisher = options.queuePublisher ?? {
+    addBulk: vi.fn(async () => undefined),
   };
   const providers: Provider[] = [
     {
@@ -153,6 +163,7 @@ export async function createHttpHarness(options: HarnessOptions = {}): Promise<{
           logs.push({ event, metadata }),
       },
     },
+    { provide: START_IMPORT_QUEUE_PUBLISHER, useValue: queuePublisher },
   ];
   const moduleRef = await Test.createTestingModule({
     imports: [ImportResumeModule.register({ providers })],
@@ -178,6 +189,7 @@ export async function createHttpHarness(options: HarnessOptions = {}): Promise<{
     storage,
     limits,
     logs,
+    queuePublisher,
   };
 }
 

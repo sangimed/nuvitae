@@ -77,7 +77,7 @@
 ### Tests for User Story 1
 
 - [X] T021 [P] [US1] Add contract tests for start import, validate document, and process extraction responses in `tests/contract/import-resume/start-import.contract.test.ts`
-- [ ] T022 [P] [US1] Add integration test for authenticated supported PDF/DOCX upload through progress and draft-ready state in `tests/integration/import-resume/start-upload.integration.test.ts`
+- [X] T022 [P] [US1] Add integration test for authenticated supported PDF/DOCX upload through progress and draft-ready state in `tests/integration/import-resume/start-upload.integration.test.ts`
 - [X] T023 [P] [US1] Add integration test for unauthenticated upload requiring sign-in before file acceptance in `tests/integration/import-resume/authentication-gate.integration.test.ts`
 - [X] T024 [P] [US1] Add fixture tests for PDF/DOCX file type, 10 MB limit, 5 rendered page limit, selectable text, and French/English/bilingual language validation in `tests/integration/import-resume/upload-validation.integration.test.ts`
 - [ ] T025 [P] [US1] Add accessibility test for upload labels, keyboard focus, and progress live announcements in `tests/accessibility/import-resume/upload-progress.a11y.test.ts`
@@ -96,7 +96,7 @@
 - [X] T029 [US1] Implement thin NestJS start-import REST controller with authentication, rate-limit check delegation, private storage write delegation, and `ImportedDocument` creation service call in `apps/api/src/import-resume/start-import.controller.ts` and `apps/api/src/import-resume/start-import.service.ts`
 - [X] T030 [US1] Implement document validation service for format, size, rendered pages, language, selectable text, unsafe/unreadable/corrupted/password-protected failures, and recovery categories in `apps/api/src/services/import-resume/validate-document.ts`
 - [X] T031 [US1] Implement deterministic extraction orchestration that creates a draft only when at least one supported field has explicit source content and source location in `apps/api/src/services/import-resume/process-extraction.ts`
-- [ ] T032 [US1] Implement NestJS standalone worker processors for validation, extraction, timeout, and progress state persistence orchestration in `apps/worker/src/import-resume/import-processing.processor.ts`
+- [X] T032 [US1] Implement NestJS standalone worker processors for validation, extraction, timeout, and progress state persistence orchestration in `apps/worker/src/import-resume/import-processing.processor.ts`
 - [ ] T033 [US1] Implement web polling/subscription client for processing status and timeout recovery actions in `apps/web/src/services/import-resume/import-status-client.ts`
 - [ ] T034 [US1] Wire import flow route from create entry through upload and processing states in `apps/web/src/app/import-resume/page.tsx`
 - [ ] T119 [US1] Implement `/resumes/new/manual` route that creates a blank editable structured-resume draft without import records in `apps/web/src/app/resumes/new/manual/page.tsx`

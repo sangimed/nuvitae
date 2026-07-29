@@ -68,6 +68,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@nestjs/bullmq':
+        specifier: 11.0.4
+        version: 11.0.4(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@11.1.28)(bullmq@5.81.2(supports-color@8.1.1))
       '@nestjs/common':
         specifier: 11.1.28
         version: 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1)
@@ -95,6 +98,12 @@ importers:
       '@nuvitae/storage':
         specifier: workspace:*
         version: link:../../packages/storage
+      bullmq:
+        specifier: 5.81.2
+        version: 5.81.2(supports-color@8.1.1)
+      ioredis:
+        specifier: 5.11.1
+        version: 5.11.1(supports-color@8.1.1)
       pg:
         specifier: 8.22.0
         version: 8.22.0
@@ -157,6 +166,9 @@ importers:
       '@nuvitae/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@nuvitae/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       '@nuvitae/extraction':
         specifier: workspace:*
         version: link:../../packages/extraction
@@ -181,6 +193,9 @@ importers:
       typeorm:
         specifier: 0.3.28
         version: 0.3.28(ioredis@5.11.1(supports-color@8.1.1))(pg@8.22.0)(supports-color@8.1.1)
+      zod:
+        specifier: 4.4.3
+        version: 4.4.3
     devDependencies:
       '@nestjs/cli':
         specifier: 11.0.24
