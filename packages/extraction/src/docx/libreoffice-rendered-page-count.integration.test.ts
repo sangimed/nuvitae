@@ -74,6 +74,19 @@ integration("LibreOfficeRenderedPageCounter (parser container)", () => {
     });
   }, 60_000);
 
+  it("accepts exactly five rendered pages and rejects six", async () => {
+    const five = await renderedPagesDocx(5);
+    const six = await renderedPagesDocx(6);
+    await expect(count(five)).resolves.toEqual({
+      ok: true,
+      value: { renderedPageCount: 5 },
+    });
+    await expect(count(six)).resolves.toMatchObject({
+      ok: false,
+      error: { category: "resource_limit" },
+    });
+  }, 60_000);
+
   it("rejects rendered page-limit, malformed input and cancellation", async () => {
     const multiple = await buildDocx({
       documentXml: documentXml(
@@ -105,3 +118,17 @@ integration("LibreOfficeRenderedPageCounter (parser container)", () => {
     expect(await readdir(parserRoot!)).toEqual(before);
   }, 60_000);
 });
+
+async function renderedPagesDocx(pageCount: number): Promise<Uint8Array> {
+  return await buildDocx({
+    documentXml: documentXml(
+      paragraphXml(
+        Array.from({ length: pageCount }, (_, index) =>
+          index === pageCount - 1
+            ? `<w:t>Page ${index + 1}</w:t>`
+            : `<w:t>Page ${index + 1}</w:t><w:br w:type="page"/>`,
+        ).join(""),
+      ),
+    ),
+  });
+}

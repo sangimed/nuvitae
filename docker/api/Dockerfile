@@ -16,6 +16,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json turbo.js
 COPY apps/api/package.json apps/api/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/domain/package.json packages/domain/package.json
+COPY packages/extraction/package.json packages/extraction/package.json
 COPY packages/persistence/package.json packages/persistence/package.json
 COPY packages/storage/package.json packages/storage/package.json
 RUN --mount=type=cache,id=nuvitae-api-pnpm-store,target=/pnpm/store \
@@ -25,10 +26,12 @@ FROM deps AS builder
 COPY apps/api apps/api
 COPY packages/contracts packages/contracts
 COPY packages/domain packages/domain
+COPY packages/extraction packages/extraction
 COPY packages/persistence packages/persistence
 COPY packages/storage packages/storage
 RUN pnpm --filter @nuvitae/contracts build
 RUN pnpm --filter @nuvitae/domain build
+RUN pnpm --filter @nuvitae/extraction build
 RUN pnpm --filter @nuvitae/persistence build
 RUN pnpm --filter @nuvitae/storage build
 RUN pnpm --filter @nuvitae/api build

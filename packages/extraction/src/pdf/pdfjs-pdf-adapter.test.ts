@@ -46,10 +46,16 @@ describe("PdfJsPdfAdapter", () => {
     expect(first.ok).toBe(true);
     if (first.ok) {
       expect(first.value.map((page) => page.pageNumber)).toEqual([1, 2]);
+      expect(first.value.map((page) => page.pageReadingOrder)).toEqual([0, 1]);
       const items = first.value.flatMap((page) => page.items);
       expect(items.map((item) => item.provenance.readingOrder)).toEqual(
         items.map((_, index) => index),
       );
+      for (const page of first.value) {
+        expect(page.items.map((item) => item.provenance.itemIndex)).toEqual(
+          page.items.map((_, index) => index),
+        );
+      }
       expect(items[0]?.provenance).toMatchObject({
         pageNumber: 1,
         itemIndex: 0,
@@ -91,6 +97,8 @@ describe("PdfJsPdfAdapter", () => {
         );
         expect(result.error.message).not.toContain("Safe text");
         expect(result.error.message).not.toContain("PDF");
+        expect(JSON.stringify(result.error)).not.toContain("xref");
+        expect(JSON.stringify(result.error)).not.toContain("stack");
       }
     }
   });
