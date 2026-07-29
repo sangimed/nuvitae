@@ -1,9 +1,16 @@
-export type StorageBootstrapStatus = {
-  readonly packageName: "@nuvitae/storage";
-  readonly privateStorageImplemented: false;
-};
-
-export const storageBootstrapStatus: StorageBootstrapStatus = {
-  packageName: "@nuvitae/storage",
-  privateStorageImplemented: false,
-};
+export {
+  LocalPrivateImportStorage,
+  PrivateImportStorageError,
+  generatePrivateImportStorageKey,
+  validatePrivateImportStorageKey,
+  type GeneratePrivateImportStorageKeyInput,
+  type IssueSignedStorageReferenceInput,
+  type PrivateImportObjectKind,
+  type PrivateImportObjectMetadata,
+  type PrivateImportStorageConfig,
+  type PrivateImportStorageErrorCode,
+  type SignedStorageOperation,
+  type ValidatedPrivateImportStorageKey,
+  type VerifiedSignedStorageReference,
+  type VerifySignedStorageReferenceInput,
+} from "./private-import-storage.js";
