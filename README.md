@@ -248,6 +248,28 @@ and recovery routes remain later user-story work.
 All Phase 2 foundational tasks are complete. Phase 3 and later user-story work
 has not been started by this parser-foundation change.
 
+### Start Import Backend Slice
+
+The first backend slice exposes `POST /import-resume` as an authenticated
+`multipart/form-data` boundary with exactly one `file` field. Authentication
+must already have been completed by a future credential-verifying adapter; the
+Nest guard accepts only the existing symbol-backed verified principal and does
+not trust identity-like headers, cookies, or unverified tokens.
+
+After an atomic upload-attempt reservation, accepted PDF or DOCX bytes are
+stored through the private-storage boundary before one `ImportedDocument` is
+created in an explicit persistence transaction. The source object and document
+record use application-generated owner/import scopes, and retention expires
+exactly seven days after that upload starts. This slice does not validate page
+count or selectable text, detect language, start extraction, enqueue processing,
+create an import draft, or create a structured resume.
+
+The feature module remains intentionally disconnected from `AppModule`.
+Production wiring still requires both a real credential-verifying principal
+adapter and a distributed atomic import-limit store. No fake production
+authentication provider, header-based development identity, in-process
+production limit store, or Redis/Valkey limit adapter is installed.
+
 ### Reset Volumes
 
 This removes dependency caches, `node_modules`, PostgreSQL data, queue data, and

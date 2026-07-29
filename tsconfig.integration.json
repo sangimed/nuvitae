@@ -16,5 +16,9 @@
       "@nuvitae/test-fixtures": ["packages/test-fixtures/src/index.ts"]
     }
   },
-  "include": ["tests/integration/persistence/**/*.ts"]
+  "include": [
+    "tests/contract/**/*.ts",
+    "tests/integration/import-resume/**/*.ts",
+    "tests/integration/persistence/**/*.ts"
+  ]
 }

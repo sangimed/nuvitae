@@ -17,6 +17,7 @@ COPY apps/api/package.json apps/api/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/domain/package.json packages/domain/package.json
 COPY packages/persistence/package.json packages/persistence/package.json
+COPY packages/storage/package.json packages/storage/package.json
 RUN --mount=type=cache,id=nuvitae-api-pnpm-store,target=/pnpm/store \
   pnpm install --frozen-lockfile
 
@@ -25,9 +26,11 @@ COPY apps/api apps/api
 COPY packages/contracts packages/contracts
 COPY packages/domain packages/domain
 COPY packages/persistence packages/persistence
+COPY packages/storage packages/storage
 RUN pnpm --filter @nuvitae/contracts build
 RUN pnpm --filter @nuvitae/domain build
 RUN pnpm --filter @nuvitae/persistence build
+RUN pnpm --filter @nuvitae/storage build
 RUN pnpm --filter @nuvitae/api build
 
 FROM base AS prod-deps
@@ -36,6 +39,7 @@ COPY apps/api/package.json apps/api/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/domain/package.json packages/domain/package.json
 COPY packages/persistence/package.json packages/persistence/package.json
+COPY packages/storage/package.json packages/storage/package.json
 RUN --mount=type=cache,id=nuvitae-api-prod-pnpm-store,target=/pnpm/store \
   pnpm install --frozen-lockfile --prod
 
@@ -58,6 +62,8 @@ COPY --from=builder --chown=app:app /workspace/packages/domain/dist packages/dom
 COPY --from=builder --chown=app:app /workspace/packages/domain/package.json packages/domain/package.json
 COPY --from=builder --chown=app:app /workspace/packages/persistence/dist packages/persistence/dist
 COPY --from=builder --chown=app:app /workspace/packages/persistence/package.json packages/persistence/package.json
+COPY --from=builder --chown=app:app /workspace/packages/storage/dist packages/storage/dist
+COPY --from=builder --chown=app:app /workspace/packages/storage/package.json packages/storage/package.json
 COPY --chown=app:app docker/entrypoints/api.sh docker/entrypoints/api.sh
 
 USER app

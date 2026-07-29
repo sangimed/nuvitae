@@ -29,6 +29,7 @@ describe("import resume REST response contracts", () => {
     {
       status: "import_initialization",
       importId,
+      uploadStatus: "uploaded",
       retentionExpiresAt: "2026-08-04T10:00:00.000Z",
       manualEntryUrl: "/resumes/new/manual",
       userMessage: "Your upload can be kept for review for up to 7 days.",

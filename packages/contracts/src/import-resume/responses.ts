@@ -73,6 +73,7 @@ export const importInitializationResponseSchema = responseBaseSchema
   .extend({
     status: z.literal("import_initialization"),
     importId: uuidSchema,
+    uploadStatus: z.literal("uploaded"),
     retentionExpiresAt: z.string().datetime(),
     manualEntryUrl: z.literal("/resumes/new/manual"),
     userMessage: plainMessageSchema,
