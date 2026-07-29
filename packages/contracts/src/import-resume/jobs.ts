@@ -2,6 +2,21 @@ import { z } from "zod";
 
 export const importResumeJobSchemaVersion = "2026-07-28" as const;
 
+export const IMPORT_RESUME_PROCESSING_QUEUE =
+  "resume-import-processing" as const;
+export const IMPORT_RESUME_JOB_NAMES = Object.freeze({
+  validation: "document_validation",
+  extraction: "deterministic_extraction",
+  foregroundTimeout: "foreground_timeout",
+});
+
+export function importResumeJobId(
+  importId: string,
+  stage: "validation" | "extraction" | "timeout",
+): string {
+  return `import-${importId}-${stage === "timeout" ? "timeout" : stage}-v1`;
+}
+
 const uuidSchema = z.string().uuid();
 const idempotencyKeySchema = z
   .string()
@@ -64,6 +79,7 @@ export const documentValidationJobPayloadSchema = jobBaseSchema
     documentFormat: z.enum(["pdf", "docx"]),
     sourceStorageKey: storageKeySchema,
     uploadedAt: z.string().datetime(),
+    foregroundDeadline: z.string().datetime(),
     sizeBytes: z
       .number()
       .int()
@@ -78,7 +94,15 @@ export const deterministicExtractionJobPayloadSchema = jobBaseSchema
     documentFormat: z.enum(["pdf", "docx"]),
     sourceStorageKey: storageKeySchema,
     validationCompletedAt: z.string().datetime(),
+    foregroundDeadline: z.string().datetime(),
     abortTokenId: uuidSchema.optional(),
+  })
+  .strict();
+
+export const foregroundTimeoutJobPayloadSchema = jobBaseSchema
+  .extend({
+    jobType: z.literal("foreground_timeout"),
+    foregroundDeadline: z.string().datetime(),
   })
   .strict();
 
@@ -142,6 +166,7 @@ export const sourceArtifactDeletionJobPayloadSchema = jobBaseSchema
 export const importResumeJobPayloadSchema = z.discriminatedUnion("jobType", [
   documentValidationJobPayloadSchema,
   deterministicExtractionJobPayloadSchema,
+  foregroundTimeoutJobPayloadSchema,
   cancellationJobPayloadSchema,
   retryJobPayloadSchema,
   sourceArtifactDeletionJobPayloadSchema,
@@ -152,6 +177,9 @@ export type DocumentValidationJobPayload = z.infer<
 >;
 export type DeterministicExtractionJobPayload = z.infer<
   typeof deterministicExtractionJobPayloadSchema
+>;
+export type ForegroundTimeoutJobPayload = z.infer<
+  typeof foregroundTimeoutJobPayloadSchema
 >;
 export type CancellationJobPayload = z.infer<
   typeof cancellationJobPayloadSchema

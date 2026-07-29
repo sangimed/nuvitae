@@ -1,9 +1,10 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import {
   importInitializationResponseSchema,
   importResumeResponseSchemaVersion,
   type ImportInitializationResponse,
 } from "@nuvitae/contracts";
+import { IMPORT_RESUME_JOB_NAMES, importResumeJobId } from "@nuvitae/contracts";
 import {
   calculateRetentionExpiresAt,
   validateUploadEligibility,
@@ -31,6 +32,7 @@ import type {
   StartImportLimitPort,
   StartImportPrivacyLogger,
   StartImportPrivateStorage,
+  StartImportQueuePublisher,
   StartImportRequestIdGenerator,
 } from "./start-import.ports.js";
 import {
@@ -41,6 +43,7 @@ import {
   START_IMPORT_PRIVATE_STORAGE,
   START_IMPORT_PROCESSING_LIMITS,
   START_IMPORT_REQUEST_ID_GENERATOR,
+  START_IMPORT_QUEUE_PUBLISHER,
 } from "./start-import.tokens.js";
 
 const retentionDays = 7;
@@ -69,6 +72,9 @@ export class StartImportService {
     private readonly requestIdGenerator: StartImportRequestIdGenerator,
     @Inject(START_IMPORT_PRIVACY_LOGGER)
     private readonly logger: StartImportPrivacyLogger,
+    @Optional()
+    @Inject(START_IMPORT_QUEUE_PUBLISHER)
+    private readonly queuePublisher: StartImportQueuePublisher | undefined,
   ) {}
 
   async start(input: StartImportInput): Promise<ImportInitializationResponse> {
@@ -176,6 +182,78 @@ export class StartImportService {
       );
     }
 
+    if (this.queuePublisher !== undefined) {
+      const deadline = new Date(
+        createdAt.getTime() +
+          this.processingLimits.foregroundTimeoutSeconds * 1_000,
+      );
+      try {
+        await this.queuePublisher.addBulk([
+          {
+            name: IMPORT_RESUME_JOB_NAMES.validation,
+            jobId: importResumeJobId(importId, "validation"),
+            data: {
+              schemaVersion: "2026-07-28",
+              jobType: "document_validation",
+              importId,
+              owner: { ownerUserId: input.ownerUserId },
+              correlationId: importId,
+              idempotencyKey: importResumeJobId(importId, "validation"),
+              requestedAt: createdAt.toISOString(),
+              documentFormat: upload.format,
+              sourceStorageKey: storageKey,
+              uploadedAt: createdAt.toISOString(),
+              foregroundDeadline: deadline.toISOString(),
+              sizeBytes: upload.sizeBytes,
+            },
+          },
+          {
+            name: IMPORT_RESUME_JOB_NAMES.foregroundTimeout,
+            jobId: importResumeJobId(importId, "timeout"),
+            delay: Math.max(0, deadline.getTime() - Date.now()),
+            data: {
+              schemaVersion: "2026-07-28",
+              jobType: "foreground_timeout",
+              importId,
+              owner: { ownerUserId: input.ownerUserId },
+              correlationId: importId,
+              idempotencyKey: importResumeJobId(importId, "timeout"),
+              requestedAt: createdAt.toISOString(),
+              foregroundDeadline: deadline.toISOString(),
+            },
+          },
+        ]);
+        await this.transactionRunner.transaction(async (manager) => {
+          const current = await this.repository.findImportByOwner(
+            importId,
+            input.ownerUserId,
+            manager,
+          );
+          if (
+            current !== null &&
+            current.document.processingStatus === "not_started"
+          ) {
+            await this.repository.saveImportLifecycle(
+              { ...current.document, processingStatus: "queued" },
+              manager,
+            );
+          }
+        });
+      } catch {
+        await this.markPublicationFailure(importId, input.ownerUserId);
+        await this.limits.releaseReservation(
+          input.ownerUserId,
+          reservation.reservation.id,
+          createdAt,
+        );
+        throw new StartImportHttpError(
+          503,
+          "persistence_unavailable",
+          "Resume processing is temporarily unavailable. Try again later.",
+        );
+      }
+    }
+
     try {
       await this.limits.releaseReservation(
         input.ownerUserId,
@@ -220,6 +298,32 @@ export class StartImportService {
       fileSizeBucket: sizeBucket(upload.sizeBytes),
     });
     return parsed.data;
+  }
+
+  private async markPublicationFailure(
+    importId: string,
+    ownerUserId: string,
+  ): Promise<void> {
+    try {
+      await this.transactionRunner.transaction(async (manager) => {
+        const current = await this.repository.findImportByOwner(
+          importId,
+          ownerUserId,
+          manager,
+        );
+        if (current !== null) {
+          await this.repository.saveImportLifecycle(
+            { ...current.document, processingStatus: "failed" },
+            manager,
+          );
+        }
+      });
+    } catch {
+      this.logger.warn("import.queue_publication_state_failed", {
+        importId,
+        errorCategory: "queue_publication_state_failed",
+      });
+    }
   }
 
   private async releaseRejectedAttempt(

@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { BullModule } from "@nestjs/bullmq";
 import { WorkerPersistenceModule } from "./persistence/worker-persistence.module";
+import { ImportProcessingProcessor } from "./import-resume/import-processing.processor";
 
 @Module({
   imports: [
@@ -13,7 +14,9 @@ import { WorkerPersistenceModule } from "./persistence/worker-persistence.module
         },
       }),
     }),
+    BullModule.registerQueue({ name: "resume-import-processing" }),
     WorkerPersistenceModule,
   ],
+  providers: [ImportProcessingProcessor],
 })
 export class WorkerModule {}

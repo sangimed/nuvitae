@@ -25,6 +25,7 @@ describe("import resume job contracts", () => {
       documentFormat: "pdf",
       sourceStorageKey: "users/u/imports/i/source.pdf",
       uploadedAt: "2026-07-28T10:00:00.000Z",
+      foregroundDeadline: "2026-07-28T10:03:00.000Z",
       sizeBytes: 1024,
     },
     {
@@ -32,6 +33,7 @@ describe("import resume job contracts", () => {
       documentFormat: "docx",
       sourceStorageKey: "users/u/imports/i/source.docx",
       validationCompletedAt: "2026-07-28T10:01:00.000Z",
+      foregroundDeadline: "2026-07-28T10:03:00.000Z",
     },
     {
       jobType: "cancellation",
