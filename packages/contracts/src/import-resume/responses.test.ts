@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   importResumeResponseSchema,
   importResumeResponseSchemaVersion,
+  publicImportStatusResponseSchema,
 } from "./responses.js";
 
 const requestId = "11111111-1111-4111-8111-111111111111";
@@ -166,5 +167,73 @@ describe("import resume REST response contracts", () => {
         userMessage: "Reading content.",
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("public import status snapshot contract", () => {
+  it("accepts strict public processing and terminal snapshots", () => {
+    expect(
+      publicImportStatusResponseSchema.parse({
+        ...base,
+        importId,
+        status: "processing",
+        currentStep: "reading_content",
+        progressKnown: true,
+        progressPercent: 42,
+        allowedRecoveryActions: ["manual_entry"],
+        userMessage: "Reading your resume.",
+      }),
+    ).toMatchObject({ currentStep: "reading_content", progressPercent: 42 });
+
+    expect(
+      publicImportStatusResponseSchema.parse({
+        ...base,
+        importId,
+        status: "draft_ready",
+        progressKnown: true,
+        progressPercent: 100,
+        draftSummary: draft,
+        allowedRecoveryActions: ["manual_entry"],
+        userMessage: "Your resume draft is ready.",
+      }),
+    ).toMatchObject({ status: "draft_ready", draftSummary: draft });
+  });
+
+  it("rejects internal details, unknown progress percentages, and processing without a step", () => {
+    expect(() =>
+      publicImportStatusResponseSchema.parse({
+        ...base,
+        importId,
+        status: "processing",
+        progressKnown: false,
+        allowedRecoveryActions: ["manual_entry"],
+        userMessage: "Reading your resume.",
+      }),
+    ).toThrow();
+
+    expect(() =>
+      publicImportStatusResponseSchema.parse({
+        ...base,
+        importId,
+        status: "processing",
+        currentStep: "reading_content",
+        progressKnown: false,
+        progressPercent: 10,
+        allowedRecoveryActions: ["manual_entry"],
+        userMessage: "Reading your resume.",
+      }),
+    ).toThrow();
+
+    expect(() =>
+      publicImportStatusResponseSchema.parse({
+        ...base,
+        importId,
+        status: "terminal_processing_failure",
+        progressKnown: false,
+        allowedRecoveryActions: ["manual_entry"],
+        userMessage: "Import failed.",
+        storageKey: "private/source",
+      }),
+    ).toThrow();
   });
 });

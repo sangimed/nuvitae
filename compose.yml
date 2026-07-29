@@ -219,6 +219,29 @@ services:
       - .:/workspace
       - pnpm-store:/pnpm/store
       - root-node-modules:/workspace/node_modules
+      - web-node-modules:/workspace/apps/web/node_modules
+      - contracts-node-modules:/workspace/packages/contracts/node_modules
+    profiles:
+      - test
+
+  playwright-test:
+    build:
+      context: .
+      dockerfile: docker/test/Dockerfile
+      args:
+        USER_ID: ${LOCAL_UID:-1000}
+        GROUP_ID: ${LOCAL_GID:-1000}
+        PNPM_VERSION: 11.15.1
+    image: nuvitae-playwright-test:0.1.0
+    working_dir: /workspace
+    environment:
+      NEXT_TELEMETRY_DISABLED: 1
+    volumes:
+      - .:/workspace
+      - pnpm-store:/pnpm/store
+      - root-node-modules:/workspace/node_modules
+      - web-node-modules:/workspace/apps/web/node_modules
+      - contracts-node-modules:/workspace/packages/contracts/node_modules
     profiles:
       - test
 
