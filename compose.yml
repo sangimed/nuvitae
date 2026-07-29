@@ -107,6 +107,7 @@ services:
     build:
       context: .
       dockerfile: docker/worker/Dockerfile
+      target: runtime
       args:
         PNPM_VERSION: 11.15.1
     image: nuvitae-worker:0.1.0
@@ -123,8 +124,13 @@ services:
       QUEUE_PORT: 6379
       QUEUE_PASSWORD: ${QUEUE_PASSWORD:-nuvitae_queue_password}
       WORKER_READY_FILE: /tmp/nuvitae-worker-ready
+      PARSER_TMP_ROOT: /tmp/nuvitae-parser
     volumes:
       - private-storage:/var/lib/nuvitae/private
+    tmpfs:
+      - /tmp/nuvitae-parser:rw,noexec,nosuid,nodev,mode=0700,uid=10001,gid=10001,size=768m
+    security_opt:
+      - no-new-privileges:true
     depends_on:
       postgres:
         condition: service_healthy
@@ -136,6 +142,25 @@ services:
       timeout: 3s
       retries: 5
       start_period: 15s
+
+  parser-test:
+    build:
+      context: .
+      dockerfile: docker/worker/Dockerfile
+      target: parser-test
+      args:
+        PNPM_VERSION: 11.15.1
+    image: nuvitae-parser-test:0.1.0
+    working_dir: /workspace
+    environment:
+      PARSER_TMP_ROOT: /tmp/nuvitae-parser
+    network_mode: none
+    tmpfs:
+      - /tmp/nuvitae-parser:rw,noexec,nosuid,nodev,mode=0700,uid=1000,gid=1000,size=768m
+    security_opt:
+      - no-new-privileges:true
+    profiles:
+      - test
 
   postgres:
     image: postgres:17.10-alpine3.24
