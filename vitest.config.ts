@@ -30,6 +30,8 @@ export default defineConfig({
       "apps/**/*.test.ts",
       "apps/**/*.test.tsx",
       "packages/**/*.test.ts",
+      "tests/contract/**/*.test.ts",
+      "tests/integration/import-resume/**/*.test.ts",
     ],
     environment: "node",
   },
