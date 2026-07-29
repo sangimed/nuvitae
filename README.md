@@ -189,9 +189,37 @@ Processing exposes only plain-language steps and known percentages when the
 strict contract provides them. Queue progress is supplemental, schema-validated,
 and cannot override terminal PostgreSQL lifecycle state.
 
-Phase 4 review/correction UI, structured-resume confirmation, source deletion,
-retry/cancellation backend behavior, the functional manual editor, AI, OCR,
-retention workers, and deletion workers remain intentionally absent.
+The review-and-correction slice is available at
+`/import-resume/:importId/review` after the owner-scoped status API reports a
+draft-ready or partial-extraction result with a valid draft. The route reloads
+through `GET /import-resume/:importId/review`; browser state and URLs never
+carry field values, filenames, source locations, storage keys, or owner IDs.
+Review mutations use `PATCH /import-resume/:importId/review` with one explicit
+operation per request, an operation UUID for idempotency, and
+`expectedReviewRevision` for optimistic concurrency.
+
+Review responses group fields and warnings into personal, contact, headline,
+summary, work experience, education, skills, languages, projects,
+certifications, and professional links. Users can confirm, edit, remove, add,
+complete missing information, exclude sections, resolve warnings, or
+intentionally leave warnings. Provenance is reduced to safe public labels such
+as imported page or document body, added by you, edited by you with safe
+original provenance, or inferred grouping requiring confirmation. Raw snippets,
+bounding boxes, offsets, parser details, filenames, storage keys, SQL errors,
+and stack traces are not exposed or logged.
+
+The imported source document remains immutable during review. Review completion
+can move the draft to `ready_to_confirm`, but that state is only an
+informational pre-confirmation state in this story: no `StructuredResume` is
+created, no final confirmation endpoint or button is functional, no retention
+deadline is extended, and source deletion remains a later workflow.
+Accessibility coverage includes section discoverability, keyboard field and
+warning actions, focus management, live pending/success/conflict announcements,
+and non-colour warning treatment.
+
+Structured-resume confirmation, source deletion, retry/cancellation backend
+behavior, the functional manual editor, AI, OCR, retention workers, and
+deletion workers remain intentionally absent.
 
 Accessibility coverage for this slice includes semantic choices, labelled file
 input, associated upload/privacy guidance, keyboard activation, visible focus,

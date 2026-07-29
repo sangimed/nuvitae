@@ -1,0 +1,349 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import type {
+  ReviewDraftReadResponse,
+  ReviewField,
+  ReviewMutationAction,
+} from "@nuvitae/contracts";
+import {
+  createReviewMutationRequest,
+  createReviewOperationId,
+  projectOptimisticReview,
+  readReviewDraft,
+  sendReviewMutation,
+} from "../../services/import-resume/review-client";
+import { FieldProvenance } from "./FieldProvenance";
+import { ReviewWarning } from "./ReviewWarning";
+
+export function ReviewStep(props: { readonly importId: string }) {
+  const [draft, setDraft] = useState<ReviewDraftReadResponse | undefined>();
+  const [loading, setLoading] = useState(true);
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<string | undefined>();
+  const [error, setError] = useState<string | undefined>();
+  const errorRef = useRef<HTMLDivElement | null>(null);
+  const liveRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    void readReviewDraft({
+      importId: props.importId,
+      signal: controller.signal,
+    }).then((outcome) => {
+      setLoading(false);
+      if (outcome.ok) {
+        setDraft(outcome.response);
+        setMessage(outcome.response.userMessage);
+        setError(undefined);
+      } else if (outcome.category !== "cancelled") {
+        setError(outcome.message);
+        window.setTimeout(() => errorRef.current?.focus(), 0);
+      }
+    });
+    return () => controller.abort();
+  }, [props.importId]);
+
+  async function mutate(action: ReviewMutationAction) {
+    if (draft === undefined || pending) return;
+    const snapshot = draft;
+    setPending(true);
+    setError(undefined);
+    setMessage("Saving review change.");
+    setDraft(projectOptimisticReview(draft, action));
+    const request = createReviewMutationRequest({
+      operationId: createReviewOperationId(),
+      expectedReviewRevision: draft.reviewRevision,
+      action,
+    });
+    const outcome = await sendReviewMutation({
+      importId: props.importId,
+      request,
+    });
+    setPending(false);
+    if (outcome.ok) {
+      setDraft(outcome.response.draft);
+      setMessage(outcome.response.userMessage);
+      window.setTimeout(() => liveRef.current?.focus(), 0);
+      return;
+    }
+    setDraft(snapshot);
+    if (outcome.category === "stale_review") {
+      const refreshed = await readReviewDraft({ importId: props.importId });
+      if (refreshed.ok) setDraft(refreshed.response);
+      setError("The review changed. Current server data has been reloaded.");
+    } else {
+      setError(outcome.message);
+    }
+    window.setTimeout(() => errorRef.current?.focus(), 0);
+  }
+
+  if (loading) {
+    return (
+      <section className="import-card" aria-busy="true">
+        <h1>Loading import review</h1>
+        <p role="status">Loading the private review draft.</p>
+      </section>
+    );
+  }
+
+  if (draft === undefined) {
+    return (
+      <section className="import-card" aria-labelledby="review-error-title">
+        <h1 id="review-error-title">Review unavailable</h1>
+        <div tabIndex={-1} ref={errorRef} role="alert">
+          {error ?? "This import is not ready for review yet."}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="review-shell" aria-labelledby="review-title">
+      <p className="eyebrow">Import review</p>
+      <h1 id="review-title">Review imported resume</h1>
+      <div
+        ref={liveRef}
+        tabIndex={-1}
+        className="status-live"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {pending ? "Saving review change." : message}
+      </div>
+      {error === undefined ? null : (
+        <div
+          className="message message-error"
+          ref={errorRef}
+          tabIndex={-1}
+          role="alert"
+        >
+          {error}
+        </div>
+      )}
+
+      <dl className="status-list compact">
+        <div>
+          <dt>Active fields</dt>
+          <dd>{draft.activeFieldCount}</dd>
+        </div>
+        <div>
+          <dt>Needs review</dt>
+          <dd>{draft.unresolvedWarningCount}</dd>
+        </div>
+        <div>
+          <dt>Review revision</dt>
+          <dd>{draft.reviewRevision}</dd>
+        </div>
+      </dl>
+
+      {draft.readyToConfirm ? (
+        <p className="message message-success">
+          Review requirements have been satisfied. Final resume creation is a
+          separate next step and is not available here.
+        </p>
+      ) : null}
+
+      {draft.sections.map((section) => (
+        <section
+          className="review-section"
+          key={section.section}
+          aria-labelledby={`${section.section}-review-heading`}
+        >
+          <h2 id={`${section.section}-review-heading`}>{section.label}</h2>
+          {section.fields.length === 0 ? (
+            <p>No imported information is active in this section.</p>
+          ) : null}
+          {section.fields.map((field) => (
+            <ReviewFieldRow
+              key={field.fieldId}
+              field={field}
+              pending={pending}
+              onAction={mutate}
+            />
+          ))}
+          {section.warnings.map((warning) => (
+            <ReviewWarning
+              key={warning.warningId}
+              warning={warning}
+              pending={pending}
+              onResolve={(resolution) =>
+                mutate({
+                  type: "resolve_warning",
+                  warningId: warning.warningId,
+                  resolution,
+                })
+              }
+            />
+          ))}
+          <div className="action-row">
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() =>
+                mutate({
+                  type: "add_field",
+                  section: section.section,
+                  fieldPath: `${section.section}.manual`,
+                  value: { kind: "text", value: "Added information" },
+                })
+              }
+            >
+              Add information
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() =>
+                mutate({ type: "exclude_section", section: section.section })
+              }
+            >
+              Exclude section
+            </button>
+          </div>
+        </section>
+      ))}
+    </section>
+  );
+}
+
+function ReviewFieldRow(props: {
+  readonly field: ReviewField;
+  readonly pending: boolean;
+  readonly onAction: (action: ReviewMutationAction) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(valueToText(props.field.value));
+  const statusId = `${props.field.fieldId}-status`;
+
+  return (
+    <article
+      className="review-field"
+      aria-labelledby={`${props.field.fieldId}-label`}
+    >
+      <h3 id={`${props.field.fieldId}-label`}>
+        {fieldLabel(props.field.fieldPath)}
+      </h3>
+      <p id={statusId}>
+        Review state: {props.field.reviewStatus.replaceAll("_", " ")}.
+        Confidence: {props.field.confidenceStatus.replaceAll("_", " ")}.
+        Inference: {props.field.inferenceStatus.replaceAll("_", " ")}.
+      </p>
+      <p>
+        <FieldProvenance
+          provenance={props.field.provenance}
+          inferenceStatus={props.field.inferenceStatus}
+        />
+      </p>
+      {editing ? (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (text.trim() === "") return;
+            props.onAction({
+              type: "edit_field",
+              fieldId: props.field.fieldId,
+              value: { kind: "text", value: text.trim() },
+            });
+            setEditing(false);
+          }}
+        >
+          <label htmlFor={`${props.field.fieldId}-edit`}>Edit value</label>
+          <textarea
+            id={`${props.field.fieldId}-edit`}
+            value={text}
+            aria-describedby={statusId}
+            onChange={(event) => setText(event.target.value)}
+          />
+          <div className="action-row">
+            <button
+              type="submit"
+              disabled={props.pending || text.trim() === ""}
+            >
+              Save change
+            </button>
+            <button
+              type="button"
+              disabled={props.pending}
+              onClick={() => {
+                setText(valueToText(props.field.value));
+                setEditing(false);
+              }}
+            >
+              Cancel edit
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          <p aria-describedby={statusId}>{valueToText(props.field.value)}</p>
+          <div className="action-row">
+            <button
+              type="button"
+              disabled={props.pending}
+              onClick={() =>
+                props.onAction({
+                  type: "confirm_field",
+                  fieldId: props.field.fieldId,
+                })
+              }
+            >
+              Confirm field
+            </button>
+            <button
+              type="button"
+              disabled={props.pending}
+              onClick={() => setEditing(true)}
+            >
+              Edit field
+            </button>
+            <button
+              type="button"
+              disabled={props.pending}
+              onClick={() =>
+                props.onAction({
+                  type: "remove_field",
+                  fieldId: props.field.fieldId,
+                })
+              }
+            >
+              Remove from draft
+            </button>
+          </div>
+          <p className="message">
+            Removing affects this review draft only. It does not change the
+            uploaded source.
+          </p>
+        </>
+      )}
+    </article>
+  );
+}
+
+function fieldLabel(fieldPath: string): string {
+  const parts = fieldPath.split(".");
+  return parts[parts.length - 1]?.replaceAll("_", " ") ?? fieldPath;
+}
+
+function valueToText(value: ReviewField["value"]): string {
+  switch (value.kind) {
+    case "text":
+      return value.value;
+    case "text_list":
+      return value.values.join(", ");
+    case "date":
+      return String(value.value.year);
+    case "date_range":
+      return value.isOngoing ? "Present" : "Date range";
+    case "link":
+      return value.label === undefined
+        ? value.url
+        : `${value.label}: ${value.url}`;
+    case "language":
+      return value.proficiency === undefined
+        ? value.name
+        : `${value.name}, ${value.proficiency}`;
+  }
+}

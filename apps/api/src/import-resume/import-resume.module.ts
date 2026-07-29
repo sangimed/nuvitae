@@ -13,6 +13,9 @@ import { VerifiedPrincipalGuard } from "./verified-principal.guard.js";
 import { ImportStatusController } from "./import-status.controller.js";
 import { ImportStatusService } from "./import-status.service.js";
 import { IMPORT_STATUS_REQUEST_ID_GENERATOR } from "./start-import.tokens.js";
+import { ReviewController } from "./review.controller.js";
+import { ReadImportDraftService } from "../services/import-resume/read-draft.js";
+import { UpdateImportReviewService } from "../services/import-resume/update-review.js";
 
 export interface ImportResumeModuleOptions {
   readonly imports?: ModuleMetadata["imports"];
@@ -30,10 +33,16 @@ export class ImportResumeModule {
     return {
       module: ImportResumeModule,
       imports: options.imports === undefined ? [] : [...options.imports],
-      controllers: [StartImportController, ImportStatusController],
+      controllers: [
+        StartImportController,
+        ImportStatusController,
+        ReviewController,
+      ],
       providers: [
         StartImportService,
         ImportStatusService,
+        ReadImportDraftService,
+        UpdateImportReviewService,
         {
           provide: IMPORT_STATUS_REQUEST_ID_GENERATOR,
           useValue: { nextRequestId: () => randomUUID() },
@@ -43,7 +52,12 @@ export class ImportResumeModule {
         StartImportExceptionFilter,
         ...options.providers,
       ],
-      exports: [StartImportService, ImportStatusService],
+      exports: [
+        StartImportService,
+        ImportStatusService,
+        ReadImportDraftService,
+        UpdateImportReviewService,
+      ],
     };
   }
 }

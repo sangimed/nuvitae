@@ -114,21 +114,21 @@
 
 ### Tests for User Story 2
 
-- [ ] T035 [P] [US2] Add contract tests for read import draft and update review actions in `tests/contract/import-resume/review-draft.contract.test.ts`
-- [ ] T036 [P] [US2] Add integration test for grouped review sections and field correction actions in `tests/integration/import-resume/review-correction.integration.test.ts`
-- [ ] T037 [P] [US2] Add integration test for duplicate, conflicting, missing, low-confidence, and inferred warning state transitions in `tests/integration/import-resume/warning-resolution.integration.test.ts`
-- [ ] T038 [P] [US2] Add domain test for multiple roles under one employer and ongoing-role display semantics in `packages/domain/src/resume-import/work-experience.test.ts`
-- [ ] T039 [P] [US2] Add accessibility test for warning labels, non-colour warning treatment, editable fields, and keyboard review flow in `tests/accessibility/import-resume/review.a11y.test.ts`
+- [X] T035 [P] [US2] Add contract tests for read import draft and update review actions in `tests/contract/import-resume/review-draft.contract.test.ts`
+- [X] T036 [P] [US2] Add integration test for grouped review sections and field correction actions in `tests/integration/import-resume/review-correction.integration.test.ts`
+- [X] T037 [P] [US2] Add integration test for duplicate, conflicting, missing, low-confidence, and inferred warning state transitions in `tests/integration/import-resume/warning-resolution.integration.test.ts`
+- [X] T038 [P] [US2] Add domain test for multiple roles under one employer and ongoing-role display semantics in `packages/domain/src/resume-import/work-experience.test.ts`
+- [X] T039 [P] [US2] Add accessibility test for warning labels, non-colour warning treatment, editable fields, and keyboard review flow in `tests/accessibility/import-resume/review.a11y.test.ts`
 
 ### Implementation for User Story 2
 
-- [ ] T040 [P] [US2] Implement extracted field, warning, correction, work experience, and role domain operations in `packages/domain/src/resume-import/review.ts`
-- [ ] T041 [US2] Implement read import draft service with grouped resume sections, source status, confidence status, inference status, and available review actions in `apps/api/src/services/import-resume/read-draft.ts`
-- [ ] T042 [US2] Implement update review service for confirm, edit, remove, complete, add, exclude, and intentionally leave actions in `apps/api/src/services/import-resume/update-review.ts`
-- [ ] T043 [US2] Implement thin NestJS read draft and update review REST controllers with use-case logic delegated to providers/services in `apps/api/src/import-resume/review.controller.ts`
-- [ ] T044 [P] [US2] Implement sectioned review UI for personal/contact, headline, summary, work experience, education, skills, languages, projects, certifications, and links using shared structured-resume section components where appropriate in `apps/web/src/features/import-resume/ReviewStep.tsx`
-- [ ] T045 [P] [US2] Implement warning and provenance UI components in `apps/web/src/features/import-resume/ReviewWarning.tsx` and `apps/web/src/features/import-resume/FieldProvenance.tsx`
-- [ ] T046 [US2] Implement review API client and optimistic review state updates without source-document mutation in `apps/web/src/services/import-resume/review-client.ts`
+- [X] T040 [P] [US2] Implement extracted field, warning, correction, work experience, and role domain operations in `packages/domain/src/resume-import/review.ts`
+- [X] T041 [US2] Implement read import draft service with grouped resume sections, source status, confidence status, inference status, and available review actions in `apps/api/src/services/import-resume/read-draft.ts`
+- [X] T042 [US2] Implement update review service for confirm, edit, remove, complete, add, exclude, and intentionally leave actions in `apps/api/src/services/import-resume/update-review.ts`
+- [X] T043 [US2] Implement thin NestJS read draft and update review REST controllers with use-case logic delegated to providers/services in `apps/api/src/import-resume/review.controller.ts`
+- [X] T044 [P] [US2] Implement sectioned review UI for personal/contact, headline, summary, work experience, education, skills, languages, projects, certifications, and links using shared structured-resume section components where appropriate in `apps/web/src/features/import-resume/ReviewStep.tsx`
+- [X] T045 [P] [US2] Implement warning and provenance UI components in `apps/web/src/features/import-resume/ReviewWarning.tsx` and `apps/web/src/features/import-resume/FieldProvenance.tsx`
+- [X] T046 [US2] Implement review API client and optimistic review state updates without source-document mutation in `apps/web/src/services/import-resume/review-client.ts`
 
 **Checkpoint**: User Story 2 is independently testable as a review and correction surface for extracted data.
 

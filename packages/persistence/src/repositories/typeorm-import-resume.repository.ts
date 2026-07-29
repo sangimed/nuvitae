@@ -5,6 +5,7 @@ import type {
   ManualStructuredResumeDraft,
   SourcedText,
   StructuredResume,
+  UserCorrection,
 } from "@nuvitae/domain";
 import { DataSource, EntityManager } from "typeorm";
 import {
@@ -21,6 +22,7 @@ import {
   WorkExperienceEntity,
   WorkExperienceRoleEntity,
   WorkRoleDetailEntity,
+  UserCorrectionEntity,
 } from "../entities/import-resume.entities.js";
 import {
   mapDeletionJob,
@@ -29,6 +31,7 @@ import {
   mapImportedDocument,
   mapManualStructuredResumeDraft,
   mapStructuredResume,
+  mapUserCorrection,
 } from "../mappers/import-resume.mapper.js";
 import type {
   ImportAggregate,
@@ -56,6 +59,7 @@ function draftEntity(value: ImportDraft): ImportDraftEntity {
     importedDocumentId: value.importedDocumentId,
     ownerUserId: value.ownerUserId,
     status: value.status,
+    reviewRevision: value.reviewRevision,
     createdAt: value.createdAt,
     lastReviewedAt: value.lastReviewedAt ?? null,
     retentionExpiresAt: value.retentionExpiresAt,
@@ -242,6 +246,118 @@ export class TypeOrmImportResumeRepository
       }),
     ]);
     return mapImportDraft(draft, fields, warnings);
+  }
+
+  async findReviewDraftByImportAndOwner(
+    importId: string,
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<ImportDraft | null> {
+    return this.findDraftByImportAndOwner(importId, userId, manager);
+  }
+
+  async findReviewDraftByImportAndOwnerForUpdate(
+    importId: string,
+    userId: string,
+    manager: EntityManager,
+  ): Promise<ImportDraft | null> {
+    const draft = await manager
+      .createQueryBuilder(ImportDraftEntity, "draft")
+      .setLock("pessimistic_write")
+      .where("draft.imported_document_id = :importId", { importId })
+      .andWhere("draft.owner_user_id = :userId", { userId })
+      .getOne();
+    if (draft === null) return null;
+    const [fields, warnings] = await Promise.all([
+      manager.findBy(ExtractedFieldEntity, {
+        importDraftId: draft.id,
+        ownerUserId: userId,
+      }),
+      manager.findBy(ImportWarningEntity, {
+        importDraftId: draft.id,
+        ownerUserId: userId,
+      }),
+    ]);
+    return mapImportDraft(draft, fields, warnings);
+  }
+
+  async findCorrectionByOwnerAndOperation(
+    operationId: string,
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<UserCorrection | null> {
+    const entity = await this.manager(manager).findOneBy(UserCorrectionEntity, {
+      id: operationId,
+      createdByUserId: userId,
+    });
+    return entity === null ? null : mapUserCorrection(entity);
+  }
+
+  async saveReviewMutation(
+    input: {
+      readonly draft: ImportDraft;
+      readonly correction: UserCorrection;
+      readonly previousReviewRevision: number;
+    },
+    manager: EntityManager,
+  ): Promise<ImportDraft> {
+    const nextRevision = input.previousReviewRevision + 1;
+    const result = await manager.update(
+      ImportDraftEntity,
+      {
+        id: input.draft.id,
+        ownerUserId: input.draft.ownerUserId,
+        reviewRevision: input.previousReviewRevision,
+      },
+      {
+        status: input.draft.status,
+        lastReviewedAt: input.draft.lastReviewedAt ?? null,
+        reviewRevision: nextRevision,
+      },
+    );
+    if (result.affected !== 1) {
+      return Promise.reject(new Error("stale_review_revision"));
+    }
+    await manager.save(
+      ImportWarningEntity,
+      input.draft.warnings.map((warning) =>
+        Object.assign(new ImportWarningEntity(), {
+          ...warning,
+          ownerUserId: input.draft.ownerUserId,
+          fieldPath: warning.fieldPath ?? null,
+          resolvedAt: warning.resolvedAt ?? null,
+        }),
+      ),
+    );
+    await manager.save(
+      ExtractedFieldEntity,
+      input.draft.fields.map((field, position) =>
+        Object.assign(new ExtractedFieldEntity(), {
+          ...field,
+          ownerUserId: input.draft.ownerUserId,
+          position,
+          normalizedValue: field.normalizedValue ?? null,
+          sourceLocation: field.sourceLocation ?? null,
+          warningId: field.warningId ?? null,
+        }),
+      ),
+    );
+    await manager.insert(
+      UserCorrectionEntity,
+      Object.assign(new UserCorrectionEntity(), {
+        ...input.correction,
+        previousValue: input.correction.previousValue ?? null,
+        newValue: input.correction.newValue ?? null,
+      }),
+    );
+    const saved = await this.findDraftByOwner(
+      input.draft.id,
+      input.draft.ownerUserId,
+      manager,
+    );
+    if (saved === null)
+      return Promise.reject(new Error("review_draft_not_found"));
+    return saved;
   }
 
   async saveStructuredResume(

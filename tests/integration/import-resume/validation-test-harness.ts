@@ -1,4 +1,8 @@
-import type { ImportedDocument } from "@nuvitae/domain";
+import type {
+  ImportDraft,
+  ImportedDocument,
+  UserCorrection,
+} from "@nuvitae/domain";
 import {
   DeterministicLanguageDetector,
   OoxmlDocxAdapter,
@@ -221,6 +225,29 @@ export class InMemoryImportResumeRepository
 
   async findDraftByImportAndOwner(): Promise<null> {
     return null;
+  }
+
+  async findReviewDraftByImportAndOwner(): Promise<null> {
+    return null;
+  }
+
+  async findReviewDraftByImportAndOwnerForUpdate(): Promise<null> {
+    return null;
+  }
+
+  async findCorrectionByOwnerAndOperation(): Promise<null> {
+    return null;
+  }
+
+  async saveReviewMutation(input: {
+    readonly draft: ImportDraft;
+    readonly correction: UserCorrection;
+    readonly previousReviewRevision: number;
+  }): Promise<ImportDraft> {
+    return {
+      ...input.draft,
+      reviewRevision: input.previousReviewRevision + 1,
+    };
   }
 
   async saveStructuredResume(): Promise<never> {
