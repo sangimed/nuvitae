@@ -24,6 +24,8 @@
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@nestjs/core": "11.1.28",
+    "@nestjs/platform-express": "11.1.28",
     "@next/eslint-plugin-next": "15.5.22",
     "@types/node": "26.1.2",
     "@types/react": "19.2.17",
@@ -33,6 +35,7 @@
     "globals": "17.8.0",
     "prettier": "3.9.6",
     "turbo": "2.10.7",
+    "typeorm": "0.3.28",
     "typescript": "6.0.3",
     "typescript-eslint": "8.65.0",
     "vitest": "4.1.10"

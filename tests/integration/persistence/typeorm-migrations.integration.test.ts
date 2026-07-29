@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
-import { rm } from "node:fs/promises";
+import { readFile, readdir, rm } from "node:fs/promises";
+import { resolve } from "node:path";
 import { promisify } from "node:util";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { IsolatedPersistenceTestDatabase } from "./test-database.js";
@@ -10,8 +11,23 @@ const execFileAsync = promisify(execFile);
 describe("project-local TypeORM migration workflow", () => {
   let database: IsolatedPersistenceTestDatabase;
   const temporaryMigrations = ".tmp/migrations";
+  const committedMigrations = "packages/persistence/src/migrations";
+  let committedMigrationSnapshot: ReadonlyMap<string, string>;
 
   beforeAll(async () => {
+    committedMigrationSnapshot = new Map(
+      await Promise.all(
+        (await readdir(committedMigrations))
+          .filter((entry) => entry.endsWith(".ts"))
+          .map(
+            async (entry) =>
+              [
+                entry,
+                await readFile(resolve(committedMigrations, entry), "utf8"),
+              ] as const,
+          ),
+      ),
+    );
     database = await createIsolatedPersistenceTestDatabase("migrations", {
       migrate: false,
     });
@@ -53,6 +69,8 @@ describe("project-local TypeORM migration workflow", () => {
     expect(tracking[0]?.count).toBe("1");
 
     await command("db:migration:revert");
+    const reverted = await command("db:migration:show");
+    expect(reverted.stdout).toContain("[ ] InitialImportResumePersistence");
     const removed = await database.dataSource.query<{ table_name: string }[]>(
       `SELECT table_name FROM information_schema.tables
        WHERE table_schema = $1 AND table_name = 'imported_documents'`,
@@ -61,6 +79,10 @@ describe("project-local TypeORM migration workflow", () => {
     expect(removed).toHaveLength(0);
 
     await command("db:migration:run");
+    const restored = await command("db:migration:show");
+    expect(restored.stdout).toMatch(
+      /\[X\]\s+\d+\s+InitialImportResumePersistence1722168000000/,
+    );
     const rerun = await database.dataSource.query<{ count: string }[]>(
       `SELECT count(*) FROM "${database.schema}"."typeorm_migrations"`,
     );
@@ -71,10 +93,7 @@ describe("project-local TypeORM migration workflow", () => {
     expect(result.stdout).toContain("-Empty.ts");
 
     try {
-      const generation = await command("db:migration:generate");
-      expect(generation.stdout + generation.stderr).toContain(
-        ".tmp/migrations/Generated",
-      );
+      await command("db:migration:generate");
       throw new Error("Entity metadata differs from the committed migration.");
     } catch (error) {
       if (
@@ -83,13 +102,30 @@ describe("project-local TypeORM migration workflow", () => {
         "code" in error &&
         error.code === 1
       ) {
-        const output =
+        const generationOutput =
           String("stdout" in error ? error.stdout : "") +
           String("stderr" in error ? error.stderr : "");
-        expect(output).toContain("No changes in database schema were found");
-        return;
+        expect(generationOutput).toContain(
+          "No changes in database schema were found",
+        );
+      } else {
+        throw error;
       }
-      throw error;
     }
+
+    const committedAfter = new Map(
+      await Promise.all(
+        (await readdir(committedMigrations))
+          .filter((entry) => entry.endsWith(".ts"))
+          .map(
+            async (entry) =>
+              [
+                entry,
+                await readFile(resolve(committedMigrations, entry), "utf8"),
+              ] as const,
+          ),
+      ),
+    );
+    expect(committedAfter).toEqual(committedMigrationSnapshot);
   });
 });

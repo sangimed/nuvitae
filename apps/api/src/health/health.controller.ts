@@ -1,21 +1,51 @@
-import { Controller, Get } from "@nestjs/common";
-import { ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import { Controller, Get, ServiceUnavailableException } from "@nestjs/common";
+import {
+  ApiOkResponse,
+  ApiServiceUnavailableResponse,
+  ApiTags,
+} from "@nestjs/swagger";
 import {
   bootstrapHealthSchema,
   type BootstrapHealth,
 } from "@nuvitae/contracts";
+import { DatabaseReadinessService } from "./database-readiness.service";
 
 @ApiTags("health")
 @Controller("health")
 export class HealthController {
-  @Get()
+  constructor(private readonly databaseReadiness: DatabaseReadinessService) {}
+
+  @Get("live")
   @ApiOkResponse({
-    description: "API liveness status",
+    description: "API process liveness",
   })
-  getHealth(): BootstrapHealth {
+  getLiveness(): BootstrapHealth {
     return bootstrapHealthSchema.parse({
       service: "api",
       status: "ok",
     });
+  }
+
+  @Get()
+  @ApiOkResponse({
+    description: "API readiness after PostgreSQL connectivity is verified",
+  })
+  @ApiServiceUnavailableResponse({
+    description: "API is not ready",
+  })
+  async getReadiness(): Promise<BootstrapHealth> {
+    try {
+      await this.databaseReadiness.probe();
+      return bootstrapHealthSchema.parse({
+        service: "api",
+        status: "ok",
+      });
+    } catch {
+      throw new ServiceUnavailableException({
+        statusCode: 503,
+        code: "database_unavailable",
+        message: "Service is not ready.",
+      });
+    }
   }
 }

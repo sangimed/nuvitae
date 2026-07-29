@@ -25,10 +25,13 @@ Build all planned images:
 docker compose build
 ```
 
-Start the local stack:
+Start infrastructure, run migrations explicitly, then start the application:
 
 ```bash
-docker compose up
+docker compose up -d postgres queue
+docker compose run --rm workspace pnpm db:migration:run
+docker compose up -d web api worker
+docker compose up --wait
 ```
 
 The planned stack includes Next.js web, NestJS API, NestJS standalone worker,
@@ -125,8 +128,7 @@ read-only; `run` and `revert` mutate the configured database. `generate` and
 `create` write disposable files below `.tmp/migrations` so they cannot overwrite
 the committed initial migration. Do not use a globally installed TypeORM CLI or
 host-side Node.js dependencies. `synchronize` and automatic migration execution
-are always false. API and worker TypeORM wiring remain deferred to T132 and T133,
-and integrated persistence validation remains deferred to T134.
+are always false. API and worker startup never runs migrations.
 
 Persistence integration tests require `POSTGRES_TEST_DB` to end in `_test`.
 Every suite uses a unique schema within that database and drops it during
@@ -187,13 +189,30 @@ shared TypeORM DataSource validation.
 
 ## Integrated Persistence Validation
 
-After T010 and T127-T133 are complete, run the final integrated persistence
-validation through Docker only. This validation covers project-local TypeORM
-migration generate/create/run/revert/show workflows against the Compose
-PostgreSQL service, shared TypeORM DataSource configuration, `synchronize:
-false`, API database connectivity health, worker database connectivity and
-transaction integration, and complete Docker-only validation after persistence
-integration.
+Run the final integrated persistence validation through Docker only:
+
+```bash
+docker compose run --rm workspace pnpm test:integration:persistence
+```
+
+The API and worker both call the shared persistence configuration and option
+factories. `GET /health/live` is API process liveness; `GET /health` is
+database-aware readiness and returns a generic HTTP 503 payload without
+connection diagnostics when PostgreSQL is unavailable. The standalone worker
+writes its readiness file only after its Nest context, queue bootstrap,
+Nest-managed TypeORM data source, and `SELECT 1` probe succeed, and removes the
+file during shutdown.
+
+The worker persistence execution boundary resolves only after a transaction
+commits and rejects after rollback, allowing future BullMQ processors to return
+that promise without acknowledging a job before persistence succeeds. No
+product queue processor, resume-import controller, or user-story persistence use
+case is implemented yet.
+
+Local Compose credentials are development-only defaults. Production
+configuration must explicitly provide PostgreSQL host, user, password, and
+database values. Application startup does not generate, run, or revert
+migrations.
 
 ## Cleanup
 

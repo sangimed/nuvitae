@@ -12,11 +12,15 @@
     "@nestjs/bullmq": "11.0.4",
     "@nestjs/common": "11.1.28",
     "@nestjs/core": "11.1.28",
+    "@nestjs/typeorm": "11.0.3",
     "@nuvitae/contracts": "workspace:*",
+    "@nuvitae/persistence": "workspace:*",
     "bullmq": "5.81.2",
     "ioredis": "5.11.1",
+    "pg": "8.22.0",
     "reflect-metadata": "0.2.2",
-    "rxjs": "7.8.2"
+    "rxjs": "7.8.2",
+    "typeorm": "0.3.28"
   },
   "devDependencies": {
     "@nestjs/cli": "11.0.24",

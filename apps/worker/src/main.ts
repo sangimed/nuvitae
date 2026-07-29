@@ -1,40 +1,22 @@
 import "reflect-metadata";
-import { NestFactory } from "@nestjs/core";
-import {
-  WorkerModule,
-  removeWorkerReadinessFile,
-  writeWorkerReadinessFile,
-} from "./worker.module";
+import { startWorkerRuntime } from "./runtime/worker-runtime";
 
 async function bootstrap() {
-  removeWorkerReadinessFile();
-
-  const app = await NestFactory.createApplicationContext(WorkerModule, {
-    logger: ["log", "error", "warn"],
-  });
-
-  app.enableShutdownHooks();
-  writeWorkerReadinessFile();
-
-  await new Promise<void>((resolve) => {
+  const runtime = await startWorkerRuntime();
+  await new Promise<void>((resolve, reject) => {
     const keepAlive = setInterval(() => {
-      // Standalone workers do not expose HTTP; keep the process alive for queues.
+      // A standalone worker has no HTTP listener; queue processors are added later.
     }, 60_000);
-
-    const shutdown = async () => {
+    const shutdown = () => {
       clearInterval(keepAlive);
-      removeWorkerReadinessFile();
-      await app.close();
-      resolve();
+      runtime.shutdown().then(resolve, reject);
     };
-
-    process.once("SIGTERM", () => {
-      void shutdown();
-    });
-    process.once("SIGINT", () => {
-      void shutdown();
-    });
+    process.once("SIGTERM", shutdown);
+    process.once("SIGINT", shutdown);
   });
 }
 
-void bootstrap();
+void bootstrap().catch(() => {
+  console.error("Worker failed to start.");
+  process.exitCode = 1;
+});
