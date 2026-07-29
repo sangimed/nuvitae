@@ -15,6 +15,7 @@
     "db:migration:show": "pnpm build && typeorm -d dist/cli-data-source.js migration:show"
   },
   "dependencies": {
+    "@nuvitae/contracts": "workspace:*",
     "@nuvitae/domain": "workspace:*",
     "@nestjs/typeorm": "11.0.3",
     "pg": "8.22.0",

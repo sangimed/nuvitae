@@ -402,6 +402,7 @@ export interface ManualStructuredResumeDraft {
   readonly ownerUserId: UserId;
   readonly source: "manual_entry" | "unsupported_language_contact_transfer";
   readonly status: "editing" | "confirmed" | "discarded";
+  readonly content: StructuredResumeContent;
   readonly createdAt: Date;
   readonly updatedAt: Date;
   readonly confirmedAt?: Date;

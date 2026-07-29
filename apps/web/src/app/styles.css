@@ -226,10 +226,130 @@ input:disabled {
   margin-top: 1rem;
 }
 
+.manual-shell {
+  align-items: start;
+  padding-block: clamp(1rem, 4vw, 3rem);
+}
+
+.manual-panel {
+  width: min(100%, 72rem);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: clamp(1rem, 3vw, 2rem);
+  box-shadow: 0 20px 60px rgba(24, 33, 47, 0.08);
+}
+
+.manual-header,
+.save-cluster {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.save-cluster {
+  flex-wrap: wrap;
+}
+
+.save-status {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.resume-editor {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.editor-section,
+.editor-subsection {
+  border-top: 1px solid var(--border);
+  padding-top: 1.25rem;
+}
+
+.editor-section h2,
+.editor-subsection h3 {
+  margin: 0 0 1rem;
+}
+
+.repeatable-group,
+.nested-group {
+  display: grid;
+  gap: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin: 0 0 1rem;
+  padding: 1rem;
+}
+
+.nested-group {
+  background: #f7f8fb;
+}
+
+.editor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 0.9rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.field label,
+.checkbox-label,
+legend {
+  color: var(--foreground);
+  font-weight: 700;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.7rem;
+  font: inherit;
+}
+
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.field-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 0.95rem;
+}
+
+.danger-action {
+  border-color: #b42318;
+  color: #b42318;
+}
+
+.move-actions,
+.inline-edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .manual-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

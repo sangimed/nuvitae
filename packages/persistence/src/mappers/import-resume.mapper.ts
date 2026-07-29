@@ -11,6 +11,7 @@ import type {
   ImportWarning,
   InferenceStatus,
   LanguageSkill,
+  ManualStructuredResumeDraft,
   ProfessionalLink,
   Project,
   Skill,
@@ -21,6 +22,8 @@ import type {
   WorkExperience,
   WorkExperienceRole,
 } from "@nuvitae/domain";
+import { validateManualContent } from "@nuvitae/domain";
+import { structuredResumeContentSchema } from "@nuvitae/contracts";
 import {
   DeletionJobEntity,
   DerivedExtractionArtifactEntity,
@@ -28,6 +31,7 @@ import {
   ImportDraftEntity,
   ImportedDocumentEntity,
   ImportWarningEntity,
+  ManualStructuredResumeDraftEntity,
   StructuredResumeEntity,
   StructuredResumeItemEntity,
   StructuredResumeTextEntity,
@@ -42,7 +46,8 @@ import {
 export type PersistenceMapperErrorCode =
   | "invalid_numeric_value"
   | "missing_structured_parent"
-  | "invalid_structured_section";
+  | "invalid_structured_section"
+  | "invalid_manual_draft_content";
 
 export class PersistenceMapperError extends Error {
   readonly code: PersistenceMapperErrorCode;
@@ -83,6 +88,33 @@ export interface TemporaryContactPreviewRecord {
 
 function optional<T>(key: string, value: T | null | undefined) {
   return value === null || value === undefined ? {} : { [key]: value };
+}
+
+export function mapManualStructuredResumeDraft(
+  entity: ManualStructuredResumeDraftEntity,
+): ManualStructuredResumeDraft {
+  const parsed = structuredResumeContentSchema.safeParse(entity.content);
+  if (!parsed.success) {
+    throw new PersistenceMapperError("invalid_manual_draft_content", entity.id);
+  }
+  const validated = validateManualContent(
+    parsed.data as StructuredResumeContent,
+  );
+  if (!validated.ok) {
+    throw new PersistenceMapperError("invalid_manual_draft_content", entity.id);
+  }
+
+  return {
+    id: entity.id,
+    ownerUserId: entity.ownerUserId,
+    source: entity.source as ManualStructuredResumeDraft["source"],
+    status: entity.status as ManualStructuredResumeDraft["status"],
+    content: validated.content,
+    createdAt: entity.createdAt,
+    updatedAt: entity.updatedAt,
+    ...optional("confirmedAt", entity.confirmedAt),
+    ...optional("deletedAt", entity.deletedAt),
+  };
 }
 
 export function mapImportedDocument(

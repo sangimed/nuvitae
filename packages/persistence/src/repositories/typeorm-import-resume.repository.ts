@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type {
   ImportDraft,
   ImportedDocument,
+  ManualStructuredResumeDraft,
   SourcedText,
   StructuredResume,
 } from "@nuvitae/domain";
@@ -13,6 +14,7 @@ import {
   ImportDraftEntity,
   ImportedDocumentEntity,
   ImportWarningEntity,
+  ManualStructuredResumeDraftEntity,
   StructuredResumeEntity,
   StructuredResumeItemEntity,
   StructuredResumeTextEntity,
@@ -25,11 +27,13 @@ import {
   mapDerivedArtifact,
   mapImportDraft,
   mapImportedDocument,
+  mapManualStructuredResumeDraft,
   mapStructuredResume,
 } from "../mappers/import-resume.mapper.js";
 import type {
   ImportAggregate,
   ImportResumeRepository,
+  ManualResumeDraftRepository,
   PersistenceTransactionRunner,
 } from "./import-resume.repository.js";
 
@@ -61,8 +65,29 @@ function draftEntity(value: ImportDraft): ImportDraftEntity {
   });
 }
 
+function manualDraftEntity(
+  value: ManualStructuredResumeDraft,
+  creationKey?: string,
+): ManualStructuredResumeDraftEntity {
+  return Object.assign(new ManualStructuredResumeDraftEntity(), {
+    id: value.id,
+    ownerUserId: value.ownerUserId,
+    source: value.source,
+    status: value.status,
+    ...(creationKey === undefined ? {} : { creationKey }),
+    content: value.content,
+    createdAt: value.createdAt,
+    updatedAt: value.updatedAt,
+    confirmedAt: value.confirmedAt ?? null,
+    deletedAt: value.deletedAt ?? null,
+  });
+}
+
 export class TypeOrmImportResumeRepository
-  implements ImportResumeRepository, PersistenceTransactionRunner
+  implements
+    ImportResumeRepository,
+    ManualResumeDraftRepository,
+    PersistenceTransactionRunner
 {
   constructor(private readonly dataSource: DataSource) {}
 
@@ -528,5 +553,67 @@ export class TypeOrmImportResumeRepository
       ownerUserId: userId,
     });
     return entity === null ? null : mapDeletionJob(entity);
+  }
+
+  async createManualDraft(
+    input: Parameters<ManualResumeDraftRepository["createManualDraft"]>[0],
+    manager?: EntityManager,
+  ): Promise<ManualStructuredResumeDraft> {
+    const entity = await this.manager(manager).save(
+      ManualStructuredResumeDraftEntity,
+      manualDraftEntity(input.draft, input.creationKey),
+    );
+    return mapManualStructuredResumeDraft(entity);
+  }
+
+  async findManualDraftByOwner(
+    draftId: string,
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<ManualStructuredResumeDraft | null> {
+    const entity = await this.manager(manager).findOneBy(
+      ManualStructuredResumeDraftEntity,
+      { id: draftId, ownerUserId: userId },
+    );
+    return entity === null ? null : mapManualStructuredResumeDraft(entity);
+  }
+
+  async findManualDraftByCreationKey(
+    creationKey: string,
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<ManualStructuredResumeDraft | null> {
+    const entity = await this.manager(manager).findOneBy(
+      ManualStructuredResumeDraftEntity,
+      { creationKey, ownerUserId: userId },
+    );
+    return entity === null ? null : mapManualStructuredResumeDraft(entity);
+  }
+
+  async saveManualDraft(
+    draft: ManualStructuredResumeDraft,
+    manager?: EntityManager,
+  ): Promise<ManualStructuredResumeDraft> {
+    const scoped = this.manager(manager);
+    const result = await scoped.update(
+      ManualStructuredResumeDraftEntity,
+      { id: draft.id, ownerUserId: draft.ownerUserId },
+      {
+        source: draft.source,
+        status: draft.status,
+        content: draft.content,
+        updatedAt: draft.updatedAt,
+        confirmedAt: draft.confirmedAt ?? null,
+        deletedAt: draft.deletedAt ?? null,
+      },
+    );
+    if (result.affected !== 1) {
+      return Promise.reject(new Error("manual_draft_not_found"));
+    }
+    const entity = await scoped.findOneByOrFail(
+      ManualStructuredResumeDraftEntity,
+      { id: draft.id, ownerUserId: draft.ownerUserId },
+    );
+    return mapManualStructuredResumeDraft(entity);
   }
 }

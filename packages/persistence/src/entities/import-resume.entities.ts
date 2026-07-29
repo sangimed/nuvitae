@@ -13,6 +13,7 @@ import type {
   ExtractedValue,
   ResumeDate,
   SourceLocation,
+  StructuredResumeContent,
 } from "@nuvitae/domain";
 
 const timestampColumn = { type: "timestamptz" as const };
@@ -931,6 +932,61 @@ export class DeletionJobEntity {
   importedDocument!: ImportedDocumentEntity;
 }
 
+@Entity({ name: "manual_structured_resume_drafts" })
+@Unique("uq_manual_drafts_id_owner", ["id", "ownerUserId"])
+@Unique("uq_manual_drafts_owner_creation_key", ["ownerUserId", "creationKey"])
+@Index("idx_manual_drafts_owner_updated", ["ownerUserId", "updatedAt"])
+@Check(
+  "ck_manual_drafts_source",
+  "source IN ('manual_entry', 'unsupported_language_contact_transfer')",
+)
+@Check(
+  "ck_manual_drafts_status",
+  "status IN ('editing', 'confirmed', 'discarded')",
+)
+@Check(
+  "ck_manual_drafts_creation_key_shape",
+  "creation_key ~ '^[A-Za-z0-9._:-]{16,96}$'",
+)
+@Check("ck_manual_drafts_timestamp_order", "updated_at >= created_at")
+@Check(
+  "ck_manual_drafts_confirmation",
+  "(status = 'confirmed' AND confirmed_at IS NOT NULL) OR status <> 'confirmed'",
+)
+export class ManualStructuredResumeDraftEntity {
+  @PrimaryColumn("uuid", {
+    primaryKeyConstraintName: "pk_manual_structured_resume_drafts",
+  })
+  id!: string;
+
+  @Column("uuid", { name: "owner_user_id" })
+  ownerUserId!: string;
+
+  @Column("varchar", { length: 64 })
+  source!: string;
+
+  @Column("varchar", { length: 32 })
+  status!: string;
+
+  @Column("varchar", { name: "creation_key", length: 96 })
+  creationKey!: string;
+
+  @Column("jsonb")
+  content!: StructuredResumeContent;
+
+  @Column("timestamptz", { name: "created_at" })
+  createdAt!: Date;
+
+  @Column({ ...timestampColumn, name: "updated_at" })
+  updatedAt!: Date;
+
+  @Column({ ...timestampColumn, name: "confirmed_at", nullable: true })
+  confirmedAt!: Date | null;
+
+  @Column({ ...timestampColumn, name: "deleted_at", nullable: true })
+  deletedAt!: Date | null;
+}
+
 export const persistenceEntities = [
   ImportedDocumentEntity,
   DerivedExtractionArtifactEntity,
@@ -947,4 +1003,5 @@ export const persistenceEntities = [
   WorkRoleDetailEntity,
   StructuredResumeItemEntity,
   DeletionJobEntity,
+  ManualStructuredResumeDraftEntity,
 ] as const;
