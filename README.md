@@ -187,6 +187,67 @@ import controller.
   no in-process production store, Redis adapter, or BullMQ business processor
   is included yet.
 
+### Deterministic Document Parsers
+
+`@nuvitae/extraction` now provides the final Phase 2 parser foundations. PDF
+page counting and selectable-text extraction use the Node-compatible legacy
+build of pinned `pdfjs-dist`. PDF provenance keeps the one-based page number,
+zero-based PDF.js item index, zero-based global reading order, and PDF-point
+geometry. Pages and text items retain PDF.js order; the adapter does not infer
+resume fields or rewrite source wording. Fully scanned or image-only PDFs are
+rejected because OCR is not implemented.
+
+DOCX text extraction treats Office Open XML as an untrusted ZIP package. It
+streams only recognized package parts, validates the main document content type
+and relationship, rejects traversal, encryption, macros, malformed structures,
+and configured ZIP/XML resource limits, and never dereferences external
+relationships. Provenance uses `word/document.xml`, zero-based paragraph,
+table, row, cell, and run indexes, zero-based character offsets, and global
+reading order. Rendered coordinates are not promised for DOCX.
+
+DOCX rendered page counting runs LibreOffice only in the non-root worker image
+or the network-disabled one-shot `parser-test` image. It uses a generated input
+name, a unique profile, headless/non-interactive flags, an isolated output
+directory, and PDF.js to count the converted PDF. Host LibreOffice is neither
+required nor supported. Installing LibreOffice Writer, its core runtime, and
+basic fonts increases the worker/parser image size; this is the accepted
+trade-off for deterministic DOCX rendered-page validation without a parser
+network service or Docker-socket access.
+
+External parser commands run without a shell and without inheriting the full
+environment. The parent enforces the three-minute timeout, terminates the
+detached process group with `SIGTERM` followed by `SIGKILL`, and bounds stdout
+and stderr independently without returning them in public failures. The 512 MiB
+limit uses Linux `prlimit --as`, inherited by descendants. This is a
+process-level `RLIMIT_AS` virtual-address-space limit, not a cgroup resident
+memory limit; the runner fails closed when `prlimit` is unavailable.
+
+Parser output is written to a unique staging directory and atomically renamed
+only after successful exit, confinement checks, expected-output validation, and
+cleanup hooks. Failures, cancellation, timeout, malformed output, and symlink
+escapes remove staging and preserve any existing final output. Inputs,
+generated PDFs, LibreOffice profiles, and work directories are removed after
+both success and failure.
+
+Run deterministic fixture tests and the LibreOffice integration suite through
+Docker:
+
+```bash
+docker compose run --rm workspace pnpm exec vitest run packages/extraction/src
+docker compose build parser-test
+docker compose run --rm parser-test
+```
+
+Fixtures are generated in memory from synthetic names and text with fixed
+metadata. No generated documents are committed. Current limitations are no
+OCR, no browser-side parsing, no semantic resume-field classification, and no
+support for password-protected, macro-enabled, or active-content documents.
+Recovery is represented only by stable typed parser failures; product upload
+and recovery routes remain later user-story work.
+
+All Phase 2 foundational tasks are complete. Phase 3 and later user-story work
+has not been started by this parser-foundation change.
+
 ### Reset Volumes
 
 This removes dependency caches, `node_modules`, PostgreSQL data, queue data, and

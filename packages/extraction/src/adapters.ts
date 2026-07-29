@@ -31,6 +31,32 @@ export interface ExtractionRequest {
   readonly abortSignal?: AbortSignal;
 }
 
+/**
+ * Provider-independent byte source. `sourceStorageKey` is an opaque reference;
+ * implementations resolve it inside their own trusted storage boundary.
+ */
+export interface ExtractionSourceReader {
+  readSource(input: {
+    readonly sourceStorageKey: string;
+    readonly maximumBytes: number;
+    readonly abortSignal?: AbortSignal;
+  }): Promise<Uint8Array>;
+}
+
+export interface PdfExtractionLimits {
+  readonly maximumFileSizeBytes: number;
+  readonly maximumPageCount: number;
+}
+
+export interface DocxExtractionLimits {
+  readonly maximumArchiveSizeBytes: number;
+  readonly maximumEntryCount: number;
+  readonly maximumEntryUncompressedSizeBytes: number;
+  readonly maximumTotalUncompressedSizeBytes: number;
+  readonly maximumCompressionRatio: number;
+  readonly maximumXmlDepth: number;
+}
+
 export interface PdfBoundingBox {
   readonly x: number;
   readonly y: number;

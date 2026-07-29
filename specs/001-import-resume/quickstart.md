@@ -88,6 +88,52 @@ docker compose run --rm workspace pnpm typecheck
 docker compose run --rm workspace pnpm test
 ```
 
+## Deterministic Parser Tests
+
+PDF.js PDF extraction and the streaming Office Open XML DOCX extractor are
+tested with deterministic, in-memory synthetic document generators:
+
+```bash
+docker compose run --rm workspace pnpm exec vitest run packages/extraction/src/pdf/pdfjs-pdf-adapter.test.ts
+docker compose run --rm workspace pnpm exec vitest run packages/extraction/src/docx/ooxml-docx-adapter.test.ts
+docker compose run --rm workspace pnpm exec vitest run packages/extraction/src/isolated-parser-runner.test.ts
+```
+
+PDF provenance uses one-based pages and zero-based item/global-order indexes
+with PDF-point geometry. DOCX provenance uses zero-based package-part paragraph,
+table, row, cell, run, character-offset, and global-order indexes. DOCX does
+not infer visual pages or rendered coordinates. Image-only/scanned PDFs are
+rejected because OCR is not implemented.
+
+LibreOffice is installed only in the worker and the network-disabled,
+non-root, one-shot parser test image. Host LibreOffice is not supported:
+
+```bash
+docker compose build parser-test
+docker compose run --rm parser-test
+```
+
+LibreOffice uses `--headless`, `--nologo`, `--nodefault`, `--nolockcheck`,
+`--nofirststartwizard`, `--norestore`, a unique `UserInstallation` profile, a
+generated `input.docx` name, and an isolated output directory. The parent
+runner invokes commands without a shell, supplies an allow-listed environment,
+enforces a three-minute timeout, and terminates the detached process group with
+`SIGTERM` followed by bounded `SIGKILL` escalation.
+
+The 512 MiB parser ceiling is Linux `prlimit --as` (`RLIMIT_AS`) inherited by
+descendants. It limits process virtual address space rather than claiming
+cgroup-level resident-memory enforcement and fails closed when unavailable.
+Parser output is staged and atomically committed only after successful exit,
+path confinement, symlink checks, expected-output validation, and cleanup.
+Cancellation, timeout, conversion failure, or invalid output leaves no
+committed partial output and preserves an existing valid final output.
+
+The worker/parser image is larger because it contains the minimum LibreOffice
+Writer runtime and basic fonts. No API/web image contains LibreOffice, no
+Docker socket or privileged mode is used, and no parser HTTP service exists.
+With T099 through T102 validated, every Phase 2 foundational task is complete;
+Phase 3 and later user-story work remains outside this implementation.
+
 ## Integration Tests
 
 Run integration tests against the Compose-managed PostgreSQL,

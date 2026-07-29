@@ -8,5 +8,17 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "fast-xml-parser": "5.2.5",
+    "pdfjs-dist": "5.4.296",
+    "yauzl": "3.2.0"
+  },
+  "devDependencies": {
+    "@types/pdfkit": "0.17.3",
+    "@types/yauzl": "2.10.3",
+    "@types/yazl": "2.4.5",
+    "pdfkit": "0.17.2",
+    "yazl": "3.3.1"
   }
 }
