@@ -44,10 +44,10 @@
 - [X] T128 [P] Add persistence tests for explicit transactions across multi-record import lifecycle operations in `tests/integration/persistence/import-lifecycle-transactions.integration.test.ts`
 - [X] T129 [P] Add persistence tests for database constraints, unique indexes, foreign keys, retention lifecycle constraints, and `synchronize` disabled outside disposable test databases in `tests/integration/persistence/import-constraints.integration.test.ts`
 - [X] T130 [P] Add repository ownership and domain/persistence mapper tests proving TypeORM entities do not leak into `packages/domain` and controllers/processors do not contain query logic in `tests/integration/persistence/repository-boundaries.integration.test.ts`
-- [ ] T011 [P] Implement privacy-safe logger with redaction for resumes, raw text, snippets, files, tokens, credentials, prompts, and unnecessary personal data in `apps/api/src/observability/privacy-logger.ts`
-- [ ] T012 [P] Implement authenticated user context and ownership guard utilities in `apps/api/src/auth/user-context.ts` and `apps/api/src/auth/ownership.ts`
-- [ ] T013 [P] Implement private object storage key policy and signed internal access helpers for the Docker-volume-backed local private storage implementation in `packages/storage/src/private-import-storage.ts`
-- [ ] T014 [P] Implement import rate-limit and concurrent-work guard interfaces for 5 attempts per rolling 10 minutes, 1 active job, and 2 queued jobs per user in `apps/api/src/services/import-resume/import-limits.ts`
+- [X] T011 [P] Implement privacy-safe logger with redaction for resumes, raw text, snippets, files, tokens, credentials, prompts, and unnecessary personal data in `apps/api/src/observability/privacy-logger.ts`
+- [X] T012 [P] Implement authenticated user context and ownership guard utilities in `apps/api/src/auth/user-context.ts` and `apps/api/src/auth/ownership.ts`
+- [X] T013 [P] Implement private object storage key policy and signed internal access helpers for the Docker-volume-backed local private storage implementation in `packages/storage/src/private-import-storage.ts`
+- [X] T014 [P] Implement import rate-limit and concurrent-work guard interfaces for 5 attempts per rolling 10 minutes, 1 active job, and 2 queued jobs per user in `apps/api/src/services/import-resume/import-limits.ts`
 - [x] T015 Implement Zod-backed background job payload contracts for validation, extraction, cancellation, retry, and deletion jobs in `packages/contracts/src/import-resume/jobs.ts`
 - [x] T016 [P] Create deterministic extraction adapter interfaces for PDF, DOCX, language detection, page counting, selectable text, and source locations in `packages/extraction/src/adapters.ts`
 - [x] T017 [P] Create optional AI classifier adapter interface that accepts deterministic extraction output and returns only classifications and ambiguity warnings in `packages/extraction/src/ai-classifier.ts`

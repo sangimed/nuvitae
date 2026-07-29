@@ -153,6 +153,40 @@ database-aware readiness, repository provider identity, and transaction
 commit/rollback behavior. No resume-import controller, use case, or product
 queue processor is implemented by this persistence wiring.
 
+## Import Security Foundations
+
+The current import foundation does not expose a product upload route or resume
+import controller.
+
+- API application code can use the provider-ready privacy logger with an
+  injected sink. It preserves allow-listed operational identifiers and
+  recursively replaces credentials, document content, prompts, files, contact
+  data, arbitrary personal metadata, raw errors, and other unsafe values. Error
+  stacks and driver diagnostics are never serialized.
+- Authenticated application context is created only from a principal already
+  verified by a future authentication adapter. Request headers, cookies, email
+  addresses, and unverified JWT payloads are not identity sources. Ownership
+  helpers use stable user IDs and deliberately return the same public not-found
+  outcome for missing and wrong-owner resources.
+- `@nuvitae/storage` provides private, volume-backed storage below an explicit
+  root. Application-generated keys contain UUID owner/import scopes, an object
+  kind, and a random 128-bit object ID; original filenames are not part of the
+  key. Writes use restrictive permissions and a same-directory temporary file
+  followed by atomic rename. The storage volume is not served by Next.js or a
+  static-file handler.
+- Signed storage references are internal API/worker coordination tokens, not
+  public pre-signed URLs. They bind the private key, expiry, operation, and
+  audience with HMAC-SHA-256, use an explicit signing secret and maximum TTL,
+  and are verified with a constant-time signature comparison.
+- Import attempt and concurrency rules consume validated processing-limit
+  configuration and deterministic caller-supplied timestamps. The current code
+  defines pure decisions and an atomic reservation/transition/rollback
+  interface for five attempts per rolling ten minutes, one active job, and two
+  queued jobs per user. It fails closed when state is unavailable. A future
+  distributed Redis/Valkey adapter must implement the atomic store contract;
+  no in-process production store, Redis adapter, or BullMQ business processor
+  is included yet.
+
 ### Reset Volumes
 
 This removes dependency caches, `node_modules`, PostgreSQL data, queue data, and
