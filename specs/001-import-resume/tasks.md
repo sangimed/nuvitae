@@ -86,7 +86,7 @@
 - [X] T106 [P] [US1] Add malformed, corrupted, and password-protected document fixture tests for PDF and DOCX validation failures in `tests/integration/import-resume/malformed-protected-documents.integration.test.ts`
 - [X] T107 [P] [US1] Add image-only/scanned PDF detection and mixed text-and-image PDF fixture tests in `tests/integration/import-resume/pdf-selectable-text.integration.test.ts`
 - [X] T108 [P] [US1] Add French, English, and bilingual fixture tests for each supported document format in `tests/integration/import-resume/supported-language-fixtures.integration.test.ts`
-- [ ] T116 [P] [US1] Add contract tests proving `/resumes/new/manual` creates a blank manual structured-resume draft without imported document or import job in `tests/contract/manual-resume/create-manual-draft.contract.test.ts`
+- [x] T116 [P] [US1] Add contract tests proving `/resumes/new/manual` creates a blank manual structured-resume draft without imported document or import job in `tests/contract/manual-resume/create-manual-draft.contract.test.ts`
 
 ### Implementation for User Story 1
 
@@ -99,8 +99,8 @@
 - [X] T032 [US1] Implement NestJS standalone worker processors for validation, extraction, timeout, and progress state persistence orchestration in `apps/worker/src/import-resume/import-processing.processor.ts`
 - [X] T033 [US1] Implement web polling/subscription client for processing status and timeout recovery actions in `apps/web/src/services/import-resume/import-status-client.ts`
 - [X] T034 [US1] Wire import flow route from create entry through upload and processing states in `apps/web/src/app/import-resume/page.tsx`
-- [ ] T119 [US1] Implement `/resumes/new/manual` route that creates a blank editable structured-resume draft without import records in `apps/web/src/app/resumes/new/manual/page.tsx`
-- [ ] T120 [P] [US1] Implement reusable structured-resume section editing components shared by manual entry and import review where appropriate in `apps/web/src/features/resume-editor/StructuredResumeSections.tsx`
+- [x] T119 [US1] Implement `/resumes/new/manual` route that creates a blank editable structured-resume draft without import records in `apps/web/src/app/resumes/new/manual/page.tsx`
+- [x] T120 [P] [US1] Implement reusable structured-resume section editing components shared by manual entry and import review where appropriate in `apps/web/src/features/resume-editor/StructuredResumeSections.tsx`
 
 **Checkpoint**: User Story 1 is independently testable as the MVP import entry, upload, validation, progress, and draft/timeout path.
 

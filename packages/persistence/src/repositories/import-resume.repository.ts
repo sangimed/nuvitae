@@ -3,6 +3,7 @@ import type {
   DerivedExtractionArtifact,
   ImportDraft,
   ImportedDocument,
+  ManualStructuredResumeDraft,
   StructuredResume,
 } from "@nuvitae/domain";
 import type { EntityManager } from "typeorm";
@@ -59,4 +60,30 @@ export interface ImportResumeRepository {
 
 export interface PersistenceTransactionRunner {
   transaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T>;
+}
+
+export interface ManualResumeDraftCreateInput {
+  readonly draft: ManualStructuredResumeDraft;
+  readonly creationKey: string;
+}
+
+export interface ManualResumeDraftRepository {
+  createManualDraft(
+    input: ManualResumeDraftCreateInput,
+    manager?: EntityManager,
+  ): Promise<ManualStructuredResumeDraft>;
+  findManualDraftByOwner(
+    draftId: string,
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<ManualStructuredResumeDraft | null>;
+  findManualDraftByCreationKey(
+    creationKey: string,
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<ManualStructuredResumeDraft | null>;
+  saveManualDraft(
+    draft: ManualStructuredResumeDraft,
+    manager?: EntityManager,
+  ): Promise<ManualStructuredResumeDraft>;
 }

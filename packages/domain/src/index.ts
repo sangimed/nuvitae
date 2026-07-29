@@ -11,3 +11,4 @@ export const domainBootstrapStatus: DomainBootstrapStatus = {
 export * from "./resume-import/types.js";
 export * from "./resume-import/validation.js";
 export * from "./resume-import/extraction-draft.js";
+export * from "./resume-import/manual-draft.js";

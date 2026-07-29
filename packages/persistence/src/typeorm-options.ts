@@ -2,6 +2,7 @@ import type { TypeOrmModuleOptions } from "@nestjs/typeorm";
 import type { DataSourceOptions } from "typeorm";
 import { persistenceEntities } from "./entities/import-resume.entities.js";
 import { InitialImportResumePersistence1722168000000 } from "./migrations/1722168000000-InitialImportResumePersistence.js";
+import { ManualStructuredResumeDrafts1722254400000 } from "./migrations/1722254400000-ManualStructuredResumeDrafts.js";
 
 export interface PersistenceConfig {
   readonly host: string;
@@ -134,7 +135,10 @@ export function createTypeOrmOptions(
     ssl: config.ssl,
     logging: config.logging,
     entities: [...persistenceEntities],
-    migrations: [InitialImportResumePersistence1722168000000],
+    migrations: [
+      InitialImportResumePersistence1722168000000,
+      ManualStructuredResumeDrafts1722254400000,
+    ],
     migrationsTableName: "typeorm_migrations",
     migrationsRun: false,
     synchronize: false,

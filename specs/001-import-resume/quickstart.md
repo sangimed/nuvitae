@@ -284,6 +284,37 @@ Use this when Docker-managed caches or local service data need a clean state.
 
 ## Validation Scenarios
 
+### 0. Manual Entry Draft
+
+1. Start the API and web stack with migrations already run.
+2. Visit `/resumes/new/manual`.
+3. If signed out, verify the page shows an authentication-required state and no
+   manual draft is created.
+4. Sign in and visit `/resumes/new/manual` again.
+5. Verify one blank manual structured-resume draft is created or resumed with
+   `source: manual_entry`, `status: editing`, all supported sections present,
+   and personal, contact, work experience, education, skills, languages,
+   projects, certifications, and professional links initially empty.
+6. Edit personal information, contact information, headline, summary, work
+   experience with multiple roles and ongoing-role state, education, skills,
+   languages, projects, certifications, and professional links.
+7. Save explicitly, refresh the page, and verify the same owner-scoped draft
+   reloads from the draft UUID in the URL without using localStorage as the
+   source of truth.
+8. Open the same draft in two tabs, save in the first tab, then attempt to save
+   stale content in the second tab.
+
+**Expected Outcome**: Manual entry creates a dedicated unconfirmed manual draft,
+not a confirmed `StructuredResume`. It creates no `ImportedDocument`, no
+`ImportDraft`, no `DerivedExtractionArtifact`, no retention record, no source
+storage key, and no BullMQ import job. Manual values are marked `user_added`
+with `not_applicable` confidence, `not_inferred` inference, and no source
+location. The editor announces save state, warns before leaving with unsaved
+changes, supports keyboard operation, uses visible labels, and reports stale
+conflicts without overwriting newer edits. The reusable section editor is shared
+in shape for future import review, but Phase 4 import-review editing and warning
+resolution are not implemented yet.
+
 ### 1. Happy Path Import
 
 1. Start the stack with `docker compose up`.
