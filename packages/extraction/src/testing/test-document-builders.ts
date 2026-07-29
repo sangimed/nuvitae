@@ -4,6 +4,7 @@ import yazl from "yazl";
 export async function buildPdf(input: {
   readonly pages: readonly (readonly string[])[];
   readonly password?: string;
+  readonly imageOnPages?: readonly number[];
 }): Promise<Uint8Array> {
   return await new Promise((resolve, reject) => {
     const document = new PDFDocument({
@@ -25,8 +26,20 @@ export async function buildPdf(input: {
     document.on("data", (chunk: Buffer) => chunks.push(chunk));
     document.once("error", reject);
     document.once("end", () => resolve(Buffer.concat(chunks)));
-    for (const lines of input.pages) {
+    for (const [pageIndex, lines] of input.pages.entries()) {
       document.addPage({ size: "A4", margin: 72 });
+      if (input.imageOnPages?.includes(pageIndex)) {
+        document.image(
+          Buffer.from(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+            "base64",
+          ),
+          72,
+          72,
+          { width: 16, height: 16 },
+        );
+        document.moveDown();
+      }
       for (const line of lines) {
         document.text(line);
       }

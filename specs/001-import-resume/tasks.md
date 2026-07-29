@@ -79,13 +79,13 @@
 - [X] T021 [P] [US1] Add contract tests for start import, validate document, and process extraction responses in `tests/contract/import-resume/start-import.contract.test.ts`
 - [ ] T022 [P] [US1] Add integration test for authenticated supported PDF/DOCX upload through progress and draft-ready state in `tests/integration/import-resume/start-upload.integration.test.ts`
 - [X] T023 [P] [US1] Add integration test for unauthenticated upload requiring sign-in before file acceptance in `tests/integration/import-resume/authentication-gate.integration.test.ts`
-- [ ] T024 [P] [US1] Add fixture tests for PDF/DOCX file type, 10 MB limit, 5 rendered page limit, selectable text, and French/English/bilingual language validation in `tests/integration/import-resume/upload-validation.integration.test.ts`
+- [X] T024 [P] [US1] Add fixture tests for PDF/DOCX file type, 10 MB limit, 5 rendered page limit, selectable text, and French/English/bilingual language validation in `tests/integration/import-resume/upload-validation.integration.test.ts`
 - [ ] T025 [P] [US1] Add accessibility test for upload labels, keyboard focus, and progress live announcements in `tests/accessibility/import-resume/upload-progress.a11y.test.ts`
-- [ ] T104 [P] [US1] Add PDF fixture tests for page-count extraction and PDF text extraction with page and source-location provenance in `packages/extraction/src/pdf/pdfjs-pdf-adapter.test.ts`
-- [ ] T105 [P] [US1] Add DOCX fixture tests for rendered-page-count validation and text extraction with source-location provenance in `packages/extraction/src/docx/ooxml-docx-adapter.test.ts`
-- [ ] T106 [P] [US1] Add malformed, corrupted, and password-protected document fixture tests for PDF and DOCX validation failures in `tests/integration/import-resume/malformed-protected-documents.integration.test.ts`
-- [ ] T107 [P] [US1] Add image-only/scanned PDF detection and mixed text-and-image PDF fixture tests in `tests/integration/import-resume/pdf-selectable-text.integration.test.ts`
-- [ ] T108 [P] [US1] Add French, English, and bilingual fixture tests for each supported document format in `tests/integration/import-resume/supported-language-fixtures.integration.test.ts`
+- [X] T104 [P] [US1] Add PDF fixture tests for page-count extraction and PDF text extraction with page and source-location provenance in `packages/extraction/src/pdf/pdfjs-pdf-adapter.test.ts`
+- [X] T105 [P] [US1] Add DOCX fixture tests for rendered-page-count validation and text extraction with source-location provenance in `packages/extraction/src/docx/ooxml-docx-adapter.test.ts`
+- [X] T106 [P] [US1] Add malformed, corrupted, and password-protected document fixture tests for PDF and DOCX validation failures in `tests/integration/import-resume/malformed-protected-documents.integration.test.ts`
+- [X] T107 [P] [US1] Add image-only/scanned PDF detection and mixed text-and-image PDF fixture tests in `tests/integration/import-resume/pdf-selectable-text.integration.test.ts`
+- [X] T108 [P] [US1] Add French, English, and bilingual fixture tests for each supported document format in `tests/integration/import-resume/supported-language-fixtures.integration.test.ts`
 - [ ] T116 [P] [US1] Add contract tests proving `/resumes/new/manual` creates a blank manual structured-resume draft without imported document or import job in `tests/contract/manual-resume/create-manual-draft.contract.test.ts`
 
 ### Implementation for User Story 1
@@ -94,7 +94,7 @@
 - [ ] T027 [P] [US1] Implement upload guidance, supported-file copy, privacy copy, and file chooser UI in `apps/web/src/features/import-resume/UploadStep.tsx`
 - [ ] T028 [P] [US1] Implement progress state UI with plain-language states and screen-reader live region in `apps/web/src/features/import-resume/ProcessingStep.tsx`
 - [X] T029 [US1] Implement thin NestJS start-import REST controller with authentication, rate-limit check delegation, private storage write delegation, and `ImportedDocument` creation service call in `apps/api/src/import-resume/start-import.controller.ts` and `apps/api/src/import-resume/start-import.service.ts`
-- [ ] T030 [US1] Implement document validation service for format, size, rendered pages, language, selectable text, unsafe/unreadable/corrupted/password-protected failures, and recovery categories in `apps/api/src/services/import-resume/validate-document.ts`
+- [X] T030 [US1] Implement document validation service for format, size, rendered pages, language, selectable text, unsafe/unreadable/corrupted/password-protected failures, and recovery categories in `apps/api/src/services/import-resume/validate-document.ts`
 - [ ] T031 [US1] Implement deterministic extraction orchestration that creates a draft only when at least one supported field has explicit source content and source location in `apps/api/src/services/import-resume/process-extraction.ts`
 - [ ] T032 [US1] Implement NestJS standalone worker processors for validation, extraction, timeout, and progress state persistence orchestration in `apps/worker/src/import-resume/import-processing.processor.ts`
 - [ ] T033 [US1] Implement web polling/subscription client for processing status and timeout recovery actions in `apps/web/src/services/import-resume/import-status-client.ts`
