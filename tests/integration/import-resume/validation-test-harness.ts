@@ -219,6 +219,10 @@ export class InMemoryImportResumeRepository
     return null;
   }
 
+  async findDraftByImportAndOwner(): Promise<null> {
+    return null;
+  }
+
   async saveStructuredResume(): Promise<never> {
     throw new Error("structured resume creation is outside validation");
   }
