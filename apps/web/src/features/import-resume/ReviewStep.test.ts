@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 
 describe("ReviewStep source contract", () => {
-  it("contains no final confirmation control and keeps import review decoupled from persistence", async () => {
+  it("delegates confirmation UI and keeps import review decoupled from persistence", async () => {
     const source = await readFile(
       "apps/web/src/features/import-resume/ReviewStep.tsx",
       "utf8",
@@ -10,8 +10,7 @@ describe("ReviewStep source contract", () => {
     expect(source).toContain("readReviewDraft");
     expect(source).toContain("sendReviewMutation");
     expect(source).toContain("projectOptimisticReview");
-    expect(source).toContain("Final resume creation is a");
-    expect(source).toContain("separate next step");
+    expect(source).toContain("ConfirmationStep");
     expect(source).not.toContain("StructuredResume");
     expect(source).not.toContain("typeorm");
     expect(source).not.toContain("BullMQ");

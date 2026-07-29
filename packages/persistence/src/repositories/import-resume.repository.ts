@@ -39,6 +39,21 @@ export interface ImportResumeRepository {
     userId: string,
     manager: EntityManager,
   ): Promise<ImportDraft | null>;
+  findConfirmationDraftByImportAndOwnerForUpdate(
+    importId: string,
+    userId: string,
+    manager: EntityManager,
+  ): Promise<ImportDraft | null>;
+  findStructuredResumeBySourceDraftAndOwner(
+    draftId: string,
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<StructuredResume | null>;
+  findCorrectionsByDraftAndOwner(
+    draftId: string,
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<readonly UserCorrection[]>;
   findCorrectionByOwnerAndOperation(
     operationId: string,
     userId: string,
@@ -71,12 +86,33 @@ export interface ImportResumeRepository {
     userId: string,
     manager?: EntityManager,
   ): Promise<StructuredResume | null>;
+  confirmDraftAndCreateStructuredResume(
+    input: {
+      readonly draft: ImportDraft;
+      readonly resume: StructuredResume;
+      readonly confirmedAt: Date;
+    },
+    manager: EntityManager,
+  ): Promise<StructuredResume>;
   scheduleDeletionJob(
     job: DeletionJob,
     manager?: EntityManager,
   ): Promise<DeletionJob>;
+  discardDraftAndScheduleDeletion(
+    input: {
+      readonly draft: ImportDraft;
+      readonly job: DeletionJob;
+      readonly discardedAt: Date;
+    },
+    manager: EntityManager,
+  ): Promise<DeletionJob>;
   findDeletionJobByOwner(
     jobId: string,
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<DeletionJob | null>;
+  findDiscardDeletionJobByImportAndOwner(
+    importId: string,
     userId: string,
     manager?: EntityManager,
   ): Promise<DeletionJob | null>;

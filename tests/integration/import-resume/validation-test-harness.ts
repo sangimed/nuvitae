@@ -1,6 +1,8 @@
 import type {
+  DeletionJob,
   ImportDraft,
   ImportedDocument,
+  StructuredResume,
   UserCorrection,
 } from "@nuvitae/domain";
 import {
@@ -235,6 +237,18 @@ export class InMemoryImportResumeRepository
     return null;
   }
 
+  async findConfirmationDraftByImportAndOwnerForUpdate(): Promise<null> {
+    return null;
+  }
+
+  async findStructuredResumeBySourceDraftAndOwner(): Promise<null> {
+    return null;
+  }
+
+  async findCorrectionsByDraftAndOwner(): Promise<readonly UserCorrection[]> {
+    return [];
+  }
+
   async findCorrectionByOwnerAndOperation(): Promise<null> {
     return null;
   }
@@ -258,11 +272,27 @@ export class InMemoryImportResumeRepository
     return null;
   }
 
+  async confirmDraftAndCreateStructuredResume(input: {
+    readonly resume: StructuredResume;
+  }): Promise<StructuredResume> {
+    return input.resume;
+  }
+
   async scheduleDeletionJob(): Promise<never> {
     throw new Error("deletion is outside validation");
   }
 
+  async discardDraftAndScheduleDeletion(input: {
+    readonly job: DeletionJob;
+  }): Promise<DeletionJob> {
+    return input.job;
+  }
+
   async findDeletionJobByOwner(): Promise<null> {
+    return null;
+  }
+
+  async findDiscardDeletionJobByImportAndOwner(): Promise<null> {
     return null;
   }
 }

@@ -14,8 +14,13 @@ import { ImportStatusController } from "./import-status.controller.js";
 import { ImportStatusService } from "./import-status.service.js";
 import { IMPORT_STATUS_REQUEST_ID_GENERATOR } from "./start-import.tokens.js";
 import { ReviewController } from "./review.controller.js";
+import {
+  ConfirmController,
+  ConfirmedStructuredResumeController,
+} from "./confirm.controller.js";
 import { ReadImportDraftService } from "../services/import-resume/read-draft.js";
 import { UpdateImportReviewService } from "../services/import-resume/update-review.js";
+import { ConfirmStructuredResumeService } from "../services/import-resume/confirm-structured-resume.js";
 
 export interface ImportResumeModuleOptions {
   readonly imports?: ModuleMetadata["imports"];
@@ -37,12 +42,15 @@ export class ImportResumeModule {
         StartImportController,
         ImportStatusController,
         ReviewController,
+        ConfirmController,
+        ConfirmedStructuredResumeController,
       ],
       providers: [
         StartImportService,
         ImportStatusService,
         ReadImportDraftService,
         UpdateImportReviewService,
+        ConfirmStructuredResumeService,
         {
           provide: IMPORT_STATUS_REQUEST_ID_GENERATOR,
           useValue: { nextRequestId: () => randomUUID() },
@@ -57,6 +65,7 @@ export class ImportResumeModule {
         ImportStatusService,
         ReadImportDraftService,
         UpdateImportReviewService,
+        ConfirmStructuredResumeService,
       ],
     };
   }

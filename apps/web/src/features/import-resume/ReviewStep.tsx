@@ -13,6 +13,7 @@ import {
   readReviewDraft,
   sendReviewMutation,
 } from "../../services/import-resume/review-client";
+import { ConfirmationStep } from "./ConfirmationStep";
 import { FieldProvenance } from "./FieldProvenance";
 import { ReviewWarning } from "./ReviewWarning";
 
@@ -20,6 +21,15 @@ export function ReviewStep(props: { readonly importId: string }) {
   const [draft, setDraft] = useState<ReviewDraftReadResponse | undefined>();
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
+  const [finalized, setFinalized] = useState<
+    | {
+        readonly kind: "confirmed";
+        readonly resumeUrl: string;
+        readonly message: string;
+      }
+    | { readonly kind: "discarded"; readonly message: string }
+    | undefined
+  >();
   const [message, setMessage] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
   const errorRef = useRef<HTMLDivElement | null>(null);
@@ -44,6 +54,11 @@ export function ReviewStep(props: { readonly importId: string }) {
     });
     return () => controller.abort();
   }, [props.importId]);
+
+  async function refreshDraft() {
+    const refreshed = await readReviewDraft({ importId: props.importId });
+    if (refreshed.ok) setDraft(refreshed.response);
+  }
 
   async function mutate(action: ReviewMutationAction) {
     if (draft === undefined || pending) return;
@@ -113,6 +128,20 @@ export function ReviewStep(props: { readonly importId: string }) {
       >
         {pending ? "Saving review change." : message}
       </div>
+      {finalized === undefined ? null : finalized.kind === "confirmed" ? (
+        <div className="message message-success" role="status">
+          {finalized.message}{" "}
+          <a href={finalized.resumeUrl}>Open structured resume</a>
+        </div>
+      ) : (
+        <div className="message message-success" role="status">
+          <p>{finalized.message}</p>
+          <div className="action-row">
+            <a href="/import-resume">Start a new import</a>
+            <a href="/resumes/new/manual">Continue manually</a>
+          </div>
+        </div>
+      )}
       {error === undefined ? null : (
         <div
           className="message message-error"
@@ -139,12 +168,21 @@ export function ReviewStep(props: { readonly importId: string }) {
         </div>
       </dl>
 
-      {draft.readyToConfirm ? (
-        <p className="message message-success">
-          Review requirements have been satisfied. Final resume creation is a
-          separate next step and is not available here.
-        </p>
-      ) : null}
+      <ConfirmationStep
+        importId={props.importId}
+        draft={draft}
+        disabled={pending || finalized !== undefined}
+        onConfirmed={(resumeUrl, userMessage) => {
+          setFinalized({ kind: "confirmed", resumeUrl, message: userMessage });
+          setPending(false);
+          window.history.replaceState(null, "", resumeUrl);
+        }}
+        onDiscarded={(userMessage) => {
+          setFinalized({ kind: "discarded", message: userMessage });
+          setPending(false);
+        }}
+        onStaleReview={refreshDraft}
+      />
 
       {draft.sections.map((section) => (
         <section
@@ -160,7 +198,7 @@ export function ReviewStep(props: { readonly importId: string }) {
             <ReviewFieldRow
               key={field.fieldId}
               field={field}
-              pending={pending}
+              pending={pending || finalized !== undefined}
               onAction={mutate}
             />
           ))}
@@ -168,7 +206,7 @@ export function ReviewStep(props: { readonly importId: string }) {
             <ReviewWarning
               key={warning.warningId}
               warning={warning}
-              pending={pending}
+              pending={pending || finalized !== undefined}
               onResolve={(resolution) =>
                 mutate({
                   type: "resolve_warning",

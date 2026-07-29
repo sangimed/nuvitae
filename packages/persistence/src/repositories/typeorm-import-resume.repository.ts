@@ -281,6 +281,48 @@ export class TypeOrmImportResumeRepository
     return mapImportDraft(draft, fields, warnings);
   }
 
+  async findConfirmationDraftByImportAndOwnerForUpdate(
+    importId: string,
+    userId: string,
+    manager: EntityManager,
+  ): Promise<ImportDraft | null> {
+    return this.findReviewDraftByImportAndOwnerForUpdate(
+      importId,
+      userId,
+      manager,
+    );
+  }
+
+  async findStructuredResumeBySourceDraftAndOwner(
+    draftId: string,
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<StructuredResume | null> {
+    const scoped = this.manager(manager);
+    const resume = await scoped.findOneBy(StructuredResumeEntity, {
+      sourceImportDraftId: draftId,
+      ownerUserId: userId,
+    });
+    if (resume === null) return null;
+    return this.findStructuredResumeByOwner(resume.id, userId, scoped);
+  }
+
+  async findCorrectionsByDraftAndOwner(
+    draftId: string,
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<readonly UserCorrection[]> {
+    const entities = await this.manager(manager).findBy(UserCorrectionEntity, {
+      importDraftId: draftId,
+      createdByUserId: userId,
+    });
+    return entities
+      .sort(
+        (left, right) => left.createdAt.getTime() - right.createdAt.getTime(),
+      )
+      .map(mapUserCorrection);
+  }
+
   async findCorrectionByOwnerAndOperation(
     operationId: string,
     userId: string,
@@ -379,6 +421,33 @@ export class TypeOrmImportResumeRepository
       root.ownerUserId,
       scoped,
     ))!;
+  }
+
+  async confirmDraftAndCreateStructuredResume(
+    input: {
+      readonly draft: ImportDraft;
+      readonly resume: StructuredResume;
+      readonly confirmedAt: Date;
+    },
+    manager: EntityManager,
+  ): Promise<StructuredResume> {
+    const saved = await this.saveStructuredResume(input.resume, manager);
+    const result = await manager.update(
+      ImportDraftEntity,
+      {
+        id: input.draft.id,
+        ownerUserId: input.draft.ownerUserId,
+        reviewRevision: input.draft.reviewRevision,
+      },
+      {
+        status: "confirmed",
+        confirmedAt: input.confirmedAt,
+      },
+    );
+    if (result.affected !== 1) {
+      return Promise.reject(new Error("stale_review_revision"));
+    }
+    return saved;
   }
 
   private async saveStructuredContent(
@@ -659,6 +728,40 @@ export class TypeOrmImportResumeRepository
     return mapDeletionJob(entity);
   }
 
+  async discardDraftAndScheduleDeletion(
+    input: {
+      readonly draft: ImportDraft;
+      readonly job: Parameters<
+        ImportResumeRepository["scheduleDeletionJob"]
+      >[0];
+      readonly discardedAt: Date;
+    },
+    manager: EntityManager,
+  ) {
+    const result = await manager.update(
+      ImportDraftEntity,
+      {
+        id: input.draft.id,
+        ownerUserId: input.draft.ownerUserId,
+        reviewRevision: input.draft.reviewRevision,
+      },
+      {
+        status: "discarded",
+        discardedAt: input.discardedAt,
+      },
+    );
+    if (result.affected !== 1) {
+      return Promise.reject(new Error("stale_review_revision"));
+    }
+    const existing = await this.findDiscardDeletionJobByImportAndOwner(
+      input.draft.importedDocumentId,
+      input.draft.ownerUserId,
+      manager,
+    );
+    if (existing !== null) return existing;
+    return this.scheduleDeletionJob(input.job, manager);
+  }
+
   async findDeletionJobByOwner(
     jobId: string,
     userId: string,
@@ -667,6 +770,19 @@ export class TypeOrmImportResumeRepository
     const entity = await this.manager(manager).findOneBy(DeletionJobEntity, {
       id: jobId,
       ownerUserId: userId,
+    });
+    return entity === null ? null : mapDeletionJob(entity);
+  }
+
+  async findDiscardDeletionJobByImportAndOwner(
+    importId: string,
+    userId: string,
+    manager?: EntityManager,
+  ) {
+    const entity = await this.manager(manager).findOneBy(DeletionJobEntity, {
+      importedDocumentId: importId,
+      ownerUserId: userId,
+      reason: "user_discarded_import",
     });
     return entity === null ? null : mapDeletionJob(entity);
   }

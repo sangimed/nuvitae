@@ -142,19 +142,19 @@
 
 ### Tests for User Story 3
 
-- [ ] T047 [P] [US3] Add contract tests for confirm structured resume success and blocking errors in `tests/contract/import-resume/confirm-resume.contract.test.ts`
-- [ ] T048 [P] [US3] Add integration test for unresolved warning blocking, explicit confirmation, and user-confirmed field status in `tests/integration/import-resume/confirm-structured-resume.integration.test.ts`
-- [ ] T049 [P] [US3] Add domain test proving confirmation does not restart source/artifact retention and source deletion does not delete structured resume data in `packages/domain/src/resume-import/confirmation.test.ts`
-- [ ] T050 [P] [US3] Add integration test for resuming or discarding an unconfirmed draft before 7-day expiry in `tests/integration/import-resume/resume-draft.integration.test.ts`
+- [X] T047 [P] [US3] Add contract tests for confirm structured resume success and blocking errors in `tests/contract/import-resume/confirm-resume.contract.test.ts`
+- [X] T048 [P] [US3] Add integration test for unresolved warning blocking, explicit confirmation, and user-confirmed field status in `tests/integration/import-resume/confirm-structured-resume.integration.test.ts`
+- [X] T049 [P] [US3] Add domain test proving confirmation does not restart source/artifact retention and source deletion does not delete structured resume data in `packages/domain/src/resume-import/confirmation.test.ts`
+- [X] T050 [P] [US3] Add integration test for resuming or discarding an unconfirmed draft before 7-day expiry in `tests/integration/import-resume/resume-draft.integration.test.ts`
 
 ### Implementation for User Story 3
 
-- [ ] T051 [P] [US3] Implement structured resume creation domain mapper from reviewed fields and user corrections in `packages/domain/src/resume-import/structured-resume-mapper.ts`
-- [ ] T052 [US3] Implement confirmation service that blocks unresolved warnings, requires one user-confirmed supported field, creates `StructuredResume`, and preserves original retention deadline in `apps/api/src/services/import-resume/confirm-structured-resume.ts`
-- [ ] T053 [US3] Implement thin NestJS confirm structured resume REST controller with use-case logic delegated to providers/services in `apps/api/src/import-resume/confirm.controller.ts`
-- [ ] T054 [P] [US3] Implement confirmation dialog and blocked-confirmation summary UI in `apps/web/src/features/import-resume/ConfirmationStep.tsx`
-- [ ] T055 [P] [US3] Implement structured resume provenance display that excludes raw snippets after source deletion in `apps/web/src/features/import-resume/StructuredResumeProvenance.tsx`
-- [ ] T056 [US3] Implement resume draft resume/discard client behavior before expiry in `apps/web/src/services/import-resume/draft-lifecycle-client.ts`
+- [X] T051 [P] [US3] Implement structured resume creation domain mapper from reviewed fields and user corrections in `packages/domain/src/resume-import/structured-resume-mapper.ts`
+- [X] T052 [US3] Implement confirmation service that blocks unresolved warnings, requires one user-confirmed supported field, creates `StructuredResume`, and preserves original retention deadline in `apps/api/src/services/import-resume/confirm-structured-resume.ts`
+- [X] T053 [US3] Implement thin NestJS confirm structured resume REST controller with use-case logic delegated to providers/services in `apps/api/src/import-resume/confirm.controller.ts`
+- [X] T054 [P] [US3] Implement confirmation dialog and blocked-confirmation summary UI in `apps/web/src/features/import-resume/ConfirmationStep.tsx`
+- [X] T055 [P] [US3] Implement structured resume provenance display that excludes raw snippets after source deletion in `apps/web/src/features/import-resume/StructuredResumeProvenance.tsx`
+- [X] T056 [US3] Implement resume draft resume/discard client behavior before expiry in `apps/web/src/services/import-resume/draft-lifecycle-client.ts`
 
 **Checkpoint**: User Story 3 is independently testable as explicit structured resume creation from reviewed import data.
 
