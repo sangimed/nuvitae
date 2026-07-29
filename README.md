@@ -270,6 +270,22 @@ adapter and a distributed atomic import-limit store. No fake production
 authentication provider, header-based development identity, in-process
 production limit store, or Redis/Valkey limit adapter is installed.
 
+### Deterministic Extraction Slice
+
+The T031 slice reads already-validated private PDF/DOCX content through the
+existing concrete adapters and extracts only explicit, source-located evidence.
+The conservative baseline recognizes English and French labels/headings for
+identity, contact, headline, summary, experience, education, skills, languages,
+projects, certifications, and professional links. It uses no AI or OCR and does
+not persist a normalized fragment list. A draft requires at least one explicit
+supported field with concrete PDF/DOCX provenance; otherwise processing fails
+with replacement-upload and manual-entry recovery. Missing core evidence creates
+reviewable partial warnings, while optional sections do not block a draft.
+Finalization preserves the original retention deadline, is idempotent at one
+draft per owner/import, and does not enqueue work or create a structured resume.
+Queue/worker orchestration, progress routes, review UI, and the remaining User
+Story 1 flow are intentionally later tasks.
+
 ### Reset Volumes
 
 This removes dependency caches, `node_modules`, PostgreSQL data, queue data, and

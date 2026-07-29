@@ -195,6 +195,30 @@ export class TypeOrmImportResumeRepository
     return mapImportDraft(draft, fields, warnings);
   }
 
+  async findDraftByImportAndOwner(
+    importId: string,
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<ImportDraft | null> {
+    const scoped = this.manager(manager);
+    const draft = await scoped.findOneBy(ImportDraftEntity, {
+      importedDocumentId: importId,
+      ownerUserId: userId,
+    });
+    if (draft === null) return null;
+    const [fields, warnings] = await Promise.all([
+      scoped.findBy(ExtractedFieldEntity, {
+        importDraftId: draft.id,
+        ownerUserId: userId,
+      }),
+      scoped.findBy(ImportWarningEntity, {
+        importDraftId: draft.id,
+        ownerUserId: userId,
+      }),
+    ]);
+    return mapImportDraft(draft, fields, warnings);
+  }
+
   async saveStructuredResume(
     resume: StructuredResume,
     manager?: EntityManager,

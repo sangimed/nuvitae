@@ -27,6 +27,11 @@ export interface ImportResumeRepository {
     manager?: EntityManager,
   ): Promise<ImportedDocument>;
   saveDraft(draft: ImportDraft, manager?: EntityManager): Promise<ImportDraft>;
+  findDraftByImportAndOwner(
+    importId: string,
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<ImportDraft | null>;
   findDraftByOwner(
     draftId: string,
     userId: string,
