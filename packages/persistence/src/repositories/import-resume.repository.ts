@@ -5,6 +5,7 @@ import type {
   ImportedDocument,
   ManualStructuredResumeDraft,
   StructuredResume,
+  UserCorrection,
 } from "@nuvitae/domain";
 import type { EntityManager } from "typeorm";
 
@@ -28,6 +29,29 @@ export interface ImportResumeRepository {
     manager?: EntityManager,
   ): Promise<ImportedDocument>;
   saveDraft(draft: ImportDraft, manager?: EntityManager): Promise<ImportDraft>;
+  findReviewDraftByImportAndOwner(
+    importId: string,
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<ImportDraft | null>;
+  findReviewDraftByImportAndOwnerForUpdate(
+    importId: string,
+    userId: string,
+    manager: EntityManager,
+  ): Promise<ImportDraft | null>;
+  findCorrectionByOwnerAndOperation(
+    operationId: string,
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<UserCorrection | null>;
+  saveReviewMutation(
+    input: {
+      readonly draft: ImportDraft;
+      readonly correction: UserCorrection;
+      readonly previousReviewRevision: number;
+    },
+    manager: EntityManager,
+  ): Promise<ImportDraft>;
   findDraftByImportAndOwner(
     importId: string,
     userId: string,

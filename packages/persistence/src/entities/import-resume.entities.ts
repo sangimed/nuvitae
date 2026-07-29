@@ -169,6 +169,7 @@ export class DerivedExtractionArtifactEntity {
 ])
 @Index("idx_import_drafts_owner_status", ["ownerUserId", "status"])
 @Check("ck_import_drafts_retention", "retention_expires_at > created_at")
+@Check("ck_import_drafts_review_revision", "review_revision >= 0")
 @Check(
   "ck_import_drafts_status",
   "status IN ('preparing', 'review_required', 'ready_to_confirm', 'confirmed', 'discarded', 'cancelled', 'expired', 'source_deleted_limited_review')",
@@ -189,6 +190,9 @@ export class ImportDraftEntity {
 
   @Column("varchar", { length: 48 })
   status!: string;
+
+  @Column("integer", { name: "review_revision" })
+  reviewRevision!: number;
 
   @Column("timestamptz", { name: "created_at" })
   createdAt!: Date;
@@ -480,6 +484,7 @@ export class TemporaryContactFieldEntity {
 
 @Entity({ name: "user_corrections" })
 @Index("idx_user_corrections_owner_draft", ["createdByUserId", "importDraftId"])
+@Index("idx_user_corrections_owner_operation", ["createdByUserId", "id"])
 export class UserCorrectionEntity {
   @PrimaryColumn("uuid", { primaryKeyConstraintName: "pk_user_corrections" })
   id!: string;

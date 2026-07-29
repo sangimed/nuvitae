@@ -89,6 +89,7 @@ export function importDraft(overrides: Partial<ImportDraft> = {}): ImportDraft {
     importedDocumentId: ids.document,
     ownerUserId: ids.ownerA,
     status: "review_required",
+    reviewRevision: 0,
     fields: [extractedField()],
     warnings: [importWarning()],
     createdAt: new Date("2026-07-28T08:01:00.000Z"),

@@ -99,6 +99,7 @@ export function buildExtractionDraft(
     importedDocumentId: input.importedDocument.id,
     ownerUserId: input.importedDocument.ownerUserId,
     status: "review_required",
+    reviewRevision: 0,
     fields: linkedFields,
     warnings: linkedWarnings,
     createdAt: input.now,

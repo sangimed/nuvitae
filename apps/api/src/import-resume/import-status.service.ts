@@ -99,8 +99,7 @@ export class ImportStatusService {
             progressPercent: 100,
             draftSummary: summarizeDraft(draft),
             allowedRecoveryActions: ["manual_entry"],
-            userMessage:
-              "Your imported resume draft is ready. Review will be available in a later step.",
+            userMessage: "Your imported resume draft is ready for review.",
           });
     }
 

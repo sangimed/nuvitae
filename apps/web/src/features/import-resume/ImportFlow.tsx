@@ -151,6 +151,9 @@ export function ImportFlow() {
         connectivityMessage={connectivityMessage}
         onManualEntry={manualEntry}
         onReplaceUpload={replaceUpload}
+        onReview={(importId) =>
+          window.location.assign(`/import-resume/${importId}/review`)
+        }
       />
     );
   }

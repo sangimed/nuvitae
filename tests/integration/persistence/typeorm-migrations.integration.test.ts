@@ -51,11 +51,15 @@ describe("project-local TypeORM migration workflow", () => {
   it("shows, runs, reverts, and reruns the tracked migration", async () => {
     const before = await command("db:migration:show");
     expect(before.stdout).toContain("[ ] InitialImportResumePersistence");
+    expect(before.stdout).toContain("[ ] ImportDraftReviewRevision");
 
     await command("db:migration:run");
     const after = await command("db:migration:show");
     expect(after.stdout).toMatch(
       /\[X\]\s+1\s+InitialImportResumePersistence1722168000000/,
+    );
+    expect(after.stdout).toMatch(
+      /\[X\]\s+\d+\s+ImportDraftReviewRevision1722340800000/,
     );
     const tables = await database.dataSource.query<{ table_name: string }[]>(
       `SELECT table_name FROM information_schema.tables
@@ -66,14 +70,17 @@ describe("project-local TypeORM migration workflow", () => {
     const tracking = await database.dataSource.query<{ count: string }[]>(
       `SELECT count(*) FROM "${database.schema}"."typeorm_migrations"`,
     );
-    expect(tracking[0]?.count).toBe("1");
+    expect(tracking[0]?.count).toBe("3");
 
     await command("db:migration:revert");
     const reverted = await command("db:migration:show");
-    expect(reverted.stdout).toContain("[ ] InitialImportResumePersistence");
-    const removed = await database.dataSource.query<{ table_name: string }[]>(
-      `SELECT table_name FROM information_schema.tables
-       WHERE table_schema = $1 AND table_name = 'imported_documents'`,
+    expect(reverted.stdout).toContain("[X] 1 InitialImportResumePersistence");
+    expect(reverted.stdout).toContain("[ ] ImportDraftReviewRevision");
+    const removed = await database.dataSource.query<{ column_name: string }[]>(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema = $1
+       AND table_name = 'import_drafts'
+       AND column_name = 'review_revision'`,
       [database.schema],
     );
     expect(removed).toHaveLength(0);
@@ -86,15 +93,17 @@ describe("project-local TypeORM migration workflow", () => {
     const rerun = await database.dataSource.query<{ count: string }[]>(
       `SELECT count(*) FROM "${database.schema}"."typeorm_migrations"`,
     );
-    expect(rerun[0]?.count).toBe("1");
+    expect(rerun[0]?.count).toBe("3");
 
     const result = await command("db:migration:create");
     expect(result.stdout).toContain(".tmp/migrations/");
     expect(result.stdout).toContain("-Empty.ts");
 
     try {
-      await command("db:migration:generate");
-      throw new Error("Entity metadata differs from the committed migration.");
+      const generated = await command("db:migration:generate");
+      expect(generated.stdout + generated.stderr).toContain(
+        "No changes in database schema were found",
+      );
     } catch (error) {
       if (
         typeof error === "object" &&

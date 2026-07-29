@@ -260,6 +260,7 @@ function draft(overrides: Partial<ImportDraft> = {}): ImportDraft {
     importedDocumentId: "import-1",
     ownerUserId: "user-1",
     status: "ready_to_confirm",
+    reviewRevision: 0,
     fields: [field({ reviewStatus: "confirmed" })],
     warnings: [],
     createdAt: now,

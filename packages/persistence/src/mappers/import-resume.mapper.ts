@@ -218,6 +218,7 @@ export function mapImportDraft(
     importedDocumentId: entity.importedDocumentId,
     ownerUserId: entity.ownerUserId,
     status: entity.status as ImportDraft["status"],
+    reviewRevision: entity.reviewRevision,
     fields: [...fields]
       .sort((left, right) => left.position - right.position)
       .map(mapExtractedField),

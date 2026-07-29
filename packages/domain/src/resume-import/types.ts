@@ -264,6 +264,7 @@ export interface ImportDraft {
   readonly importedDocumentId: ImportId;
   readonly ownerUserId: UserId;
   readonly status: ImportDraftStatus;
+  readonly reviewRevision: number;
   readonly fields: readonly ExtractedField[];
   readonly warnings: readonly ImportWarning[];
   readonly createdAt: Date;

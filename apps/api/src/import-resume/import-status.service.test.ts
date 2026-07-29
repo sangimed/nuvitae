@@ -199,6 +199,7 @@ function draft(
     importedDocumentId: importId,
     ownerUserId,
     status: "review_required",
+    reviewRevision: 0,
     fields: [
       {
         id: "field-1",

@@ -7,6 +7,7 @@ export function ProcessingStep(props: {
   readonly connectivityMessage?: string | undefined;
   readonly onManualEntry: () => void;
   readonly onReplaceUpload: () => void;
+  readonly onReview?: (importId: string) => void;
 }) {
   const status = props.status;
   const heading = headingFor(status);
@@ -51,10 +52,18 @@ export function ProcessingStep(props: {
 
       {status.status === "draft_ready" ||
       status.status === "partial_extraction" ? (
-        <p className="message message-success">
-          Review is not available in this slice yet. Your import is stable on
-          this page.
-        </p>
+        <div className="action-row">
+          <button
+            type="button"
+            className="primary-action"
+            onClick={() => props.onReview?.(status.importId)}
+          >
+            Review imported resume
+          </button>
+          <a href={`/import-resume/${status.importId}/review`}>
+            Open review page
+          </a>
+        </div>
       ) : null}
 
       {status.status === "recoverable_timeout" ||
