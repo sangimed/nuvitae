@@ -10,4 +10,5 @@ export type BootstrapHealth = z.infer<typeof bootstrapHealthSchema>;
 export * from "./import-resume/jobs.js";
 export * from "./import-resume/responses.js";
 export * from "./import-resume/review.js";
+export * from "./import-resume/confirmation.js";
 export * from "./manual-resume.js";

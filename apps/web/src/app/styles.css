@@ -332,6 +332,51 @@ legend {
   color: #b42318;
 }
 
+.review-shell,
+.resume-read-view {
+  width: min(100%, 76rem);
+  display: grid;
+  gap: 1rem;
+}
+
+.review-section,
+.confirmation-panel,
+.provenance-panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  padding: 1rem;
+}
+
+.review-field {
+  border-top: 1px solid var(--border);
+  padding-block: 1rem;
+}
+
+.field-provenance {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(24, 33, 47, 0.38);
+  padding: 1rem;
+  z-index: 20;
+}
+
+.dialog {
+  width: min(100%, 34rem);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  padding: 1.25rem;
+  box-shadow: 0 24px 80px rgba(24, 33, 47, 0.24);
+}
+
 .move-actions,
 .inline-edit {
   display: flex;

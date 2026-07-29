@@ -209,17 +209,49 @@ bounding boxes, offsets, parser details, filenames, storage keys, SQL errors,
 and stack traces are not exposed or logged.
 
 The imported source document remains immutable during review. Review completion
-can move the draft to `ready_to_confirm`, but that state is only an
-informational pre-confirmation state in this story: no `StructuredResume` is
-created, no final confirmation endpoint or button is functional, no retention
-deadline is extended, and source deletion remains a later workflow.
-Accessibility coverage includes section discoverability, keyboard field and
-warning actions, focus management, live pending/success/conflict announcements,
-and non-colour warning treatment.
+can move the draft to `ready_to_confirm`; the user must then explicitly choose
+Create structured resume and confirm the dialog before
+`POST /import-resume/:importId/confirm` creates a `StructuredResume`.
+Confirmation requires an operation UUID, `expectedReviewRevision`, and
+`explicitConfirmation: true`. Unknown keys, owner IDs, resume IDs, retention
+deadlines, source locations, source statuses, review statuses, arbitrary
+content, and browser-supplied field lists are rejected.
 
-Structured-resume confirmation, source deletion, retry/cancellation backend
-behavior, the functional manual editor, AI, OCR, retention workers, and
-deletion workers remain intentionally absent.
+Confirmation is blocked when the draft is not owner-scoped to the principal,
+is expired, is not `ready_to_confirm`, has unresolved required warnings, has no
+confirmed or edited active field, still contains unconfirmed inferred fields,
+or cannot be mapped without data loss. Confirmation is transactional and
+idempotent: repeated or racing confirmations for one owner/source draft return
+the existing structured resume and do not duplicate child rows. It preserves
+the imported document, artifact, and draft retention deadlines and schedules no
+deletion job.
+
+The post-confirmation route is `/resumes/:resumeId`, backed by the read-only
+`GET /structured-resumes/:resumeId` endpoint. The response contains confirmed
+content plus safe provenance summaries only. `StructuredResumeProvenance` can
+show labels such as created from reviewed initial resume, confirmed by you,
+source retained temporarily until the original deadline, source no longer
+available, added by you, edited by you, and originally imported from a page
+while safe page provenance is available. It never shows raw snippets, bounding
+boxes, offsets, storage keys, filenames, parser names, or queue/database
+internals. A pure domain helper reduces source provenance to minimal imported
+provenance after future source deletion without deleting or mutating the
+structured resume content.
+
+Unconfirmed drafts can be resumed by reloading
+`/import-resume/:importId/review` before expiry. `POST
+/import-resume/:importId/discard` requires an operation UUID,
+`expectedReviewRevision`, and `explicitDiscard: true`; it marks an unconfirmed
+review draft discarded and schedules one `user_discarded_import` deletion job.
+Discard scheduling does not execute deletion synchronously, does not delete
+source rows or artifact rows immediately, does not create a structured resume,
+and does not delete an already confirmed structured resume.
+
+Source deletion execution, retry/replacement upload, cancellation of active
+processing, full deletion lifecycle orchestration, retention workers, the
+functional manual editor, AI, OCR, PDF generation, resume templates,
+structured-resume editing, production identity-provider integration, billing,
+and subscriptions remain intentionally absent.
 
 Accessibility coverage for this slice includes semantic choices, labelled file
 input, associated upload/privacy guidance, keyboard activation, visible focus,
