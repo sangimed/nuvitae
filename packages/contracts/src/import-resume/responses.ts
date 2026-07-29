@@ -127,6 +127,57 @@ export const processingProgressResponseSchema = responseBaseSchema
     },
   );
 
+export const publicImportStatusResponseSchema = z
+  .object({
+    version: z.literal(importResumeResponseSchemaVersion),
+    requestId: uuidSchema,
+    importId: uuidSchema,
+    status: z.enum([
+      "processing",
+      "draft_ready",
+      "partial_extraction",
+      "recoverable_timeout",
+      "validation_failure",
+      "terminal_processing_failure",
+      "authentication_required",
+      "connectivity_lost",
+      "not_found",
+      "expired",
+      "cancelled",
+    ]),
+    currentStep: progressStepSchema.optional(),
+    progressKnown: z.boolean(),
+    progressPercent: z.number().int().min(0).max(100).optional(),
+    draftSummary: draftSummarySchema.optional(),
+    failure: publicFailureSchema.optional(),
+    allowedRecoveryActions: z.array(recoveryActionSchema),
+    userMessage: plainMessageSchema,
+  })
+  .strict()
+  .refine(
+    (value) => value.status !== "processing" || value.currentStep !== undefined,
+    {
+      message: "currentStep is required while processing",
+      path: ["currentStep"],
+    },
+  )
+  .refine(
+    (value) => value.progressKnown || value.progressPercent === undefined,
+    {
+      message:
+        "progressPercent is omitted when precise progress is unavailable",
+      path: ["progressPercent"],
+    },
+  )
+  .refine(
+    (value) =>
+      value.progressPercent === undefined || value.progressKnown === true,
+    {
+      message: "progressKnown must be true when progressPercent is present",
+      path: ["progressKnown"],
+    },
+  );
+
 export const recoverableTimeoutResponseSchema = responseBaseSchema
   .extend({
     status: z.literal("recoverable_timeout"),
@@ -243,6 +294,9 @@ export type QueuedProcessingResponse = z.infer<
 >;
 export type ProcessingProgressResponse = z.infer<
   typeof processingProgressResponseSchema
+>;
+export type PublicImportStatusResponse = z.infer<
+  typeof publicImportStatusResponseSchema
 >;
 export type RecoverableTimeoutResponse = z.infer<
   typeof recoverableTimeoutResponseSchema

@@ -4,11 +4,15 @@ import {
   type ModuleMetadata,
   type Provider,
 } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
 import { StartImportController } from "./start-import.controller.js";
 import { StartImportExceptionFilter } from "./start-import-exception.filter.js";
 import { StartImportMultipartInterceptor } from "./start-import-multipart.interceptor.js";
 import { StartImportService } from "./start-import.service.js";
 import { VerifiedPrincipalGuard } from "./verified-principal.guard.js";
+import { ImportStatusController } from "./import-status.controller.js";
+import { ImportStatusService } from "./import-status.service.js";
+import { IMPORT_STATUS_REQUEST_ID_GENERATOR } from "./start-import.tokens.js";
 
 export interface ImportResumeModuleOptions {
   readonly imports?: ModuleMetadata["imports"];
@@ -26,15 +30,20 @@ export class ImportResumeModule {
     return {
       module: ImportResumeModule,
       imports: options.imports === undefined ? [] : [...options.imports],
-      controllers: [StartImportController],
+      controllers: [StartImportController, ImportStatusController],
       providers: [
         StartImportService,
+        ImportStatusService,
+        {
+          provide: IMPORT_STATUS_REQUEST_ID_GENERATOR,
+          useValue: { nextRequestId: () => randomUUID() },
+        },
         VerifiedPrincipalGuard,
         StartImportMultipartInterceptor,
         StartImportExceptionFilter,
         ...options.providers,
       ],
-      exports: [StartImportService],
+      exports: [StartImportService, ImportStatusService],
     };
   }
 }

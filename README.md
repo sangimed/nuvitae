@@ -155,8 +155,48 @@ queue processor is implemented by this persistence wiring.
 
 ## Import Security Foundations
 
-The current import foundation does not expose a product upload route or resume
-import controller.
+The current import foundation exposes the initial browser flow at
+`/import-resume` plus the owner-scoped API boundaries needed by that slice.
+Import is presented as the recommended resume-creation path. Manual entry is
+visible as a secondary action and links to `/resumes/new/manual`, but the
+functional manual editor is not implemented yet.
+
+Supported uploads in this slice:
+
+- PDF or DOCX only.
+- French, English, or bilingual French-English resumes.
+- 10 MB maximum.
+- 5 rendered pages maximum.
+- Selectable text required; scanned or image-only documents are not supported.
+
+The web client uploads only after an explicit submit action, sends one
+multipart `file` field without setting the multipart boundary manually, and does
+not store source bytes in URLs, browser storage, cookies, analytics, or logs.
+Selected filenames remain local UI state only. Server validation remains
+authoritative.
+
+After upload, the browser polls the owner-scoped
+`GET /import-resume/:importId/status` endpoint. The endpoint runs the verified
+principal guard before lookup, reads imports through owner-scoped repository
+methods, and returns the same privacy-safe not-found status for missing and
+wrong-owner imports. Browser code never reads PostgreSQL, BullMQ, Redis, or
+Valkey directly.
+
+Current public status outcomes are processing, draft-ready, partial extraction,
+recoverable timeout, validation failure, terminal processing failure,
+authentication required, connectivity lost, not found, expired, and cancelled.
+Processing exposes only plain-language steps and known percentages when the
+strict contract provides them. Queue progress is supplemental, schema-validated,
+and cannot override terminal PostgreSQL lifecycle state.
+
+Phase 4 review/correction UI, structured-resume confirmation, source deletion,
+retry/cancellation backend behavior, the functional manual editor, AI, OCR,
+retention workers, and deletion workers remain intentionally absent.
+
+Accessibility coverage for this slice includes semantic choices, labelled file
+input, associated upload/privacy guidance, keyboard activation, visible focus,
+error focus, live status announcements, terminal-state recovery actions, and a
+containerized Playwright test with private-safe mocked API responses.
 
 - API application code can use the provider-ready privacy logger with an
   injected sink. It preserves allow-listed operational identifiers and
