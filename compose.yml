@@ -83,6 +83,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nuvitae_dev_password}
       POSTGRES_DB: ${POSTGRES_DB:-nuvitae}
       POSTGRES_SSL: "false"
+      POSTGRES_CONNECTION_TIMEOUT_MS: 3000
+      POSTGRES_STATEMENT_TIMEOUT_MS: 2000
     ports:
       - "3001:3001"
     volumes:
@@ -115,6 +117,8 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-nuvitae}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nuvitae_dev_password}
       POSTGRES_DB: ${POSTGRES_DB:-nuvitae}
+      POSTGRES_CONNECTION_TIMEOUT_MS: 3000
+      POSTGRES_STATEMENT_TIMEOUT_MS: 2000
       QUEUE_HOST: queue
       QUEUE_PORT: 6379
       QUEUE_PASSWORD: ${QUEUE_PASSWORD:-nuvitae_queue_password}

@@ -11,6 +11,12 @@ importers:
       '@eslint/js':
         specifier: 10.0.1
         version: 10.0.1(eslint@10.0.1(supports-color@8.1.1))
+      '@nestjs/core':
+        specifier: 11.1.28
+        version: 11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/platform-express@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/platform-express':
+        specifier: 11.1.28
+        version: 11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@11.1.28)(supports-color@8.1.1)
       '@next/eslint-plugin-next':
         specifier: 15.5.22
         version: 15.5.22
@@ -38,6 +44,9 @@ importers:
       turbo:
         specifier: 2.10.7
         version: 2.10.7
+      typeorm:
+        specifier: 0.3.28
+        version: 0.3.28(ioredis@5.11.1(supports-color@8.1.1))(pg@8.22.0)(supports-color@8.1.1)
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -62,15 +71,27 @@ importers:
       '@nestjs/swagger':
         specifier: 11.4.6
         version: 11.4.6(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)
+      '@nestjs/typeorm':
+        specifier: 11.0.3
+        version: 11.0.3(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.28(ioredis@5.11.1(supports-color@8.1.1))(pg@8.22.0)(supports-color@8.1.1))
       '@nuvitae/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@nuvitae/persistence':
+        specifier: workspace:*
+        version: link:../../packages/persistence
+      pg:
+        specifier: 8.22.0
+        version: 8.22.0
       reflect-metadata:
         specifier: 0.2.2
         version: 0.2.2
       rxjs:
         specifier: 7.8.2
         version: 7.8.2
+      typeorm:
+        specifier: 0.3.28
+        version: 0.3.28(ioredis@5.11.1(supports-color@8.1.1))(pg@8.22.0)(supports-color@8.1.1)
       zod:
         specifier: 4.4.3
         version: 4.4.3
@@ -112,21 +133,33 @@ importers:
       '@nestjs/core':
         specifier: 11.1.28
         version: 11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/platform-express@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/typeorm':
+        specifier: 11.0.3
+        version: 11.0.3(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.28(ioredis@5.11.1(supports-color@8.1.1))(pg@8.22.0)(supports-color@8.1.1))
       '@nuvitae/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@nuvitae/persistence':
+        specifier: workspace:*
+        version: link:../../packages/persistence
       bullmq:
         specifier: 5.81.2
         version: 5.81.2(supports-color@8.1.1)
       ioredis:
         specifier: 5.11.1
         version: 5.11.1(supports-color@8.1.1)
+      pg:
+        specifier: 8.22.0
+        version: 8.22.0
       reflect-metadata:
         specifier: 0.2.2
         version: 0.2.2
       rxjs:
         specifier: 7.8.2
         version: 7.8.2
+      typeorm:
+        specifier: 0.3.28
+        version: 0.3.28(ioredis@5.11.1(supports-color@8.1.1))(pg@8.22.0)(supports-color@8.1.1)
     devDependencies:
       '@nestjs/cli':
         specifier: 11.0.24
@@ -147,12 +180,12 @@ importers:
 
   packages/persistence:
     dependencies:
-      '@nuvitae/domain':
-        specifier: workspace:*
-        version: link:../domain
       '@nestjs/typeorm':
         specifier: 11.0.3
         version: 11.0.3(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.28(ioredis@5.11.1(supports-color@8.1.1))(pg@8.22.0)(supports-color@8.1.1))
+      '@nuvitae/domain':
+        specifier: workspace:*
+        version: link:../domain
       pg:
         specifier: 8.22.0
         version: 8.22.0

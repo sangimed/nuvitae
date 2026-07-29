@@ -52,11 +52,19 @@ development.
 
 ### Development Stack
 
-Start the current bootstrap stack:
+Start PostgreSQL and the queue, run the explicit migration operation, then
+start the application services:
 
 ```bash
+docker compose up -d postgres queue
+docker compose run --rm workspace pnpm db:migration:run
+docker compose up -d web api worker
 docker compose up --wait
 ```
+
+Application startup never runs migrations. Both `synchronize` and
+`migrationsRun` remain `false`, so deployments must complete the migration step
+before starting or updating API and worker instances.
 
 Stop it without deleting Docker-managed data:
 
@@ -68,9 +76,14 @@ Current local service URLs and health expectations:
 
 - Web: `http://localhost:3000`, health at `http://localhost:3000/health`
   returns `{"service":"web","status":"ok"}`.
-- API: `http://localhost:3001`, health at `http://localhost:3001/health`
-  returns `{"service":"api","status":"ok"}`.
-- Worker: no product HTTP API; Docker health checks the worker readiness file.
+- API liveness: `http://localhost:3001/health/live` checks only the API
+  process.
+- API readiness: `http://localhost:3001/health` verifies the Nest-managed
+  TypeORM data source with a minimal PostgreSQL probe and returns a generic HTTP
+  503 response when PostgreSQL is unavailable.
+- Worker: no product HTTP API; Docker checks a readiness file that is written
+  only after the Nest context, queue bootstrap, TypeORM initialization, and
+  PostgreSQL probe succeed. The file is removed during shutdown.
 - PostgreSQL: internal Compose service `postgres`, checked with `pg_isready`.
 - Queue: internal Compose service `queue`, checked with authenticated
   `valkey-cli ping`.
@@ -101,11 +114,15 @@ Format files through Docker when needed:
 docker compose run --rm workspace pnpm format
 ```
 
-The shared TypeORM Data Mapper persistence package provides explicit entities,
-mappers, repositories, a validated DataSource factory, and a versioned initial
-migration. `synchronize` and automatic migration execution are always disabled.
-API and worker TypeORM wiring and database-aware readiness remain deferred; the
-current API health endpoint is still liveness-only.
+The API and worker both use the shared TypeORM Data Mapper persistence package
+for validated environment configuration, entities, migrations, repositories,
+and transactions. They do not carry application-specific entity lists or create
+independent data sources. `synchronize` and automatic migration execution are
+always disabled.
+
+The defaults `nuvitae` / `nuvitae_dev_password` are local Compose development
+credentials only. Production sets `NODE_ENV=production` and must explicitly
+supply PostgreSQL host, user, password, and database values.
 
 Run project-local migration tooling only through Docker:
 
@@ -129,6 +146,12 @@ afterward, leaving the development database schema untouched:
 ```bash
 docker compose run --rm workspace pnpm test:integration:persistence
 ```
+
+This integrated suite covers migration create/generate/show/run/revert,
+API liveness and database readiness, privacy-safe readiness failure, worker
+database-aware readiness, repository provider identity, and transaction
+commit/rollback behavior. No resume-import controller, use case, or product
+queue processor is implemented by this persistence wiring.
 
 ### Reset Volumes
 
