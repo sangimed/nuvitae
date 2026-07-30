@@ -1,0 +1,8 @@
+failed_startup_exit=2
+root_write_exit=1
+usr_local_write_exit=1
+host_docker_internal_node_lookup_exit=1
+ping_exit=127
+host_docker_internal_lookup_exit=2
+postgres_connect_exit=1
+valkey_connect_exit=1

@@ -1,0 +1,110 @@
+services:
+  stdio-check:
+    build:
+      context: .
+      args:
+        CODEX_VERSION: "0.146.0"
+    image: nuvitae-codex-app-server-runtime:0.146.0
+    user: "10001:10001"
+    read_only: true
+    network_mode: "none"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 512m
+    cpus: 0.50
+    environment:
+      HOME: /codex-state
+      CODEX_HOME: /codex-state
+      XDG_CONFIG_HOME: /codex-state/.config
+      XDG_CACHE_HOME: /runtime-tmp/.cache
+      XDG_DATA_HOME: /codex-state/.local/share
+      TMPDIR: /runtime-tmp
+      NUVITAE_SPIKE: codex-app-server-runtime
+      NO_COLOR: "1"
+    tmpfs:
+      - /workspace:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
+      - /runtime-tmp:rw,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
+      - /socket:rw,nosuid,nodev,size=8m,uid=10001,gid=10001,mode=0700
+    volumes:
+      - codex-state:/codex-state
+      - ./evidence:/evidence
+      - ./probe-client.mjs:/probe-client.mjs:ro
+      - ./run-stdio-checks.sh:/run-stdio-checks.sh:ro
+    entrypoint: ["/bin/sh", "/run-stdio-checks.sh"]
+
+  sidecar-server:
+    image: nuvitae-codex-app-server-runtime:0.146.0
+    user: "10001:10001"
+    read_only: true
+    network_mode: "none"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 512m
+    cpus: 0.50
+    environment:
+      HOME: /codex-state
+      CODEX_HOME: /codex-state
+      XDG_CONFIG_HOME: /codex-state/.config
+      XDG_CACHE_HOME: /runtime-tmp/.cache
+      XDG_DATA_HOME: /codex-state/.local/share
+      TMPDIR: /runtime-tmp
+      NUVITAE_SPIKE: codex-app-server-runtime
+      NO_COLOR: "1"
+    tmpfs:
+      - /workspace:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
+      - /runtime-tmp:rw,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
+    volumes:
+      - codex-sidecar-state:/codex-state
+      - socket-dir:/socket
+    command:
+      - codex
+      - app-server
+      - --listen
+      - unix:///socket/codex-app-server.sock
+      - --strict-config
+    profiles:
+      - sidecar
+
+  sidecar-client:
+    image: nuvitae-codex-app-server-runtime:0.146.0
+    depends_on:
+      - sidecar-server
+    user: "10001:10001"
+    read_only: true
+    network_mode: "none"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 256m
+    cpus: 0.25
+    environment:
+      HOME: /client-state
+      CODEX_HOME: /client-state
+      TMPDIR: /runtime-tmp
+      NUVITAE_SPIKE: codex-app-server-runtime
+      NO_COLOR: "1"
+    tmpfs:
+      - /client-state:rw,nosuid,nodev,size=8m,uid=10001,gid=10001,mode=0700
+      - /workspace:rw,noexec,nosuid,nodev,size=16m,uid=10001,gid=10001,mode=0700
+      - /runtime-tmp:rw,nosuid,nodev,size=16m,uid=10001,gid=10001,mode=0700
+    volumes:
+      - socket-dir:/socket
+      - ./evidence:/evidence
+      - ./probe-client.mjs:/probe-client.mjs:ro
+      - ./run-sidecar-checks.sh:/run-sidecar-checks.sh:ro
+    entrypoint: ["/bin/sh", "/run-sidecar-checks.sh"]
+    profiles:
+      - sidecar
+
+volumes:
+  codex-state:
+  codex-sidecar-state:
+  socket-dir:

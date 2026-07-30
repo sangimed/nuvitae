@@ -1,0 +1,2 @@
+total 0
+srw------- 1 codexruntime codexruntime 0 Jul 30 18:14 codex-app-server.sock

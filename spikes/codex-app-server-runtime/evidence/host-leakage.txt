@@ -1,0 +1,8 @@
+root_codex_visible_exit=1
+host_home_codex_visible_exit=1
+host_repo_visible_exit=1
+private_storage_visible_exit=1
+docker_socket_visible_exit=1
+host_auth_sentinel_visible_exit=1
+host_mcp_sentinel_visible_exit=1
+host_plugin_sentinel_visible_exit=1

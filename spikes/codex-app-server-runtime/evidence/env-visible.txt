@@ -1,0 +1,13 @@
+CODEX_HOME=/codex-state
+HOME=/codex-state
+HOSTNAME=6641147b8971
+NODE_VERSION=24.15.0
+NO_COLOR=1
+NUVITAE_SPIKE=codex-app-server-runtime
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PWD=/workspace
+TMPDIR=/runtime-tmp
+XDG_CACHE_HOME=/runtime-tmp/.cache
+XDG_CONFIG_HOME=/codex-state/.config
+XDG_DATA_HOME=/codex-state/.local/share
+YARN_VERSION=1.22.22

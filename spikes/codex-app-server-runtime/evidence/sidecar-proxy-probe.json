@@ -1,0 +1,18 @@
+{
+  "mode": "socket-proxy",
+  "transport": "unix-proxy:///socket/codex-app-server.sock",
+  "error": "Error: Timed out waiting for initialize; stderr=\n    at request (file:///probe-client.mjs:157:11)\n    at async main (file:///probe-client.mjs:167:24)",
+  "sent": [
+    {
+      "id": 1,
+      "method": "initialize"
+    }
+  ],
+  "notificationCount": 0,
+  "notificationMethods": [],
+  "failedExit": {
+    "code": null,
+    "signal": "SIGKILL"
+  },
+  "stderr": ""
+}

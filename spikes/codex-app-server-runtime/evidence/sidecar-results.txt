@@ -1,0 +1,3 @@
+direct_socket_probe_exit=1
+proxy_socket_probe_exit=1
+experimentally_rejected_unusable_initialize

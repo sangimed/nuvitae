@@ -1,0 +1,61 @@
+{
+  "mode": "stdio",
+  "transport": "stdio",
+  "initialize": {
+    "id": 1,
+    "result": {
+      "userAgent": "nuvitae/0.146.0 (Debian 12.0.0; aarch64) unknown (nuvitae; 0.1.0-t190-runtime-spike)",
+      "codexHome": "/codex-state",
+      "platformFamily": "unix",
+      "platformOs": "linux"
+    }
+  },
+  "accountRead": {
+    "id": 2,
+    "result": {
+      "account": null,
+      "requiresOpenaiAuth": true
+    }
+  },
+  "modelListSummary": {
+    "responseShape": [
+      "data",
+      "nextCursor"
+    ],
+    "rawResponseBytes": 5352
+  },
+  "sent": [
+    {
+      "id": 1,
+      "method": "initialize"
+    },
+    {
+      "method": "initialized",
+      "notification": true
+    },
+    {
+      "id": 2,
+      "method": "account/read"
+    },
+    {
+      "id": 3,
+      "method": "model/list"
+    }
+  ],
+  "notificationCount": 2,
+  "notificationMethods": [
+    "configWarning",
+    "remoteControl/status/changed"
+  ],
+  "gracefulExit": {
+    "code": 0,
+    "signal": null
+  },
+  "malformedInputResult": {
+    "code": null,
+    "signal": "SIGKILL",
+    "stderr": "2026-07-30T18:14:25.220814Z ERROR codex_app_server: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.\n2026-07-30T18:14:25.221070Z ERROR codex_app_server_transport::transport: Failed to deserialize JSONRPCMessage: expected ident at line 1 column 2\n"
+  },
+  "malformedInputForcedKill": true,
+  "stderr": "2026-07-30T18:14:25.101382Z ERROR codex_app_server: Codex could not find bubblewrap on PATH. Install bubblewrap with your OS package manager. See the sandbox prerequisites: https://developers.openai.com/codex/concepts/sandboxing#prerequisites. Codex will use the bundled bubblewrap in the meantime.\n"
+}

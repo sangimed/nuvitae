@@ -1,0 +1,2 @@
+/runtime-tmp/tmp-write-ok
+/workspace/workspace-write-ok

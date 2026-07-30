@@ -1,0 +1,5 @@
+error: unexpected argument '--definitely-not-a-real-option' found
+
+Usage: codex app-server [OPTIONS] [COMMAND]
+
+For more information, try '--help'.
