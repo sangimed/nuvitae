@@ -84,17 +84,35 @@ The development workspace image contains pinned Node.js, Corepack, pnpm, and sha
 
 **Alternatives considered**: Provider-specific domain fields were rejected because they would lock the import model to one AI vendor. Allowing provider-native JSON into the domain was rejected because malformed or provider-shaped output would weaken schema ownership. Disallowing AI entirely was rejected because the amended spec makes AI-first semantic parsing the initial self-hosted product direction.
 
-## Decision: Plan the first self-hosted adapter as a bounded Codex subscription spike
+## Decision: Treat T139-T145 as a scoped historical NO-GO
 
-**Rationale**: The first targeted integration is a user-authenticated Codex provider using the user's existing ChatGPT/Codex subscription for self-hosted deployments. This is not yet a proven implementation assumption, so a bounded spike must validate official support for non-interactive invocation from Docker, subscription/session authentication, PDF and DOCX support, strict structured output, evidence quality, invented-field rate, latency, quota behavior, credential isolation, and failure handling before full implementation tasks are finalized.
+**Rationale**: The completed T139-T145 spike rejected only the evaluated approach: direct production use of `codex exec`, direct reuse or copying of Codex CLI credential files, Nuvitae directly reading, storing, refreshing, or manipulating ChatGPT access and refresh tokens, and Nuvitae reproducing the ChatGPT/Codex OAuth flow itself. Keeping that result scoped prevents the plan from invalidating completed research while still blocking unsafe production use of the evaluated approach.
 
-**Alternatives considered**: Treating Codex as a permanent domain dependency was rejected by the provider-independence requirement. Using a Nuvitae-managed commercial provider for the initial self-hosted feature was rejected because hosted commercial provider selection is explicitly out of scope. Building local-model support first was deferred because Codex subscription authentication is the first product target, while the abstraction must still allow future local-model adapters.
+**Alternatives considered**: Treating T145 as a general Codex subscription NO-GO was rejected because the amended specification preserves Codex as the candidate first self-hosted provider through the official Codex-managed application runtime. Reopening T139-T145 was rejected because the work remains complete and historically valid.
 
-## Decision: Validate Codex input representation through the spike
+## Decision: Plan the first self-hosted provider candidate as a second Codex app-server validation
 
-**Rationale**: The first adapter might send the original PDF, rendered page images, extracted text with source locations, or a controlled combination. This cannot be selected responsibly without measuring evidence quality, strict output reliability, latency, privacy exposure, and PDF/DOCX behavior. The spike must compare these options using anonymous French, English, bilingual, one-column, and multi-column fixtures with expected structured outputs.
+**Rationale**: The first targeted provider candidate is Codex through the official `codex app-server` runtime using the user's existing ChatGPT/Codex subscription for self-hosted deployments. This is not yet a proven implementation assumption, so a second bounded spike must validate the official app-server interface, Docker startup, installed version detection, generated protocol artifacts from that version, JSON-RPC stdio initialization, Nuvitae client identification, official login/logout/reconnect behavior, token-blind authentication ownership, non-interactive invocation after login, isolation, structured output, evidence quality, no-invention behavior, latency, quota behavior, and failure handling before production Codex adapter tasks are implemented.
 
-**Alternatives considered**: Assuming original-file upload was rejected because it may weaken location grounding or fail official support constraints. Assuming extracted text only was rejected because layout and grouping cues may be lost. Assuming rendered images was rejected because OCR is out of scope and rendered-image handling may add unnecessary latency or privacy exposure.
+**Alternatives considered**: Treating Codex as a permanent domain dependency was rejected by the provider-independence requirement. Building a production adapter from the T145 result was rejected because T145 did not validate the official app-server path. Using a Nuvitae-managed commercial provider for the initial self-hosted feature was rejected because hosted commercial provider selection is explicitly out of scope. Building local-model support first was deferred because Codex subscription authentication is the first product target, while the abstraction must still allow future local-model adapters.
+
+## Decision: Use synthetic extracted text plus source identifiers for the initial app-server spike input
+
+**Rationale**: The amended specification and privacy boundary require the initial Codex app-server spike to use deterministically extracted resume text, stable page/block/line/fragment identifiers, and compact layout hints where required. The spike uses only synthetic anonymous fixtures and does not mount original PDF or DOCX documents into the Codex runtime. This preserves evidence identifiers needed for grounding while minimizing data exposure and avoiding unsupported claims about original-document handling.
+
+**Alternatives considered**: Mounting original PDFs or DOCX files into the Codex runtime was rejected for the initial spike because it expands data exposure and is not required until a necessary and safe product reason is demonstrated. Rendered page images were rejected for the initial spike because OCR is out of scope and image handling may add unnecessary latency or privacy exposure. Free-form text without stable source identifiers was rejected because evidence grounding would be unverifiable.
+
+## Decision: Generate app-server protocol artifacts from the installed Codex version
+
+**Rationale**: The plan must not hardcode RPC request or response structures from assumptions. The second spike detects the installed Codex version, generates TypeScript or JSON Schema protocol artifacts from that exact version, derives supported methods and payload shapes from generated artifacts, classifies stable, beta, experimental, deprecated, and unsupported operations, and records compatibility risks between Codex versions.
+
+**Alternatives considered**: Handwriting request/response types from documentation or memory was rejected because the Codex app-server interface may vary by version. Using the experimental WebSocket transport was rejected for the initial candidate because the required direction is JSON-RPC over stdio. Ignoring operation stability was rejected because production viability depends on version-coupling risk.
+
+## Decision: Keep Nuvitae token-blind and model provider runtime connection state neutrally
+
+**Rationale**: The official Codex runtime owns ChatGPT authentication, credential persistence, token refresh, refresh-token rotation, expiry handling, session recovery, and logout. Nuvitae models provider identity, connection state, capability state, authentication status, disconnection state, and availability state without reading auth files, storing tokens, refreshing tokens, logging tokens, or implementing OAuth endpoints.
+
+**Alternatives considered**: Persisting Codex tokens in Nuvitae was rejected because it violates the corrected authentication boundary. Reusing host Codex credentials or parsing Codex auth files was rejected by T145. Treating provider connection as a generic boolean was rejected because login progress, expired/revoked auth, quota, availability, reconnect, and disconnect must be recoverable states.
 
 ## Decision: Model provider failure as first-class recovery states
 

@@ -60,25 +60,25 @@ Temporary unsupported-language recovery view containing only explicitly detectab
 
 **State Transitions**: `created` -> `awaiting_user_confirmation` -> `transferred_to_manual_entry` or `discarded`; deletion also occurs when the source is deleted, cancelled, expired, or the retention deadline is reached.
 
-## ProviderConnection
+## AIProviderRuntimeConnection
 
-Represents a user's configured AI provider connection for a self-hosted installation.
+Represents a user's configured AI provider runtime connection for a self-hosted installation.
 
-**Fields**: `id`, `ownerUserId`, `providerKind`, `displayName`, `connectionStatus`, `capabilities`, `connectedAt`, `lastCheckedAt`, `disconnectedAt`, `revokedAt`, `expiresAt`.
+**Fields**: `id`, `ownerUserId`, `providerKind`, `displayName`, `connectionStatus`, `capabilityState`, `authenticationStatus`, `availabilityStatus`, `lastCheckedAt`, `loginStartedAt`, `connectedAt`, `disconnectedAt`, `logoutAt`, `revokedAt`, `expiresAt`.
 
-**Relationships**: Owned by one user. May be referenced by many `SemanticParseAttempt` records. Provider credentials and session material are stored separately from resume source artifacts and are not exposed to import review.
+**Relationships**: Owned by one user. May be referenced by many `SemanticParseAttempt` records. No raw provider credentials, access tokens, refresh tokens, provider auth files, or provider session material are exposed to the import domain or import review.
 
-**Validation Rules**: Initial provider kind is `codex_subscription` for the self-hosted Codex adapter. Connection status values include `not_configured`, `connected`, `disconnected`, `auth_expired`, `unavailable`, `rate_limited`, `quota_exceeded`, and `unsupported_capability`. Credentials and session material must be private, revocable, isolated from resume data, excluded from logs, inaccessible to other users, and removable on disconnect.
+**Validation Rules**: Initial provider kind is `codex_app_server` for the candidate self-hosted Codex adapter. Connection status values include `not_configured`, `login_pending`, `connected`, `login_cancelled`, `disconnected`, `auth_expired`, `auth_revoked`, `unavailable`, `rate_limited`, `quota_exceeded`, and `unsupported_capability`. Nuvitae remains token-blind and must not read provider auth files, parse provider auth files, persist access tokens, persist refresh tokens, refresh tokens directly, expose tokens in logs/API responses/events/database records, or implement provider OAuth endpoints itself. Provider login, persistence, refresh, rotation, expiry, recovery, and logout are owned by the official provider runtime.
 
-**State Transitions**: `not_configured` -> `connected`; `connected` -> `auth_expired`, `unavailable`, `rate_limited`, `quota_exceeded`, `disconnected`, or `revoked`; recoverable states may return to `connected` after reconnect or retry.
+**State Transitions**: `not_configured` -> `login_pending` -> `connected` or `login_cancelled`; `connected` -> `auth_expired`, `auth_revoked`, `unavailable`, `rate_limited`, `quota_exceeded`, `disconnected`, or `revoked`; recoverable states may return to `login_pending` or `connected` after reconnect or retry. `connected` may transition to `disconnected` after user logout/disconnect without deleting uploaded resumes, import drafts, structured resumes, or source-retention records.
 
 ## SemanticParseAttempt
 
 One provider-backed semantic parsing attempt for an accepted import.
 
-**Fields**: `id`, `importedDocumentId`, `ownerUserId`, `providerConnectionId`, `providerKind`, `inputRepresentation`, `status`, `startedAt`, `endedAt`, `timeoutSeconds`, `failureReason`, `responseSchemaVersion`, `groundingValidationStatus`, `noInventionValidationStatus`, `latencyMs`.
+**Fields**: `id`, `importedDocumentId`, `ownerUserId`, `providerRuntimeConnectionId`, `providerKind`, `inputRepresentation`, `status`, `startedAt`, `endedAt`, `timeoutSeconds`, `failureReason`, `responseSchemaVersion`, `groundingValidationStatus`, `noInventionValidationStatus`, `latencyMs`.
 
-**Relationships**: Belongs to one `ImportedDocument`; may use one `ProviderConnection`; may produce one `NuvitaeExtractionResponse` and one `ImportDraft`; may create `ImportWarning` records for provider failures or invalid candidates.
+**Relationships**: Belongs to one `ImportedDocument`; may use one `AIProviderRuntimeConnection`; may produce one `NuvitaeExtractionResponse` and one `ImportDraft`; may create `ImportWarning` records for provider failures or invalid candidates.
 
 **Validation Rules**: Status values include `queued`, `running`, `succeeded`, `failed`, `timed_out`, `malformed_output`, `invalid_evidence`, `provider_unavailable`, `auth_expired`, `rate_limited`, `quota_exceeded`, `cancelled`. Provider failures must map to retry, reconnect, choose another configured provider, limited deterministic partial extraction where available, or manual entry. A failed attempt must not create a review draft from invalid output.
 
@@ -198,6 +198,6 @@ Isolated process used for PDF parsing, DOCX rendered-page validation, DOCX text 
 
 Application boundary implemented by provider adapters, not a persisted domain entity.
 
-**Contract Fields**: `providerKind`, `capabilities`, `connectionState`, `parse(request)`, `disconnect()`, `refreshConnection()`.
+**Contract Fields**: `providerKind`, `capabilities`, `connectionState`, `inspectConnection()`, `startLogin()`, `observeLogin()`, `cancelLogin()`, `completeLogin()`, `logout()`, `reconnect()`, `parse(request)`.
 
-**Validation Rules**: The import domain depends only on this boundary and the versioned Nuvitae extraction response. Adapters must not expose provider SDKs, provider-native JSON, shell access, file-editing tools, repository access, prompts, credentials, or session material to the domain. The first self-hosted adapter targets Codex authenticated through the user's ChatGPT/Codex subscription where officially supported.
+**Validation Rules**: The import domain depends only on this boundary and the versioned Nuvitae extraction response. Adapters must not expose provider SDKs, provider-native JSON, prompts, credentials, auth files, access tokens, refresh tokens, or session material to the domain. The candidate first self-hosted adapter targets Codex through the official app-server runtime, but production Codex adapter implementation remains blocked until the second validation records a GO or qualifying CONDITIONAL GO.

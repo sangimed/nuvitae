@@ -16,7 +16,7 @@ The implementation plan adopts a container-only workflow for development, build,
 
 **Language/Version**: TypeScript on pinned Node.js 20+ executed only inside Docker images for web, API, workers, domain packages, and extraction orchestration.
 
-**Primary Dependencies**: Next.js App Router, React, and strict TypeScript for `apps/web`; NestJS with the default Express platform for the REST-first `apps/api`; NestJS standalone application plus BullMQ for `apps/worker`; Zod runtime schemas in `packages/contracts`; TypeORM with `@nestjs/typeorm`, the PostgreSQL `pg` driver, TypeORM migrations, and the Data Mapper pattern in shared `packages/persistence`; PostgreSQL for relational domain state; private object storage for source documents and derived artifacts; Redis-compatible queue/rate-limit backend for processing jobs; PDF.js (`pdfjs-dist`) for deterministic PDF page counting and text extraction with page and coordinate provenance; a DOCX adapter using `yauzl` plus `fast-xml-parser` for Office Open XML text extraction with package/paragraph/run provenance; isolated LibreOffice headless conversion to PDF only for DOCX rendered-page-count validation; provider-independent `ResumeSemanticParserProvider` boundary with provider capability discovery, connection state, strict Zod validation for a versioned Nuvitae extraction response, evidence grounding validation, no-invention checks, warning generation, and provider failure mapping; an experimental self-hosted Codex subscription adapter as the first provider spike. All application dependencies are installed and executed in containers.
+**Primary Dependencies**: Next.js App Router, React, and strict TypeScript for `apps/web`; NestJS with the default Express platform for the REST-first `apps/api`; NestJS standalone application plus BullMQ for `apps/worker`; Zod runtime schemas in `packages/contracts`; TypeORM with `@nestjs/typeorm`, the PostgreSQL `pg` driver, TypeORM migrations, and the Data Mapper pattern in shared `packages/persistence`; PostgreSQL for relational domain state; private object storage for source documents and derived artifacts; Redis-compatible queue/rate-limit backend for processing jobs; PDF.js (`pdfjs-dist`) for deterministic PDF page counting and text extraction with page and coordinate provenance; a DOCX adapter using `yauzl` plus `fast-xml-parser` for Office Open XML text extraction with package/paragraph/run provenance; isolated LibreOffice headless conversion to PDF only for DOCX rendered-page-count validation; provider-independent `ResumeSemanticParserProvider` boundary with provider capability discovery, connection state, strict Zod validation for a versioned Nuvitae extraction response, evidence grounding validation, no-invention checks, warning generation, and provider failure mapping; a second bounded Codex app-server validation spike using the official Codex-managed application runtime as the candidate first self-hosted provider. All application dependencies are installed and executed in containers.
 
 **Storage**: PostgreSQL for users, imported documents, import drafts, warnings, extracted fields, structured resumes, deletion jobs, and audit events. PostgreSQL runs as a Compose service in development and test. Phase 1 uses a Docker-managed named volume as the local private storage implementation for uploaded files and temporary source-reconstructing artifacts, with keys scoped by user/import and retention deadline. The named private-storage volume is mounted only into services that require private source/artifact access. A managed-cloud S3-compatible storage adapter remains a later implementation boundary and is not introduced during bootstrap. The Redis-compatible queue/rate-limit backend runs as a Compose service.
 
@@ -30,7 +30,7 @@ The implementation plan adopts a container-only workflow for development, build,
 
 **Constraints**: Authentication required before upload; PDF/DOCX only; French, English, and bilingual French-English only; selectable text required; AI-assisted semantic parsing is the primary semantic extraction path whenever a usable provider is connected; deterministic processing remains responsible for document validation, safety, parser isolation, storage, schema validation, evidence validation, provenance, no-invention enforcement, review, confirmation, and retention; no structured resume creation from inferred-only data, evidence-free candidates, invalid provider output, or abruptly terminated partial parser output; all warnings must be addressed before confirmation; source and source-reconstructing artifacts deleted within 7 days of original upload; source deletion does not delete confirmed structured resumes; raw source content, provider payloads, credentials, session material, prompts, and full resumes must not be logged. The import domain must not depend directly on Codex, OpenAI, ChatGPT, Claude, Ollama, provider-native JSON, or provider SDKs. Developers must not install or execute Node.js, npm, pnpm, PostgreSQL, Redis, LibreOffice, Playwright browsers, PDF/DOCX libraries, linters, formatters, compilers, or test runners on the host for Nuvitae work.
 
-**AI Provider Runtime Constraints**: Provider invocation must be non-interactive from the worker, Docker-compatible, session-isolated per authenticated user/self-hosted installation, and restricted to semantic parsing only. Provider execution must not expose shell, code execution, file editing, repository access, or arbitrary tool use for resume parsing. Credentials and session material use private storage separate from resume source artifacts, support disconnect/revocation, are never logged, and are inaccessible to other users. Provider states include connected, not configured, disconnected, authentication expired, unavailable, rate limited, subscription/quota exceeded, timeout, malformed output, and unsupported capability. Failures map to retry, reconnect, choose another configured provider, limited deterministic partial extraction where available, or manual entry.
+**AI Provider Runtime Constraints**: Provider invocation must be non-interactive from the worker, Docker-compatible, session-isolated per authenticated user/self-hosted installation, and restricted to semantic parsing only. Provider execution must not expose shell, code execution, file editing, repository access, or arbitrary tool use for resume parsing unless the second spike verifies that those capabilities are disabled, excluded, restricted, or sufficiently neutralized by runtime configuration, absent mounts, empty workspaces, permissions, and sandboxing. The official Codex runtime owns ChatGPT authentication, credential persistence, access-token refresh, refresh-token rotation, authentication expiry, session recovery, and logout. Nuvitae remains token-blind and must not read Codex auth files, parse Codex auth files, persist access tokens, persist refresh tokens, refresh tokens directly, expose tokens in logs/API responses/events/database records, or implement OpenAI OAuth endpoints. Provider states include connected, not configured, login pending, login cancelled, disconnected, authentication expired, authentication revoked, unavailable, rate limited, subscription/quota exceeded, timeout, malformed output, and unsupported capability. Failures map to retry, reconnect, choose another configured provider, limited deterministic partial extraction where available, or manual entry.
 
 **Initial Configurable Resource Limits**: Maximum uploaded file size 10 MB; maximum rendered length 5 pages; maximum foreground processing duration 3 minutes; maximum parser-process memory 512 MiB; maximum per user 1 active processing job and 2 queued processing jobs; maximum 5 upload or processing-start attempts per rolling 10-minute window per authenticated user. Limits must be configurable by environment but must not be disabled in production. Rate or concurrency limit responses reject the operation, return a rate-limit response such as HTTP 429, include `Retry-After` where applicable, and show a plain-language recovery message. Parser memory and timeout enforcement terminate the isolated parser process, clean up files and source-reconstructing artifacts for the failed attempt, and offer retry, replacement upload, and manual-entry recovery. Memory-limit breaches must not create an import review draft from partial output produced before termination.
 
@@ -50,7 +50,7 @@ The implementation plan adopts a container-only workflow for development, build,
 - **Protected templates**: PASS. Template source, template configuration, PDFs, and rendering components are out of scope.
 - **Human and ATS readability**: PASS. The plan preserves structured role, employer, date, location, education, skill, language, project, certification, and link relationships for later rendering.
 - **Security and privacy**: PASS. Authorization, upload validation, hostile document handling, private storage, isolation, rate limits, logging limits, retention, and deletion are first-class design requirements.
-- **Provider independence and no-AI usability**: PASS. Semantic parsing is expressed through `ResumeSemanticParserProvider` and a Nuvitae-owned extraction schema. Codex is planned only as the first self-hosted adapter; no provider SDK or provider-native JSON enters the domain. Without a usable provider, upload, validation, retry, deletion, manual entry, and limited deterministic partial extraction where available remain usable, but the product does not claim reliable full semantic parsing.
+- **Provider independence and no-AI usability**: PASS. Semantic parsing is expressed through `ResumeSemanticParserProvider` and a Nuvitae-owned extraction schema. Codex remains only the candidate first self-hosted provider through the official app-server runtime, with production adapter work blocked until a second GO or qualifying CONDITIONAL GO; no provider SDK or provider-native JSON enters the domain. Without a usable provider, upload, validation, retry, deletion, manual entry, and limited deterministic partial extraction where available remain usable, but the product does not claim reliable full semantic parsing.
 - **Accessibility and recovery**: PASS. Upload, progress, review, warning, confirmation, cancellation, retry, deletion, and failure states include accessibility and recovery requirements.
 - **Quality gates**: PASS. Required tests, fixture evaluations, security checks, accessibility checks, documentation, and failure-state validation are identified in research and quickstart.
 
@@ -160,31 +160,99 @@ New provider abstractions and contracts:
 
 - `ResumeSemanticParserProvider`: domain-independent application boundary implemented by provider adapters. It accepts a controlled extraction request and returns a provider-agnostic Nuvitae extraction response or a typed provider failure.
 - Provider capabilities: supported input modes, supported formats, max pages/size, evidence modes, structured-output support, non-interactive support, timeout behavior, and whether original files, rendered images, extracted text, or combinations are supported.
-- Provider connection state: `not_configured`, `connected`, `disconnected`, `auth_expired`, `unavailable`, `rate_limited`, `quota_exceeded`, `unsupported_capability`, `timeout`, `malformed_output`.
+- Provider runtime connection state: `not_configured`, `login_pending`, `connected`, `login_cancelled`, `disconnected`, `auth_expired`, `auth_revoked`, `unavailable`, `rate_limited`, `quota_exceeded`, `unsupported_capability`, `timeout`, `malformed_output`.
 - Versioned Nuvitae extraction response: candidate sections, field values, relationships, warnings, evidence records, explicit/inferred classification, confidence category, response schema version, and provider-neutral diagnostics.
 - Strict validation: Zod schemas reject malformed output, unknown fields, invalid relationships, unsupported values, provider-native schema leakage, missing evidence, invented facts, and confidence/category violations before data reaches import review.
 - Evidence contract: every AI-produced candidate includes document location, exact source text or source fragment identifier, explicit-versus-inferred classification, and confidence category. Unsupported or ungrounded values are rejected or marked unusable.
 - Warning generation: missing, ambiguous, duplicate, conflicting, inferred, low-confidence, partial, invalid-provider-output, ungrounded, unsupported-provider, and provider-failure warnings are reviewable and block confirmation until addressed where applicable.
 
-The first self-hosted adapter is an experimental Codex subscription adapter. It must use the user's existing ChatGPT/Codex authenticated session only where officially supported, must run non-interactively from Docker, must not expose shell or file-editing tools for parsing, and must remain outside the import domain. Future hosted commercial provider selection is out of scope and must not assume reuse of user ChatGPT subscription credentials.
+The first self-hosted provider candidate is Codex through the official `codex app-server` runtime. It must use the user's existing ChatGPT/Codex subscription only through official app-server authentication support, must run non-interactively from Docker after login, and must remain outside the import domain. Future hosted commercial provider selection is out of scope and must not assume reuse of user ChatGPT subscription credentials.
 
-## Codex Adapter Spike And Evaluation Plan
+## Codex App-Server Validation Plan
 
-Before full implementation, run a bounded technical spike that validates whether the self-hosted Codex adapter is viable. The spike must not commit to a permanent provider implementation until these points are proven:
+The completed T139-T145 spike remains historical and complete. Its NO-GO applies only to the evaluated approach: direct production use of `codex exec`, direct reuse or copying of Codex CLI credential files, Nuvitae directly reading, storing, refreshing, or manipulating ChatGPT access and refresh tokens, and Nuvitae reproducing the ChatGPT/Codex OAuth flow itself. It is not a general NO-GO for Codex subscription integration.
 
-- Codex subscription authentication from the self-hosted Docker environment.
-- Non-interactive parsing invocation without shell/file-editing/repository tools.
-- Session isolation, private credential storage, disconnect, and revocation.
-- PDF and DOCX input compatibility.
-- Which source representation Codex should receive: original PDF, rendered page images, extracted text with source locations, or a controlled combination.
-- Strict structured output using the Nuvitae extraction schema.
-- Evidence quality and source grounding.
-- Invented-field rate and no-invention enforcement.
-- Latency under 3-minute foreground timeout expectations.
-- Quota/subscription-limit behavior and failure mapping.
-- Privacy-safe logging and provider payload redaction.
+The corrected candidate architecture is:
 
-Use realistic anonymous French, English, bilingual, one-column, and multi-column PDF/DOCX fixtures with expected structured outputs. The spike output must record measured results, selected input representation for initial implementation, unacceptable failure modes, and any unresolved official-support constraints.
+```text
+Nuvitae worker
+→ provider-independent ResumeSemanticParserProvider boundary
+→ CodexAppServerProviderAdapter
+→ official codex app-server runtime
+→ ChatGPT subscription authentication managed by Codex
+```
+
+Codex-specific concepts stay outside the import domain. The import domain consumes only the Nuvitae-owned provider-independent semantic extraction response.
+
+The second spike validates the official app-server path before any production Codex adapter work. Initial candidate transport is JSON-RPC over stdio with one managed Codex app-server process per isolated runtime instance, explicit initialization with Nuvitae client metadata, request identifiers and response correlation, streaming notification handling, timeout handling, cancellation, graceful shutdown, crash detection, and bounded restart behavior. Do not rely on the experimental WebSocket transport. Do not hardcode RPC request or response structures from assumptions.
+
+The spike must detect the installed Codex version, generate TypeScript or JSON Schema protocol artifacts from that exact installed version, derive supported methods and payload shapes from those artifacts, classify stable, beta, experimental, deprecated, and unsupported operations, and record compatibility risks between Codex versions.
+
+Authentication validation must prove that the official Codex runtime owns ChatGPT authentication, credential persistence, access-token refresh, refresh-token rotation, authentication expiry, session recovery, and logout. Nuvitae remains token-blind: no Codex auth-file reads or parsing, no access-token or refresh-token persistence, no direct token refresh, no token exposure in logs/API responses/events/database records, and no Nuvitae-owned OpenAI OAuth endpoint implementation. Provider-facing operations planned at the neutral boundary are connection status, login initiation, login progress, login completion, login cancellation where supported, logout, reconnect, expired or revoked authentication, quota state, and provider availability state.
+
+Runtime isolation for the spike uses a dedicated Docker runtime for Codex app-server with a dedicated Codex runtime image or bounded runtime layer, private persistent Codex state volume, empty ephemeral working directory, no Nuvitae repository mount, no Nuvitae private import-storage mount, no PostgreSQL access, no Valkey access, no host Codex configuration inheritance, no host credential inheritance, no user-defined MCP servers, no user-installed Codex plugins, no unrelated environment variables, explicit CPU limit, explicit memory limit, process limit, execution timeout, controlled stdout/stderr, privacy-safe logging, bounded temporary storage, and cleanup after execution.
+
+The spike must experimentally determine whether Codex shell, file-editing, web, plugin, MCP, or other tool capabilities can be disabled, excluded, restricted, or sufficiently neutralized through empty workspaces, permissions, sandboxing, absent mounts, and runtime configuration. Do not claim these capabilities are disabled until verified.
+
+Initial semantic parsing input is deterministically extracted resume text, stable page identifiers, stable block identifiers, stable line or fragment identifiers, and compact layout hints where required. The second spike uses only synthetic anonymous fixtures. It must not mount original PDF or DOCX documents into the Codex runtime during the initial spike, though deterministic text may be prepared from synthetic PDF and DOCX fixtures while preserving source identifiers required for evidence validation.
+
+The spike uses a temporary spike-only structured output schema covering personal and contact information, professional summary, work experiences, education, skills, languages, source evidence references, explicit versus inferred values, and confidence categories. This temporary schema does not replace the planned production provider-independent Nuvitae response contract. Validation covers strict JSON parsing, schema validity, unknown fields, missing required fields, malformed output, unsupported evidence identifiers, values not present in source text, inferred values incorrectly represented as explicit, duplicate entries, work-experience grouping, and invented content. The adapter boundary converts validated provider output into the Nuvitae-owned response before the import application layer receives it.
+
+The bounded validation scenarios are:
+
+1. Codex installation and startup in Docker.
+2. Installed version detection.
+3. Protocol schema generation from the installed version.
+4. JSON-RPC initialization over stdio.
+5. Explicit Nuvitae client identification.
+6. Authentication status inspection.
+7. ChatGPT login using the official app-server-supported login mechanism available in the installed version.
+8. Login cancellation where supported.
+9. Logout.
+10. Authentication persistence across container restart.
+11. Expired or revoked authentication behavior.
+12. Confirmation that Nuvitae remains token-blind.
+13. Non-interactive invocation after login.
+14. Ephemeral thread creation where supported.
+15. Empty isolated workspace behavior.
+16. Permissions and sandbox behavior.
+17. Confirmation that host MCP servers and plugins are not inherited.
+18. Structured semantic extraction from synthetic source text.
+19. Evidence grounding.
+20. No-invention behavior.
+21. Malformed-output handling.
+22. Timeout handling.
+23. Turn cancellation.
+24. App-server crash handling.
+25. App-server restart behavior.
+26. Unsupported model behavior.
+27. Network-unavailable behavior.
+28. Authentication failure.
+29. Quota exhaustion or rate limiting where safely reproducible.
+30. Prompt-injection content inside a synthetic resume.
+31. Latency.
+32. Extraction quality.
+
+Measurement methods:
+
+- App-server startup latency: measure process start to initialized state for cold and warm starts.
+- Login flow behavior: record available official login operations, progress states, cancellation behavior, completion state, and user actions required.
+- Invocation success rate: successful authenticated non-interactive semantic invocations divided by attempted invocations after login.
+- Schema-valid response rate: responses passing strict temporary spike-schema validation divided by successful invocations.
+- Field precision: expected fields returned correctly divided by returned fields.
+- Field recall: expected fields returned correctly divided by expected fixture fields.
+- Work-experience grouping accuracy: employer/role/date groupings matching fixture expectations divided by expected groupings.
+- Valid-evidence rate: accepted candidate values with supported source identifiers and source text match divided by accepted candidate values.
+- Invented-field rate: returned fields not present in source text or accepted inference rules divided by returned fields.
+- Unsupported-evidence rate: returned evidence identifiers missing from the deterministic source representation divided by evidence references.
+- Turn latency: request start to complete structured response.
+- Cancellation latency: cancellation request to terminal cancelled state.
+- Restart recovery: successful post-restart initialization and authenticated invocation after a controlled restart.
+- Authentication recovery: successful reconnect or failure classification after expired/revoked auth scenarios.
+
+The spike report must clearly distinguish metrics measured during the spike, minimum thresholds selected by the final spike decision, production acceptance thresholds, and unverified metrics that could not be measured safely.
+
+The second decision gate is independent of T145 and records: installed Codex version; generated protocol basis; supported authentication operations; whether ChatGPT subscription authentication works; whether Nuvitae remains token-blind; whether Docker operation is viable; whether invocation is non-interactive after login; whether authentication survives restart; whether isolation and permissions are adequate; whether structured output is reliable; whether evidence grounding is adequate; measured semantic extraction quality; measured latency; failure and recovery behavior; version-coupling risks; security and privacy risks; operational complexity; required production acceptance thresholds; and GO, CONDITIONAL GO, or NO-GO. A NO-GO remains acceptable.
 
 ## No-Provider Behavior
 
@@ -192,25 +260,36 @@ When no provider is configured, disconnected, expired, unavailable, rate-limited
 
 ## Migration Impact
 
-The existing persistence foundation remains valid. New persistence work is additive: provider connection/session records, provider capability snapshots, semantic parse attempt records, Nuvitae extraction response version metadata, candidate evidence records, grounding validation status, provider failure state, and credential revocation metadata. No migration should rewrite confirmed structured resume data created by earlier accepted flows. Provider credentials/session material must be stored separately from resume source artifacts and must be excluded from retention jobs that delete resume source content unless the user explicitly disconnects the provider.
+The existing persistence foundation remains valid. New persistence work is additive: provider runtime connection records, provider capability snapshots, semantic parse attempt records, Nuvitae extraction response version metadata, candidate evidence records, grounding validation status, provider failure state, and disconnect/revocation metadata. No migration should rewrite confirmed structured resume data created by earlier accepted flows. Nuvitae persistence must not store raw provider access tokens, refresh tokens, provider auth files, or provider session material.
 
 ## Implementation Phases
 
 1. Preserve and verify existing Docker, web, API, worker, persistence, private storage, parser, manual-entry, review, confirmation, retention, deletion, and Playwright foundations.
-2. Run the Codex adapter spike and fixture evaluation before building the full provider flow.
-3. Add provider connection/session state, credential storage/revocation boundaries, and provider capability reporting.
+2. Run the second Codex app-server validation and fixture evaluation before building any production Codex adapter.
+3. Add provider-neutral runtime connection state, token-blind connection lifecycle, revocation boundaries, and provider capability reporting.
 4. Add `ResumeSemanticParserProvider`, Nuvitae extraction response schemas, strict Zod validation, evidence grounding validation, no-invention checks, and warning generation.
 5. Extend worker processing to run validation/source preparation, provider semantic parsing, response validation, review draft creation, and provider failure recovery.
 6. Extend API/web contracts for provider disclosure, provider connection/reconnect/disconnect, provider failure states, manual fallback, and review of grounded candidates.
 7. Add evaluations and tests for provider output quality, prompt injection, malformed output, invented facts, evidence quality, privacy-safe logging, timeout/quota/auth failures, accessibility, and end-to-end Playwright flows.
 
+## Dependency Rules
+
+- Provider-independent contracts, validation, grounding, persistence, review, confirmation, recovery, and fallback work may continue independently.
+- Codex-specific production adapter work remains blocked until the second Codex app-server validation records a GO or qualifying CONDITIONAL GO.
+- Existing T164-T165 planning must not be implemented based on the completed T145 result alone.
+- T164-T165 require a GO or qualifying CONDITIONAL GO from the second spike before production Codex integration work starts.
+- The second spike does not implement production provider integration.
+
 ## Unresolved Technical Decisions Requiring Spike Validation
 
-- Whether Codex can be invoked non-interactively from the self-hosted Docker stack using the user's ChatGPT/Codex subscription in an officially supported way.
-- Whether the first adapter should send original PDFs, rendered page images, extracted text with source locations, or a controlled combination.
-- Whether Codex can reliably return strict structured output with stable evidence references for both PDF and DOCX resumes.
+- Whether the installed Codex app-server version supports the required authentication, initialization, invocation, cancellation, shutdown, and notification operations through generated protocol artifacts.
+- Whether Codex can be invoked non-interactively from the self-hosted Docker stack after official ChatGPT subscription login.
+- Whether authentication persists across container restart without Nuvitae reading, storing, refreshing, or exposing tokens.
+- Whether Codex can reliably return strict structured output with stable evidence references from synthetic extracted text plus source identifiers.
 - How subscription quota and rate-limit signals are exposed and mapped to user-facing recovery states.
-- What credential/session storage mechanism is acceptable for self-hosted deployments while preserving revocation, isolation, and privacy.
+- Whether shell, file-editing, web, plugin, MCP, and other non-parsing capabilities can be disabled, excluded, restricted, or sufficiently neutralized.
+- Whether the dedicated Docker runtime isolation is adequate without repository, import-storage, PostgreSQL, Valkey, host Codex configuration, host credentials, user MCP, or plugin inheritance.
+- What official login, reconnect, logout, expired-auth, and revoked-auth operations are supported by the installed Codex version.
 - Whether latency and evidence quality are good enough for the 3-minute foreground import expectation.
 
 ### Container Artifacts (repository root)
@@ -228,7 +307,7 @@ compose.dev.yml
 .dockerignore
 ```
 
-**Container Structure Decision**: Preserve the Docker-first monorepo bootstrap before adding provider work. Planned and implemented artifacts include a pinned workspace image; multi-stage or distinct production images for the Next.js web app, NestJS API, and NestJS standalone worker; Docker build inputs for `apps/web`, `apps/api`, `apps/worker`, `packages/contracts`, `packages/domain`, `packages/extraction`, `packages/import-application`, `packages/persistence`, `packages/storage`, and `packages/test-fixtures`; a dedicated Playwright test image or stage in `docker/test/Dockerfile`; Compose services for PostgreSQL, Redis-compatible queue, a Docker-managed named `private-storage` volume mounted only into services that require private source/artifact access, Docker-managed pnpm store and `node_modules` volumes, bootstrap liveness/readiness health checks, non-root runtime users, entrypoints, and container-based lint, format, typecheck, unit/bootstrap test, provider-spike, and build commands. Phase 1 bootstrap validation does not include TypeORM migration lifecycle validation, database-aware NestJS health integration, or API/worker shared TypeORM DataSource validation; those belong to the later integrated persistence validation after TypeORM persistence wiring is implemented. Phase 1 must not introduce an additional local S3-compatible server; the managed-cloud S3-compatible adapter remains a later implementation boundary. Provider work must remain Docker-compatible and must not require host-side Node.js, provider CLIs, browser profiles, or credentials outside project-approved private storage.
+**Container Structure Decision**: Preserve the Docker-first monorepo bootstrap before adding provider work. Planned and implemented artifacts include a pinned workspace image; multi-stage or distinct production images for the Next.js web app, NestJS API, and NestJS standalone worker; Docker build inputs for `apps/web`, `apps/api`, `apps/worker`, `packages/contracts`, `packages/domain`, `packages/extraction`, `packages/import-application`, `packages/persistence`, `packages/storage`, and `packages/test-fixtures`; a dedicated Playwright test image or stage in `docker/test/Dockerfile`; Compose services for PostgreSQL, Redis-compatible queue, a Docker-managed named `private-storage` volume mounted only into services that require private source/artifact access, Docker-managed pnpm store and `node_modules` volumes, bootstrap liveness/readiness health checks, non-root runtime users, entrypoints, and container-based lint, format, typecheck, unit/bootstrap test, provider-spike, and build commands. The second Codex validation adds a dedicated Codex app-server runtime with private Codex state, empty ephemeral working directory, no Nuvitae repository mount, no import-storage mount, no PostgreSQL/Valkey access, no host Codex configuration or credential inheritance, no user MCP/plugin inheritance where verified, explicit resource limits, controlled stdout/stderr, privacy-safe logging, bounded temporary storage, and cleanup after execution. Phase 1 bootstrap validation does not include TypeORM migration lifecycle validation, database-aware NestJS health integration, or API/worker shared TypeORM DataSource validation; those belong to the later integrated persistence validation after TypeORM persistence wiring is implemented. Phase 1 must not introduce an additional local S3-compatible server; the managed-cloud S3-compatible adapter remains a later implementation boundary. Provider work must remain Docker-compatible and must not require host-side Node.js, provider CLIs, browser profiles, or credentials outside project-approved private storage.
 
 **Migration Decision**: TypeORM migrations are versioned and run only through project-local tooling inside Docker after the shared persistence package, API TypeORM integration, and worker TypeORM integration are implemented. Integrated persistence validation uses commands such as `docker compose run --rm workspace pnpm db:migration:generate`, `docker compose run --rm workspace pnpm db:migration:create`, `docker compose run --rm workspace pnpm db:migration:run`, `docker compose run --rm workspace pnpm db:migration:revert`, and `docker compose run --rm workspace pnpm db:migration:show` against the Compose PostgreSQL service. `synchronize` must be false outside explicitly disposable test databases, and application startup must not silently mutate production or shared development schemas. Migration lifecycle validation is not part of Phase 1 bootstrap validation.
 
@@ -248,12 +327,12 @@ See [data-model.md](./data-model.md), [contracts/import-resume.md](./contracts/i
 
 - **Non-technical UX**: PASS. Contracts expose plain-language states and user actions, with technical details kept behind service boundaries.
 - **Import-first onboarding**: PASS. The first contract starts from resume creation and makes import the recommended path.
-- **Structured source of truth**: PASS. The data model separates `ImportedDocument`, `DerivedExtractionArtifact`, `ProviderConnection`, `SemanticParseAttempt`, `NuvitaeExtractionResponse`, `ImportDraft`, and `StructuredResume`.
+- **Structured source of truth**: PASS. The data model separates `ImportedDocument`, `DerivedExtractionArtifact`, `AIProviderRuntimeConnection`, `SemanticParseAttempt`, `NuvitaeExtractionResponse`, `ImportDraft`, and `StructuredResume`.
 - **Deterministic rendering**: PASS. No rendering behavior is modified; structured output preserves relationships for later rendering.
 - **AI reviewability and provenance**: PASS. `NuvitaeExtractionResponse`, `EvidenceRecord`, `ExtractedField.sourceStatus`, `classificationStatus`, `inferenceStatus`, `reviewStatus`, and `ImportWarning` force reviewable provenance and prevent ungrounded provider output from silently reaching confirmation.
 - **Protected templates**: PASS. No template files, configuration, or PDF output contracts are introduced.
 - **Human and ATS readability**: PASS. Work experience roles, dates, sections, and explicit source provenance are modeled.
-- **Security and privacy**: PASS. Ownership, retention, deletion, rate limiting, hostile document isolation, provider credential/session isolation, revocation, no shell/file-editing provider tools, and log exclusions are in contracts and validation scenarios.
-- **Provider independence and no-AI usability**: PASS. Contracts require the `ResumeSemanticParserProvider` boundary, provider-neutral schemas, Codex only as the first self-hosted adapter, and no-provider/provider-failure recovery without claiming reliable full semantic parsing.
+- **Security and privacy**: PASS. Ownership, retention, deletion, rate limiting, hostile document isolation, token-blind provider runtime connection, revocation, provider capability verification, and log exclusions are in contracts and validation scenarios.
+- **Provider independence and no-AI usability**: PASS. Contracts require the `ResumeSemanticParserProvider` boundary, provider-neutral schemas, Codex only as the candidate first self-hosted provider after a second GO or qualifying CONDITIONAL GO, and no-provider/provider-failure recovery without claiming reliable full semantic parsing.
 - **Accessibility and recovery**: PASS. UI contracts include accessible labels, live status announcements, keyboard operation, focus recovery, and recovery actions.
-- **Quality gates**: PASS. Quickstart defines validation scenarios for the Codex adapter spike, provider-backed happy path, no-provider/provider-failure recovery, strict output validation, evidence grounding, invented-field checks, security, privacy, retention, and accessibility.
+- **Quality gates**: PASS. Quickstart defines validation scenarios for the second Codex app-server validation, provider-backed happy path, no-provider/provider-failure recovery, strict output validation, evidence grounding, invented-field checks, security, privacy, retention, and accessibility.
