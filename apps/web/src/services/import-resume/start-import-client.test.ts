@@ -67,6 +67,25 @@ describe("startImportUpload", () => {
     expect(outcome).toMatchObject({ ok: false, retryAfterSeconds: 47 });
     expect(fetchImpl).toHaveBeenCalledOnce();
   });
+
+  it("preserves public error category messages without exposing response bodies", async () => {
+    const outcome = await startImportUpload({
+      file: new File(["safe"], "resume.txt", { type: "text/plain" }),
+      fetchImpl: vi.fn(async () =>
+        jsonResponse(415, {
+          code: "unsupported_format",
+          message: "private parser detail",
+        }),
+      ) as unknown as typeof fetch,
+    });
+
+    expect(outcome).toEqual({
+      ok: false,
+      category: "unsupported_format",
+      message: "Choose a PDF or DOCX resume file.",
+    });
+    expect(JSON.stringify(outcome)).not.toContain("private parser detail");
+  });
 });
 
 describe("parseRetryAfterSeconds", () => {

@@ -4,6 +4,7 @@ import {
   type DiscardImportRequest,
   type DiscardImportResponse,
 } from "@nuvitae/contracts";
+import { createBrowserUuid } from "../browser-ids";
 import { importResumeApiPath } from "./config";
 
 export type DraftLifecycleErrorCategory =
@@ -26,7 +27,7 @@ export type DraftLifecycleOutcome<T> =
     };
 
 export function createDiscardOperationId(): string {
-  return crypto.randomUUID();
+  return createBrowserUuid();
 }
 
 export function createDiscardRequest(input: {

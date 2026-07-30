@@ -50,6 +50,123 @@ Do not install Node.js, npm, pnpm, PostgreSQL, Valkey/Redis, Playwright, NestJS
 CLI, Next.js, TypeScript, or application dependencies on the host for Nuvitae
 development.
 
+### Local Playable Stack
+
+Local play mode is a Docker-only development runtime for exercising the current
+manual resume and import flows from a real browser. It uses PostgreSQL, Valkey,
+BullMQ, the API, the worker, private storage, PDF parsing, DOCX OOXML parsing,
+LibreOffice-rendered DOCX page counting, review, confirmation, and persistence.
+
+Prerequisites on the host:
+
+- Docker with Docker Compose.
+- Git.
+- GitHub CLI.
+- The coding agent.
+
+Start the playable stack:
+
+```bash
+./scripts/local-play-up.sh
+```
+
+Then open:
+
+```text
+http://localhost:3000
+```
+
+Stop the stack without deleting Docker volumes:
+
+```bash
+./scripts/local-play-down.sh
+```
+
+`local-play-down.sh` removes local containers and the local network, but it does
+not pass `-v`; PostgreSQL, queue, pnpm, node_modules, and private-storage
+volumes are preserved. Data remains available after restarting the stack unless
+you explicitly delete those volumes.
+
+Local play mode sets `NUVITAE_LOCAL_PLAY_MODE=true` for the API and web
+containers and uses one fixed development identity from server configuration.
+This is not production authentication. The browser cannot choose or switch the
+user by sending headers, query strings, or request-body owner IDs, and the API
+refuses to start local play mode when `NODE_ENV=production`.
+
+Supported current local flows:
+
+- Open the home page and choose import or manual creation.
+- Create, edit, save, reload, and continue a manual resume draft.
+- Upload selectable-text PDF files.
+- Upload supported DOCX files.
+- Observe real queue-backed validation and extraction progress.
+- Review, correct, and confirm imported fields.
+- Explicitly create one `StructuredResume`.
+- Reload a confirmed resume from the server.
+
+Unsupported current flows:
+
+- Production authentication, OAuth, passwords, sessions, billing, and account
+  settings.
+- Production Valkey rate-limit state.
+- Source deletion execution, retention workers, retry/replacement upload,
+  processing cancellation, and general deletion lifecycle orchestration.
+- AI classification, OCR, PDF generation, templates, structured-resume editing,
+  dashboards, and later user stories.
+
+The browser calls the API through the same-origin `/api` prefix. Next.js
+rewrites that prefix to the internal API service (`http://api:3001`) in Compose,
+so browsers do not see internal hostnames and CORS is not required. Next.js does
+not contain API business logic and does not connect to PostgreSQL.
+
+Application startup never runs migrations. `local-play-up.sh` runs migrations
+explicitly through the workspace container before starting web, API, and worker.
+
+Inspect logs:
+
+```bash
+docker compose -f compose.yml -f compose.local.yml logs -f web api worker
+```
+
+Run the real non-mocked local-play browser suite after the stack is running:
+
+```bash
+docker compose \
+  -f compose.yml \
+  -f compose.local.yml \
+  --profile test \
+  run --rm playwright-test \
+  pnpm exec playwright test \
+  --config=playwright.local-play.config.ts \
+  tests/e2e/local-play/local-play-flow.e2e.test.ts
+```
+
+Check service health:
+
+```bash
+curl http://localhost:3000/health
+curl http://localhost:3001/health/live
+curl http://localhost:3001/health
+docker compose -f compose.yml -f compose.local.yml ps
+```
+
+Troubleshooting commands:
+
+```bash
+docker compose -f compose.yml -f compose.local.yml config
+docker compose -f compose.yml -f compose.local.yml logs api worker
+docker compose -f compose.yml -f compose.local.yml run --rm workspace pnpm db:migration:show
+docker compose -f compose.yml -f compose.local.yml up -d postgres queue
+docker compose -f compose.yml -f compose.local.yml up --wait
+```
+
+Destructive data reset, only when you intentionally want to erase local data:
+
+```bash
+# WARNING: this deletes local play PostgreSQL, queue, dependency, and private-storage data.
+docker compose -f compose.yml -f compose.local.yml down -v
+```
+
 ### Development Stack
 
 Start PostgreSQL and the queue, run the explicit migration operation, then
@@ -158,8 +275,9 @@ queue processor is implemented by this persistence wiring.
 The current import foundation exposes the initial browser flow at
 `/import-resume` plus the owner-scoped API boundaries needed by that slice.
 Import is presented as the recommended resume-creation path. Manual entry is
-visible as a secondary action and links to `/resumes/new/manual`, but the
-functional manual editor is not implemented yet.
+visible as a secondary action and links to `/resumes/new/manual`, where the
+current manual draft editor can create, edit, save, reload, and continue an
+owner-scoped draft.
 
 Supported uploads in this slice:
 
@@ -248,15 +366,16 @@ source rows or artifact rows immediately, does not create a structured resume,
 and does not delete an already confirmed structured resume.
 
 Source deletion execution, retry/replacement upload, cancellation of active
-processing, full deletion lifecycle orchestration, retention workers, the
-functional manual editor, AI, OCR, PDF generation, resume templates,
-structured-resume editing, production identity-provider integration, billing,
-and subscriptions remain intentionally absent.
+processing, full deletion lifecycle orchestration, retention workers, AI, OCR,
+PDF generation, resume templates, structured-resume editing, production
+identity-provider integration, billing, and subscriptions remain intentionally
+absent.
 
 Accessibility coverage for this slice includes semantic choices, labelled file
 input, associated upload/privacy guidance, keyboard activation, visible focus,
 error focus, live status announcements, terminal-state recovery actions, and a
-containerized Playwright test with private-safe mocked API responses.
+containerized Playwright coverage. Local play mode additionally supports a real
+non-mocked stack for browser validation.
 
 - API application code can use the provider-ready privacy logger with an
   injected sink. It preserves allow-listed operational identifiers and

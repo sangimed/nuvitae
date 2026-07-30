@@ -95,6 +95,9 @@ importers:
       '@nuvitae/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@nuvitae/import-application':
+        specifier: workspace:*
+        version: link:../../packages/import-application
       '@nuvitae/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
@@ -175,9 +178,15 @@ importers:
       '@nuvitae/extraction':
         specifier: workspace:*
         version: link:../../packages/extraction
+      '@nuvitae/import-application':
+        specifier: workspace:*
+        version: link:../../packages/import-application
       '@nuvitae/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
+      '@nuvitae/storage':
+        specifier: workspace:*
+        version: link:../../packages/storage
       bullmq:
         specifier: 5.81.2
         version: 5.81.2(supports-color@8.1.1)
@@ -242,6 +251,25 @@ importers:
       yazl:
         specifier: 3.3.1
         version: 3.3.1
+
+  packages/import-application:
+    dependencies:
+      '@nuvitae/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@nuvitae/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@nuvitae/extraction':
+        specifier: workspace:*
+        version: link:../extraction
+      '@nuvitae/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+    devDependencies:
+      typeorm:
+        specifier: 0.3.28
+        version: 0.3.28(ioredis@5.11.1(supports-color@8.1.1))(pg@8.22.0)(supports-color@8.1.1)
 
   packages/persistence:
     dependencies:

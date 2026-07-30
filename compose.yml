@@ -21,6 +21,7 @@ services:
       - contracts-node-modules:/workspace/packages/contracts/node_modules
       - domain-node-modules:/workspace/packages/domain/node_modules
       - extraction-node-modules:/workspace/packages/extraction/node_modules
+      - import-application-node-modules:/workspace/packages/import-application/node_modules
       - persistence-node-modules:/workspace/packages/persistence/node_modules
       - storage-node-modules:/workspace/packages/storage/node_modules
       - fixtures-node-modules:/workspace/packages/test-fixtures/node_modules
@@ -221,6 +222,8 @@ services:
       - root-node-modules:/workspace/node_modules
       - web-node-modules:/workspace/apps/web/node_modules
       - contracts-node-modules:/workspace/packages/contracts/node_modules
+      - extraction-node-modules:/workspace/packages/extraction/node_modules
+      - import-application-node-modules:/workspace/packages/import-application/node_modules
     profiles:
       - test
 
@@ -236,12 +239,16 @@ services:
     working_dir: /workspace
     environment:
       NEXT_TELEMETRY_DISABLED: 1
+      PLAYWRIGHT_OUTPUT_DIR: /workspace/.local-play/artifacts/test-results
     volumes:
-      - .:/workspace
+      - .:/workspace:ro
+      - ./.local-play/artifacts:/workspace/.local-play/artifacts
       - pnpm-store:/pnpm/store
       - root-node-modules:/workspace/node_modules
       - web-node-modules:/workspace/apps/web/node_modules
       - contracts-node-modules:/workspace/packages/contracts/node_modules
+      - extraction-node-modules:/workspace/packages/extraction/node_modules
+      - import-application-node-modules:/workspace/packages/import-application/node_modules
     profiles:
       - test
 
@@ -254,6 +261,7 @@ volumes:
   contracts-node-modules:
   domain-node-modules:
   extraction-node-modules:
+  import-application-node-modules:
   persistence-node-modules:
   storage-node-modules:
   fixtures-node-modules:

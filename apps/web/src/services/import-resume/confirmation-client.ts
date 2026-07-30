@@ -6,6 +6,7 @@ import {
   type ConfirmStructuredResumeResponse,
   type ConfirmedStructuredResumeReadResponse,
 } from "@nuvitae/contracts";
+import { createBrowserUuid } from "../browser-ids";
 import { importResumeApiPath } from "./config";
 
 export type ConfirmationClientErrorCategory =
@@ -32,7 +33,7 @@ export type ConfirmationClientOutcome<T> =
     };
 
 export function createConfirmationOperationId(): string {
-  return crypto.randomUUID();
+  return createBrowserUuid();
 }
 
 export function createConfirmationRequest(input: {

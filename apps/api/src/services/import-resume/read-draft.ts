@@ -140,6 +140,7 @@ export function buildReviewDraftResponse(input: {
   return reviewDraftReadResponseSchema.parse({
     version: importResumeResponseSchemaVersion,
     requestId: input.requestId,
+    status: "review_draft",
     importId: input.importId,
     draftId: input.draft.id,
     draftStatus: input.draft.status,

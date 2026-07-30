@@ -7,6 +7,7 @@ import {
   type ReviewMutationRequest,
   type ReviewMutationResponse,
 } from "@nuvitae/contracts";
+import { createBrowserUuid } from "../browser-ids";
 import { importResumeApiPath } from "./config";
 
 export type ReviewClientErrorCategory =
@@ -103,7 +104,7 @@ export async function sendReviewMutation(input: {
 }
 
 export function createReviewOperationId(): string {
-  return crypto.randomUUID();
+  return createBrowserUuid();
 }
 
 export function createReviewMutationRequest(input: {

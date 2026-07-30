@@ -38,6 +38,7 @@ export function ImportFlow() {
     string | undefined
   >();
   const uploadAbort = useRef<AbortController | null>(null);
+  const uploadInFlight = useRef(false);
 
   const activeImportId = useMemo(
     () => ("importId" in state ? state.importId : undefined),
@@ -76,16 +77,25 @@ export function ImportFlow() {
   }
 
   async function submit(file: File) {
-    if (uploading) return;
+    if (uploadInFlight.current) return;
+    uploadInFlight.current = true;
     setUploading(true);
     setUploadError(undefined);
-    uploadAbort.current = new AbortController();
+    const controller = new AbortController();
+    uploadAbort.current = controller;
     const outcome = await startImportUpload({
       file,
-      signal: uploadAbort.current.signal,
+      signal: controller.signal,
     });
+    if (controller.signal.aborted) {
+      if (uploadAbort.current === controller) uploadAbort.current = null;
+      uploadInFlight.current = false;
+      setUploading(false);
+      return;
+    }
     setUploading(false);
-    uploadAbort.current = null;
+    if (uploadAbort.current === controller) uploadAbort.current = null;
+    uploadInFlight.current = false;
     if (!outcome.ok) {
       setUploadError(outcome.message);
       return;

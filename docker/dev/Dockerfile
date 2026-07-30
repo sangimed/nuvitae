@@ -17,6 +17,7 @@ RUN corepack enable \
     /workspace/packages/contracts/node_modules \
     /workspace/packages/domain/node_modules \
     /workspace/packages/extraction/node_modules \
+    /workspace/packages/import-application/node_modules \
     /workspace/packages/persistence/node_modules \
     /workspace/packages/storage/node_modules \
     /workspace/packages/test-fixtures/node_modules \

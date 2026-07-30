@@ -3,9 +3,15 @@ import { DatabaseReadinessService } from "./health/database-readiness.service";
 import { HealthController } from "./health/health.controller";
 import { ApiPersistenceModule } from "./persistence/api-persistence.module";
 import { ManualResumeModule } from "./manual-resume/manual-resume.module";
+import { isLocalPlayModeEnv } from "./local-play/local-play.config";
+import { LocalPlayRuntimeModule } from "./local-play/local-play-runtime.module";
 
 @Module({
-  imports: [ApiPersistenceModule, ManualResumeModule],
+  imports: [
+    ApiPersistenceModule,
+    ManualResumeModule,
+    ...(isLocalPlayModeEnv() ? [LocalPlayRuntimeModule] : []),
+  ],
   controllers: [HealthController],
   providers: [DatabaseReadinessService],
 })
