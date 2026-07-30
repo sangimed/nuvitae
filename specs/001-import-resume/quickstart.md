@@ -88,10 +88,14 @@ docker compose run --rm workspace pnpm typecheck
 docker compose run --rm workspace pnpm test
 ```
 
-## Deterministic Parser Tests
+## Deterministic Source Preparation Tests
 
 PDF.js PDF extraction and the streaming Office Open XML DOCX extractor are
-tested with deterministic, in-memory synthetic document generators:
+tested with deterministic, in-memory synthetic document generators. These tests
+validate physical text extraction, page/rendered-page limits, source locations,
+and provider-ready source representation. They do not assert that deterministic
+code owns full semantic resume reconstruction when a usable AI provider is
+connected:
 
 ```bash
 docker compose run --rm workspace pnpm exec vitest run packages/extraction/src/pdf/pdfjs-pdf-adapter.test.ts
@@ -104,6 +108,38 @@ with PDF-point geometry. DOCX provenance uses zero-based package-part paragraph,
 table, row, cell, run, character-offset, and global-order indexes. DOCX does
 not infer visual pages or rendered coordinates. Image-only/scanned PDFs are
 rejected because OCR is not implemented.
+
+## Semantic Parser Provider Spike
+
+Before full provider-backed import implementation, run the bounded Codex
+subscription adapter spike from [plan.md](./plan.md). The spike is accepted only
+when it records evidence for all of the following:
+
+- Codex subscription authentication works from the self-hosted Docker
+  environment using the user's ChatGPT/Codex session where officially
+  supported, or the spike records the blocking limitation.
+- Invocation is non-interactive and does not expose shell, file-editing,
+  repository, or arbitrary tool access for resume parsing.
+- Provider credentials and session material are isolated from resume source
+  artifacts, excluded from logs, and revocable by disconnecting the provider.
+- PDF and DOCX fixtures can be parsed through at least one candidate input
+  representation.
+- The selected input representation is justified from measured results:
+  original PDF, rendered page images, extracted text with source locations, or
+  a controlled combination.
+- Provider output can be translated into the versioned Nuvitae extraction
+  response and strictly validated with Zod.
+- Evidence records contain document location, exact source text or source
+  fragment identifier, explicit-versus-inferred classification, and confidence
+  category.
+- Invented fields, malformed output, missing evidence, invalid relationships,
+  unsupported values, provider-native schema leakage, timeouts, quota failures,
+  and expired authentication map to safe failures or review warnings.
+
+Use anonymous realistic French, English, bilingual, one-column, and multi-column
+PDF/DOCX fixtures with expected structured outputs. The spike must not add
+production provider behavior until these findings are captured in the plan or
+research artifacts.
 
 LibreOffice is installed only in the worker and the network-disabled,
 non-root, one-shot parser test image. Host LibreOffice is not supported:
@@ -340,7 +376,7 @@ resolution are not implemented yet.
 ### 3. Partial Extraction And Timeout
 
 1. Sign in as `user-a`.
-2. Upload a fixture that can produce at least one explicitly sourced field but cannot complete all sections within the processing limit.
+2. Upload a fixture that can produce at least one supported candidate with required document evidence but cannot complete all sections within the processing limit.
 3. Let processing reach the 3-minute foreground timeout.
 
 **Expected Outcome**: The app shows threshold-qualified partial results, identifies missing or unprocessed sections, and offers retry, replacement upload, manual entry, and deletion/discard actions.
@@ -351,7 +387,7 @@ Run the upload flow with unsupported, empty, corrupted, unreadable,
 password-protected, image-only, oversized, over-page-limit, and
 unsupported-language fixtures.
 
-**Expected Outcome**: Each failure gives a non-technical reason and recovery actions. No review draft is created unless at least one supported field is explicitly sourced. Focus moves to an error summary.
+**Expected Outcome**: Each failure gives a non-technical reason and recovery actions. No review draft is created unless at least one supported candidate has required document evidence. Focus moves to an error summary.
 
 ### 5. Review Warning Resolution
 
@@ -369,19 +405,30 @@ unsupported-language fixtures.
 
 **Expected Outcome**: Roles remain separate under the same employer. The ongoing role stores no end date and displays as "Present".
 
-### 7. No-AI Operation
+### 7. Provider-Backed Semantic Parsing
 
-1. Disable optional AI assistance.
-2. Upload a supported fixture with deterministic fields.
+1. Connect the self-hosted Codex subscription provider after the spike validates the supported connection path.
+2. Upload supported French, English, bilingual, one-column, and multi-column PDF/DOCX fixtures.
+3. Verify deterministic validation and source preparation complete before provider semantic parsing.
+4. Verify the provider response is translated into the versioned Nuvitae extraction response.
+5. Verify strict schema validation, evidence grounding validation, no-invention checks, and warning generation run before review opens.
 
-**Expected Outcome**: The user can complete review and create a structured resume from deterministic extraction alone.
+**Expected Outcome**: Review opens only with grounded candidate fields and relationships. Every AI-produced value is unconfirmed, has required evidence, has explicit-versus-inferred classification and confidence category, and requires user review before structured resume creation.
+
+### 7a. No Provider And Provider Failure Recovery
+
+1. Run import with no configured provider.
+2. Run import with provider disconnected, expired authentication, provider unavailable, rate/quota exceeded, provider timeout, and malformed structured output states.
+3. Verify each state is represented in API, worker, and UI contracts.
+
+**Expected Outcome**: The product does not claim reliable full semantic parsing. It offers retry, reconnect, another configured provider if available, limited deterministic partial extraction where available, replacement upload where relevant, and manual entry.
 
 ### 8. Hostile Document Safety
 
 1. Upload fixtures containing macros, scripts, active objects, unsafe links, hidden text, and prompt-injection instructions.
 2. Verify validation/extraction handles them as untrusted document content.
 
-**Expected Outcome**: No active content executes. Document instructions are not treated as application or AI instructions. Logs do not contain raw source content or unnecessary personal data.
+**Expected Outcome**: No active content executes. Document instructions are not treated as application or AI instructions. Provider instructions remain system-controlled. Logs do not contain raw source content, provider payloads, credentials, session material, prompts, or unnecessary personal data.
 
 ### 9. Authorization Isolation
 
@@ -427,9 +474,10 @@ containerized browser/accessibility test environment.
 ## Required Test Groups
 
 - Domain unit tests for state transitions, warning resolution, confirmation blocking, source deletion, duplicate uploads, deletion idempotency, and retention.
-- Extraction fixture tests for supported languages, formats, partial results, selectable-text requirements, no-supported-field failures, and hostile documents.
-- REST API/contract tests for authorization, rate limits, validation failures, retry, cancellation, deletion, and confirmation.
-- Worker integration tests for timeout, cancellation, deletion verification, deletion races, and expired drafts.
+- Extraction fixture tests for supported languages, formats, provider-ready source representation, partial results, selectable-text requirements, no-supported-field failures, and hostile documents.
+- Semantic parser provider tests for provider capability reporting, connection states, strict Nuvitae extraction response validation, evidence grounding, no-invention checks, malformed output, timeout, quota/rate/auth failures, and privacy-safe diagnostics.
+- REST API/contract tests for authorization, provider connection/disconnect/reconnect, provider failures, rate limits, validation failures, retry, cancellation, deletion, and confirmation.
+- Worker integration tests for deterministic source preparation, provider invocation boundary, timeout, cancellation, deletion verification, deletion races, and expired drafts.
 - Persistence tests for TypeORM migrations, explicit transactions, database constraints, unique indexes, foreign keys, lifecycle constraints, repository ownership behavior, and domain/persistence mapper behavior.
 - Accessibility tests for labels, keyboard operation, live regions, error focus, dialog focus restoration, and non-colour warning treatment.
-- Logging/security tests proving raw resumes, source snippets, uploaded files, credentials, prompts, tokens, and unnecessary personal data are not logged.
+- Logging/security tests proving raw resumes, source snippets, uploaded files, provider payloads, credentials, provider session material, prompts, tokens, and unnecessary personal data are not logged.

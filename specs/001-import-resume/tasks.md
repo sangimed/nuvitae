@@ -50,7 +50,7 @@
 - [X] T014 [P] Implement import rate-limit and concurrent-work guard interfaces for 5 attempts per rolling 10 minutes, 1 active job, and 2 queued jobs per user in `apps/api/src/services/import-resume/import-limits.ts`
 - [x] T015 Implement Zod-backed background job payload contracts for validation, extraction, cancellation, retry, and deletion jobs in `packages/contracts/src/import-resume/jobs.ts`
 - [x] T016 [P] Create deterministic extraction adapter interfaces for PDF, DOCX, language detection, page counting, selectable text, and source locations in `packages/extraction/src/adapters.ts`
-- [x] T017 [P] Create optional AI classifier adapter interface that accepts deterministic extraction output and returns only classifications and ambiguity warnings in `packages/extraction/src/ai-classifier.ts`
+- [x] T017 [P] Preserve the legacy optional AI classifier adapter interface as a superseded compatibility boundary that may emit only classifications and ambiguity warnings from deterministic extraction output and must not be used as the complete semantic parsing path in `packages/extraction/src/ai-classifier.ts`; new provider-first semantic parsing depends on T139-T188
 - [x] T018 Create fixture manifest covering PDF, DOCX, French, English, bilingual, partial, unsupported-language, oversized, over-page-limit, malformed, corrupted, password-protected, image-only/scanned, mixed text-and-image, hostile, mixed-content, and no-supported-field resumes in `packages/test-fixtures/src/resume-import/manifest.ts`
 - [x] T019 [P] Define Zod-backed REST response envelopes and plain-language error categories for import flows in `packages/contracts/src/import-resume/responses.ts`
 - [x] T020 [P] Define web route shell and import feature state machine types in `apps/web/src/features/import-resume/state.ts`
@@ -95,7 +95,7 @@
 - [X] T028 [P] [US1] Implement progress state UI with plain-language states and screen-reader live region in `apps/web/src/features/import-resume/ProcessingStep.tsx`
 - [X] T029 [US1] Implement thin NestJS start-import REST controller with authentication, rate-limit check delegation, private storage write delegation, and `ImportedDocument` creation service call in `apps/api/src/import-resume/start-import.controller.ts` and `apps/api/src/import-resume/start-import.service.ts`
 - [X] T030 [US1] Implement document validation service for format, size, rendered pages, language, selectable text, unsafe/unreadable/corrupted/password-protected failures, and recovery categories in `apps/api/src/services/import-resume/validate-document.ts`
-- [X] T031 [US1] Implement deterministic extraction orchestration that creates a draft only when at least one supported field has explicit source content and source location in `apps/api/src/services/import-resume/process-extraction.ts`
+- [X] T031 [US1] Implement deterministic source-preparation orchestration that validates physical PDF/DOCX content and may create only threshold-qualified drafts from explicitly sourced deterministic fields, without claiming complete semantic resume parsing when provider-first semantic parsing is required, in `apps/api/src/services/import-resume/process-extraction.ts`; AI-first review-draft creation depends on T152, T157-T160, T171-T174, and T180-T184
 - [X] T032 [US1] Implement NestJS standalone worker processors for validation, extraction, timeout, and progress state persistence orchestration in `apps/worker/src/import-resume/import-processing.processor.ts`
 - [X] T033 [US1] Implement web polling/subscription client for processing status and timeout recovery actions in `apps/web/src/services/import-resume/import-status-client.ts`
 - [X] T034 [US1] Wire import flow route from create entry through upload and processing states in `apps/web/src/app/import-resume/page.tsx`
@@ -160,7 +160,91 @@
 
 ---
 
-## Phase 6: User Story 5 - Complete Import Accessibly (Priority: P1)
+## Phase 6: AI-First Semantic Parsing Foundation
+
+**Purpose**: Add the provider-independent semantic parsing architecture required by the amended specification before the remaining accessibility, security, recovery, and polish work. This phase extends the completed Docker, web, API, worker, persistence, private storage, deterministic PDF/DOCX source extraction, provenance, review, confirmation, manual-entry, and Playwright foundations without recreating them.
+
+**CRITICAL**: Full Codex integration tasks depend on a documented go/no-go decision from the bounded spike. Do not assume the spike succeeds. If the spike is a no-go, complete the provider-independent contracts, validation, no-provider recovery, manual-entry fallback, and alternative-provider boundary tasks without building the Codex adapter.
+
+### Codex Subscription Adapter Spike
+
+- [ ] T139 [P] Validate use of an existing user-authenticated Codex/ChatGPT subscription session from the self-hosted Docker environment, including official support constraints, required user action, and non-host credential assumptions, in `docs/research/codex-spike-authentication.md`
+- [ ] T140 [P] Validate non-interactive Codex invocation from the worker/parser Docker environment without exposing shell, file-editing, repository, arbitrary tool, or host profile access for resume parsing in `docs/research/codex-spike-runtime-isolation.md`
+- [ ] T141 [P] Validate supported PDF and DOCX input strategies for Codex by measuring original-file, rendered-page-image, extracted-text-with-source-locations, and controlled-combination approaches in `docs/research/codex-spike-input-representation.md`
+- [ ] T142 [P] Validate strict structured output against the planned Nuvitae extraction schema, malformed output behavior, timeout handling, provider unavailability, expired authentication, quota or subscription exhaustion, and privacy-safe diagnostics in `docs/research/codex-spike-output-and-failures.md`
+- [ ] T143 [P] Validate credential/session isolation, private storage separation from resume artifacts, disconnect and revocation behavior, cross-user inaccessibility, and absence of credentials/session material from logs in `docs/research/codex-spike-credential-isolation.md`
+- [ ] T144 [P] Measure Codex spike field precision, field recall, work-experience grouping accuracy, valid-evidence rate, invented-field rate, latency, malformed-output rate, and provider failure behavior using anonymous French, English, bilingual, single-column, and multi-column PDF/DOCX fixtures in `docs/research/codex-spike-evaluation-results.md`; measurements may be baseline-only until T145 defines acceptance thresholds
+- [ ] T145 Record the Codex adapter spike go/no-go decision, observed precision/recall/evidence/invention/latency/failure results from T144, selected input representation if any, unacceptable failure modes, compatibility and usage constraints, measurement-only gaps where thresholds are not yet known, and the thresholds or acceptance decision required before full Codex adapter implementation in `docs/research/codex-subscription-adapter-go-no-go.md`
+
+### Provider-Independent Contracts And Schemas
+
+- [ ] T146 [P] Add provider contract tests for `ResumeSemanticParserProvider`, provider capabilities, provider connection states, parse request/response contracts, and generic provider failure results in `tests/contract/import-resume/semantic-parser-provider.contract.test.ts`
+- [ ] T147 [P] Add versioned Nuvitae extraction response schema tests for candidate sections, relationships, warnings, evidence records, explicit/inferred classification, confidence categories, unknown-field rejection, and forward-compatible response versioning in `packages/contracts/src/import-resume/semantic-extraction.schema.test.ts`
+- [ ] T148 [P] Add provider-independence boundary tests proving `packages/domain` and import domain services do not import Codex, OpenAI, ChatGPT, Claude, Ollama, provider SDK types, or provider-native JSON in `tests/architecture/import-resume/provider-independence.architecture.test.ts`
+- [ ] T149 [P] Define `ResumeSemanticParserProvider`, provider capabilities, provider connection and availability states, provider-neutral error taxonomy, and parse request/response contracts in `packages/import-application/src/semantic-parser/resume-semantic-parser-provider.ts`
+- [ ] T150 [P] Define versioned Nuvitae extraction response Zod schemas with response version metadata, candidate sections, candidate relationships, evidence records, explicit/inferred classification, confidence categories, diagnostics, and forward-compatible parsing rules in `packages/contracts/src/import-resume/semantic-extraction.ts`
+- [ ] T151 [P] Define provider-neutral error taxonomy and recovery action mapping for not configured, disconnected, authentication expired, unavailable, rate limited, quota exceeded, unsupported capability, timeout, malformed output, invalid evidence, and invented facts in `packages/import-application/src/semantic-parser/provider-errors.ts`
+- [ ] T152 Implement strict semantic response validation that rejects malformed output, unknown fields, invalid relationships, unsupported values, missing evidence, invalid classifications, invalid confidence categories, and provider-native schema leakage before persistence in `packages/import-application/src/semantic-parser/validate-semantic-response.ts`
+
+### Grounding, No-Invention, And Safety
+
+- [ ] T153 [P] Add grounding validator tests for PDF page/text-item evidence, DOCX package/paragraph/table/cell/run/offset evidence, source fragment identifiers, missing evidence, and invalid source locations in `packages/import-application/src/validation/evidence-grounding.test.ts`
+- [ ] T154 [P] Add no-invention validator tests proving unsupported AI-produced values, invented employers, roles, dates, skills, certifications, education, links, achievements, metrics, languages, and contact details are rejected or marked unusable in `packages/import-application/src/validation/no-invention.test.ts`
+- [ ] T155 [P] Add prompt-injection resistance tests proving document text cannot alter extraction instructions, validation rules, provider tool permissions, privacy handling, or no-invention enforcement in `tests/security/import-resume/semantic-parser-prompt-injection.security.test.ts`
+- [ ] T156 [P] Add duplicate and conflict detection tests for repeated contact fields, overlapping roles, conflicting dates, duplicate employers, ambiguous links, and competing section classifications in `packages/import-application/src/validation/semantic-conflicts.test.ts`
+- [ ] T157 Implement evidence grounding validation that checks explicit values are supported by cited source content and rejects or marks unusable any AI-produced candidate unsupported by its cited PDF/DOCX source evidence in `packages/import-application/src/validation/evidence-grounding.ts`
+- [ ] T158 Implement no-invention enforcement for AI-produced values, relationships, groupings, inferred skills, unsupported claims, and provider-native leakage before review-draft creation in `packages/import-application/src/validation/no-invention.ts`
+- [ ] T159 Implement inferred-grouping handling that maps inferred section classification, ambiguous date interpretation, work-experience association, and semantic grouping to review-required warnings in `packages/import-application/src/validation/inference-review.ts`
+- [ ] T160 Implement duplicate and conflict detection for semantic candidates and relationship groupings before warning creation in `packages/import-application/src/validation/semantic-conflicts.ts`
+- [ ] T161 Implement privacy-safe provider request/response diagnostic events that exclude resume contents, prompts, raw provider payloads, source snippets, credentials, session material, tokens, and unnecessary personal data in `apps/api/src/observability/provider-import-events.ts`
+
+### Provider Persistence Before Semantic Result Persistence
+
+- [ ] T162 Implement adapter-neutral `ProviderConnection` persistence, private session reference metadata, ownership checks, revocation metadata, and separation from resume source artifacts for self-hosted provider connections in `packages/persistence/src/entities/provider-connection.entity.ts`, `packages/persistence/src/repositories/provider-connections.repository.ts`, and `packages/storage/src/provider-session-storage.ts`; depends on T149-T151 and does not assume T145 Codex spike success
+
+### Codex Adapter Implementation After Spike Go
+
+- [ ] T163 Implement provider status checks, connect/reconnect/disconnect/revoke service boundaries, expired-session detection, quota/subscription state handling, and capability snapshots in `apps/api/src/services/import-resume/provider-connections.ts`; depends on T149-T152 and T162
+- [ ] T164 Implement the Codex subscription adapter outside the import domain with Codex-specific session handling selected by the spike, per-import isolated execution, no shell/file-editing/repository tools, spike-selected PDF/DOCX input preparation, strict structured response capture, and provider-specific error mapping behind the generic boundary in `packages/import-application/src/providers/codex/codex-subscription-adapter.ts`; depends on T145 go decision and T149-T152
+- [ ] T165 Implement provider-specific conversion from Codex output into the Nuvitae-owned extraction response without exposing Codex concepts, provider-native JSON, or SDK types to the import domain or structured resume model in `packages/import-application/src/providers/codex/codex-response-converter.ts`; depends on T145 and T150-T152
+
+### Application Integration, Recovery, And Fallbacks
+
+- [ ] T166 [P] Add worker integration tests proving orchestration runs through `ResumeSemanticParserProvider`, validates schema and grounding before persistence, creates unconfirmed AI semantic candidates, and creates warnings before review-draft creation in `tests/integration/import-resume/semantic-parser-worker.integration.test.ts`
+- [ ] T167 [P] Add no-provider, expired-session, provider-unavailable, quota-exhausted, timeout, malformed-output, retry, alternative-provider, limited deterministic partial extraction, and manual-entry fallback recovery tests in `tests/integration/import-resume/provider-recovery.integration.test.ts`; depends on T185-T188 for the explicit limited deterministic partial fallback contract
+- [ ] T168 [P] Add credential isolation tests proving provider session material is private to the authenticated user, revocable, isolated from resume source artifacts, and absent from diagnostics in `tests/security/import-resume/provider-credential-isolation.security.test.ts`
+- [ ] T169 [P] Add realistic anonymous parser fixtures and expected structured JSON outputs for French, English, bilingual, single-column, multi-column, PDF, and DOCX resumes in `packages/test-fixtures/src/resume-import/semantic-parser-fixtures.ts` and `packages/test-fixtures/src/resume-import/expected-semantic-json.ts`
+- [ ] T170 [P] Add parser evaluation tests measuring field precision, field recall, work-experience grouping accuracy, valid-evidence rate, invented-field rate, latency, threshold compliance defined by T145 where available, and provider failure behavior in `tests/integration/import-resume/semantic-parser-evaluation.integration.test.ts`; baseline-only metrics are allowed until T145 defines acceptance thresholds
+- [ ] T171 Implement worker orchestration from deterministic validation/source preparation through `ResumeSemanticParserProvider`, strict schema validation, grounding validation, no-invention validation, warning generation, and review-draft creation in `apps/worker/src/import-resume/semantic-import.processor.ts`; depends on T152, T157-T160, T180-T184, and T164 or an alternative provider adapter
+- [ ] T172 Implement mapping from validated AI semantic candidates into unconfirmed import draft fields with source provenance, explicit/inferred classification, confidence categories, and review-required status in `apps/api/src/services/import-resume/semantic-candidates-to-draft.ts`; depends on T152, T157-T160, and T180-T184
+- [ ] T173 Implement warning creation for inferred, ambiguous, unsupported, duplicate, conflicting, low-confidence, malformed-provider-output, invalid-evidence, ungrounded, invented, no-provider, provider-auth-expired, provider-unavailable, provider-rate-limited, provider-quota-exceeded, and provider-timeout states in `apps/api/src/services/import-resume/semantic-warning-generation.ts`; depends on T151, T157-T160, and T180-T184
+- [ ] T174 Update review-draft creation to require schema-valid, grounded, non-invented candidates before persistence and to reject inferred-only or evidence-free provider output in `apps/api/src/services/import-resume/process-extraction.ts`; depends on T152, T157, T158, T171, T172, and T180-T184
+- [ ] T175 Implement provider connection requirement and provider-use disclosure in the self-hosted upload and processing UI without exposing provider configuration, prompts, model names, credentials, session details, or raw diagnostics in `apps/web/src/features/import-resume/ProviderDisclosure.tsx` and `apps/web/src/features/import-resume/UploadStep.tsx`
+- [ ] T176 Implement no-provider, expired-session, provider-unavailable, rate-limited, quota-exhausted, malformed-output, timeout, retry, alternative-provider, limited deterministic partial extraction, and manual-entry recovery UI states with explicit disclosure that deterministic fallback is partial and does not provide reliable full semantic parsing in `apps/web/src/features/import-resume/ProviderRecoveryActions.tsx`; depends on T187-T188
+
+### Browser Sentinels And Semantic Evaluation
+
+- [ ] T177 [P] [US1] Update browser E2E acceptance to keep the user journey focused on upload, provider disclosure, processing, review arrival, and a small sentinel set of grounded fields in `tests/browser/import-resume/import-flow.spec.ts`; depends on T171-T176
+- [ ] T178 [P] [US2] Update review integration tests to assert AI semantic candidates remain unconfirmed, inferred groupings require review, unsupported candidates are absent or unusable, and sentinel source provenance is preserved in `tests/integration/import-resume/review-correction.integration.test.ts`; depends on T172-T174
+- [ ] T179 [P] [US3] Update confirmation integration tests to assert schema validation, grounding, and no-invention gates precede structured resume creation and unresolved semantic warnings block confirmation in `tests/integration/import-resume/confirm-structured-resume.integration.test.ts`; depends on T172-T174
+
+### Semantic Persistence And Limited Deterministic Fallback Corrections
+
+- [ ] T180 [P] Add persistence and migration integration tests for `SemanticParseAttempt`, `NuvitaeExtractionResponse`, `EvidenceRecord`, response schema version metadata, provider capability snapshots, schema-validation status, grounding-validation status, no-invention validation status, ownership relationships, retention relationships, and deletion relationships in `tests/integration/persistence/semantic-parser-persistence.integration.test.ts`
+- [ ] T181 Implement `SemanticParseAttempt` TypeORM entity, repository, mapper, database constraints, ownership relationship to `ImportedDocument`, optional `ProviderConnection` relationship, retention/deletion lifecycle fields, and migration in `packages/persistence/src/entities/semantic-parse-attempt.entity.ts`, `packages/persistence/src/repositories/semantic-parse-attempts.repository.ts`, `packages/persistence/src/mappers/semantic-parse-attempt.mapper.ts`, and `packages/persistence/src/migrations`
+- [ ] T182 Implement `NuvitaeExtractionResponse` TypeORM entity, repository, mapper, response schema version persistence, validation status persistence, relationship to `SemanticParseAttempt`, retention/deletion lifecycle fields, and migration in `packages/persistence/src/entities/nuvitae-extraction-response.entity.ts`, `packages/persistence/src/repositories/nuvitae-extraction-responses.repository.ts`, `packages/persistence/src/mappers/nuvitae-extraction-response.mapper.ts`, and `packages/persistence/src/migrations`
+- [ ] T183 Implement `EvidenceRecord` TypeORM entity, repository, mapper, document-location persistence, source fragment reference persistence, explicit/inferred classification persistence, confidence category persistence, validation status persistence, relationship to `NuvitaeExtractionResponse`, ownership-safe retention/deletion lifecycle fields, and migration in `packages/persistence/src/entities/evidence-record.entity.ts`, `packages/persistence/src/repositories/evidence-records.repository.ts`, `packages/persistence/src/mappers/evidence-record.mapper.ts`, and `packages/persistence/src/migrations`
+- [ ] T184 Implement provider capability snapshot persistence and semantic parser validation status persistence for schema validation, grounding validation, and no-invention validation using persistence entities, repositories, bidirectional domain-to-persistence and persistence-to-domain mappers, migrations, owner-scoped access relationships, source-retention relationships, deletion relationships, and persistence/migration integration test coverage in `packages/persistence/src/entities/provider-capability-snapshot.entity.ts`, `packages/persistence/src/entities/semantic-parser-validation-status.entity.ts`, `packages/persistence/src/repositories/provider-capability-snapshots.repository.ts`, `packages/persistence/src/repositories/semantic-parser-validation-status.repository.ts`, `packages/persistence/src/mappers/provider-capability-snapshot.mapper.ts`, `packages/persistence/src/mappers/semantic-parser-validation-status.mapper.ts`, `packages/persistence/src/migrations`, and `tests/integration/persistence/semantic-parser-persistence.integration.test.ts`
+- [ ] T185 [P] Add contract tests defining limited deterministic partial extraction fallback allowed field set, minimum explicit source evidence, confidence and inference rules, draft creation threshold, warning behavior, and plain-language no-full-semantic-parsing disclosure in `tests/contract/import-resume/limited-deterministic-partial-fallback.contract.test.ts`
+- [ ] T186 [P] Add integration tests for limited deterministic partial extraction fallback in no-provider, provider-unavailable, expired-session, quota-exhausted, timeout, and malformed-provider-output flows, including manual-entry recovery and no claim of reliable full semantic parsing in `tests/integration/import-resume/limited-deterministic-partial-fallback.integration.test.ts`
+- [ ] T187 Define the limited deterministic partial extraction fallback contract with allowed deterministic fields, required explicit source evidence, confidence categories, inferred-value prohibition rules, draft creation threshold, warning behavior, and provider-unavailable disclosure metadata in `packages/contracts/src/import-resume/limited-deterministic-partial-fallback.ts`
+- [ ] T188 Implement limited deterministic partial extraction fallback orchestration that reuses completed PDF/DOCX physical extraction foundations without reopening them, creates only threshold-qualified explicitly sourced partial candidates, marks confidence and warnings correctly, and routes no-provider/provider-failure users to retry/reconnect/alternative-provider/manual-entry options in `apps/api/src/services/import-resume/limited-deterministic-partial-fallback.ts`
+
+**Checkpoint**: Completed US1-US3 implementation remains preserved as foundation work, but US1-US3 are not fully accepted against the amended AI-first specification until T171-T179 and T180-T188 pass. AI-first semantic parsing contracts, persistence, validation, spike decision, provider integration path, no-provider recovery, limited deterministic partial fallback, fixture evaluations, and sentinel E2E coverage must be ready before accessibility, security, recovery, and polish tasks that touch provider-backed parsing are considered complete.
+
+---
+
+## Phase 7: User Story 5 - Complete Import Accessibly (Priority: P1)
 
 **Goal**: A user can complete upload, processing, review, confirmation, retry, cancellation, and deletion flows with accessible labels, status announcements, keyboard-only operation, and recoverable focus behavior.
 
@@ -183,7 +267,7 @@
 
 ---
 
-## Phase 7: User Story 6 - Protect Imported Resume Data (Priority: P1)
+## Phase 8: User Story 6 - Protect Imported Resume Data (Priority: P1)
 
 **Goal**: Imported documents, extracted content, processing state, drafts, temporary contact previews, temporary artifacts, parser processes, and deletion jobs are private to the initiating user, isolated from hostile content, rate-limited, resource-limited, and removed according to retention/deletion rules.
 
@@ -222,7 +306,7 @@
 
 ---
 
-## Phase 8: User Story 4 - Recover From Partial Extraction or Failure (Priority: P2)
+## Phase 9: User Story 4 - Recover From Partial Extraction or Failure (Priority: P2)
 
 **Goal**: A user receives understandable recovery paths for partial extraction, validation failure, processing failure, timeout, cancellation, retry, replacement upload, manual entry, expired drafts, unsupported-language contact-only preview, no-supported-field extraction, and mixed-content documents.
 
@@ -249,7 +333,7 @@
 - [ ] T085 [US4] Implement mixed-content classification for separable and inseparable resume/unrelated content in `packages/extraction/src/mixed-content.ts`
 - [ ] T086 [US4] Implement thin NestJS recovery REST controllers for retry, replace upload, cancel, discard, expired draft, manual fallback, and no-supported-field states in `apps/api/src/import-resume/recovery.controller.ts`
 - [ ] T087 [P] [US4] Implement retry, replacement upload, cancellation, discard, manual-entry fallback, expired draft, and no-supported-field UI states in `apps/web/src/features/import-resume/RecoveryActions.tsx`
-- [ ] T088 [US4] Wire optional AI classifier after deterministic extraction without blocking deterministic review or manual entry in `apps/api/src/services/import-resume/optional-ai-classification.ts`
+- [ ] T088 [US4] Supersede the optional AI classifier path with provider-failure recovery wiring that never claims complete semantic parsing without `ResumeSemanticParserProvider`, preserves manual entry and limited deterministic partial extraction fallback as defined by T185-T188, and delegates full AI-first semantics to T171-T176 in `apps/api/src/services/import-resume/optional-ai-classification.ts`
 - [ ] T121 [US4] Wire manual-entry recovery actions from unsupported-file, no-usable-extraction, timeout, processing-failure, expired-draft, and unsupported-language states to `/resumes/new/manual` in `apps/web/src/features/import-resume/RecoveryActions.tsx`
 - [ ] T124 [US4] Implement unsupported-language contact-only preview service with explicit confirmation before manual-entry transfer and no import-draft creation in `apps/api/src/services/import-resume/unsupported-language-contact-preview.ts`
 - [ ] T125 [P] [US4] Implement unsupported-language warning and contact-only preview UI with confirm-transfer, discard, upload-another, and manual-without-transfer actions in `apps/web/src/features/import-resume/UnsupportedLanguageContactPreview.tsx`
@@ -258,18 +342,18 @@
 
 ---
 
-## Phase 9: Polish & Cross-Cutting Concerns
+## Phase 10: Polish & Cross-Cutting Concerns
 
 **Purpose**: Final validation, documentation, and constitutional gates that span user stories.
 
 - [ ] T089 [P] Update user-facing support/help documentation for supported files, languages, limits, selectable text, retention, deletion, partial extraction, unsupported documents, and confirmation in `docs/import-resume-user-help.md`
-- [ ] T090 [P] Update architecture documentation for import pipeline boundaries, deterministic extraction first, optional AI adapter, private storage, retention, deletion, and no source snippets after deletion in `docs/adr/0002-import-resume-pipeline.md`
+- [ ] T090 [P] Update architecture documentation for import pipeline boundaries, deterministic source preparation, AI-first provider-independent semantic parsing, Codex spike decision, provider adapter isolation, private storage, retention, deletion, and no source snippets after deletion in `docs/adr/0002-import-resume-pipeline.md`
 - [ ] T091 [P] Add Docker Compose quickstart validation command mapping for all scenarios in `tests/import-resume-quickstart.md`
 - [ ] T092 Run through Docker Compose and document complete quickstart validation results in `tests/import-resume-quickstart-results.md`
 - [ ] T093 [P] Add constitution gate regression for non-technical UX excluding JSON, YAML, prompts, parser internals, provider names, model names, and technical diagnostics in `tests/integration/import-resume/non-technical-ux.integration.test.ts`
 - [ ] T094 [P] Add constitution gate regression proving templates, visual customization, generated PDFs, raw PDF structures, and rendering components are untouched by import in `tests/integration/import-resume/protected-templates.integration.test.ts`
-- [ ] T095 [P] Add AI behavior evaluation for missing facts, prompt injection, unsupported claims, provenance handling, and no silent structured resume creation in `tests/integration/import-resume/ai-behavior.integration.test.ts`
-- [ ] T096 [P] Add extraction outcome evaluation measuring English, French, bilingual, partial, hostile, unsupported, and mixed-content fixture coverage against SC-001 and SC-002 in `tests/integration/import-resume/extraction-outcomes.integration.test.ts`
+- [ ] T095 [P] Add AI behavior evaluation for provider-independent semantic parsing covering missing facts, prompt injection, unsupported claims, inferred classifications, malformed provider output, provider failure states, provenance handling, and no silent structured resume creation in `tests/integration/import-resume/ai-behavior.integration.test.ts`; depends on T152, T157-T160, and T166-T176
+- [ ] T096 [P] Add extraction correctness evaluation measuring field precision, field recall, work-experience grouping accuracy, valid-evidence rate, invented-field rate, latency, T145-defined threshold compliance where available, English/French/bilingual fixture coverage, PDF/DOCX fixture coverage, partial extraction, hostile documents, unsupported-language behavior, and mixed-content behavior against SC-001, SC-002, SC-006, SC-011, and SC-012 in `tests/integration/import-resume/extraction-outcomes.integration.test.ts`; depends on T145, T169-T170, and T185-T188
 - [ ] T097 [P] Add usability evaluation protocol for SC-003, SC-004, and SC-009 covering review-warning identification, correction timing, and participant understanding that the uploaded source is not the editable resume, structured edits do not modify the source file, source deletion does not delete a separately confirmed structured resume, and source plus reconstructable extraction artifacts expire under the 7-day policy in `docs/research/import-review-usability-protocol.md`
 - [ ] T098 Perform final cleanup of import feature exports, NestJS module registrations, and package public APIs in `apps/api/src/import-resume/import-resume.module.ts` and `apps/web/src/features/import-resume/index.ts`
 
@@ -281,17 +365,20 @@
 
 - **Setup (Phase 1)**: No dependencies; can start immediately.
 - **Foundational (Phase 2)**: Depends on corrected Phase 1 bootstrap validation T126. Phase 2 blocks all user stories. T099-T103, T127-T133, and T134 are foundational despite their appended IDs and must complete before tasks that depend on concrete extraction, resource-limit enforcement, persistence, migrations, transactions, repository behavior, API/worker database integration, or complete persistence validation.
-- **User Stories (Phases 3-8)**: Depend on Foundational completion.
-- **Polish (Phase 9)**: Depends on all desired user stories being complete.
+- **User Stories (Phases 3-5)**: Depend on Foundational completion and preserve the implemented upload, review, and confirmation foundations.
+- **AI-First Semantic Parsing (Phase 6)**: Depends on Foundational completion and the implemented US1-US3 foundations it extends. T139-T145 form the bounded Codex spike and T139 remains startable before semantic persistence implementation. T146-T152 provider contracts and schema validation precede provider adapters. T153-T161 grounding, no-invention, prompt-injection, conflict, and privacy diagnostics precede review-draft creation from AI candidates. Adapter-neutral provider connection persistence T162 depends on T149-T151 and does not depend on Codex spike success. T180-T184 semantic result persistence precedes any worker or application task that persists AI semantic parsing results. T164-T165 full Codex integration depend on a T145 go decision; if T145 is no-go, use the provider-independent boundary without Codex adapter implementation.
+- **Remaining User Stories (Phases 7-9)**: Depend on Foundational completion and on the relevant AI-first semantic parsing tasks where they touch provider-backed parsing, semantic warnings, provider recovery, privacy, or browser acceptance.
+- **Polish (Phase 10)**: Depends on all desired user stories and the AI-first semantic parsing phase being complete.
 
 ### User Story Dependencies
 
 - **US1 Start From an Existing Resume (P1)**: First MVP story after Foundation. PDF/DOCX adapter fixture tests T104-T108 depend on T099-T102 and T018.
 - **US2 Review and Correct Extracted Information (P1)**: Depends on US1 draft creation path for end-to-end behavior; domain and UI work can begin after Foundation.
 - **US3 Confirm Creation of Structured Resume (P1)**: Depends on US2 review states and warning resolution.
-- **US5 Complete Import Accessibly (P1)**: Can run alongside US1-US3 after Foundation; final integration depends on those UI surfaces.
-- **US6 Protect Imported Resume Data (P1)**: Can run alongside US1-US3 after Foundation; final enforcement touches all import routes, parser processes, workers, persistence repositories, and cleanup services. Resource-limit tests T109-T113 and implementation tasks T114-T115 depend on T102-T103. Persistence-sensitive enforcement depends on T010 and T127-T134.
-- **US4 Recover From Partial Extraction or Failure (P2)**: Depends on US1 processing states and integrates with US5 accessibility and US6 deletion/retention protections. Manual-entry recovery tasks T117-T118 and T121 depend on T119-T120. Unsupported-language contact preview tasks T122-T125 depend on the validation and recovery contracts.
+- **AI-First Semantic Parsing Foundation**: Begins after US1-US3 foundations are available. Provider contracts T146-T152 precede adapter-neutral provider connection persistence T162 and adapters T164-T165. Codex adapter implementation T164-T165 depends on the spike go/no-go T145. Schema validation T152 precedes persistence of AI candidates T171-T174. Semantic persistence tasks T180-T184 precede worker/application persistence of AI semantic results in T171-T174. Grounding and no-invention validation T157-T158 precede review-draft creation T174. Limited deterministic partial fallback contract T185-T188 precedes provider recovery tests/UI T167 and T176. Application integration T171-T176 precedes full browser acceptance T177.
+- **US5 Complete Import Accessibly (P1)**: Can run alongside US6/US4 after Foundation; final integration depends on US1-US3 UI surfaces and provider disclosure/recovery UI T175-T176 where provider-backed states are shown.
+- **US6 Protect Imported Resume Data (P1)**: Can run alongside US5/US4 after Foundation; final enforcement touches all import routes, parser processes, provider sessions, workers, persistence repositories, and cleanup services. Resource-limit tests T109-T113 and implementation tasks T114-T115 depend on T102-T103. Persistence-sensitive enforcement depends on T010 and T127-T134. Provider credential/session isolation and privacy logging depend on T143, T161-T163, and T168.
+- **US4 Recover From Partial Extraction or Failure (P2)**: Depends on US1 processing states and integrates with US5 accessibility, US6 deletion/retention protections, provider recovery T167, T173, and T176, and limited deterministic partial fallback T185-T188. Manual-entry recovery tasks T117-T118 and T121 depend on T119-T120. Unsupported-language contact preview tasks T122-T125 depend on the validation and recovery contracts.
 
 ### Within Each User Story
 
@@ -311,10 +398,11 @@
 - US1 test tasks T021-T025, T104-T108, and T116 can run in parallel after fixtures and adapter contracts exist.
 - US2 test tasks T035-T039 and UI component tasks T044-T045 can run in parallel.
 - US3 test tasks T047-T050 and UI tasks T054-T055 can run in parallel.
+- AI-first spike tasks T139-T144 can run in parallel because each writes a distinct research file and they converge at T145; provider contract/schema tests T146-T148 can run in parallel with implementation tasks T149-T151, while T152 depends on the schema shape from T150; grounding and safety tests T153-T156 can run in parallel before implementations T157-T160; semantic persistence test T180 precedes persistence implementations T181-T184; fallback tests T185-T186 precede fallback contract/orchestration tasks T187-T188; application tests T166-T170 can run in parallel before orchestration tasks T171-T176, but T171-T174 must wait for T180-T184 where they persist AI semantic results; browser sentinel updates T177-T179 depend on the relevant integration tasks.
 - US5 tests T057-T059 and components T060-T062 can run in parallel.
 - US6 tests T064-T068 and T109-T113 can run in parallel, and T074-T075 plus T114-T115 can run in parallel with backend enforcement tasks after contracts are stable.
 - US4 tests T076-T081, T117-T118, and T122-T123 can run in parallel, and T087, T121, and T125 can run in parallel with backend recovery services after route contracts are stable.
-- Polish tasks T089-T091 and T093-T097 can run in parallel.
+- Polish tasks T089-T091 and T093-T097 can run in parallel after the AI-first dependencies noted on T095-T096 are satisfied.
 
 ---
 
@@ -342,6 +430,18 @@ Task: "T068 [P] [US6] Add privacy logging tests in tests/security/import-resume/
 
 ---
 
+## Parallel Example: AI-First Semantic Parsing
+
+```bash
+Task: "T139 [P] Validate Codex subscription authentication from Docker in docs/research/codex-spike-authentication.md"
+Task: "T140 [P] Validate non-interactive Codex invocation without shell/file editing in docs/research/codex-spike-runtime-isolation.md"
+Task: "T146 [P] Add provider contract tests in tests/contract/import-resume/semantic-parser-provider.contract.test.ts"
+Task: "T147 [P] Add versioned schema tests in packages/contracts/src/import-resume/semantic-extraction.schema.test.ts"
+Task: "T153 [P] Add grounding validator tests in packages/import-application/src/validation/evidence-grounding.test.ts"
+```
+
+---
+
 ## Implementation Strategy
 
 ### MVP First (User Story 1 Only)
@@ -357,10 +457,11 @@ Task: "T068 [P] [US6] Add privacy logging tests in tests/security/import-resume/
 2. US1 MVP import start/upload/progress.
 3. US2 review and correction.
 4. US3 explicit structured resume confirmation.
-5. US5 accessibility completion across the P1 path.
-6. US6 security/privacy/retention hardening across the P1 path.
-7. US4 P2 recovery paths.
-8. Polish and constitution gates.
+5. AI-first semantic parsing foundation, beginning with the Codex spike and provider-independent contracts.
+6. US5 accessibility completion across the P1 path, including provider disclosure and recovery states.
+7. US6 security/privacy/retention hardening across the P1 path, including provider credential/session isolation.
+8. US4 P2 recovery paths, including no-provider and provider-failure recovery.
+9. Polish and constitution gates.
 
 ### Parallel Team Strategy
 
@@ -368,8 +469,9 @@ After Foundation:
 
 - Developer A: US1 processing path and upload UI.
 - Developer B: US2 review model and review UI.
-- Developer C: US6 security/privacy tests and enforcement.
-- Developer D: US5 accessibility components and tests.
+- Developer C: AI-first provider contracts, schema validation, grounding, and no-invention gates.
+- Developer D: US6 security/privacy tests and enforcement.
+- Developer E: US5 accessibility components and tests.
 
 ---
 
@@ -380,4 +482,5 @@ After Foundation:
 - `T099`-`T125` and `T127`-`T138` were appended during specification-analysis remediation to preserve existing task references where possible; dependency notes above define their execution order.
 - Each user story includes required tests/evaluations/regression checks before implementation tasks.
 - No rendering-generation task is included because this feature does not generate final PDFs or modify templates; protected-template regression is included to enforce that boundary.
-- Optional AI tasks are limited to classification and ambiguity warnings after deterministic extraction.
+- T017 and T088 preserve/supersede the older optional AI classifier boundary only as compatibility/recovery notes; complete semantic parsing is now covered by provider-independent tasks T139-T188.
+- Codex-specific tasks must not be implemented if T145 records a no-go decision; adapter-independent contracts and recovery behavior still proceed.

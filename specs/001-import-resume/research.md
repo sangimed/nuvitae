@@ -40,11 +40,11 @@ The development workspace image contains pinned Node.js, Corepack, pnpm, and sha
 
 **Trade-offs**: Cold image builds can be slower than host installs. File watching under Docker Desktop can require polling or WSL 2 filesystem placement. Docker-managed caches and volumes need reset and cleanup guidance. Images require version pinning and maintenance. Windows support depends on correctly configured WSL 2 integration.
 
-## Decision: Use deterministic extraction as the required first pass
+## Decision: Preserve deterministic physical extraction as provider-ready source preparation
 
-**Rationale**: The specification and constitution require import review to work without AI whenever at least one supported field can be explicitly sourced. Deterministic extraction provides auditable source locations, supports no-AI usability, and prevents uploaded document text from becoming application or AI instructions.
+**Rationale**: The amended specification makes AI-assisted semantic parsing the primary semantic extraction path whenever a usable provider is connected, but deterministic processing still owns validation, safety, parser isolation, storage, schema validation, evidence validation, provenance, no-invention enforcement, review, confirmation, retention, and deletion. Existing PDF.js and DOCX adapters remain necessary to validate supported files, enforce page/selectable-text limits, prepare source text and locations, and provide evidence anchors that provider output can be grounded against.
 
-**Alternatives considered**: AI-first extraction was rejected because it creates provider dependence, weakens provenance, and conflicts with the accepted spec. Manual-only entry was rejected because import-first onboarding is a core product requirement. OCR-first extraction was rejected for the initial release because selectable text is required and scanned/image-only documents are out of scope.
+**Alternatives considered**: Replacing deterministic validation/source preparation with provider-only file interpretation was rejected because uploaded documents are untrusted and evidence must be validated before review. Returning to deterministic semantic reconstruction as the primary path was rejected because it conflicts with the amended spec. OCR-first extraction was rejected for the initial release because selectable text is required and scanned/image-only documents are out of scope.
 
 ## Decision: Use PDF.js (`pdfjs-dist`) for concrete text-based PDF extraction
 
@@ -78,11 +78,29 @@ The development workspace image contains pinned Node.js, Corepack, pnpm, and sha
 
 **Evidence reviewed**: npm metadata for `yauzl` confirms active publication, MIT license, async ZIP parsing, filename validation, and memory-control design goals. npm/Snyk metadata for `fast-xml-parser` confirms active maintenance, MIT license, and current package health. LibreOffice license documentation confirms MPL-2.0 licensing.
 
-## Decision: Treat optional AI as a provider-independent classifier after deterministic extraction
+## Decision: Use a provider-independent AI semantic parser as the primary semantic mapping path
 
-**Rationale**: Optional AI may help classify sections and flag ambiguity, but must never replace deterministic extraction, invent facts, bypass review, or be required for confirmation. An adapter boundary keeps provider prompts, model choices, credentials, and transport details out of the domain model and user flow.
+**Rationale**: Semantic understanding, grouping, and resume reconstruction are now provider-backed when a usable provider is connected. A `ResumeSemanticParserProvider` boundary keeps Codex, OpenAI, ChatGPT, Claude, Ollama, provider SDKs, provider-native JSON, prompts, transport details, credentials, and model choices out of the import domain. Provider adapters return only a versioned Nuvitae extraction response containing candidate values, relationships, warnings, evidence, explicit/inferred classification, and confidence categories. Strict Zod validation, grounding validation, and no-invention checks run before candidates reach review.
 
-**Alternatives considered**: Provider-specific domain fields were rejected because they would lock the import model to one AI vendor. Disallowing AI entirely was rejected because the spec permits optional AI assistance for classification and ambiguity warnings.
+**Alternatives considered**: Provider-specific domain fields were rejected because they would lock the import model to one AI vendor. Allowing provider-native JSON into the domain was rejected because malformed or provider-shaped output would weaken schema ownership. Disallowing AI entirely was rejected because the amended spec makes AI-first semantic parsing the initial self-hosted product direction.
+
+## Decision: Plan the first self-hosted adapter as a bounded Codex subscription spike
+
+**Rationale**: The first targeted integration is a user-authenticated Codex provider using the user's existing ChatGPT/Codex subscription for self-hosted deployments. This is not yet a proven implementation assumption, so a bounded spike must validate official support for non-interactive invocation from Docker, subscription/session authentication, PDF and DOCX support, strict structured output, evidence quality, invented-field rate, latency, quota behavior, credential isolation, and failure handling before full implementation tasks are finalized.
+
+**Alternatives considered**: Treating Codex as a permanent domain dependency was rejected by the provider-independence requirement. Using a Nuvitae-managed commercial provider for the initial self-hosted feature was rejected because hosted commercial provider selection is explicitly out of scope. Building local-model support first was deferred because Codex subscription authentication is the first product target, while the abstraction must still allow future local-model adapters.
+
+## Decision: Validate Codex input representation through the spike
+
+**Rationale**: The first adapter might send the original PDF, rendered page images, extracted text with source locations, or a controlled combination. This cannot be selected responsibly without measuring evidence quality, strict output reliability, latency, privacy exposure, and PDF/DOCX behavior. The spike must compare these options using anonymous French, English, bilingual, one-column, and multi-column fixtures with expected structured outputs.
+
+**Alternatives considered**: Assuming original-file upload was rejected because it may weaken location grounding or fail official support constraints. Assuming extracted text only was rejected because layout and grouping cues may be lost. Assuming rendered images was rejected because OCR is out of scope and rendered-image handling may add unnecessary latency or privacy exposure.
+
+## Decision: Model provider failure as first-class recovery states
+
+**Rationale**: The product must not claim reliable full semantic parsing when no usable provider is available. Provider state and parse attempts must distinguish not configured, disconnected, expired authentication, provider unavailable, rate-limited, subscription/quota exceeded, timeout, malformed output, unsupported capability, and invalid evidence. Each state maps to retry, reconnect, choose another configured provider, limited deterministic partial extraction where available, or manual entry.
+
+**Alternatives considered**: Collapsing provider failures into a generic processing failure was rejected because users need actionable recovery. Blocking the entire import flow when a provider is unavailable was rejected because manual entry, upload validation, deletion, retention, and limited deterministic fallback must remain usable.
 
 ## Decision: Model import as temporary owned artifacts plus a review draft
 
@@ -98,15 +116,15 @@ The development workspace image contains pinned Node.js, Corepack, pnpm, and sha
 
 ## Decision: Use background processing with persisted progress and retry/cancel semantics
 
-**Rationale**: Validation, page counting, language detection, extraction, optional classification, timeout, cancellation, and deletion are long-running or failure-prone. Persisted progress lets users resume before expiry, handles connectivity loss, and supports the 3-minute foreground timeout with partial threshold-qualified results.
+**Rationale**: Validation, page counting, language detection, provider-ready source preparation, AI semantic parsing, timeout, cancellation, and deletion are long-running or failure-prone. Persisted progress lets users resume before expiry, handles connectivity loss, and supports the 3-minute foreground timeout with partial threshold-qualified results.
 
 **Alternatives considered**: Synchronous request-only processing was rejected because it is brittle for large uploads, timeouts, and browser disconnects. Stateless client-only processing was rejected because source documents require authenticated access, retention, deletion, and hostile-document isolation.
 
-## Decision: Create review drafts only from explicitly sourced supported fields
+## Decision: Create review drafts only from grounded supported candidates
 
-**Rationale**: A draft requires at least one supported field associated with explicit document content and a source location. This preserves factual integrity and prevents inferred-only drafts. Missing, ambiguous, duplicate, conflicting, low-confidence, semantically grouped, and inferred fields become warnings requiring user action.
+**Rationale**: A draft requires at least one supported candidate associated with required document evidence. This preserves factual integrity and prevents inferred-only or ungrounded provider output from becoming a review draft. Missing, ambiguous, duplicate, conflicting, low-confidence, semantically grouped, inferred, invalid-provider-output, and ungrounded fields become warnings requiring user action or are rejected as unusable.
 
-**Alternatives considered**: Allowing inferred-only drafts was rejected because the spec forbids it. Dropping all partial extractions was rejected because the spec requires threshold-qualified partial results and recoverable paths.
+**Alternatives considered**: Allowing inferred-only or evidence-free drafts was rejected because the spec forbids it. Silently accepting provider output without grounding validation was rejected because it would violate no-invention and provenance requirements. Dropping all partial extractions was rejected because the spec requires threshold-qualified partial results and recoverable paths.
 
 ## Decision: Make accessibility a contract, not a later polish task
 
@@ -116,6 +134,6 @@ The development workspace image contains pinned Node.js, Corepack, pnpm, and sha
 
 ## Decision: Validate with fixture suites and lifecycle/security scenarios
 
-**Rationale**: The riskiest behavior is not only extraction accuracy; it includes authorization, parser safety, source deletion, expiry, logging, rate limits, timeout recovery, warning resolution, and accessible review. Fixtures must cover English, French, bilingual, unsupported, hostile, partial, mixed-content, no-supported-field, and malformed documents.
+**Rationale**: The riskiest behavior is not only extraction accuracy; it includes provider authentication, non-interactive invocation, strict output shape, evidence quality, invented-field rate, authorization, parser safety, source deletion, expiry, logging, rate limits, quota/subscription failures, timeout recovery, warning resolution, and accessible review. Fixtures must cover English, French, bilingual, one-column, multi-column, unsupported, hostile, partial, mixed-content, no-supported-field, and malformed documents.
 
 **Alternatives considered**: Happy-path-only upload tests were rejected because they would miss release-blocking privacy, safety, failure, and accessibility requirements.
