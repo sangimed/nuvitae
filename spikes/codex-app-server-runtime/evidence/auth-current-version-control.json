@@ -1,0 +1,12 @@
+{
+  "task": "T191",
+  "diagnostic": "current-official-version-control",
+  "package": "@openai/codex",
+  "currentOfficialVersion": "0.146.0",
+  "sameAsPinnedVersion": true,
+  "temporaryDockerContainerUsed": true,
+  "repositoryLockfilesModified": false,
+  "normalDockerImagesModified": false,
+  "currentVersionDifferentialAvailable": false,
+  "result": "No newer official @openai/codex version was available to compare against the pinned 0.146.0 diagnostic result."
+}

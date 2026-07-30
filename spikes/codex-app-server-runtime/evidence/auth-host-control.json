@@ -1,0 +1,22 @@
+{
+  "task": "T191",
+  "diagnostic": "isolated-host-control",
+  "hostCodexVersionExact": true,
+  "hostCodexVersionSafe": "codex-cli 0.146.0",
+  "tempCodexHomeUsed": true,
+  "normalHostCodexHomeUsed": false,
+  "credentialFilesInspected": false,
+  "credentialFilesCopied": false,
+  "issuedVerificationUrl": false,
+  "issuedUserCode": false,
+  "completed": false,
+  "exit": {
+    "code": 1,
+    "signal": null
+  },
+  "safeOutputCategories": [
+    "endpoint_mentioned",
+    "request_send_failure"
+  ],
+  "tempCodexHomeRemoved": true
+}

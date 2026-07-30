@@ -35,6 +35,90 @@ services:
       - ./run-stdio-checks.sh:/run-stdio-checks.sh:ro
     entrypoint: ["/bin/sh", "/run-stdio-checks.sh"]
 
+  auth-lifecycle:
+    build:
+      context: .
+      args:
+        CODEX_VERSION: "0.146.0"
+    image: nuvitae-codex-app-server-runtime:0.146.0
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - KILL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 96
+    mem_limit: 512m
+    cpus: 0.50
+    environment:
+      HOME: /codex-state
+      CODEX_HOME: /codex-state
+      XDG_CONFIG_HOME: /codex-state/.config
+      XDG_CACHE_HOME: /runtime-tmp/.cache
+      XDG_DATA_HOME: /codex-state/.local/share
+      TMPDIR: /runtime-tmp
+      NUVITAE_SPIKE: codex-app-server-auth-lifecycle
+      NO_COLOR: "1"
+      CODEX_AUTH_PHASE: full
+    tmpfs:
+      - /workspace:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
+      - /runtime-tmp:rw,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
+    volumes:
+      - codex-auth-state:/codex-state
+      - ./evidence:/evidence
+      - ./auth-lifecycle-runner.mjs:/auth-lifecycle-runner.mjs:ro
+      - ./auth-diagnostic-runner.mjs:/auth-diagnostic-runner.mjs:ro
+      - ./scan-spike-secrets.mjs:/scan-spike-secrets.mjs:ro
+    entrypoint: ["node", "/auth-lifecycle-runner.mjs"]
+
+  auth-diagnostic:
+    build:
+      context: .
+      args:
+        CODEX_VERSION: "0.146.0"
+    image: nuvitae-codex-app-server-runtime:0.146.0
+    user: "0:0"
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - KILL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 96
+    mem_limit: 512m
+    cpus: 0.50
+    environment:
+      HOME: /codex-state
+      CODEX_HOME: /codex-state
+      XDG_CONFIG_HOME: /codex-state/.config
+      XDG_CACHE_HOME: /runtime-tmp/.cache
+      XDG_DATA_HOME: /codex-state/.local/share
+      TMPDIR: /runtime-tmp
+      NUVITAE_SPIKE: codex-app-server-auth-diagnostic
+      NO_COLOR: "1"
+    tmpfs:
+      - /workspace:rw,noexec,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
+      - /runtime-tmp:rw,nosuid,nodev,size=32m,uid=10001,gid=10001,mode=0700
+    volumes:
+      - codex-auth-state:/codex-state
+      - ./evidence:/evidence
+      - ./auth-diagnostic-runner.mjs:/auth-diagnostic-runner.mjs:ro
+      - ./scan-spike-secrets.mjs:/scan-spike-secrets.mjs:ro
+    entrypoint: ["node", "/auth-diagnostic-runner.mjs"]
+
   sidecar-server:
     image: nuvitae-codex-app-server-runtime:0.146.0
     user: "10001:10001"
@@ -107,4 +191,6 @@ services:
 volumes:
   codex-state:
   codex-sidecar-state:
+  codex-auth-state:
+    name: nuvitae_codex_app_server_auth_state_t191
   socket-dir:

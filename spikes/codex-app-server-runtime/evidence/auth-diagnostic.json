@@ -1,0 +1,144 @@
+{
+  "task": "T191",
+  "diagnostic": "device-code-root-cause",
+  "package": "@openai/codex",
+  "version": "0.146.0",
+  "baseImage": "node:24.15.0-bookworm-slim",
+  "topology": "managed child process over stdio",
+  "volume": "nuvitae_codex_app_server_auth_state_t191",
+  "existingFailuresPreserved": {
+    "browserFlow": "experimentally unsuccessful in selected Docker topology",
+    "appServerDeviceCodeRpc": {
+      "request": {
+        "method": "account/login/start",
+        "params": {
+          "type": "chatgptDeviceCode"
+        }
+      },
+      "errorCode": -32603,
+      "safeCategory": "device_code_login_request_rejected",
+      "normalizedCategory": "device_code_login_internal_error"
+    }
+  },
+  "permissionProbeBeforeDiagnostics": {
+    "listStateDir": {
+      "code": 2,
+      "signal": null,
+      "denied": true
+    },
+    "readKnownSentinel": {
+      "code": 1,
+      "signal": null,
+      "denied": true
+    },
+    "copyKnownSentinel": {
+      "code": 1,
+      "signal": null,
+      "denied": true
+    },
+    "modifyKnownSentinel": {
+      "code": 2,
+      "signal": null,
+      "denied": true
+    }
+  },
+  "sameContainerHttpsProbe": {
+    "endpoint": "https://auth.openai.com/api/accounts/deviceauth/usercode",
+    "reachedEndpoint": true,
+    "statusCategory": "4xx",
+    "elapsedMs": 195
+  },
+  "appServerDeviceDiagnostic": {
+    "initializeResultKeys": [
+      "userAgent",
+      "codexHome",
+      "platformFamily",
+      "platformOs"
+    ],
+    "preLoginAccount": {
+      "authenticated": false,
+      "accountType": null,
+      "planType": null,
+      "requiresOpenaiAuth": true,
+      "emailExposedByProtocol": false
+    },
+    "request": {
+      "method": "account/login/start",
+      "params": {
+        "type": "chatgptDeviceCode"
+      }
+    },
+    "response": {
+      "errorCode": -32603,
+      "responseShape": [
+        "code",
+        "message"
+      ],
+      "safeErrorCategories": [
+        "endpoint_mentioned"
+      ]
+    },
+    "stderrCategories": [
+      "endpoint_mentioned",
+      "dns_resolution_failure"
+    ],
+    "endpointPaths": [
+      "https://developers.openai.com/codex/concepts/sandboxing#prerequisites.",
+      "https://chatgpt.com/backend-api/",
+      "https://chatgpt.com/backend-api/plugins/featured",
+      "https://api.github.com/repos/openai/plugins:",
+      "https://api.github.com/repos/openai/plugins)",
+      "https://chatgpt.com/backend-api/plugins/export/curated",
+      "https://api.github.com/repos/openai/plugins);",
+      "https://chatgpt.com/backend-api/plugins/export/curated:",
+      "https://chatgpt.com/backend-api/plugins/export/curated)"
+    ],
+    "rawCredentialExposedByRpc": false,
+    "stopped": {
+      "code": 0,
+      "signal": null
+    }
+  },
+  "pinnedDockerCliDeviceAuth": {
+    "issuedVerificationUrl": false,
+    "issuedUserCode": false,
+    "completed": false,
+    "exit": {
+      "code": 1,
+      "signal": null
+    },
+    "safeOutputCategories": [
+      "endpoint_mentioned"
+    ],
+    "safeEndpointPaths": [
+      "https://auth.openai.com/api/accounts/deviceauth/usercode)"
+    ]
+  },
+  "permissionProbeAfterCli": {
+    "listStateDir": {
+      "code": 2,
+      "signal": null,
+      "denied": true
+    },
+    "readKnownSentinel": {
+      "code": 1,
+      "signal": null,
+      "denied": true
+    },
+    "copyKnownSentinel": {
+      "code": 1,
+      "signal": null,
+      "denied": true
+    },
+    "modifyKnownSentinel": {
+      "code": 2,
+      "signal": null,
+      "denied": true
+    }
+  },
+  "sameVolumeAppServerAccountRead": {
+    "skipped": "pinned Docker CLI device login did not complete"
+  },
+  "diagnosticCase": "PINNED_CLI_AND_APP_SERVER_DEVICE_CODE_START_FAILED_IN_DOCKER",
+  "cleanupCommand": "docker volume rm nuvitae_codex_app_server_auth_state_t191"
+}

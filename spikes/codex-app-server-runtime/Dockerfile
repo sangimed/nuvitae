@@ -8,6 +8,8 @@ RUN npm install --global "@openai/codex@${CODEX_VERSION}" \
   && chmod 0755 /usr/local/bin/codex-runtime-entrypoint \
   && groupadd --gid 10001 codexruntime \
   && useradd --uid 10001 --gid 10001 --home-dir /workspace --create-home --shell /usr/sbin/nologin codexruntime \
+  && groupadd --gid 10002 nuvitaeprobe \
+  && useradd --uid 10002 --gid 10002 --home-dir /runtime-tmp --shell /usr/sbin/nologin nuvitaeprobe \
   && mkdir -p /codex-state /workspace /runtime-tmp /socket /evidence \
   && chown -R codexruntime:codexruntime /codex-state /workspace /runtime-tmp /socket /evidence
 

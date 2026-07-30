@@ -1,0 +1,23 @@
+{
+  "task": "T191",
+  "attempt": "browser-flow",
+  "classification": "experimentally unsuccessful in selected Docker topology",
+  "package": "@openai/codex",
+  "version": "0.146.0",
+  "topology": "managed child process over stdio",
+  "loginMechanism": "chatgpt",
+  "safeSummary": {
+    "browserLoginResponseShape": ["type", "loginId", "authUrl"],
+    "loginCompletionNotificationObserved": false,
+    "postLoginAccountAuthenticated": false,
+    "restartAfterLoginAccountAuthenticated": false,
+    "finalAccountAuthenticated": false,
+    "rawCredentialExposedByRpc": false,
+    "probeIdentityDeniedStateDirectoryAccess": true
+  },
+  "rootCauseAssessment": "Most likely incompatible with the container-local callback boundary without explicit callback forwarding or bridging; not a general failure of official Codex authentication.",
+  "notSelectedForSelfHostedCandidate": true,
+  "transientAuthUrlPersisted": false,
+  "transientCallbackUrlPersisted": false,
+  "tokensPersisted": false
+}

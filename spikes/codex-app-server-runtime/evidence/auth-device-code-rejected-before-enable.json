@@ -1,0 +1,94 @@
+{
+  "task": "T191",
+  "package": "@openai/codex",
+  "version": "0.146.0",
+  "topology": "managed child process over stdio",
+  "volume": "nuvitae_codex_app_server_auth_state_t191",
+  "preservationNote": "Historical app-server device-code attempt performed before the ChatGPT account or workspace device-code setting was enabled. This is preserved as an experimentally verified failed attempt and is not a general Codex authentication NO-GO.",
+  "protocolDeviceCodeEvidence": {
+    "requestMethod": "account/login/start",
+    "requestParams": {
+      "type": "chatgptDeviceCode"
+    },
+    "responseShape": [
+      "type",
+      "loginId",
+      "verificationUrl",
+      "userCode"
+    ],
+    "completionNotification": "account/login/completed",
+    "accountUpdatedNotification": "account/updated"
+  },
+  "previousBrowserFlowEvidence": {
+    "classification": "experimentally unsuccessful in selected Docker topology",
+    "likelyRootCause": "browser OAuth callback targeted host localhost while callback listener was container-local",
+    "selectedForSelfHostedCandidate": false,
+    "replacedBy": "official generated-protocol chatgptDeviceCode flow"
+  },
+  "steps": [
+    {
+      "name": "initializeBeforeLogin",
+      "ok": true,
+      "resultKeys": [
+        "userAgent",
+        "codexHome",
+        "platformFamily",
+        "platformOs"
+      ]
+    }
+  ],
+  "tokenBlindness": {
+    "rawCredentialExposedByRpc": false
+  },
+  "permissionProbeBeforeLogin": {
+    "listStateDir": {
+      "code": 2,
+      "signal": null,
+      "denied": true
+    },
+    "statKnownSentinel": {
+      "code": 1,
+      "signal": null,
+      "denied": true
+    },
+    "readKnownSentinel": {
+      "code": 1,
+      "signal": null,
+      "denied": true
+    },
+    "copyKnownSentinel": {
+      "code": 1,
+      "signal": null,
+      "denied": true
+    },
+    "modifyKnownSentinel": {
+      "code": 2,
+      "signal": null,
+      "denied": true
+    }
+  },
+  "preLoginAccount": {
+    "authenticated": false,
+    "accountType": null,
+    "planType": null,
+    "requiresOpenaiAuth": true,
+    "emailExposedByProtocol": false
+  },
+  "preLoginAuthStatus": {
+    "authMethod": null,
+    "authToken": null,
+    "requiresOpenaiAuth": true
+  },
+  "initialLogin": {
+    "supported": false,
+    "loginMechanism": null,
+    "safeErrorCategory": "device_code_login_request_rejected",
+    "errorCode": -32603,
+    "errorMessageCategory": "device_code_login_internal_error",
+    "responseShape": [
+      "code",
+      "message"
+    ]
+  },
+  "terminalErrorCategory": "device_code_login_internal_error"
+}
