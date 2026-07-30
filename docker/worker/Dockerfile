@@ -17,7 +17,9 @@ COPY apps/worker/package.json apps/worker/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/domain/package.json packages/domain/package.json
 COPY packages/extraction/package.json packages/extraction/package.json
+COPY packages/import-application/package.json packages/import-application/package.json
 COPY packages/persistence/package.json packages/persistence/package.json
+COPY packages/storage/package.json packages/storage/package.json
 RUN --mount=type=cache,id=nuvitae-worker-pnpm-store,target=/pnpm/store \
   pnpm install --frozen-lockfile
 
@@ -26,11 +28,15 @@ COPY apps/worker apps/worker
 COPY packages/contracts packages/contracts
 COPY packages/domain packages/domain
 COPY packages/extraction packages/extraction
+COPY packages/import-application packages/import-application
 COPY packages/persistence packages/persistence
+COPY packages/storage packages/storage
 RUN pnpm --filter @nuvitae/contracts build
 RUN pnpm --filter @nuvitae/domain build
 RUN pnpm --filter @nuvitae/extraction build
+RUN pnpm --filter @nuvitae/import-application build
 RUN pnpm --filter @nuvitae/persistence build
+RUN pnpm --filter @nuvitae/storage build
 RUN pnpm --filter @nuvitae/worker build
 
 FROM base AS prod-deps
@@ -39,7 +45,9 @@ COPY apps/worker/package.json apps/worker/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/domain/package.json packages/domain/package.json
 COPY packages/extraction/package.json packages/extraction/package.json
+COPY packages/import-application/package.json packages/import-application/package.json
 COPY packages/persistence/package.json packages/persistence/package.json
+COPY packages/storage/package.json packages/storage/package.json
 RUN --mount=type=cache,id=nuvitae-worker-prod-pnpm-store,target=/pnpm/store \
   pnpm install --frozen-lockfile --prod
 
@@ -58,6 +66,8 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/* \
   && groupadd --gid 10001 app \
   && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin app \
+  && mkdir -p /var/lib/nuvitae/private \
+  && chown -R app:app /var/lib/nuvitae \
   && mkdir -p /tmp/nuvitae-parser \
   && chown app:app /tmp/nuvitae-parser \
   && chmod 0700 /tmp/nuvitae-parser
@@ -66,6 +76,7 @@ COPY --from=prod-deps --chown=app:app /workspace/node_modules node_modules
 COPY --from=prod-deps --chown=app:app /workspace/apps/worker/node_modules apps/worker/node_modules
 COPY --from=prod-deps --chown=app:app /workspace/packages/contracts/node_modules packages/contracts/node_modules
 COPY --from=prod-deps --chown=app:app /workspace/packages/extraction/node_modules packages/extraction/node_modules
+COPY --from=prod-deps --chown=app:app /workspace/packages/import-application/node_modules packages/import-application/node_modules
 COPY --from=prod-deps --chown=app:app /workspace/packages/persistence/node_modules packages/persistence/node_modules
 COPY --from=builder --chown=app:app /workspace/apps/worker/dist apps/worker/dist
 COPY --from=builder --chown=app:app /workspace/apps/worker/package.json apps/worker/package.json
@@ -75,8 +86,12 @@ COPY --from=builder --chown=app:app /workspace/packages/domain/dist packages/dom
 COPY --from=builder --chown=app:app /workspace/packages/domain/package.json packages/domain/package.json
 COPY --from=builder --chown=app:app /workspace/packages/extraction/dist packages/extraction/dist
 COPY --from=builder --chown=app:app /workspace/packages/extraction/package.json packages/extraction/package.json
+COPY --from=builder --chown=app:app /workspace/packages/import-application/dist packages/import-application/dist
+COPY --from=builder --chown=app:app /workspace/packages/import-application/package.json packages/import-application/package.json
 COPY --from=builder --chown=app:app /workspace/packages/persistence/dist packages/persistence/dist
 COPY --from=builder --chown=app:app /workspace/packages/persistence/package.json packages/persistence/package.json
+COPY --from=builder --chown=app:app /workspace/packages/storage/dist packages/storage/dist
+COPY --from=builder --chown=app:app /workspace/packages/storage/package.json packages/storage/package.json
 COPY --chown=app:app docker/entrypoints/worker.sh docker/entrypoints/worker.sh
 
 USER app

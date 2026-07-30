@@ -42,6 +42,20 @@ body {
   box-shadow: 0 20px 60px rgba(24, 33, 47, 0.08);
 }
 
+.home-panel {
+  width: min(100%, 50rem);
+}
+
+.local-banner {
+  margin-top: 1rem;
+  border: 1px solid #9a6b00;
+  border-radius: 8px;
+  background: #fff8e6;
+  color: #4f3600;
+  padding: 0.9rem 1rem;
+  line-height: 1.5;
+}
+
 .eyebrow {
   margin: 0 0 0.75rem;
   color: var(--accent);

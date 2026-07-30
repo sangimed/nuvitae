@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -34,10 +34,14 @@ const persistenceEnvironmentKeys = [
   "POSTGRES_SSL",
   "POSTGRES_CONNECTION_TIMEOUT_MS",
   "POSTGRES_STATEMENT_TIMEOUT_MS",
+  "NUVITAE_PRIVATE_STORAGE_ROOT",
+  "NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET",
+  "NUVITAE_PRIVATE_STORAGE_MAX_SIGNED_REFERENCE_TTL_SECONDS",
 ] as const;
 
 describe("final API and worker persistence runtime integration", () => {
   let database: IsolatedPersistenceTestDatabase;
+  let privateStorageRoot: string;
   const previousEnvironment = new Map<string, string | undefined>();
 
   beforeAll(async () => {
@@ -50,6 +54,14 @@ describe("final API and worker persistence runtime integration", () => {
     process.env.POSTGRES_SCHEMA = database.schema;
     process.env.POSTGRES_CONNECTION_TIMEOUT_MS = "3000";
     process.env.POSTGRES_STATEMENT_TIMEOUT_MS = "2000";
+    privateStorageRoot = mkdtempSync(
+      join(tmpdir(), "nuvitae-private-runtime-"),
+    );
+    process.env.NUVITAE_PRIVATE_STORAGE_ROOT = privateStorageRoot;
+    process.env.NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET =
+      "runtime-persistence-test-local-secret-32";
+    process.env.NUVITAE_PRIVATE_STORAGE_MAX_SIGNED_REFERENCE_TTL_SECONDS =
+      "300";
   });
 
   afterAll(async () => {
@@ -58,6 +70,7 @@ describe("final API and worker persistence runtime integration", () => {
       else process.env[key] = value;
     }
     await database.cleanup();
+    rmSync(privateStorageRoot, { recursive: true, force: true });
   });
 
   it("uses the shared option factory in both apps without automatic schema mutation", async () => {

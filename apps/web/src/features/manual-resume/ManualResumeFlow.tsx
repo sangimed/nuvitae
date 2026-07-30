@@ -13,6 +13,7 @@ import {
   saveManualDraft,
   type ManualDraftClientOutcome,
 } from "../../services/manual-resume/manual-draft-client";
+import { createBrowserUuid } from "../../services/browser-ids";
 
 type SaveState = "saved" | "unsaved" | "saving" | "stale-conflict" | "failed";
 
@@ -25,7 +26,11 @@ export function ManualResumeFlow() {
   >();
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [loadState, setLoadState] = useState<
-    "loading" | "authentication-required" | "connection-failure" | "ready"
+    | "loading"
+    | "authentication-required"
+    | "not-found"
+    | "connection-failure"
+    | "ready"
   >("loading");
   const [message, setMessage] = useState<string>(
     "Preparing your resume draft.",
@@ -79,11 +84,14 @@ export function ManualResumeFlow() {
   async function initialize(signal: AbortSignal) {
     const url = new URL(window.location.href);
     const existingDraftId = url.searchParams.get("draftId");
-    const creationKey = ensureCreationKey(url);
     const outcome =
       existingDraftId === null
-        ? await createManualDraft({ creationKey, signal })
+        ? await createManualDraft({
+            creationKey: ensureCreationKey(url),
+            signal,
+          })
         : await readManualDraft({ draftId: existingDraftId, signal });
+    if (signal.aborted) return;
     applyLoadOutcome(outcome);
   }
 
@@ -93,7 +101,9 @@ export function ManualResumeFlow() {
       setLoadState(
         outcome.category === "authentication_required"
           ? "authentication-required"
-          : "connection-failure",
+          : outcome.category === "not_found"
+            ? "not-found"
+            : "connection-failure",
       );
       return;
     }
@@ -106,6 +116,21 @@ export function ManualResumeFlow() {
     setSaveState("saved");
     setLoadState("ready");
     setMessage(outcome.response.userMessage);
+  }
+
+  async function createReplacementDraft() {
+    setLoadState("loading");
+    setMessage("Preparing a new resume draft.");
+    const url = new URL(window.location.href);
+    url.searchParams.delete("draftId");
+    url.searchParams.delete("creationKey");
+    const creationKey = ensureCreationKey(url);
+    const controller = new AbortController();
+    const outcome = await createManualDraft({
+      creationKey,
+      signal: controller.signal,
+    });
+    applyLoadOutcome(outcome);
   }
 
   async function save() {
@@ -158,6 +183,24 @@ export function ManualResumeFlow() {
         <div className="message message-error" role="status">
           {message}
         </div>
+      </section>
+    );
+  }
+
+  if (loadState === "not-found") {
+    return (
+      <section className="manual-panel">
+        <h1>Manual resume draft</h1>
+        <div className="message message-error" role="status">
+          {message}
+        </div>
+        <button
+          className="primary-action"
+          type="button"
+          onClick={() => void createReplacementDraft()}
+        >
+          Create a new draft
+        </button>
       </section>
     );
   }
@@ -235,7 +278,7 @@ function ensureCreationKey(url: URL): string {
   if (current !== null && /^[A-Za-z0-9._:-]{16,96}$/.test(current)) {
     return current;
   }
-  const key = `manual-${crypto.randomUUID()}`;
+  const key = `manual-${createBrowserUuid()}`;
   url.searchParams.set("creationKey", key);
   window.history.replaceState(null, "", url);
   return key;

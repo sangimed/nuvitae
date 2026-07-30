@@ -1,0 +1,93 @@
+name: nuvitae-local-play
+
+services:
+  web:
+    environment:
+      NODE_ENV: production
+      NUVITAE_LOCAL_PLAY_MODE: "true"
+      NUVITAE_INTERNAL_API_BASE_URL: http://api:3001
+    ports: !override
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      NUVITAE_LOCAL_PLAY_MODE: "true"
+      NUVITAE_LOCAL_PLAY_USER_ID: "00000000-0000-4000-8000-000000000101"
+      NUVITAE_PRIVATE_STORAGE_ROOT: /var/lib/nuvitae/private
+      NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET: "local-play-storage-signing-secret-not-for-production"
+      NUVITAE_PRIVATE_STORAGE_MAX_SIGNED_REFERENCE_TTL_SECONDS: 300
+      QUEUE_HOST: queue
+      QUEUE_PORT: 6379
+      QUEUE_PASSWORD: ${QUEUE_PASSWORD:-nuvitae_queue_password}
+    ports: !override
+      - "127.0.0.1:3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      queue:
+        condition: service_healthy
+
+  worker:
+    environment:
+      NODE_ENV: development
+      NUVITAE_PRIVATE_STORAGE_ROOT: /var/lib/nuvitae/private
+      NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET: "local-play-storage-signing-secret-not-for-production"
+      NUVITAE_PRIVATE_STORAGE_MAX_SIGNED_REFERENCE_TTL_SECONDS: 300
+
+  workspace:
+    environment:
+      NUVITAE_PRIVATE_STORAGE_ROOT: /var/lib/nuvitae/private
+      NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET: "local-play-storage-signing-secret-not-for-production"
+    volumes:
+      - private-storage:/var/lib/nuvitae/private
+
+  playwright-test:
+    environment:
+      LOCAL_PLAY_BASE_URL: http://web:3000
+      LOCAL_PLAY_API_HEALTH_URL: http://api:3001/health
+      LOCAL_PLAY_DISABLED_API_URL: http://api-local-mode-off:3001
+    depends_on:
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
+      api-local-mode-off:
+        condition: service_healthy
+
+  api-local-mode-off:
+    image: nuvitae-api:0.1.0
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: 3001
+      NUVITAE_LOCAL_PLAY_MODE: "false"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-nuvitae}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nuvitae_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-nuvitae}
+      POSTGRES_SSL: "false"
+      POSTGRES_CONNECTION_TIMEOUT_MS: 3000
+      POSTGRES_STATEMENT_TIMEOUT_MS: 2000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(''http://127.0.0.1:3001/health'').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    profiles:
+      - test

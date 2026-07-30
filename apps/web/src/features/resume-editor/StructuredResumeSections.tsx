@@ -1,6 +1,7 @@
 "use client";
 
 import type { StructuredResumeContentContract } from "@nuvitae/contracts";
+import { createBrowserUuid } from "../../services/browser-ids";
 
 type Content = StructuredResumeContentContract;
 type TextValue = Content["personal"][number];
@@ -1046,7 +1047,7 @@ function moveAt<T>(values: readonly T[], from: number, to: number): T[] {
 }
 
 function newId(): string {
-  return crypto.randomUUID();
+  return createBrowserUuid();
 }
 
 function capitalize(value: string): string {
