@@ -109,37 +109,77 @@ table, row, cell, run, character-offset, and global-order indexes. DOCX does
 not infer visual pages or rendered coordinates. Image-only/scanned PDFs are
 rejected because OCR is not implemented.
 
-## Semantic Parser Provider Spike
+## Codex App-Server Validation Spike
 
-Before full provider-backed import implementation, run the bounded Codex
-subscription adapter spike from [plan.md](./plan.md). The spike is accepted only
-when it records evidence for all of the following:
+Before any production Codex adapter implementation, run the second bounded
+Codex app-server validation from [plan.md](./plan.md). T139-T145 remains
+complete and historical; its NO-GO blocks direct `codex exec`, direct
+credential-file reuse, Nuvitae-managed ChatGPT tokens, and Nuvitae-reimplemented
+OAuth, but does not reject every Codex subscription integration. The second
+spike is accepted only when it records evidence for all of the following:
 
-- Codex subscription authentication works from the self-hosted Docker
-  environment using the user's ChatGPT/Codex session where officially
-  supported, or the spike records the blocking limitation.
-- Invocation is non-interactive and does not expose shell, file-editing,
-  repository, or arbitrary tool access for resume parsing.
-- Provider credentials and session material are isolated from resume source
-  artifacts, excluded from logs, and revocable by disconnecting the provider.
-- PDF and DOCX fixtures can be parsed through at least one candidate input
-  representation.
-- The selected input representation is justified from measured results:
-  original PDF, rendered page images, extracted text with source locations, or
-  a controlled combination.
-- Provider output can be translated into the versioned Nuvitae extraction
-  response and strictly validated with Zod.
-- Evidence records contain document location, exact source text or source
-  fragment identifier, explicit-versus-inferred classification, and confidence
-  category.
-- Invented fields, malformed output, missing evidence, invalid relationships,
-  unsupported values, provider-native schema leakage, timeouts, quota failures,
-  and expired authentication map to safe failures or review warnings.
+- Codex installs and starts inside the dedicated Docker runtime.
+- The installed Codex version is detected.
+- Protocol TypeScript or JSON Schema artifacts are generated from that exact
+  installed version.
+- Supported methods and payload shapes are derived from generated artifacts,
+  including stable, beta, experimental, deprecated, and unsupported operation
+  classification.
+- JSON-RPC over stdio initializes successfully with explicit Nuvitae client
+  metadata, request identifiers, response correlation, streaming notification
+  handling, timeouts, cancellation, graceful shutdown, crash detection, and
+  bounded restart behavior.
+- ChatGPT login, credential persistence, token refresh, refresh-token rotation,
+  authentication expiry, session recovery, and logout are owned by the official
+  Codex runtime.
+- Nuvitae remains token-blind: it does not read or parse Codex auth files,
+  persist access tokens, persist refresh tokens, refresh tokens directly, expose
+  tokens in logs/API responses/events/database records, or implement OpenAI
+  OAuth endpoints.
+- Provider-facing operations are validated for connection status, login
+  initiation, login progress, login completion, login cancellation where
+  supported, logout, reconnect, expired/revoked auth, quota state, and provider
+  availability.
+- Authentication persists across container restart where supported, and
+  invocation is non-interactive after login.
+- The runtime uses private Codex state, an empty ephemeral working directory, no
+  Nuvitae repository mount, no private import-storage mount, no PostgreSQL or
+  Valkey access, no host Codex configuration or credential inheritance, no user
+  MCP/plugin inheritance, bounded resources, controlled stdout/stderr,
+  privacy-safe logging, and cleanup after execution.
+- Shell, file-editing, web, plugin, MCP, and other non-parsing capabilities are
+  either verified disabled/excluded/restricted/sufficiently neutralized, or the
+  spike records the remaining risk.
+- Synthetic anonymous extracted text fixtures with stable page, block, line, or
+  fragment identifiers can be parsed without mounting original PDF or DOCX
+  documents into the Codex runtime.
+- Provider output can be translated into the temporary spike schema, strictly
+  parsed as JSON, validated, and converted into the provider-independent
+  Nuvitae extraction response.
+- Evidence records contain supported source identifiers, exact source text or
+  source fragment identifier, explicit-versus-inferred classification, and
+  confidence category.
+- Invented fields, unsupported evidence identifiers, inferred values marked as
+  explicit, duplicate entries, malformed output, missing evidence, invalid
+  relationships, unsupported values, provider-native schema leakage, timeouts,
+  cancellation, crashes, network failures, quota failures, and authentication
+  failures map to safe failures or review warnings.
+- Measurements are recorded for app-server startup latency, login behavior,
+  invocation success rate, schema-valid response rate, field precision, field
+  recall, work-experience grouping accuracy, valid-evidence rate,
+  invented-field rate, unsupported-evidence rate, turn latency, cancellation
+  latency, restart recovery, and authentication recovery.
+- The final decision records the installed Codex version, generated protocol
+  basis, supported authentication operations, token-blindness, Docker viability,
+  non-interactive invocation, restart persistence, isolation, structured output
+  reliability, evidence grounding, extraction quality, latency, failure
+  recovery, version-coupling risks, security/privacy risks, operational
+  complexity, required production thresholds, and GO, CONDITIONAL GO, or NO-GO.
 
-Use anonymous realistic French, English, bilingual, one-column, and multi-column
-PDF/DOCX fixtures with expected structured outputs. The spike must not add
-production provider behavior until these findings are captured in the plan or
-research artifacts.
+Use only synthetic anonymous source-text fixtures prepared from synthetic PDF
+and DOCX examples where useful. Preserve source identifiers needed for evidence
+validation. Do not add production provider behavior until the second decision
+gate records GO or qualifying CONDITIONAL GO.
 
 LibreOffice is installed only in the worker and the network-disabled,
 non-root, one-shot parser test image. Host LibreOffice is not supported:
@@ -407,7 +447,7 @@ unsupported-language fixtures.
 
 ### 7. Provider-Backed Semantic Parsing
 
-1. Connect the self-hosted Codex subscription provider after the spike validates the supported connection path.
+1. Connect the self-hosted Codex provider only after the second app-server validation records GO or qualifying CONDITIONAL GO.
 2. Upload supported French, English, bilingual, one-column, and multi-column PDF/DOCX fixtures.
 3. Verify deterministic validation and source preparation complete before provider semantic parsing.
 4. Verify the provider response is translated into the versioned Nuvitae extraction response.
@@ -418,7 +458,7 @@ unsupported-language fixtures.
 ### 7a. No Provider And Provider Failure Recovery
 
 1. Run import with no configured provider.
-2. Run import with provider disconnected, expired authentication, provider unavailable, rate/quota exceeded, provider timeout, and malformed structured output states.
+2. Run import with provider disconnected, login cancelled, expired authentication, revoked authentication, provider unavailable, rate/quota exceeded, provider timeout, and malformed structured output states.
 3. Verify each state is represented in API, worker, and UI contracts.
 
 **Expected Outcome**: The product does not claim reliable full semantic parsing. It offers retry, reconnect, another configured provider if available, limited deterministic partial extraction where available, replacement upload where relevant, and manual entry.

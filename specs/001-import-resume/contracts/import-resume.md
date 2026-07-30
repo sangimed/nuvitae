@@ -48,11 +48,21 @@ This contract describes the user-facing flow and service boundaries for the init
 
 ### AI Provider Connection
 
-**Required Behavior**: Self-hosted users can connect, verify, disconnect, and reconnect the configured semantic parser provider. The first supported self-hosted adapter targets Codex authenticated through the user's existing ChatGPT/Codex subscription where officially supported.
+**Required Behavior**: Self-hosted users can connect, inspect availability, disconnect, and reconnect the configured semantic parser provider. Codex through the official `codex app-server` runtime is the candidate first self-hosted provider, but production Codex adapter behavior remains blocked until the second validation records a GO or qualifying CONDITIONAL GO.
 
-**Required States**: not configured, connected, disconnected, authentication expired, provider unavailable, rate limited, quota exceeded, unsupported capability.
+**Required States**: not configured, login pending, connected, login cancelled, disconnected, authentication expired, authentication revoked, provider unavailable, rate limited, quota exceeded, unsupported capability.
 
-**Rules**: The standard import flow does not expose provider configuration details, prompts, model names, credentials, session material, provider-native JSON, or SDK details. Credentials and session material remain private, revocable, isolated from resume data, excluded from logs, inaccessible to other users, and separable from uploaded documents and import drafts.
+**Required Operations**: connection status, login initiation, login progress, login completion, login cancellation where supported, logout, reconnect, expired or revoked authentication handling, quota state, and provider availability state.
+
+**Rules**: The standard import flow does not expose provider configuration details, prompts, model names, credentials, session material, provider-native JSON, tokens, auth files, or SDK details. For the Codex candidate, the official Codex runtime owns ChatGPT authentication, credential persistence, token refresh, refresh-token rotation, authentication expiry, session recovery, and logout. Nuvitae remains token-blind and must not read provider auth files, parse provider auth files, persist access tokens, persist refresh tokens, refresh tokens directly, expose tokens in logs/API responses/events/database records, or implement provider OAuth endpoints.
+
+### Codex App-Server Validation Boundary
+
+**Required Behavior**: The second spike validates the official `codex app-server` path before production Codex adapter implementation. It uses generated protocol artifacts from the installed Codex version and records supported, beta, experimental, deprecated, and unsupported operations before any request or response shape is treated as implementable.
+
+**Required Scope**: Validate JSON-RPC over stdio initialization, explicit Nuvitae client metadata, request/response correlation, streaming notifications, timeouts, cancellation, graceful shutdown, crash detection, bounded restart behavior, Docker startup, authentication status inspection, official login/logout/reconnect behavior, token-blindness, non-interactive invocation after login, isolation, prompt-injection handling, structured semantic extraction, evidence grounding, malformed output, quota/rate/auth failures, latency, and extraction quality.
+
+**Isolation Rules**: The spike uses a dedicated Docker runtime with private Codex state, an empty ephemeral working directory, no Nuvitae repository mount, no private import-storage mount, no PostgreSQL or Valkey access, no host Codex configuration or credential inheritance, no user MCP servers or plugins, no unrelated environment variables, bounded CPU/memory/process/temp-storage limits, controlled stdout/stderr, privacy-safe logging, and cleanup after execution. Shell, file-editing, web, plugin, MCP, and other non-parsing capabilities must not be claimed disabled until the spike verifies they are disabled, excluded, restricted, or sufficiently neutralized.
 
 ### Confirmation Step
 
@@ -90,7 +100,7 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Output**: processing state, partial/complete extraction summary, draft id when threshold is met, provider failure state if any, warnings, recovery actions.
 
-**Rules**: Deterministic validation and source preparation run through concrete PDF and DOCX extraction adapters before semantic parsing. PDF extraction must include page and text-item source-location provenance. DOCX extraction must include package part, paragraph/table/cell/run, and character-offset provenance. When a usable AI provider is connected, semantic parsing runs through `ResumeSemanticParserProvider` as the primary semantic mapping and grouping path. The worker submits only a controlled extraction request and must not grant shell, file-editing, repository, or arbitrary tool access for resume parsing. Foreground processing times out after 3 minutes and returns threshold-qualified partial results when available. A parser memory-limit breach terminates the isolated parser process, creates no review draft from abruptly terminated partial output, cleans up files and source-reconstructing artifacts for the failed attempt, and returns retry, replacement-upload, provider recovery where applicable, and manual-entry recovery actions.
+**Rules**: Deterministic validation and source preparation run through concrete PDF and DOCX extraction adapters before semantic parsing. PDF extraction must include page and text-item source-location provenance. DOCX extraction must include package part, paragraph/table/cell/run, and character-offset provenance. When a usable AI provider is connected, semantic parsing runs through `ResumeSemanticParserProvider` as the primary semantic mapping and grouping path. The worker submits only a controlled extraction request. Foreground processing times out after 3 minutes and returns threshold-qualified partial results when available. A parser memory-limit breach terminates the isolated parser process, creates no review draft from abruptly terminated partial output, cleans up files and source-reconstructing artifacts for the failed attempt, and returns retry, replacement-upload, provider recovery where applicable, and manual-entry recovery actions.
 
 ### Validate Semantic Parser Output
 
@@ -176,9 +186,9 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Input**: authenticated user, provider connection id, explicit disconnect or revoke action.
 
-**Output**: provider connection state and credential/session deletion status.
+**Output**: provider runtime connection state and provider-owned logout or disconnect status.
 
-**Rules**: Disconnecting or revoking a provider deletes provider credentials and session material without deleting uploaded resumes, import drafts, structured resumes, or source-retention records. Future semantic parsing requires reconnecting or choosing another provider.
+**Rules**: Disconnecting or revoking a provider must not delete uploaded resumes, import drafts, structured resumes, or source-retention records. Future semantic parsing requires reconnecting or choosing another provider. Nuvitae records only provider-neutral connection state and must not expose or persist raw provider tokens or auth files.
 
 ### Source-Deleted Review
 
