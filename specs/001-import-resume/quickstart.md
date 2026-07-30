@@ -109,137 +109,131 @@ table, row, cell, run, character-offset, and global-order indexes. DOCX does
 not infer visual pages or rendered coordinates. Image-only/scanned PDFs are
 rejected because OCR is not implemented.
 
-## Codex App-Server Validation Spike
+## Codex Direct-OAuth Compatibility Spike
 
-Before any production Codex adapter implementation, run the second bounded
-Codex app-server validation from [plan.md](./plan.md). T139-T145 remains
-complete and historical; its NO-GO blocks direct `codex exec`, direct
-credential-file reuse, Nuvitae-managed ChatGPT tokens, and Nuvitae-reimplemented
-OAuth, but does not reject every Codex subscription integration. The second
-spike is accepted only when it records evidence for all of the following:
+Before any production Codex adapter implementation, run the bounded direct-OAuth
+compatibility spike from [plan.md](./plan.md). T189-T195 remains complete and
+historical; its NO-GO applies only to the tested `codex app-server` 0.146.0
+ChatGPT-managed authentication candidate. The new spike evaluates this distinct
+architecture:
 
-- Codex installs and starts inside the dedicated Docker runtime.
-- The installed Codex version is detected.
-- Protocol TypeScript or JSON Schema artifacts are generated from that exact
-  installed version.
-- Supported methods and payload shapes are derived from generated artifacts,
-  including stable, beta, experimental, deprecated, and unsupported operation
-  classification.
-- JSON-RPC over stdio initializes successfully with explicit Nuvitae client
-  metadata, request identifiers, response correlation, streaming notification
-  handling, timeouts, cancellation, graceful shutdown, crash detection, and
-  bounded restart behavior.
-- ChatGPT login, credential persistence, token refresh, refresh-token rotation,
-  authentication expiry, session recovery, and logout are owned by the official
-  Codex runtime.
-- T191 preserves the experimentally verified device-code result for the tested
-  account/runtime combination: generated Codex 0.146.0 app-server artifacts
-  expose `chatgptDeviceCode`; `account/login/start` with
-  `type: chatgptDeviceCode` is rejected before a verification URL or user code
-  is issued; official CLI device authentication also failed before code
-  issuance; no basic DNS, TCP, TLS, or CA outage was demonstrated; enabling
-  device-code authorization did not change the app-server result; repeated
-  device-code retries are not justified for this spike.
-- T191 treated browser callback forwarding as the final bounded authentication
-  candidate, using `account/login/start` with `type: chatgpt`. Codex generated
-  the authorization URL and owned PKCE, OAuth state, callback validation, token
-  exchange, credential persistence, refresh, and logout. Nuvitae did not
-  receive or handle access tokens or refresh tokens.
-- The T191 browser-flow candidate verified the Docker localhost callback
-  boundary using an ephemeral login-only relay inside the trusted Codex runtime
-  boundary. The final run produced a valid official authorization URL,
-  official authorization host validation, valid localhost redirect URI,
-  callback port `1455`, loopback-only Docker publication, a reachable raw TCP
-  callback relay, no public or LAN exposure, and callback relay teardown after
-  failure.
-- The callback relay performs raw TCP forwarding only. It does not terminate
-  OAuth, parse callback query parameters, log callback payloads, persist HTTP
-  requests, receive or expose Codex credential files, mount the Docker socket,
-  mount host home, or mount host Codex state. It is enabled only while login is
-  pending, stopped after login completion or cancellation, and published only
-  on host loopback with no LAN or public-interface binding.
-- The T191 harness derives the callback port from the official `authUrl`
-  returned by app-server, accepts only localhost callback URLs, accepts only the
-  expected pinned-runtime ports `1455` or `1457`, fails closed for unexpected
-  hostname, scheme, path, or port, and never logs authorization URL query
-  parameters in committed evidence. Use the official hosted login success page
-  option when supported by the pinned generated protocol, while still treating
-  the local callback as mandatory.
-- Nuvitae remains token-blind: it does not read or parse Codex auth files,
-  persist access tokens, persist refresh tokens, refresh tokens directly, expose
-  tokens in logs/API responses/events/database records, or implement OpenAI
-  OAuth endpoints.
-- Provider-facing operations are validated for connection status, login
-  initiation, login progress, login completion, login cancellation where
-  supported, logout, reconnect, expired/revoked auth, quota state, and provider
-  availability.
-- Authentication persists across container restart where supported, and
-  invocation is non-interactive after login.
-- T191 is now an experimentally completed investigation with terminal result
-  `BLOCKED`: the research work is complete, but the authentication acceptance
-  gate failed. The browser-flow candidate did not produce successful
-  `account/login/completed`, authenticated `account/updated`, or authenticated
-  `account/read`; no authenticated Codex runtime is available for T192.
-- T191 is closed against additional authentication workarounds: repeated
-  device-code retries, another callback proxy, host networking, Docker socket
-  access, `docker exec` or `docker attach`, copied `auth.json`, copied Codex
-  credential caches, direct OAuth implementation, OpenClaw or Hermes OAuth
-  code reuse, API-key authentication as a substitute for the ChatGPT
-  subscription requirement, undocumented ChatGPT backend endpoints, and
-  manually supplied access or refresh tokens.
-- The blocker is scoped to official Codex app-server `0.146.0`, the tested
-  ChatGPT account and current account/workspace configuration, the tested
-  managed child-process Docker runtime, official device-code and browser-flow
-  authentication candidates, and the current observation date and environment.
-  It does not prove that future Codex versions, every ChatGPT account, or all
-  Codex integrations will fail.
-- The runtime uses private Codex state, an empty ephemeral working directory, no
-  Nuvitae repository mount, no private import-storage mount, no PostgreSQL or
-  Valkey access, no host Codex configuration or credential inheritance, no user
-  MCP/plugin inheritance, bounded resources, controlled stdout/stderr,
-  privacy-safe logging, and cleanup after execution.
-- Shell, file-editing, web, plugin, MCP, and other non-parsing capabilities are
-  either verified disabled/excluded/restricted/sufficiently neutralized, or the
-  spike records the remaining risk.
-- T192 semantic invocation is not executable without validated authentication.
-- T193 authenticated semantic quality evaluation is not executable without
-  T192 invocation. Semantic quality, latency, cancellation, quota, restart, and
-  recovery metrics that require authenticated invocation must be recorded as
-  not measured and unverified due to the T191 authentication blocker, not as
-  zero or failed measurements.
-- T194 proceeds using T189 protocol evidence, T190 runtime and isolation
-  evidence, T191 authentication and security evidence, and the explicit fact
-  that T192-T193 could not execute. It reviews self-hosted suitability,
-  authentication operability, token-blindness, filesystem and process
-  isolation, user onboarding feasibility, support burden, upgrade and
-  version-coupling risks, privacy and security, missing semantic-quality
-  evidence, and reevaluation conditions.
-- T195 may proceed after T194 even though T192-T193 were blocked. It must state
-  why T192-T193 were not executed, which metrics remain unverified, that no
-  semantic-quality claims can be made, that authentication is a mandatory
-  failed production gate, and whether available evidence supports NO-GO or a
-  narrowly defined CONDITIONAL GO. Any CONDITIONAL GO must use objective,
-  externally verifiable conditions and must not authorize production
-  implementation before authentication and semantic evaluation are rerun
-  successfully.
-- Reevaluation triggers include a newer official Codex version with a relevant
-  authentication fix, an official OpenAI-documented resolution for the observed
-  login failure, a confirmed account or workspace configuration change, a
-  supported official authentication operation that preserves token-blindness,
-  or successful reproduction of login through the same bounded Docker topology.
-  A future reevaluation must perform bounded delta validation of T189-T193 and
-  must not silently reopen production T164-T165.
-- The final decision records the installed Codex version, generated protocol
-  basis, supported authentication operations, token-blindness, Docker viability,
-  authentication blocker, unverified authenticated invocation and semantic
-  metrics, isolation, failure recovery, version-coupling risks,
-  security/privacy risks, operational complexity, required production
-  thresholds, and GO, CONDITIONAL GO, or NO-GO.
+```text
+Nuvitae worker
+→ ResumeSemanticParserProvider
+→ CodexDirectProviderAdapter
+→ isolated CodexOAuthBroker
+→ OpenAI-hosted OAuth
+→ direct Codex ChatGPT transport
+```
+
+The spike is accepted only when it records evidence for the following, in order:
+
+1. Upstream and licensing audit.
+2. Security and token-ownership design.
+3. OAuth login proof.
+4. Token persistence, refresh, logout, and deletion proof.
+5. Minimal direct Codex backend invocation with synthetic input.
+6. Structured resume parsing with synthetic fixtures.
+7. Security, quality, failure, and compatibility evaluation.
+8. Final GO, CONDITIONAL GO, or NO-GO.
+
+Required upstream audit evidence:
+
+- Exact pinned commit SHAs for OpenClaw and Hermes Agent.
+- Exact official OpenAI Codex documentation/source revisions where relevant.
+- Exact OAuth flow, client identifier, authorization endpoint, token endpoint,
+  callback behavior, PKCE and state handling, requested scopes, and originator
+  parameters.
+- Token refresh, credential storage, logout behavior, Codex transport/base URL,
+  required request headers, and account identity extraction.
+- License and attribution obligations.
+- Differences between OpenClaw and Hermes.
+- Explicit confirmation that no upstream code was copied before license review.
+
+Required supportability classification:
+
+- Officially documented OpenAI behavior.
+- Behavior verified from official source code.
+- Behavior used by OpenClaw or Hermes.
+- Undocumented compatibility behavior.
+- Experimentally verified Nuvitae behavior.
+- Inference.
+
+Treat the direct ChatGPT Codex backend as undocumented or
+compatibility-sensitive unless an official source explicitly documents it for
+third-party use.
+
+Required broker validation:
+
+- PKCE verifier and challenge generation.
+- OAuth state generation and validation.
+- Local loopback callback.
+- Authorization-code exchange.
+- Encrypted access-token and refresh-token storage proof.
+- Access-token refresh proof.
+- Logout and local deletion proof.
+- Privacy-safe connection status.
+- Codex provider request execution.
+- Provider-neutral result return.
+- Threat-model comparison of dedicated Docker service, isolated worker-side
+  process, and another bounded infrastructure component.
+
+Required credential-storage validation:
+
+- Dedicated encrypted credential store.
+- Master encryption key supplied as Docker secret or environment secret.
+- Authenticated encryption.
+- Restrictive filesystem permissions.
+- One credential namespace per Nuvitae owner.
+- Atomic writes.
+- Rotation and deletion.
+- No plaintext credentials in PostgreSQL unless explicitly encrypted.
+- No credentials in image layers, logs, fixtures, Git, browser storage, queue
+  payloads, or backups without documented encryption.
+- No production credential persistence implemented during the first auth spike.
+
+Required backend invocation validation:
+
+- Exact upstream request-shape audit.
+- Fail-closed host and path allowlist.
+- No arbitrary base URL.
+- No redirects to unapproved hosts.
+- Bounded response size.
+- Timeout and cancellation.
+- Rate-limit handling.
+- Token refresh on authorized failure categories only.
+- Synthetic prompts before any resume content.
+- No production integration until supportability and stability are reviewed.
+
+Required semantic validation after authentication and minimal invocation
+succeed:
+
+- Structured Nuvitae-owned output.
+- Schema validity.
+- Source evidence.
+- Grounding.
+- No invention.
+- French, English, bilingual, single-column, and multi-column synthetic
+  fixtures.
+- Latency.
+- Cancellation.
+- Quota behavior.
+
+Token-blind surfaces:
+
+- Web application.
+- Browser storage.
+- Import domain.
+- API controllers.
+- Regular worker jobs.
+- Database domain entities.
+- Semantic extraction contracts.
+- Logs and diagnostics.
 
 Use only synthetic anonymous source-text fixtures prepared from synthetic PDF
 and DOCX examples where useful. Preserve source identifiers needed for evidence
-validation. Do not add production provider behavior until the second decision
-gate records GO or qualifying CONDITIONAL GO.
+validation. Do not add production provider behavior until the direct-OAuth
+decision gate records GO or qualifying CONDITIONAL GO.
 
 LibreOffice is installed only in the worker and the network-disabled,
 non-root, one-shot parser test image. Host LibreOffice is not supported:
@@ -507,7 +501,7 @@ unsupported-language fixtures.
 
 ### 7. Provider-Backed Semantic Parsing
 
-1. Connect the self-hosted Codex provider only after the second app-server validation records GO or qualifying CONDITIONAL GO.
+1. Connect the self-hosted Codex provider only after the direct-OAuth compatibility spike records GO or qualifying CONDITIONAL GO.
 2. Upload supported French, English, bilingual, one-column, and multi-column PDF/DOCX fixtures.
 3. Verify deterministic validation and source preparation complete before provider semantic parsing.
 4. Verify the provider response is translated into the versioned Nuvitae extraction response.

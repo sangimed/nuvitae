@@ -48,21 +48,29 @@ This contract describes the user-facing flow and service boundaries for the init
 
 ### AI Provider Connection
 
-**Required Behavior**: Self-hosted users can connect, inspect availability, disconnect, and reconnect the configured semantic parser provider. Codex through the official `codex app-server` runtime is the candidate first self-hosted provider, but production Codex adapter behavior remains blocked until the second validation records a GO or qualifying CONDITIONAL GO.
+**Required Behavior**: Self-hosted users can connect, inspect availability, disconnect, revoke local state, delete locally stored provider credentials, and reconnect the configured semantic parser provider. Codex through the direct-OAuth compatibility spike is the candidate first self-hosted provider, but production Codex adapter behavior remains blocked until that spike records a GO or qualifying CONDITIONAL GO.
 
 **Required States**: not configured, login pending, connected, login cancelled, disconnected, authentication expired, authentication revoked, provider unavailable, rate limited, quota exceeded, unsupported capability.
 
-**Required Operations**: connection status, login initiation, login progress, login completion, login cancellation where supported, logout, reconnect, expired or revoked authentication handling, quota state, and provider availability state.
+**Required Operations**: provider-neutral connection status, login initiation, login progress, login completion, login cancellation where supported, logout, reconnect, local credential deletion, expired or revoked authentication handling, quota state, and provider availability state.
 
-**Rules**: The standard import flow does not expose provider configuration details, prompts, model names, credentials, session material, provider-native JSON, tokens, auth files, or SDK details. For the Codex candidate, the official Codex runtime owns ChatGPT authentication, credential persistence, token refresh, refresh-token rotation, authentication expiry, session recovery, and logout. Nuvitae remains token-blind and must not read provider auth files, parse provider auth files, persist access tokens, persist refresh tokens, refresh tokens directly, expose tokens in logs/API responses/events/database records, or implement provider OAuth endpoints.
+**Rules**: The standard import flow does not expose provider configuration details, prompts, model names, credentials, session material, provider-native JSON, tokens, auth files, OAuth endpoint paths, backend routes, headers, or SDK details. For the Codex direct-OAuth candidate, only the isolated `CodexOAuthBroker` may own encrypted access and refresh tokens. The web application, browser storage, import domain, API controllers, regular worker jobs, database domain entities, semantic extraction contracts, logs, diagnostics, ordinary API responses, and import review remain token-blind.
 
-### Codex App-Server Validation Boundary
+### Codex Direct-OAuth Broker Validation Boundary
 
-**Required Behavior**: The second spike validates the official `codex app-server` path before production Codex adapter implementation. It uses generated protocol artifacts from the installed Codex version and records supported, beta, experimental, deprecated, and unsupported operations before any request or response shape is treated as implementable.
+**Required Behavior**: The direct-OAuth spike validates the architecture `Nuvitae worker -> ResumeSemanticParserProvider -> CodexDirectProviderAdapter -> isolated CodexOAuthBroker -> OpenAI-hosted OAuth -> direct Codex ChatGPT transport` before production Codex adapter implementation.
 
-**Required Scope**: Validate JSON-RPC over stdio initialization, explicit Nuvitae client metadata, request/response correlation, streaming notifications, timeouts, cancellation, graceful shutdown, crash detection, bounded restart behavior, Docker startup, authentication status inspection, official login/logout/reconnect behavior, token-blindness, non-interactive invocation after login, isolation, prompt-injection handling, structured semantic extraction, evidence grounding, malformed output, quota/rate/auth failures, latency, and extraction quality.
+**Required Scope**: Validate the mandated spike order: upstream and licensing audit; security and token-ownership design; OAuth login proof; token persistence, refresh, logout, and deletion proof; minimal direct Codex backend invocation with synthetic input; structured resume parsing with synthetic fixtures; security, quality, failure, and compatibility evaluation; and final GO, CONDITIONAL GO, or NO-GO.
 
-**Isolation Rules**: The spike uses a dedicated Docker runtime with private Codex state, an empty ephemeral working directory, no Nuvitae repository mount, no private import-storage mount, no PostgreSQL or Valkey access, no host Codex configuration or credential inheritance, no user MCP servers or plugins, no unrelated environment variables, bounded CPU/memory/process/temp-storage limits, controlled stdout/stderr, privacy-safe logging, and cleanup after execution. Shell, file-editing, web, plugin, MCP, and other non-parsing capabilities must not be claimed disabled until the spike verifies they are disabled, excluded, restricted, or sufficiently neutralized.
+**Upstream Audit Rules**: Pin and inspect exact upstream revisions of OpenClaw, Hermes Agent, and official OpenAI Codex documentation/source where relevant. Record exact commit SHAs, OAuth flow, client identifier, authorization endpoint, token endpoint, callback behavior, PKCE and state handling, requested scopes, originator parameters, token refresh, credential storage, logout behavior, Codex transport and base URL, required request headers, account identity extraction, license and attribution obligations, and differences between OpenClaw and Hermes. Do not copy upstream code before license review.
+
+**Supportability Rules**: Classify each behavior as officially documented OpenAI behavior, behavior verified from official source code, behavior used by OpenClaw or Hermes, undocumented compatibility behavior, experimentally verified Nuvitae behavior, or inference. Treat the direct ChatGPT Codex backend as undocumented or compatibility-sensitive unless an official source explicitly documents it for third-party use.
+
+**Broker Rules**: The broker generates PKCE verifier/challenge, generates and validates OAuth state, hosts a loopback callback, exchanges authorization codes, stores access and refresh tokens encrypted at rest, refreshes access tokens, provides logout and local deletion, provides privacy-safe connection status, executes Codex provider requests, and returns only provider-neutral results. The spike must compare dedicated Docker service, isolated worker-side process, and other bounded infrastructure options before selecting a production topology.
+
+**Credential Storage Rules**: Evaluate a dedicated encrypted credential store, master encryption key supplied as a Docker secret or environment secret, authenticated encryption, restrictive filesystem permissions, one credential namespace per Nuvitae owner, atomic writes, rotation and deletion, no plaintext credentials in PostgreSQL unless explicitly encrypted, and no credentials in image layers, logs, fixtures, Git, browser storage, queue payloads, or backups without documented encryption. The first auth spike must not implement production credential persistence.
+
+**Invocation Rules**: Direct Codex backend invocation requires exact upstream request-shape audit, fail-closed host and path allowlist, no arbitrary base URL, no redirects to unapproved hosts, bounded response size, timeout and cancellation, rate-limit handling, token refresh on authorized failure categories only, synthetic prompts before any resume content, and no production integration until supportability and stability are reviewed.
 
 ### Confirmation Step
 
@@ -186,9 +194,9 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Input**: authenticated user, provider connection id, explicit disconnect or revoke action.
 
-**Output**: provider runtime connection state and provider-owned logout or disconnect status.
+**Output**: provider-neutral runtime connection state and broker-owned logout, disconnect, local revocation, or credential-deletion status.
 
-**Rules**: Disconnecting or revoking a provider must not delete uploaded resumes, import drafts, structured resumes, or source-retention records. Future semantic parsing requires reconnecting or choosing another provider. Nuvitae records only provider-neutral connection state and must not expose or persist raw provider tokens or auth files.
+**Rules**: Disconnecting, revoking, or deleting local provider credentials must not delete uploaded resumes, import drafts, structured resumes, or source-retention records. Future semantic parsing requires reconnecting or choosing another provider. Nuvitae records only provider-neutral connection state. Raw provider tokens may be owned only by the broker and must not be exposed to or persisted by ordinary API responses, browser storage, import-domain objects, normal worker job payloads, semantic extraction contracts, logs, or diagnostics.
 
 ### Source-Deleted Review
 

@@ -29,6 +29,27 @@ Applies to:
 
 Does not apply beyond that scope without new evidence.
 
+## 2a. Scope Clarification For Direct-OAuth Candidate
+
+This T195 decision does not evaluate or reject the distinct direct-OAuth
+architecture now planned for separate compatibility validation:
+
+```text
+Nuvitae worker
+→ provider-independent ResumeSemanticParserProvider
+→ CodexDirectProviderAdapter
+→ isolated CodexOAuthBroker
+→ OpenAI-hosted OAuth
+→ direct Codex ChatGPT transport
+```
+
+That candidate has a different token-ownership model, transport boundary, and
+supportability risk profile than the tested app-server path. It requires a new
+upstream and licensing audit, security and token-ownership design, OAuth proof,
+credential lifecycle proof, minimal invocation proof, semantic validation, and
+explicit GO, CONDITIONAL GO, or NO-GO decision before production Codex work is
+authorized. A future direct-OAuth NO-GO remains an acceptable result.
+
 ## 3. Executive Rationale
 
 GO is impossible because mandatory production gates remain failed, blocked, or not measured. Official ChatGPT-subscription authentication did not complete in the tested Docker app-server path, so T192 and T193 could not run.
