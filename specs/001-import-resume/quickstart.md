@@ -140,18 +140,18 @@ spike is accepted only when it records evidence for all of the following:
   issuance; no basic DNS, TCP, TLS, or CA outage was demonstrated; enabling
   device-code authorization did not change the app-server result; repeated
   device-code retries are not justified for this spike.
-- T191 treats browser callback forwarding as the final bounded authentication
-  candidate, using `account/login/start` with `type: chatgpt`. Codex generates
-  the authorization URL and owns PKCE, OAuth state, callback validation, token
-  exchange, credential persistence, refresh, and logout. Nuvitae never receives
-  or handles access tokens or refresh tokens.
-- The T191 browser-flow candidate verifies only the Docker localhost callback
+- T191 treated browser callback forwarding as the final bounded authentication
+  candidate, using `account/login/start` with `type: chatgpt`. Codex generated
+  the authorization URL and owned PKCE, OAuth state, callback validation, token
+  exchange, credential persistence, refresh, and logout. Nuvitae did not
+  receive or handle access tokens or refresh tokens.
+- The T191 browser-flow candidate verified the Docker localhost callback
   boundary using an ephemeral login-only relay inside the trusted Codex runtime
-  boundary. Candidate mappings may be equivalent to host `127.0.0.1:1455` to
-  runtime relay port `2455`, and host `127.0.0.1:1457` to runtime relay port
-  `2457`, then relay forwarding from `2455` to `127.0.0.1:1455` and from
-  `2457` to `127.0.0.1:1457`. These mappings are candidates to verify, not
-  already validated behavior.
+  boundary. The final run produced a valid official authorization URL,
+  official authorization host validation, valid localhost redirect URI,
+  callback port `1455`, loopback-only Docker publication, a reachable raw TCP
+  callback relay, no public or LAN exposure, and callback relay teardown after
+  failure.
 - The callback relay performs raw TCP forwarding only. It does not terminate
   OAuth, parse callback query parameters, log callback payloads, persist HTTP
   requests, receive or expose Codex credential files, mount the Docker socket,
@@ -175,17 +175,24 @@ spike is accepted only when it records evidence for all of the following:
   availability.
 - Authentication persists across container restart where supported, and
   invocation is non-interactive after login.
-- A successful T191 browser-flow result still demonstrates authenticated
-  `account/read`, no raw credentials exposed through RPC, inaccessible Codex
-  credential state from the Nuvitae identity, persistence across container
-  recreation, cancellation, authenticated logout, unauthenticated state after
-  restart, and final reauthentication for T192.
-- If the official browser flow also fails after the callback relay is proven
-  reachable, T191 remains incomplete and the Codex subscription candidate moves
-  toward a blocked or conditional decision. API-key authentication, copying
-  `auth.json` or another Codex credential cache, and direct OAuth
-  implementation are not substitutes for the subscription-backed product
-  requirement.
+- T191 is now an experimentally completed investigation with terminal result
+  `BLOCKED`: the research work is complete, but the authentication acceptance
+  gate failed. The browser-flow candidate did not produce successful
+  `account/login/completed`, authenticated `account/updated`, or authenticated
+  `account/read`; no authenticated Codex runtime is available for T192.
+- T191 is closed against additional authentication workarounds: repeated
+  device-code retries, another callback proxy, host networking, Docker socket
+  access, `docker exec` or `docker attach`, copied `auth.json`, copied Codex
+  credential caches, direct OAuth implementation, OpenClaw or Hermes OAuth
+  code reuse, API-key authentication as a substitute for the ChatGPT
+  subscription requirement, undocumented ChatGPT backend endpoints, and
+  manually supplied access or refresh tokens.
+- The blocker is scoped to official Codex app-server `0.146.0`, the tested
+  ChatGPT account and current account/workspace configuration, the tested
+  managed child-process Docker runtime, official device-code and browser-flow
+  authentication candidates, and the current observation date and environment.
+  It does not prove that future Codex versions, every ChatGPT account, or all
+  Codex integrations will fail.
 - The runtime uses private Codex state, an empty ephemeral working directory, no
   Nuvitae repository mount, no private import-storage mount, no PostgreSQL or
   Valkey access, no host Codex configuration or credential inheritance, no user
@@ -194,31 +201,40 @@ spike is accepted only when it records evidence for all of the following:
 - Shell, file-editing, web, plugin, MCP, and other non-parsing capabilities are
   either verified disabled/excluded/restricted/sufficiently neutralized, or the
   spike records the remaining risk.
-- Synthetic anonymous extracted text fixtures with stable page, block, line, or
-  fragment identifiers can be parsed without mounting original PDF or DOCX
-  documents into the Codex runtime.
-- Provider output can be translated into the temporary spike schema, strictly
-  parsed as JSON, validated, and converted into the provider-independent
-  Nuvitae extraction response.
-- Evidence records contain supported source identifiers, exact source text or
-  source fragment identifier, explicit-versus-inferred classification, and
-  confidence category.
-- Invented fields, unsupported evidence identifiers, inferred values marked as
-  explicit, duplicate entries, malformed output, missing evidence, invalid
-  relationships, unsupported values, provider-native schema leakage, timeouts,
-  cancellation, crashes, network failures, quota failures, and authentication
-  failures map to safe failures or review warnings.
-- Measurements are recorded for app-server startup latency, login behavior,
-  invocation success rate, schema-valid response rate, field precision, field
-  recall, work-experience grouping accuracy, valid-evidence rate,
-  invented-field rate, unsupported-evidence rate, turn latency, cancellation
-  latency, restart recovery, and authentication recovery.
+- T192 semantic invocation is not executable without validated authentication.
+- T193 authenticated semantic quality evaluation is not executable without
+  T192 invocation. Semantic quality, latency, cancellation, quota, restart, and
+  recovery metrics that require authenticated invocation must be recorded as
+  not measured and unverified due to the T191 authentication blocker, not as
+  zero or failed measurements.
+- T194 proceeds using T189 protocol evidence, T190 runtime and isolation
+  evidence, T191 authentication and security evidence, and the explicit fact
+  that T192-T193 could not execute. It reviews self-hosted suitability,
+  authentication operability, token-blindness, filesystem and process
+  isolation, user onboarding feasibility, support burden, upgrade and
+  version-coupling risks, privacy and security, missing semantic-quality
+  evidence, and reevaluation conditions.
+- T195 may proceed after T194 even though T192-T193 were blocked. It must state
+  why T192-T193 were not executed, which metrics remain unverified, that no
+  semantic-quality claims can be made, that authentication is a mandatory
+  failed production gate, and whether available evidence supports NO-GO or a
+  narrowly defined CONDITIONAL GO. Any CONDITIONAL GO must use objective,
+  externally verifiable conditions and must not authorize production
+  implementation before authentication and semantic evaluation are rerun
+  successfully.
+- Reevaluation triggers include a newer official Codex version with a relevant
+  authentication fix, an official OpenAI-documented resolution for the observed
+  login failure, a confirmed account or workspace configuration change, a
+  supported official authentication operation that preserves token-blindness,
+  or successful reproduction of login through the same bounded Docker topology.
+  A future reevaluation must perform bounded delta validation of T189-T193 and
+  must not silently reopen production T164-T165.
 - The final decision records the installed Codex version, generated protocol
   basis, supported authentication operations, token-blindness, Docker viability,
-  non-interactive invocation, restart persistence, isolation, structured output
-  reliability, evidence grounding, extraction quality, latency, failure
-  recovery, version-coupling risks, security/privacy risks, operational
-  complexity, required production thresholds, and GO, CONDITIONAL GO, or NO-GO.
+  authentication blocker, unverified authenticated invocation and semantic
+  metrics, isolation, failure recovery, version-coupling risks,
+  security/privacy risks, operational complexity, required production
+  thresholds, and GO, CONDITIONAL GO, or NO-GO.
 
 Use only synthetic anonymous source-text fixtures prepared from synthetic PDF
 and DOCX examples where useful. Preserve source identifiers needed for evidence

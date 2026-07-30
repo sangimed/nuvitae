@@ -57,6 +57,9 @@ services:
     pids_limit: 96
     mem_limit: 512m
     cpus: 0.50
+    ports:
+      - "127.0.0.1:1455:2455"
+      - "127.0.0.1:1457:2457"
     environment:
       HOME: /codex-state
       CODEX_HOME: /codex-state

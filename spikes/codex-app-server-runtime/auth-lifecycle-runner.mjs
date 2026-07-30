@@ -1,20 +1,25 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { chmod, mkdir, writeFile } from "node:fs/promises";
+import net from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
 
 const evidencePath = "/evidence/auth-lifecycle.json";
 const codexState = "/codex-state";
 const redacted = "[REDACTED]";
-const timeoutMs = 360_000;
+const loginTimeoutMs = 600_000;
+const callbackPorts = new Set([1455, 1457]);
+const relayPortByCallbackPort = new Map([[1455, 2455], [1457, 2457]]);
+const allowedAuthHosts = new Set(["auth.openai.com"]);
 const activeServers = new Set();
 let currentEvidence = null;
 
 function redact(value) {
   return JSON.stringify(value ?? null)
+    .replace(/https:\/\/[^\s"']+/g, "[URL_REDACTED]")
     .replace(/sk-[A-Za-z0-9_-]{20,}/g, redacted)
     .replace(/eyJ[A-Za-z0-9_-]+?\.[A-Za-z0-9_-]+?\.[A-Za-z0-9_-]+/g, redacted)
-    .replace(/([?&](code|device_code|user_code|access_token|refresh_token|id_token)=)[^"&\s]+/gi, `$1${redacted}`)
+    .replace(/([?&](code|device_code|user_code|access_token|refresh_token|id_token|state)=)[^"&\s]+/gi, `$1${redacted}`)
     .replace(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g, "[EMAIL]");
 }
 
@@ -75,6 +80,7 @@ async function permissionProbe() {
     readKnownSentinel: await execAs(10002, 10002, "cat", [`${codexState}/nuvitae-sentinel`]),
     copyKnownSentinel: await execAs(10002, 10002, "cp", [`${codexState}/nuvitae-sentinel`, "/runtime-tmp/copied-sentinel"]),
     modifyKnownSentinel: await execAs(10002, 10002, "sh", ["-c", `printf probe >> ${codexState}/nuvitae-sentinel`]),
+    deleteKnownSentinel: await execAs(10002, 10002, "rm", [`${codexState}/nuvitae-sentinel`]),
   };
   return Object.fromEntries(Object.entries(checks).map(([name, result]) => [
     name,
@@ -143,6 +149,12 @@ async function initialize(server, version) {
   return initializeResponse;
 }
 
+async function startAndInit(label, version) {
+  const server = startServer(label);
+  const init = await initialize(server, version);
+  return { server, init };
+}
+
 function summarizeAccount(response) {
   const account = response.result?.account ?? null;
   return {
@@ -151,40 +163,124 @@ function summarizeAccount(response) {
     planType: account?.planType ?? null,
     requiresOpenaiAuth: response.result?.requiresOpenaiAuth ?? null,
     emailExposedByProtocol: Boolean(account?.email),
+    hasOpaqueAccountObject: Boolean(account),
   };
 }
 
 function containsCredential(value) {
   const text = JSON.stringify(value);
-  return /access[_-]?token|refresh[_-]?token|id[_-]?token|authorization|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|sk-[A-Za-z0-9_-]{20,}/i.test(text);
+  return /access[_-]?token|refresh[_-]?token|id[_-]?token|authorizationCode|"code"\s*:|pkce|codeVerifier|cookie|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|sk-[A-Za-z0-9_-]{20,}/i.test(text);
 }
 
-function loginStartContainsRawToken(value) {
-  const text = JSON.stringify(value);
-  return /"accessToken"\s*:|"refreshToken"\s*:|"idToken"\s*:|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|sk-[A-Za-z0-9_-]{20,}/i.test(text);
+function loginStartContainsRawSecret(value) {
+  const clone = structuredClone(value);
+  if (clone?.result?.authUrl) clone.result.authUrl = "[URL_REDACTED]";
+  const text = JSON.stringify(clone);
+  return /"accessToken"\s*:|"refreshToken"\s*:|"idToken"\s*:|"authorizationCode"\s*:|"code"\s*:|"state"\s*:|"codeVerifier"\s*:|eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|sk-[A-Za-z0-9_-]{20,}/i.test(text);
 }
 
-function categorizeDeviceCodeError(message) {
-  const text = String(message ?? "").toLowerCase();
-  if (!text) return null;
-  if (text.includes("device") && (text.includes("enable") || text.includes("disabled"))) {
-    return "device_code_authorization_disabled_or_not_enabled";
-  }
-  if (text.includes("workspace") || text.includes("organization") || text.includes("org")) {
-    return "account_or_workspace_policy";
-  }
-  if (text.includes("network") || text.includes("dns") || text.includes("connect")) {
-    return "provider_network_error";
-  }
-  if (text.includes("rate") || text.includes("limit")) {
-    return "provider_rate_limited";
-  }
-  return "device_code_login_internal_error";
+function validateAuthorizationUrl(authUrl) {
+  const authorization = new URL(authUrl);
+  if (authorization.protocol !== "https:") throw new Error("Unexpected authorization URL scheme");
+  if (!allowedAuthHosts.has(authorization.hostname)) throw new Error("Unexpected authorization URL host");
+  const redirectParam = authorization.searchParams.get("redirect_uri");
+  if (!redirectParam) throw new Error("Missing redirect_uri in authorization URL");
+  const redirect = new URL(redirectParam);
+  if (redirect.protocol !== "http:") throw new Error("Unexpected redirect URI scheme");
+  if (!["localhost", "127.0.0.1"].includes(redirect.hostname)) throw new Error("Unexpected redirect URI host");
+  if (redirect.pathname !== "/auth/callback") throw new Error("Unexpected redirect URI path");
+  const callbackPort = Number(redirect.port);
+  if (!callbackPorts.has(callbackPort)) throw new Error("Unexpected redirect URI port");
+  return {
+    authorizationScheme: authorization.protocol.replace(":", ""),
+    authorizationHost: authorization.hostname,
+    redirectScheme: redirect.protocol.replace(":", ""),
+    redirectHost: redirect.hostname,
+    redirectPath: redirect.pathname,
+    callbackPort,
+    relayPort: relayPortByCallbackPort.get(callbackPort),
+  };
+}
+
+function createRelay(callbackPort) {
+  const relayPort = relayPortByCallbackPort.get(callbackPort);
+  if (!relayPort) throw new Error(`Unsupported callback relay port for ${callbackPort}`);
+  let acceptedConnections = 0;
+  let rejectedConnections = 0;
+  const sockets = new Set();
+  const server = net.createServer((client) => {
+    acceptedConnections += 1;
+    if (acceptedConnections > 4) {
+      rejectedConnections += 1;
+      client.destroy();
+      return;
+    }
+    const upstream = net.connect({ host: "127.0.0.1", port: callbackPort });
+    sockets.add(client);
+    sockets.add(upstream);
+    client.setTimeout(120_000);
+    upstream.setTimeout(120_000);
+    const closeBoth = () => {
+      client.destroy();
+      upstream.destroy();
+    };
+    client.on("timeout", closeBoth);
+    upstream.on("timeout", closeBoth);
+    client.on("error", closeBoth);
+    upstream.on("error", closeBoth);
+    client.on("close", () => sockets.delete(client));
+    upstream.on("close", () => sockets.delete(upstream));
+    client.pipe(upstream);
+    upstream.pipe(client);
+  });
+  return {
+    callbackPort,
+    relayPort,
+    listen: () => new Promise((resolve, reject) => {
+      server.once("error", reject);
+      server.listen({ host: "0.0.0.0", port: relayPort }, () => {
+        server.off("error", reject);
+        resolve();
+      });
+    }),
+    stop: () => new Promise((resolve) => {
+      for (const socket of sockets) socket.destroy();
+      server.close(() => resolve());
+    }),
+    metadata: () => ({
+      callbackPort,
+      relayPort,
+      containerRelayBindAddress: "0.0.0.0",
+      requiredHostCallbackBindAddress: "127.0.0.1",
+      targetHost: "127.0.0.1",
+      targetPort: callbackPort,
+      acceptedConnections,
+      rejectedConnections,
+      boundedConnectionLimit: 4,
+      idleTimeoutMs: 120_000,
+      httpAware: false,
+      callbackPayloadLogged: false,
+    }),
+  };
+}
+
+async function probeTcp(host, port, timeout = 1500) {
+  return new Promise((resolve) => {
+    const socket = net.connect({ host, port });
+    const done = (result) => {
+      socket.destroy();
+      resolve(result);
+    };
+    socket.setTimeout(timeout);
+    socket.once("connect", () => done({ reachable: true, category: "tcp_connect_succeeded" }));
+    socket.once("timeout", () => done({ reachable: false, category: "tcp_connect_timeout" }));
+    socket.once("error", (error) => done({ reachable: false, category: error.code ?? "tcp_connect_error" }));
+  });
 }
 
 async function waitForLogin(server, loginId) {
   const started = Date.now();
-  while (Date.now() - started < timeoutMs) {
+  while (Date.now() - started < loginTimeoutMs) {
     const completed = server.notifications.find((message) =>
       message.method === "account/login/completed" && message.params?.loginId === loginId
     );
@@ -204,51 +300,113 @@ async function waitForAccountUpdated(server, startIndex) {
   return null;
 }
 
-async function interactiveLogin(server, label) {
-  const login = await startDeviceCodeLogin(server);
-  const result = login.result;
-  if (loginStartContainsRawToken(login)) throw new Error(`${label} login start exposed raw token data`);
-  if (result?.type !== "chatgptDeviceCode") {
+async function browserLogin(server, label, evidence, requireCompletion = true) {
+  const login = await server.request("account/login/start", { type: "chatgpt" });
+  if (loginStartContainsRawSecret(login)) throw new Error(`${label} login start exposed raw secret data`);
+  if (login.error || login.result?.type !== "chatgpt" || !login.result?.authUrl || !login.result?.loginId) {
     return {
       supported: false,
-      loginMechanism: result?.type ?? null,
-      safeErrorCategory: login.error ? "device_code_login_request_rejected" : "device_code_request_returned_non_device_code_flow",
+      loginMechanism: login.result?.type ?? null,
+      safeErrorCategory: login.error ? "browser_login_request_rejected" : "browser_login_unexpected_response_shape",
       errorCode: login.error?.code ?? null,
-      errorMessageCategory: categorizeDeviceCodeError(login.error?.message),
-      responseShape: Object.keys(result ?? login.error ?? {}),
+      responseShape: Object.keys(login.result ?? login.error ?? {}),
     };
   }
+
+  const validation = validateAuthorizationUrl(login.result.authUrl);
+  const relay = createRelay(validation.callbackPort);
+  await relay.listen();
+  const reachability = await probeTcp("127.0.0.1", validation.callbackPort);
+  const relayProbe = await probeTcp("127.0.0.1", validation.relayPort);
   const notificationStart = server.notifications.length;
-  console.error(`\nT191 ${label}: complete official OpenAI device-code login.`);
-  console.error(`Verification URL: ${result.verificationUrl}`);
-  console.error(`User code: ${result.userCode}`);
-  console.error("Waiting for app-server completion notification...\n");
-  const completion = await waitForLogin(server, result.loginId);
-  const accountUpdated = await waitForAccountUpdated(server, notificationStart);
-  return {
+  const loginIdHash = createHash("sha256").update(login.result.loginId).digest("hex").slice(0, 16);
+
+  evidence[`${label}LoginStart`] = {
     supported: true,
-    loginMechanism: "chatgptDeviceCode",
-    loginIdHash: createHash("sha256").update(result.loginId).digest("hex").slice(0, 16),
-    loginStartShape: ["type", "loginId", "verificationUrl", "userCode"],
-    verificationUrlExposedLiveOnly: Boolean(result.verificationUrl),
-    userCodeExposedLiveOnly: Boolean(result.userCode),
+    loginMechanism: "chatgpt",
+    loginIdHash,
+    responseShape: ["type", "loginId", "authUrl"],
+    authorizationUrlValidation: validation,
+    relayBeforePrompt: relay.metadata(),
+    codexListenerReachability: reachability,
+    relayReachability: relayProbe,
+    authorizationUrlDisplayedLiveOnly: true,
+  };
+  await writeEvidence(evidence);
+
+  console.error(`\nT191 ${label}: open this official Codex ChatGPT authorization URL in the host browser.`);
+  console.error("The URL is intentionally displayed only in this live terminal and is not written to evidence.");
+  console.error(login.result.authUrl);
+  console.error("\nWaiting for account/login/completed from Codex app-server...\n");
+
+  let completion = null;
+  let accountUpdated = null;
+  if (requireCompletion) {
+    completion = await waitForLogin(server, login.result.loginId);
+    accountUpdated = await waitForAccountUpdated(server, notificationStart);
+  }
+  await relay.stop();
+  evidence[`${label}LoginResult`] = {
+    relayAfterCompletion: relay.metadata(),
     completion: completion ? {
       success: Boolean(completion.params?.success),
       errorCategory: completion.params?.error ? "login_completed_error" : null,
-      loginIdMatched: completion.params?.loginId === result.loginId,
+      loginIdMatched: completion.params?.loginId === login.result.loginId,
     } : null,
-    accountUpdated: accountUpdated ? safeJson(accountUpdated.params) : null,
+    accountUpdated: accountUpdated ? {
+      received: true,
+      authenticated: Boolean(accountUpdated.params?.account),
+      accountType: accountUpdated.params?.account?.type ?? null,
+      hasOpaqueAccountObject: Boolean(accountUpdated.params?.account),
+      emailExposedByProtocol: Boolean(accountUpdated.params?.account?.email),
+    } : null,
+    relayStopped: true,
+  };
+  await writeEvidence(evidence);
+  return {
+    loginId: login.result.loginId,
+    loginIdHash,
+    validation,
+    relay,
+    completion,
+    accountUpdated,
   };
 }
 
-async function startDeviceCodeLogin(server) {
-  return server.request("account/login/start", { type: "chatgptDeviceCode" });
-}
-
-async function startAndInit(label, version) {
-  const server = startServer(label);
-  const init = await initialize(server, version);
-  return { server, init };
+async function pendingLoginCancellation(server, evidence) {
+  const login = await server.request("account/login/start", { type: "chatgpt" });
+  if (loginStartContainsRawSecret(login)) throw new Error("cancellation login start exposed raw secret data");
+  if (login.error || login.result?.type !== "chatgpt" || !login.result?.authUrl || !login.result?.loginId) {
+    evidence.cancellation = {
+      supported: false,
+      safeErrorCategory: login.error ? "browser_login_request_rejected" : "browser_login_unexpected_response_shape",
+      preservedAuthenticatedProfile: summarizeAccount(await server.request("account/read", { refreshToken: false })).authenticated,
+    };
+    return;
+  }
+  const validation = validateAuthorizationUrl(login.result.authUrl);
+  const relay = createRelay(validation.callbackPort);
+  await relay.listen();
+  const notificationStart = server.notifications.length;
+  const cancelResult = await server.request("account/login/cancel", { loginId: login.result.loginId });
+  await relay.stop();
+  const canceledNotification = server.notifications.slice(notificationStart).find((message) =>
+    message.method === "account/login/completed" && message.params?.loginId === login.result.loginId
+  );
+  evidence.cancellation = {
+    startShape: ["type", "loginId", "authUrl"],
+    loginIdRetainedOnlyInMemory: true,
+    authorizationUrlPersisted: false,
+    selectedCallbackPort: validation.callbackPort,
+    cancelStatus: cancelResult.result?.status ?? null,
+    cancelErrorCode: cancelResult.error?.code ?? null,
+    canceledNotification: canceledNotification ? {
+      success: Boolean(canceledNotification.params?.success),
+      hasError: Boolean(canceledNotification.params?.error),
+    } : null,
+    relayStopped: true,
+    preservedAuthenticatedProfile: summarizeAccount(await server.request("account/read", { refreshToken: false })).authenticated,
+  };
 }
 
 async function main() {
@@ -256,23 +414,35 @@ async function main() {
     task: "T191",
     package: "@openai/codex",
     version: "0.146.0",
-    topology: "managed child process over stdio",
+    topology: "managed child process over JSON-RPC stdio",
     volume: "nuvitae_codex_app_server_auth_state_t191",
-    protocolDeviceCodeEvidence: {
+    protocolBrowserLoginEvidence: {
       requestMethod: "account/login/start",
-      requestParams: { type: "chatgptDeviceCode" },
-      responseShape: ["type", "loginId", "verificationUrl", "userCode"],
+      requestParams: { type: "chatgpt" },
+      responseShape: ["type", "loginId", "authUrl"],
       completionNotification: "account/login/completed",
       accountUpdatedNotification: "account/updated",
     },
-    previousBrowserFlowEvidence: {
-      classification: "experimentally unsuccessful in selected Docker topology",
-      likelyRootCause: "browser OAuth callback targeted host localhost while callback listener was container-local",
-      selectedForSelfHostedCandidate: false,
-      replacedBy: "official generated-protocol chatgptDeviceCode flow",
+    preservedDeviceCodeClassification: {
+      repeatedDeviceCodeRetriesRequired: false,
+      appServerDeviceCodeRejectedBeforeCodeIssuance: true,
+      enabledDeviceCodeAuthorizationDidNotChangeDockerAppServerResult: true,
+    },
+    relaySecurityModel: {
+      rawBidirectionalTcpOnly: true,
+      httpAware: false,
+      callbackPayloadLogged: false,
+      callbackPayloadPersisted: false,
+      authorizationCodeHandledByProbe: false,
+      tokenHandledByProbe: false,
+      dockerSocketMounted: false,
+      hostHomeMounted: false,
+      hostCodexStateMounted: false,
+      postgresqlAccess: false,
+      valkeyAccess: false,
     },
     steps: [],
-    tokenBlindness: { rawCredentialExposedByRpc: false },
+    tokenBlindness: { rawCredentialExposedByRpc: false, rawCredentialExposedInEvidence: false },
     unverified: [],
   };
 
@@ -281,7 +451,7 @@ async function main() {
   await chmod(codexState, 0o700);
   evidence.permissionProbeBeforeLogin = await permissionProbe();
 
-  let first = await startAndInit("pre-login", "0.1.0-t191-auth-prelogin");
+  const first = await startAndInit("pre-login", "0.1.0-t191-browser-prelogin");
   evidence.steps.push({ name: "initializeBeforeLogin", ok: true, resultKeys: Object.keys(first.init.result ?? {}) });
   const preAccount = await first.server.request("account/read", { refreshToken: false });
   const preAuthStatus = await first.server.request("getAuthStatus", { includeToken: false, refreshToken: false });
@@ -290,9 +460,7 @@ async function main() {
   evidence.preLoginAuthStatus = safeJson(preAuthStatus.result);
   await writeEvidence(evidence);
 
-  evidence.initialLogin = await interactiveLogin(first.server, "initial login");
-  await writeEvidence(evidence);
-  if (!evidence.initialLogin.supported) throw new Error(`Device-code login unavailable: ${evidence.initialLogin.safeErrorCategory}`);
+  const initial = await browserLogin(first.server, "initial", evidence);
   const postAccount = await first.server.request("account/read", { refreshToken: true });
   const postAuthStatus = await first.server.request("getAuthStatus", { includeToken: false, refreshToken: true });
   if (containsCredential(postAccount) || containsCredential(postAuthStatus)) evidence.tokenBlindness.rawCredentialExposedByRpc = true;
@@ -300,78 +468,51 @@ async function main() {
   evidence.postLoginAuthStatus = safeJson(postAuthStatus.result);
   evidence.permissionProbeAfterLogin = await permissionProbe();
   await writeEvidence(evidence);
-  if (!evidence.initialLogin.completion?.success || !evidence.postLoginAccount.authenticated) {
-    throw new Error("Device-code login did not produce authenticated account/read state");
+  if (!initial.completion?.params?.success || !evidence.initialLoginResult.accountUpdated?.authenticated || !evidence.postLoginAccount.authenticated) {
+    throw new Error("Browser login did not produce completed, account/updated, and account/read authenticated state");
   }
   evidence.firstStop = await first.server.stop();
 
-  let restarted = await startAndInit("restart-after-login", "0.1.0-t191-auth-restart");
+  const restarted = await startAndInit("restart-after-login", "0.1.0-t191-browser-restart");
   const restartAccount = await restarted.server.request("account/read", { refreshToken: true });
   evidence.restartAfterLoginAccount = summarizeAccount(restartAccount);
+  evidence.permissionProbeAfterRestart = await permissionProbe();
   await writeEvidence(evidence);
   if (!evidence.restartAfterLoginAccount.authenticated) {
     throw new Error("Authenticated state did not survive runtime restart");
   }
 
-  const cancelStart = await startDeviceCodeLogin(restarted.server);
-  if (cancelStart.result?.loginId) {
-    const cancelResult = await restarted.server.request("account/login/cancel", { loginId: cancelStart.result.loginId });
-    evidence.cancellation = {
-      startShape: Object.keys(cancelStart.result ?? {}),
-      cancelStatus: cancelResult.result?.status ?? null,
-      preservedAuthenticatedProfile: summarizeAccount(await restarted.server.request("account/read", { refreshToken: false })).authenticated,
-    };
-  } else {
-    evidence.cancellation = {
-      supported: false,
-      startErrorCode: cancelStart.error?.code ?? null,
-      preservedAuthenticatedProfile: summarizeAccount(await restarted.server.request("account/read", { refreshToken: false })).authenticated,
-    };
-  }
+  await pendingLoginCancellation(restarted.server, evidence);
   await writeEvidence(evidence);
-
-  const malformed = await restarted.server.request("account/login/start", { type: "chatgptAuthTokens" });
-  evidence.malformedLoginRequest = {
-    rejected: Boolean(malformed.error),
-    errorCode: malformed.error?.code ?? null,
-  };
-
-  const duplicateA = await startDeviceCodeLogin(restarted.server);
-  const duplicateB = await startDeviceCodeLogin(restarted.server);
-  const duplicateCancelA = duplicateA.result?.loginId
-    ? await restarted.server.request("account/login/cancel", { loginId: duplicateA.result.loginId })
-    : null;
-  const duplicateCancelB = duplicateB.result?.loginId
-    ? await restarted.server.request("account/login/cancel", { loginId: duplicateB.result.loginId })
-    : null;
-  evidence.duplicateLoginAttempt = {
-    firstStartReturnedLoginId: Boolean(duplicateA.result?.loginId),
-    secondStartReturnedLoginId: Boolean(duplicateB.result?.loginId),
-    firstCancelStatus: duplicateCancelA?.result?.status ?? null,
-    secondCancelStatus: duplicateCancelB?.result?.status ?? null,
-    firstErrorCode: duplicateA.error?.code ?? null,
-    secondErrorCode: duplicateB.error?.code ?? null,
-  };
+  if (!evidence.cancellation.cancelStatus && !evidence.cancellation.canceledNotification) {
+    throw new Error("Browser login cancellation was not verified");
+  }
+  if (!evidence.cancellation.preservedAuthenticatedProfile) {
+    throw new Error("Cancellation did not preserve the authenticated account state");
+  }
 
   const logout = await restarted.server.request("account/logout", undefined);
-  evidence.logout = { responseKeys: Object.keys(logout.result ?? {}), succeeded: !logout.error };
+  evidence.logout = { responseKeys: Object.keys(logout.result ?? {}), succeeded: !logout.error, errorCode: logout.error?.code ?? null };
   evidence.afterLogoutAccount = summarizeAccount(await restarted.server.request("account/read", { refreshToken: false }));
   evidence.secondStop = await restarted.server.stop();
+  if (!evidence.logout.succeeded || evidence.afterLogoutAccount.authenticated) {
+    throw new Error("Authenticated logout did not produce unauthenticated account/read state");
+  }
 
-  let afterLogoutRestart = await startAndInit("restart-after-logout", "0.1.0-t191-auth-logout-restart");
+  const afterLogoutRestart = await startAndInit("restart-after-logout", "0.1.0-t191-browser-logout-restart");
   evidence.restartAfterLogoutAccount = summarizeAccount(await afterLogoutRestart.server.request("account/read", { refreshToken: false }));
   evidence.permissionProbeAfterLogout = await permissionProbe();
+  await writeEvidence(evidence);
   if (evidence.restartAfterLogoutAccount.authenticated) {
     throw new Error("Authenticated state persisted after official logout and restart");
   }
 
-  evidence.finalLogin = await interactiveLogin(afterLogoutRestart.server, "final login for T192 volume reuse");
-  await writeEvidence(evidence);
-  if (!evidence.finalLogin.supported) throw new Error(`Final device-code login unavailable: ${evidence.finalLogin.safeErrorCategory}`);
+  const final = await browserLogin(afterLogoutRestart.server, "final", evidence);
   evidence.finalAccount = summarizeAccount(await afterLogoutRestart.server.request("account/read", { refreshToken: true }));
   evidence.finalStop = await afterLogoutRestart.server.stop();
-  if (!evidence.finalLogin.completion?.success || !evidence.finalAccount.authenticated) {
-    throw new Error("Final device-code login did not produce authenticated account/read state");
+  await writeEvidence(evidence);
+  if (!final.completion?.params?.success || !evidence.finalLoginResult.accountUpdated?.authenticated || !evidence.finalAccount.authenticated) {
+    throw new Error("Final browser login did not produce authenticated account/read state");
   }
 
   evidence.unverified.push(

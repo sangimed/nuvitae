@@ -244,24 +244,50 @@ authorization URL query parameters. Use the official hosted login success page
 option when the pinned generated protocol supports it, while still treating the
 local callback as mandatory.
 
-T191 decision criteria are amended as follows:
+T191 terminal classification is amended as follows:
 
 1. Device-code authentication remains experimentally blocked for the tested
    account/runtime combination.
-2. Browser callback forwarding is the final bounded authentication candidate
+2. Browser callback forwarding was the final bounded authentication candidate
    for T191.
-3. A successful browser-flow result must still demonstrate authenticated
-   `account/read`, no raw credentials exposed through RPC, inaccessible Codex
-   credential state from the Nuvitae identity, persistence across container
-   recreation, cancellation, authenticated logout, unauthenticated state after
-   restart, and final reauthentication for T192.
-4. If the official browser flow also fails after the callback relay is proven
-   reachable, T191 remains incomplete and the Codex subscription candidate must
-   move toward a blocked or conditional decision.
+3. The browser-flow candidate produced a valid official authorization URL,
+   official authorization host validation, valid localhost redirect URI,
+   callback port `1455`, loopback-only Docker publication, a reachable raw TCP
+   callback relay, no public or LAN exposure, successful filesystem isolation
+   against the Nuvitae probe identity, no persisted raw token, authorization
+   code, complete authorization URL, credential file, or personal account
+   information, and callback relay teardown after failure.
+4. The browser-flow candidate still did not produce successful
+   `account/login/completed`, authenticated `account/updated`, or
+   authenticated `account/read`.
+5. T191 is therefore an experimentally completed investigation with terminal
+   result `BLOCKED`: the research task is complete, but the authentication
+   acceptance gate failed. It must not be described as a successful
+   authentication implementation, and no authenticated Codex runtime is
+   available for T192.
+6. No additional authentication workaround is permitted in T191.
 
 Do not add API-key authentication as a substitute for the subscription-backed
 product requirement. Do not accept copying `auth.json` or another Codex
 credential cache. Do not add direct OAuth implementation.
+
+The terminal T191 blocker applies to official Codex app-server `0.146.0`, the
+tested ChatGPT account and current account/workspace configuration, the tested
+managed child-process Docker runtime, official device-code and browser-flow
+authentication candidates, and the current observation date and environment.
+It does not prove that all future Codex versions will fail, every ChatGPT
+account will fail, all Codex integrations are impossible, or the
+provider-independent Nuvitae architecture is invalid. The current evidence is
+sufficient to reject production implementation of this specific Codex
+app-server subscription path until a material external change occurs.
+
+T191 is explicitly closed against additional attempts involving repeated
+device-code retries, another callback proxy, host networking, Docker socket
+access, `docker exec` or `docker attach`, copied `auth.json`, copied Codex
+credential caches, direct OAuth implementation, OpenClaw or Hermes OAuth code
+reuse, API-key authentication as a substitute for the ChatGPT-subscription
+requirement, undocumented ChatGPT backend endpoints, and manually supplied
+access or refresh tokens.
 
 Runtime isolation for the spike uses a dedicated Docker runtime for Codex app-server with a dedicated Codex runtime image or bounded runtime layer, private persistent Codex state volume, empty ephemeral working directory, no Nuvitae repository mount, no Nuvitae private import-storage mount, no PostgreSQL access, no Valkey access, no host Codex configuration inheritance, no host credential inheritance, no user-defined MCP servers, no user-installed Codex plugins, no unrelated environment variables, explicit CPU limit, explicit memory limit, process limit, execution timeout, controlled stdout/stderr, privacy-safe logging, bounded temporary storage, and cleanup after execution.
 
@@ -271,7 +297,7 @@ Initial semantic parsing input is deterministically extracted resume text, stabl
 
 The spike uses a temporary spike-only structured output schema covering personal and contact information, professional summary, work experiences, education, skills, languages, source evidence references, explicit versus inferred values, and confidence categories. This temporary schema does not replace the planned production provider-independent Nuvitae response contract. Validation covers strict JSON parsing, schema validity, unknown fields, missing required fields, malformed output, unsupported evidence identifiers, values not present in source text, inferred values incorrectly represented as explicit, duplicate entries, work-experience grouping, and invented content. The adapter boundary converts validated provider output into the Nuvitae-owned response before the import application layer receives it.
 
-The bounded validation scenarios are:
+The bounded validation scenarios are amended for the terminal blocked path:
 
 1. Codex installation and startup in Docker.
 2. Installed version detection.
@@ -279,35 +305,18 @@ The bounded validation scenarios are:
 4. JSON-RPC initialization over stdio.
 5. Explicit Nuvitae client identification.
 6. Authentication status inspection.
-7. ChatGPT login using the final T191 official browser-flow candidate,
-   `account/login/start` with `type: chatgpt`, after preserving the
-   experimentally blocked device-code evidence for the tested account/runtime
-   combination.
-8. Login cancellation where supported.
-9. Logout.
-10. Authentication persistence across container restart.
-11. Expired or revoked authentication behavior.
-12. Confirmation that Nuvitae remains token-blind.
-13. Non-interactive invocation after login.
-14. Ephemeral thread creation where supported.
-15. Empty isolated workspace behavior.
-16. Permissions and sandbox behavior.
-17. Confirmation that host MCP servers and plugins are not inherited.
-18. Structured semantic extraction from synthetic source text.
-19. Evidence grounding.
-20. No-invention behavior.
-21. Malformed-output handling.
-22. Timeout handling.
-23. Turn cancellation.
-24. App-server crash handling.
-25. App-server restart behavior.
-26. Unsupported model behavior.
-27. Network-unavailable behavior.
-28. Authentication failure.
-29. Quota exhaustion or rate limiting where safely reproducible.
-30. Prompt-injection content inside a synthetic resume.
-31. Latency.
-32. Extraction quality.
+7. T191 authentication investigation records terminal `BLOCKED` after official
+   device-code and browser-flow candidates fail the authenticated production
+   gate.
+8. T192 semantic invocation is not executable without validated
+   authentication.
+9. T193 authenticated semantic quality evaluation is not executable without
+   T192 invocation.
+10. T194 proceeds using T189 protocol evidence, T190 runtime and isolation
+   evidence, T191 authentication and security evidence, and the explicit fact
+   that T192-T193 could not execute.
+11. T195 proceeds after T194 using available evidence and recorded unverified
+   areas, including the reason T192-T193 were blocked.
 
 Measurement methods:
 
@@ -330,9 +339,40 @@ Measurement methods:
   exposing callback payloads, credentials, Docker socket, host home, host Codex
   state, LAN bindings, or public-interface bindings.
 
-The spike report must clearly distinguish metrics measured during the spike, minimum thresholds selected by the final spike decision, production acceptance thresholds, and unverified metrics that could not be measured safely.
+Any semantic quality, latency, cancellation, quota, restart, or recovery metric
+that requires authenticated invocation must be recorded as not measured and
+unverified due to the T191 authentication blocker. Do not represent unmeasured
+metrics as zero or as failed measurements. The spike report must clearly
+distinguish metrics measured during the spike, minimum thresholds selected by
+the final spike decision, production acceptance thresholds, and unverified
+metrics that could not be measured safely.
 
-The second decision gate is independent of T145 and records: installed Codex version; generated protocol basis; supported authentication operations; whether ChatGPT subscription authentication works; whether Nuvitae remains token-blind; whether Docker operation is viable; whether invocation is non-interactive after login; whether authentication survives restart; whether isolation and permissions are adequate; whether structured output is reliable; whether evidence grounding is adequate; measured semantic extraction quality; measured latency; failure and recovery behavior; version-coupling risks; security and privacy risks; operational complexity; required production acceptance thresholds; and GO, CONDITIONAL GO, or NO-GO. A NO-GO remains acceptable.
+T194 must review whether the current app-server path is suitable for
+self-hosted Nuvitae; authentication operability; token-blindness; filesystem
+and process isolation; user onboarding feasibility; support burden; upgrade
+and version-coupling risks; privacy and security; the consequences of missing
+semantic quality evidence; and objective conditions under which the candidate
+could be reevaluated.
+
+T195 may proceed after T194 even though T192-T193 were blocked. It must state
+why T192-T193 were not executed, which metrics remain unverified, that no
+semantic-quality claims can be made, that authentication is a mandatory failed
+production gate, and whether the available evidence supports NO-GO or a
+narrowly defined CONDITIONAL GO. A CONDITIONAL GO is permitted only when its
+conditions are objective, externally verifiable, and do not authorize
+production implementation before authentication and semantic evaluation are
+rerun successfully. The likely decision is not predetermined, but it must
+follow the recorded evidence.
+
+Objective reevaluation triggers include a newer official Codex version with a
+relevant authentication fix, an official OpenAI-documented resolution for the
+observed login failure, a confirmed account or workspace configuration change,
+a supported official authentication operation that preserves token-blindness,
+or successful reproduction of login through the same bounded Docker topology.
+A future reevaluation must perform bounded delta validation of T189-T193 and
+must not silently reopen production T164-T165.
+
+The second decision gate is independent of T145 and records: installed Codex version; generated protocol basis; supported authentication operations; whether ChatGPT subscription authentication works; whether Nuvitae remains token-blind; whether Docker operation is viable; whether invocation is non-interactive after login; whether authentication survives restart; whether isolation and permissions are adequate; whether structured output is reliable; whether evidence grounding is adequate; measured semantic extraction quality or explicit unverified status; measured latency or explicit unverified status; failure and recovery behavior; version-coupling risks; security and privacy risks; operational complexity; required production acceptance thresholds; and GO, CONDITIONAL GO, or NO-GO. A NO-GO remains acceptable. T164-T165 remain blocked, provider-independent work remains valid, deterministic fallback and manual entry remain valid, and production Codex implementation cannot start from the current evidence. Only a future qualifying T195 decision after successful authentication and semantic evaluation can unblock T164-T165.
 
 ## No-Provider Behavior
 

@@ -2,8 +2,10 @@
 
 Task: T191  
 Date: 2026-07-30  
-Status: incomplete, mandatory Docker app-server device-code authentication gate
-still failed after account/workspace device-code enablement
+Status: incomplete. Device-code remains experimentally blocked for this
+tested account/runtime combination, and the final bounded browser-login
+callback-relay candidate did not reach the mandatory authenticated lifecycle
+gates.
 
 Scope: bounded authentication and session-lifecycle spike only. This did not
 implement a production Codex adapter, did not integrate Codex into the worker,
@@ -504,3 +506,261 @@ unverified:
 
 T192-T195 remain incomplete. Production Codex adapter tasks T164-T165 remain
 incomplete.
+
+## 29. Final Device-Code Classification
+
+Final device-code classification is preserved as historical evidence, not
+retried:
+
+- Generated Codex `0.146.0` protocol artifacts expose
+  `chatgptDeviceCode`.
+- Docker app-server device-code initiation was rejected before verification
+  URL or user-code issuance.
+- The official controlled CLI device-auth diagnostic failed in the same
+  general stage.
+- Enabling device-code authorization did not change the Docker app-server
+  result.
+- Basic Docker DNS, TCP, TLS, and CA reachability did not explain the
+  device-code failure.
+
+Repeated device-code retries are no longer required for T191.
+
+## 30. Callback-Relay Architecture
+
+The final bounded candidate used the official generated-protocol browser login:
+
+- Request method: `account/login/start`
+- Params: `{ "type": "chatgpt" }`
+- Expected response shape: `type`, `loginId`, `authUrl`
+- Runtime: `@openai/codex@0.146.0`
+- Base image: `node:24.15.0-bookworm-slim`
+- Topology: managed child process over JSON-RPC stdio
+- State: fresh dedicated Docker named volume
+  `nuvitae_codex_app_server_auth_state_t191`
+
+The spike added a minimal raw TCP relay inside
+`spikes/codex-app-server-runtime/auth-lifecycle-runner.mjs`. The relay maps
+the selected host loopback callback port to the Codex callback listener inside
+the same trusted runtime boundary:
+
+- Host `127.0.0.1:1455` to container relay port `2455` to Codex listener
+  `127.0.0.1:1455`
+- Host `127.0.0.1:1457` to container relay port `2457` to Codex listener
+  `127.0.0.1:1457`
+
+The official authorization URL selected callback port `1455` for this run.
+
+## 31. Callback-Relay Trust Boundary
+
+The relay is spike-only and runs in the trusted auth lifecycle container. It is
+not run as the Nuvitae probe identity. It performs raw bidirectional TCP
+forwarding only and does not parse HTTP, inspect query parameters, log callback
+payloads, persist requests, persist authorization codes, or handle access,
+refresh, or ID tokens.
+
+The relay uses a bounded connection count of 4 and a 120-second idle timeout
+for relayed sockets. It starts only during pending browser login and stops
+after completion, failure, cancellation, or timeout. No Docker socket, host
+home directory, host `~/.codex`, PostgreSQL, Valkey, private resume storage, or
+production application mount is present.
+
+Explicitly rejected for T191: Docker socket mounting, `docker exec` or
+`docker attach` as the callback mechanism, Docker Engine API access from the
+runtime, host networking as the default solution, LAN/public exposure,
+HTTP-aware OAuth proxying, callback payload inspection, direct OAuth
+implementation, copied auth caches, and API-key authentication as a substitute
+for ChatGPT subscription authentication.
+
+## 32. Loopback-Only Port Publication
+
+The spike-only Compose service publishes callback candidates only on host
+loopback:
+
+- `127.0.0.1:1455 -> 2455/tcp`
+- `127.0.0.1:1457 -> 2457/tcp`
+
+Host-side validation during the pending login showed listeners on
+`127.0.0.1:1455` and `127.0.0.1:1457`, and Docker metadata reported only
+loopback host publications. No `0.0.0.0` callback publication was observed.
+
+Because Docker port publication is static for this one-container spike, both
+candidate host ports are published during the pending login window. The relay
+itself is started only for the selected Codex callback port when the official
+authorization URL has been validated.
+
+## 33. Authorization URL Validation
+
+The official browser login returned a response with shape:
+
+- `type`
+- `loginId`
+- `authUrl`
+
+The complete authorization URL was displayed only in the live terminal and was
+not written to repository evidence. The in-memory validation passed:
+
+- Authorization URL scheme: `https`
+- Authorization host: `auth.openai.com`
+- Redirect scheme: `http`
+- Redirect host: `localhost`
+- Redirect path: `/auth/callback`
+- Callback port: `1455`
+
+The validation fails closed for unexpected authorization scheme, authorization
+host, redirect scheme, redirect host, redirect path, or redirect port.
+
+## 34. Callback Reachability
+
+Before asking for browser completion, the runner verified:
+
+- Codex listener reachability category: `tcp_connect_succeeded`
+- Relay reachability category: `tcp_connect_succeeded`
+- Selected callback port: `1455`
+- Selected container relay port: `2455`
+
+No fake OAuth callback request with query parameters was generated.
+
+## 35. Browser-Login Completion
+
+The browser-login start operation succeeded and the relay was reachable, but
+the authenticated lifecycle did not pass. The app-server did not produce a
+usable authenticated state before the lifecycle runner failed the mandatory
+gate.
+
+Safe classification:
+
+- Browser login request supported: yes
+- Authorization URL validation passed: yes
+- Callback listener reachable through the relay: yes
+- `account/login/completed` success: not observed
+- `account/updated` authenticated state: not observed
+- Post-login `account/read` authenticated state: no
+
+Because reachability was demonstrated but the official login still failed to
+produce authenticated app-server state, T191 remains incomplete and no
+alternative authentication workaround was added.
+
+## 36. Account/Login/Completed
+
+Mandatory notification gate result:
+
+- `account/login/completed`: not observed for the initial browser-login run
+- Success flag: not observed
+
+The runner did not infer success from any browser page.
+
+## 37. Account/Updated
+
+Mandatory notification gate result:
+
+- `account/updated`: not observed with authenticated ChatGPT state
+
+No account email, account name, complete account identifier, organization name,
+or personal account data was persisted.
+
+## 38. Authenticated Account/Read
+
+Pre-login `account/read` result:
+
+- Authenticated: no
+- `requiresOpenaiAuth`: true
+
+Post-login `account/read` result:
+
+- Authenticated: no
+- `requiresOpenaiAuth`: true
+
+## 39. Restart Persistence
+
+Authenticated restart persistence was not reached because the first browser
+login did not produce authenticated app-server state.
+
+## 40. Cancellation
+
+Authenticated-session-safe pending-login cancellation was not reached because
+the first authenticated session was not established.
+
+## 41. Authenticated Logout
+
+Authenticated logout was not reached because the first authenticated session
+was not established.
+
+## 42. Unauthenticated Restart State
+
+Unauthenticated restart-after-logout validation was not reached because
+authenticated logout was not reached.
+
+## 43. Final Reauthentication
+
+Final browser reauthentication was not reached. The dedicated private volume
+was not left in an authenticated state for T192.
+
+## 44. Token-Blindness
+
+Token-blindness remained intact for consumed RPCs and evidence:
+
+- No access token reached the probe or evidence.
+- No refresh token reached the probe or evidence.
+- No ID token reached the probe or evidence.
+- No authorization code reached the probe or evidence.
+- No callback query string was logged or persisted.
+- No cookies were requested, logged, or persisted.
+- The complete authorization URL was not written to evidence files or docs.
+
+The runner redacts URL-like strings before evidence writes and stores only safe
+metadata such as response shapes, selected callback port, lifecycle categories,
+and booleans.
+
+## 45. Filesystem Credential Isolation
+
+The private Codex state volume used separate operating-system identities:
+
+- Trusted Codex runtime: UID/GID `10001:10001`
+- Nuvitae probe identity: UID/GID `10002:10002`
+- State directory: `/codex-state`, mode `0700`
+
+The Nuvitae probe identity was denied:
+
+- listing `/codex-state`
+- statting a known synthetic sentinel file
+- reading the known synthetic sentinel file
+- copying the known synthetic sentinel file
+- modifying the known synthetic sentinel file
+- deleting the known synthetic sentinel file
+
+No real credential contents were printed or inspected.
+
+## 46. Relay Teardown
+
+After the failed lifecycle attempt, the auth container exited and host checks
+showed no listener on:
+
+- `127.0.0.1:1455`
+- `127.0.0.1:1457`
+
+Docker metadata showed no remaining auth lifecycle container and no remaining
+callback-port publication.
+
+## 47. Remaining Limitations And Risks
+
+Remaining unverified scenarios:
+
+- successful ChatGPT subscription authentication through app-server browser
+  login in this Docker topology
+- `account/login/completed` success
+- authenticated `account/updated`
+- authenticated `account/read`
+- authenticated restart persistence
+- pending-login cancellation while preserving an authenticated profile
+- authenticated logout
+- unauthenticated restart after logout
+- final reauthentication for T192 volume carry-forward
+- token refresh after natural expiry
+- expired or revoked authentication
+- runtime crash during login
+- provider network failure after login start
+- rate limiting during authentication
+
+T191 remains incomplete. T192-T195 remain incomplete. Production Codex adapter
+tasks T164-T165 remain incomplete. No credentials or personal account data were
+committed.
