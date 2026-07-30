@@ -190,6 +190,79 @@ The spike must detect the installed Codex version, generate TypeScript or JSON S
 
 Authentication validation must prove that the official Codex runtime owns ChatGPT authentication, credential persistence, access-token refresh, refresh-token rotation, authentication expiry, session recovery, and logout. Nuvitae remains token-blind: no Codex auth-file reads or parsing, no access-token or refresh-token persistence, no direct token refresh, no token exposure in logs/API responses/events/database records, and no Nuvitae-owned OpenAI OAuth endpoint implementation. Provider-facing operations planned at the neutral boundary are connection status, login initiation, login progress, login completion, login cancellation where supported, logout, reconnect, expired or revoked authentication, quota state, and provider availability state.
 
+### T191 Authentication Amendment
+
+T191 has experimentally verified that generated Codex 0.146.0 app-server
+protocol artifacts expose `chatgptDeviceCode`, but
+`account/login/start` with `type: chatgptDeviceCode` is rejected before a
+verification URL or user code is issued. The controlled diagnostic also found
+that official CLI device authentication failed before code issuance, a basic
+DNS, TCP, TLS, or CA outage was not demonstrated, and enabling device-code
+authorization did not change the app-server result. These results preserve
+device-code authentication as experimentally blocked for the tested
+account/runtime combination. They do not create a general Codex integration
+NO-GO, and repeated device-code retries are no longer justified for this spike.
+
+Browser callback forwarding is the final bounded authentication candidate for
+T191. The candidate must use the official Codex-managed browser login by
+calling `account/login/start` with `type: chatgpt`. Codex must generate the
+authorization URL and own PKCE, OAuth state, callback validation, token
+exchange, credential persistence, refresh, and logout. Nuvitae must never
+receive or handle access tokens or refresh tokens. This candidate solves only
+the Docker localhost callback boundary.
+
+The ephemeral login-only topology to verify is:
+
+```text
+Host browser
+→ http://localhost:1455 or http://localhost:1457
+→ Docker port published only on host loopback
+→ callback relay inside the trusted Codex runtime boundary
+→ Codex callback listener on 127.0.0.1:1455 or 127.0.0.1:1457
+```
+
+Candidate port mappings may be equivalent to host `127.0.0.1:1455` forwarding
+to runtime relay port `2455`, and host `127.0.0.1:1457` forwarding to runtime
+relay port `2457`. The relay then forwards runtime port `2455` to
+`127.0.0.1:1455`, and runtime port `2457` to `127.0.0.1:1457`. Treat these
+mappings as experimental candidates, not validated behavior.
+
+The callback relay belongs to the trusted Codex runtime boundary, not the
+Nuvitae import domain. It must perform raw TCP forwarding only, must not
+terminate OAuth, must not parse callback query parameters, must not log callback
+payloads, must not persist HTTP requests, must not receive or expose Codex
+credential files, and must be enabled only while a login is pending. It must be
+stopped after login completion or cancellation. Published ports must bind only
+to host loopback; LAN and public-interface bindings are disallowed. The runtime
+must not mount the Docker socket, host home, or host Codex state.
+
+The T191 harness must derive the callback port from the official `authUrl`
+returned by app-server, accept only localhost callback URLs, accept only the
+expected pinned-runtime ports `1455` or `1457`, and fail closed for any
+unexpected hostname, scheme, path, or port. Committed evidence must never log
+authorization URL query parameters. Use the official hosted login success page
+option when the pinned generated protocol supports it, while still treating the
+local callback as mandatory.
+
+T191 decision criteria are amended as follows:
+
+1. Device-code authentication remains experimentally blocked for the tested
+   account/runtime combination.
+2. Browser callback forwarding is the final bounded authentication candidate
+   for T191.
+3. A successful browser-flow result must still demonstrate authenticated
+   `account/read`, no raw credentials exposed through RPC, inaccessible Codex
+   credential state from the Nuvitae identity, persistence across container
+   recreation, cancellation, authenticated logout, unauthenticated state after
+   restart, and final reauthentication for T192.
+4. If the official browser flow also fails after the callback relay is proven
+   reachable, T191 remains incomplete and the Codex subscription candidate must
+   move toward a blocked or conditional decision.
+
+Do not add API-key authentication as a substitute for the subscription-backed
+product requirement. Do not accept copying `auth.json` or another Codex
+credential cache. Do not add direct OAuth implementation.
+
 Runtime isolation for the spike uses a dedicated Docker runtime for Codex app-server with a dedicated Codex runtime image or bounded runtime layer, private persistent Codex state volume, empty ephemeral working directory, no Nuvitae repository mount, no Nuvitae private import-storage mount, no PostgreSQL access, no Valkey access, no host Codex configuration inheritance, no host credential inheritance, no user-defined MCP servers, no user-installed Codex plugins, no unrelated environment variables, explicit CPU limit, explicit memory limit, process limit, execution timeout, controlled stdout/stderr, privacy-safe logging, bounded temporary storage, and cleanup after execution.
 
 The spike must experimentally determine whether Codex shell, file-editing, web, plugin, MCP, or other tool capabilities can be disabled, excluded, restricted, or sufficiently neutralized through empty workspaces, permissions, sandboxing, absent mounts, and runtime configuration. Do not claim these capabilities are disabled until verified.
@@ -206,7 +279,10 @@ The bounded validation scenarios are:
 4. JSON-RPC initialization over stdio.
 5. Explicit Nuvitae client identification.
 6. Authentication status inspection.
-7. ChatGPT login using the official app-server-supported login mechanism available in the installed version.
+7. ChatGPT login using the final T191 official browser-flow candidate,
+   `account/login/start` with `type: chatgpt`, after preserving the
+   experimentally blocked device-code evidence for the tested account/runtime
+   combination.
 8. Login cancellation where supported.
 9. Logout.
 10. Authentication persistence across container restart.
@@ -249,6 +325,10 @@ Measurement methods:
 - Cancellation latency: cancellation request to terminal cancelled state.
 - Restart recovery: successful post-restart initialization and authenticated invocation after a controlled restart.
 - Authentication recovery: successful reconnect or failure classification after expired/revoked auth scenarios.
+- T191 callback relay reachability: successful loopback-only forwarding from
+  the host browser callback port to the Codex callback listener without
+  exposing callback payloads, credentials, Docker socket, host home, host Codex
+  state, LAN bindings, or public-interface bindings.
 
 The spike report must clearly distinguish metrics measured during the spike, minimum thresholds selected by the final spike decision, production acceptance thresholds, and unverified metrics that could not be measured safely.
 
@@ -283,6 +363,9 @@ The existing persistence foundation remains valid. New persistence work is addit
 ## Unresolved Technical Decisions Requiring Spike Validation
 
 - Whether the installed Codex app-server version supports the required authentication, initialization, invocation, cancellation, shutdown, and notification operations through generated protocol artifacts.
+- Whether the final T191 browser-flow callback relay can bridge only the Docker
+  localhost callback boundary while preserving Codex-owned authentication and
+  Nuvitae token-blindness.
 - Whether Codex can be invoked non-interactively from the self-hosted Docker stack after official ChatGPT subscription login.
 - Whether authentication persists across container restart without Nuvitae reading, storing, refreshing, or exposing tokens.
 - Whether Codex can reliably return strict structured output with stable evidence references from synthetic extracted text plus source identifiers.
@@ -290,6 +373,9 @@ The existing persistence foundation remains valid. New persistence work is addit
 - Whether shell, file-editing, web, plugin, MCP, and other non-parsing capabilities can be disabled, excluded, restricted, or sufficiently neutralized.
 - Whether the dedicated Docker runtime isolation is adequate without repository, import-storage, PostgreSQL, Valkey, host Codex configuration, host credentials, user MCP, or plugin inheritance.
 - What official login, reconnect, logout, expired-auth, and revoked-auth operations are supported by the installed Codex version.
+- Whether official browser-flow authentication fails even after the callback
+  relay is proven reachable, requiring T191 to remain incomplete and the Codex
+  subscription candidate to move toward a blocked or conditional decision.
 - Whether latency and evidence quality are good enough for the 3-minute foreground import expectation.
 
 ### Container Artifacts (repository root)

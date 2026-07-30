@@ -132,6 +132,39 @@ spike is accepted only when it records evidence for all of the following:
 - ChatGPT login, credential persistence, token refresh, refresh-token rotation,
   authentication expiry, session recovery, and logout are owned by the official
   Codex runtime.
+- T191 preserves the experimentally verified device-code result for the tested
+  account/runtime combination: generated Codex 0.146.0 app-server artifacts
+  expose `chatgptDeviceCode`; `account/login/start` with
+  `type: chatgptDeviceCode` is rejected before a verification URL or user code
+  is issued; official CLI device authentication also failed before code
+  issuance; no basic DNS, TCP, TLS, or CA outage was demonstrated; enabling
+  device-code authorization did not change the app-server result; repeated
+  device-code retries are not justified for this spike.
+- T191 treats browser callback forwarding as the final bounded authentication
+  candidate, using `account/login/start` with `type: chatgpt`. Codex generates
+  the authorization URL and owns PKCE, OAuth state, callback validation, token
+  exchange, credential persistence, refresh, and logout. Nuvitae never receives
+  or handles access tokens or refresh tokens.
+- The T191 browser-flow candidate verifies only the Docker localhost callback
+  boundary using an ephemeral login-only relay inside the trusted Codex runtime
+  boundary. Candidate mappings may be equivalent to host `127.0.0.1:1455` to
+  runtime relay port `2455`, and host `127.0.0.1:1457` to runtime relay port
+  `2457`, then relay forwarding from `2455` to `127.0.0.1:1455` and from
+  `2457` to `127.0.0.1:1457`. These mappings are candidates to verify, not
+  already validated behavior.
+- The callback relay performs raw TCP forwarding only. It does not terminate
+  OAuth, parse callback query parameters, log callback payloads, persist HTTP
+  requests, receive or expose Codex credential files, mount the Docker socket,
+  mount host home, or mount host Codex state. It is enabled only while login is
+  pending, stopped after login completion or cancellation, and published only
+  on host loopback with no LAN or public-interface binding.
+- The T191 harness derives the callback port from the official `authUrl`
+  returned by app-server, accepts only localhost callback URLs, accepts only the
+  expected pinned-runtime ports `1455` or `1457`, fails closed for unexpected
+  hostname, scheme, path, or port, and never logs authorization URL query
+  parameters in committed evidence. Use the official hosted login success page
+  option when supported by the pinned generated protocol, while still treating
+  the local callback as mandatory.
 - Nuvitae remains token-blind: it does not read or parse Codex auth files,
   persist access tokens, persist refresh tokens, refresh tokens directly, expose
   tokens in logs/API responses/events/database records, or implement OpenAI
@@ -142,6 +175,17 @@ spike is accepted only when it records evidence for all of the following:
   availability.
 - Authentication persists across container restart where supported, and
   invocation is non-interactive after login.
+- A successful T191 browser-flow result still demonstrates authenticated
+  `account/read`, no raw credentials exposed through RPC, inaccessible Codex
+  credential state from the Nuvitae identity, persistence across container
+  recreation, cancellation, authenticated logout, unauthenticated state after
+  restart, and final reauthentication for T192.
+- If the official browser flow also fails after the callback relay is proven
+  reachable, T191 remains incomplete and the Codex subscription candidate moves
+  toward a blocked or conditional decision. API-key authentication, copying
+  `auth.json` or another Codex credential cache, and direct OAuth
+  implementation are not substitutes for the subscription-backed product
+  requirement.
 - The runtime uses private Codex state, an empty ephemeral working directory, no
   Nuvitae repository mount, no private import-storage mount, no PostgreSQL or
   Valkey access, no host Codex configuration or credential inheritance, no user
