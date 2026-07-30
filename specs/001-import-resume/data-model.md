@@ -40,11 +40,11 @@ Temporary data capable of reconstructing the source content.
 
 Review workspace containing extracted fields, warnings, and user corrections before structured resume creation.
 
-**Fields**: `id`, `importedDocumentId`, `ownerUserId`, `status`, `createdAt`, `lastReviewedAt`, `retentionExpiresAt`, `confirmedAt`, `discardedAt`, `expiredAt`.
+**Fields**: `id`, `importedDocumentId`, `ownerUserId`, `semanticParseAttemptId`, `status`, `createdAt`, `lastReviewedAt`, `retentionExpiresAt`, `confirmedAt`, `discardedAt`, `expiredAt`.
 
-**Relationships**: Belongs to one `ImportedDocument`; contains many `ExtractedField`, `ImportWarning`, and `UserCorrection` records; may create one `StructuredResume`.
+**Relationships**: Belongs to one `ImportedDocument`; may be produced by one successful `SemanticParseAttempt`; contains many `ExtractedField`, `ImportWarning`, and `UserCorrection` records; may create one `StructuredResume`.
 
-**Validation Rules**: Draft creation requires at least one supported field explicitly extracted from source content with a source location. Inferred-only data must not create a draft. Draft can be resumed only by the owner before retention expiry. If source artifacts are deleted before confirmation, review may show saved field values, user corrections, warning states, and minimal non-sensitive provenance, but must not show raw snippets, page references, thumbnails, extracted raw text, or source-location previews. Confirmation is allowed only when every warning remains addressable without source artifacts and at least one supported field is user-confirmed; otherwise the user must discard or continue manually.
+**Validation Rules**: Draft creation requires at least one supported candidate with required document evidence. Inferred-only or ungrounded provider output must not create a draft. Draft can be resumed only by the owner before retention expiry. If source artifacts are deleted before confirmation, review may show saved field values, user corrections, warning states, and minimal non-sensitive provenance, but must not show raw snippets, page references, thumbnails, extracted raw text, or source-location previews. Confirmation is allowed only when every warning remains addressable without source artifacts and at least one supported field is user-confirmed; otherwise the user must discard or continue manually.
 
 **State Transitions**: `preparing` -> `review_required` -> `ready_to_confirm` -> `confirmed`; alternate states are `discarded`, `cancelled`, `expired`, and `source_deleted_limited_review`.
 
@@ -60,15 +60,57 @@ Temporary unsupported-language recovery view containing only explicitly detectab
 
 **State Transitions**: `created` -> `awaiting_user_confirmation` -> `transferred_to_manual_entry` or `discarded`; deletion also occurs when the source is deleted, cancelled, expired, or the retention deadline is reached.
 
+## ProviderConnection
+
+Represents a user's configured AI provider connection for a self-hosted installation.
+
+**Fields**: `id`, `ownerUserId`, `providerKind`, `displayName`, `connectionStatus`, `capabilities`, `connectedAt`, `lastCheckedAt`, `disconnectedAt`, `revokedAt`, `expiresAt`.
+
+**Relationships**: Owned by one user. May be referenced by many `SemanticParseAttempt` records. Provider credentials and session material are stored separately from resume source artifacts and are not exposed to import review.
+
+**Validation Rules**: Initial provider kind is `codex_subscription` for the self-hosted Codex adapter. Connection status values include `not_configured`, `connected`, `disconnected`, `auth_expired`, `unavailable`, `rate_limited`, `quota_exceeded`, and `unsupported_capability`. Credentials and session material must be private, revocable, isolated from resume data, excluded from logs, inaccessible to other users, and removable on disconnect.
+
+**State Transitions**: `not_configured` -> `connected`; `connected` -> `auth_expired`, `unavailable`, `rate_limited`, `quota_exceeded`, `disconnected`, or `revoked`; recoverable states may return to `connected` after reconnect or retry.
+
+## SemanticParseAttempt
+
+One provider-backed semantic parsing attempt for an accepted import.
+
+**Fields**: `id`, `importedDocumentId`, `ownerUserId`, `providerConnectionId`, `providerKind`, `inputRepresentation`, `status`, `startedAt`, `endedAt`, `timeoutSeconds`, `failureReason`, `responseSchemaVersion`, `groundingValidationStatus`, `noInventionValidationStatus`, `latencyMs`.
+
+**Relationships**: Belongs to one `ImportedDocument`; may use one `ProviderConnection`; may produce one `NuvitaeExtractionResponse` and one `ImportDraft`; may create `ImportWarning` records for provider failures or invalid candidates.
+
+**Validation Rules**: Status values include `queued`, `running`, `succeeded`, `failed`, `timed_out`, `malformed_output`, `invalid_evidence`, `provider_unavailable`, `auth_expired`, `rate_limited`, `quota_exceeded`, `cancelled`. Provider failures must map to retry, reconnect, choose another configured provider, limited deterministic partial extraction where available, or manual entry. A failed attempt must not create a review draft from invalid output.
+
+## NuvitaeExtractionResponse
+
+Versioned, provider-neutral structured output accepted from a provider adapter only after translation from provider-native output.
+
+**Fields**: `id`, `semanticParseAttemptId`, `schemaVersion`, `candidateSections`, `candidateRelationships`, `candidateWarnings`, `evidenceRecords`, `validationStatus`, `createdAt`.
+
+**Relationships**: Belongs to one `SemanticParseAttempt`; creates `ExtractedField`, `WorkExperience`, and `ImportWarning` records only after strict schema, grounding, and no-invention validation.
+
+**Validation Rules**: Unknown fields, invalid relationships, unsupported values, provider-native schema leakage, malformed output, missing evidence, invented facts, and invalid confidence or classification categories fail safely or become explicit review warnings. Provider-native JSON must not enter the import domain directly.
+
+## EvidenceRecord
+
+Grounding reference for an AI-produced candidate value or relationship.
+
+**Fields**: `id`, `responseId`, `candidateId`, `documentLocation`, `sourceTextOrFragmentId`, `classification`, `confidenceStatus`, `validationStatus`.
+
+**Relationships**: Belongs to one `NuvitaeExtractionResponse`; may be referenced by one or more `ExtractedField` or relationship candidates.
+
+**Validation Rules**: Classification values identify whether the candidate is explicit or inferred. Confidence values are `high`, `medium`, `low`, and `not_applicable`. Missing or invalid evidence rejects the candidate or marks it unusable; unsupported evidence must not be silently accepted.
+
 ## ExtractedField
 
 Candidate resume value shown during review.
 
-**Fields**: `id`, `importDraftId`, `section`, `fieldPath`, `value`, `normalizedValue`, `sourceStatus`, `sourceLocation`, `confidenceStatus`, `inferenceStatus`, `reviewStatus`, `warningId`, `createdAt`, `updatedAt`.
+**Fields**: `id`, `importDraftId`, `semanticParseAttemptId`, `evidenceRecordId`, `section`, `fieldPath`, `value`, `normalizedValue`, `sourceStatus`, `sourceLocation`, `sourceFragmentId`, `confidenceStatus`, `classificationStatus`, `inferenceStatus`, `reviewStatus`, `warningId`, `createdAt`, `updatedAt`.
 
 **Relationships**: Belongs to one `ImportDraft`; may be linked to one `ImportWarning`; may be superseded by `UserCorrection`.
 
-**Validation Rules**: Supported sections are personal/contact information, professional headline, summary, work experience, education, skills, languages, projects, certifications, and professional links. Source location exists only while the source document exists. PDF source locations include page number and text-item geometry. DOCX source locations include package part plus paragraph/table/cell/run indexes and character offsets; rendered DOCX coordinates are not guaranteed. Confidence status values are `high`, `medium`, `low`, and `not_applicable`; low confidence means explicit source content exists but deterministic extraction cannot reliably classify the field, date meaning, section, role association, duplicate, or conflict without review. Semantic grouping, ambiguous date interpretation, section classification, and work-experience association by inference require review. Skills must not be inferred from titles, responsibilities, seniority, metrics, or relationships.
+**Validation Rules**: Supported sections are personal/contact information, professional headline, summary, work experience, education, skills, languages, projects, certifications, and professional links. Source location exists only while the source document exists. PDF source locations include page number and text-item geometry. DOCX source locations include package part plus paragraph/table/cell/run indexes and character offsets; rendered DOCX coordinates are not guaranteed. Confidence status values are `high`, `medium`, `low`, and `not_applicable`; low confidence means extraction can associate a value with document evidence but cannot reliably classify the field, date meaning, section, role association, semantic grouping, duplicate, or conflict without review. Classification status records explicit versus inferred. Semantic grouping, ambiguous date interpretation, section classification, and work-experience association by inference require review. Skills must not be inferred from titles, responsibilities, seniority, metrics, or relationships.
 
 **State Transitions**: `unreviewed` -> `confirmed`, `edited`, `excluded`, or `intentionally_left`; all warnings must leave `unreviewed` before structured resume confirmation.
 
@@ -80,7 +122,7 @@ Plain-language issue requiring attention during review.
 
 **Relationships**: Belongs to one `ImportDraft`; may reference one or more `ExtractedField` records.
 
-**Validation Rules**: Warning types include missing, ambiguous, conflicting, duplicate, low-confidence, unsupported, unsafe, incomplete, inferred, partial, mixed-content, and expired-source. Warnings must be identifiable by text and non-colour visual treatment.
+**Validation Rules**: Warning types include missing, ambiguous, conflicting, duplicate, low-confidence, unsupported, unsafe, incomplete, inferred, partial, mixed-content, expired-source, no-provider, provider-unavailable, provider-auth-expired, provider-rate-limited, provider-quota-exceeded, provider-timeout, malformed-provider-output, invalid-evidence, ungrounded-candidate, and invented-fact. Warnings must be identifiable by text and non-colour visual treatment.
 
 **State Transitions**: `needs_review` -> `confirmed`, `edited`, `excluded`, or `intentionally_left`.
 
@@ -88,11 +130,11 @@ Plain-language issue requiring attention during review.
 
 Structured employment group in the import draft and confirmed resume.
 
-**Fields**: `id`, `employerName`, `employerLocation`, `roles`, `reviewStatus`, `inferenceStatus`.
+**Fields**: `id`, `employerName`, `employerLocation`, `roles`, `reviewStatus`, `classificationStatus`, `inferenceStatus`, `evidenceRecordIds`.
 
 **Relationships**: A `StructuredResume` or `ImportDraft` has zero or more work experiences. Each work experience contains one or more `WorkExperienceRole`.
 
-**Validation Rules**: Multiple roles under the same employer are preserved as separate roles when explicit. Inferred grouping must be marked as needing review.
+**Validation Rules**: Multiple roles under the same employer are preserved as separate roles when explicit in document evidence. Inferred grouping must be marked as needing review.
 
 ## WorkExperienceRole
 
@@ -144,10 +186,18 @@ Lifecycle task for removing source and source-reconstructing artifacts.
 
 ## ParserProcess
 
-Isolated process used for PDF parsing, DOCX rendered-page validation, and DOCX text extraction.
+Isolated process used for PDF parsing, DOCX rendered-page validation, DOCX text extraction, and provider-ready source representation preparation.
 
 **Fields**: `id`, `importedDocumentId`, `ownerUserId`, `parserKind`, `status`, `startedAt`, `endedAt`, `memoryLimitMiB`, `timeoutSeconds`, `terminationReason`.
 
 **Relationships**: Belongs to one `ImportedDocument` and may create `DerivedExtractionArtifact` records only after successful validation of parser output.
 
 **Validation Rules**: Must enforce 512 MiB initial memory limit and 3-minute foreground timeout. On memory excess or timeout, the process is terminated, no review draft is created from abrupt partial output, and source-reconstructing artifacts for the failed attempt are cleaned up.
+
+## ResumeSemanticParserProvider
+
+Application boundary implemented by provider adapters, not a persisted domain entity.
+
+**Contract Fields**: `providerKind`, `capabilities`, `connectionState`, `parse(request)`, `disconnect()`, `refreshConnection()`.
+
+**Validation Rules**: The import domain depends only on this boundary and the versioned Nuvitae extraction response. Adapters must not expose provider SDKs, provider-native JSON, shell access, file-editing tools, repository access, prompts, credentials, or session material to the domain. The first self-hosted adapter targets Codex authenticated through the user's ChatGPT/Codex subscription where officially supported.

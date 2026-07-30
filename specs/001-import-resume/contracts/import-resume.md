@@ -12,7 +12,7 @@ This contract describes the user-facing flow and service boundaries for the init
 
 ### Upload Step
 
-**Required Copy Topics**: Supported file types PDF and DOCX; French, English, bilingual French-English; selectable text required; 10 MB limit; 5 rendered page limit; 3-minute processing timeout; 7-day source/artifact retention; early source deletion option; manual fallback.
+**Required Copy Topics**: Supported file types PDF and DOCX; French, English, bilingual French-English; selectable text required; 10 MB limit; 5 rendered page limit; configured AI provider use for semantic parsing; resume content sent to the configured AI provider when provider-backed parsing is used; 3-minute processing timeout; 7-day source/artifact retention; early source deletion option; manual fallback.
 
 **Required Controls**: Choose file, continue manually, cancel import. All controls need accessible names and keyboard focus.
 
@@ -20,15 +20,15 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Route**: `/resumes/new/manual`
 
-**Required Behavior**: Create a blank editable structured-resume draft, mark manually entered fields as user-added, and use the same section-editing components as import review where appropriate. This route must be reachable from initial resume creation and from unsupported-file, no-usable-extraction, timeout, processing-failure, expired-draft, and unsupported-language states.
+**Required Behavior**: Create a blank editable structured-resume draft, mark manually entered fields as user-added, and use the same section-editing components as import review where appropriate. This route must be reachable from initial resume creation and from unsupported-file, no-usable-extraction, timeout, processing-failure, expired-draft, unsupported-language, no-provider, provider-unavailable, provider-rate-limited, provider-unauthenticated, and provider-quota-exceeded states.
 
 **Import Boundary**: Manual entry does not create an `ImportedDocument`, `ImportDraft`, derived extraction artifact, or import processing job.
 
 ### Processing Step
 
-**Visible States**: checking document, reading content, organizing resume sections, preparing review, timeout, failed, cancelled, retrying, deletion scheduled, deleted.
+**Visible States**: checking document, reading content, connecting provider, organizing resume sections, validating evidence, preparing review, timeout, provider unavailable, provider authentication expired, provider quota exceeded, invalid provider output, failed, cancelled, retrying, deletion scheduled, deleted.
 
-**Accessibility**: State changes must be announced to screen-reader users without exposing parser internals, provider names, prompts, JSON, YAML, or diagnostics.
+**Accessibility**: State changes must be announced to screen-reader users without exposing parser internals, model names, prompts, JSON, YAML, credentials, session details, provider configuration, or diagnostics.
 
 ### Review Step
 
@@ -45,6 +45,14 @@ This contract describes the user-facing flow and service boundaries for the init
 **Required Actions**: Confirm transfer to manual entry, discard contact preview, upload another file, continue manually without transfer.
 
 **Rules**: Contact-only detection is limited to deterministic name, email address, phone number, location, and professional-link detection and does not satisfy the import-draft creation threshold. Contact fields transfer to `/resumes/new/manual` only after explicit user confirmation and are marked as user-added. Temporary contact data follows the same deletion and logging restrictions as other extraction artifacts.
+
+### AI Provider Connection
+
+**Required Behavior**: Self-hosted users can connect, verify, disconnect, and reconnect the configured semantic parser provider. The first supported self-hosted adapter targets Codex authenticated through the user's existing ChatGPT/Codex subscription where officially supported.
+
+**Required States**: not configured, connected, disconnected, authentication expired, provider unavailable, rate limited, quota exceeded, unsupported capability.
+
+**Rules**: The standard import flow does not expose provider configuration details, prompts, model names, credentials, session material, provider-native JSON, or SDK details. Credentials and session material remain private, revocable, isolated from resume data, excluded from logs, inaccessible to other users, and separable from uploaded documents and import drafts.
 
 ### Confirmation Step
 
@@ -78,11 +86,27 @@ This contract describes the user-facing flow and service boundaries for the init
 
 ### Process Extraction
 
-**Input**: accepted `ImportedDocument` id, optional AI assistance availability flag.
+**Input**: accepted `ImportedDocument` id, provider connection state, provider capability snapshot, and provider-ready source representation.
 
-**Output**: processing state, partial/complete extraction summary, draft id when threshold is met, warnings, recovery actions.
+**Output**: processing state, partial/complete extraction summary, draft id when threshold is met, provider failure state if any, warnings, recovery actions.
 
-**Rules**: Deterministic extraction runs first through concrete PDF and DOCX extraction adapters. PDF extraction must include page and text-item source-location provenance. DOCX extraction must include package part, paragraph/table/cell/run, and character-offset provenance. Optional AI can only classify sections or flag ambiguity after deterministic extraction. Foreground processing times out after 3 minutes and returns threshold-qualified partial results when available. A parser memory-limit breach terminates the isolated parser process, creates no review draft from abruptly terminated partial output, cleans up files and source-reconstructing artifacts for the failed attempt, and returns retry, replacement-upload, and manual-entry recovery actions.
+**Rules**: Deterministic validation and source preparation run through concrete PDF and DOCX extraction adapters before semantic parsing. PDF extraction must include page and text-item source-location provenance. DOCX extraction must include package part, paragraph/table/cell/run, and character-offset provenance. When a usable AI provider is connected, semantic parsing runs through `ResumeSemanticParserProvider` as the primary semantic mapping and grouping path. The worker submits only a controlled extraction request and must not grant shell, file-editing, repository, or arbitrary tool access for resume parsing. Foreground processing times out after 3 minutes and returns threshold-qualified partial results when available. A parser memory-limit breach terminates the isolated parser process, creates no review draft from abruptly terminated partial output, cleans up files and source-reconstructing artifacts for the failed attempt, and returns retry, replacement-upload, provider recovery where applicable, and manual-entry recovery actions.
+
+### Validate Semantic Parser Output
+
+**Input**: provider response from a `ResumeSemanticParserProvider` adapter.
+
+**Output**: versioned Nuvitae extraction response, accepted candidate fields and relationships, rejected/unusable candidates, grounding results, warnings.
+
+**Rules**: Provider adapters translate provider-native output into a versioned Nuvitae-owned response before the import domain consumes it. Strict Zod validation rejects malformed output, unknown fields, invalid relationships, unsupported values, provider-native schema leakage, invalid confidence categories, and missing required fields. Evidence grounding validation requires source page or document location, exact source text or source fragment identifier, explicit-versus-inferred classification, and confidence category for every AI-produced candidate. Ungrounded or invented values are rejected or marked unusable; they are never silently accepted.
+
+### Provider Failure Recovery
+
+**Input**: provider connection state, provider failure reason, import id or draft id.
+
+**Output**: plain-language recovery state and available actions.
+
+**Rules**: No configured provider, disconnected provider, expired authentication, provider unavailable, rate limit, quota/subscription limit, timeout, unsupported capability, and invalid structured output must not claim reliable full semantic parsing. Recovery actions include retry, reconnect, choose another configured provider, limited deterministic partial extraction where available, replacement upload, and manual entry.
 
 ### Enforce Processing Limits
 
@@ -104,7 +128,7 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Input**: authenticated user, import draft id.
 
-**Output**: grouped sections, extracted fields, warnings, review statuses, source locations while source exists, retention expiry, available actions.
+**Output**: grouped sections, extracted candidate fields, warnings, review statuses, evidence/source locations while source exists, confidence categories, explicit-versus-inferred classification, retention expiry, available actions.
 
 **Errors**: not found, forbidden, expired, source deleted with no resumable draft, no supported field extracted.
 
@@ -148,6 +172,14 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Rules**: Deletes source file, extracted raw text, field source snippets, page references, thumbnails, temporary files, cached parsing results, future OCR outputs, embeddings if any, and equivalent source-reconstructing artifacts.
 
+### Disconnect Provider
+
+**Input**: authenticated user, provider connection id, explicit disconnect or revoke action.
+
+**Output**: provider connection state and credential/session deletion status.
+
+**Rules**: Disconnecting or revoking a provider deletes provider credentials and session material without deleting uploaded resumes, import drafts, structured resumes, or source-retention records. Future semantic parsing requires reconnecting or choosing another provider.
+
 ### Source-Deleted Review
 
 **Input**: authenticated user, import draft id whose source artifacts are deleted before confirmation.
@@ -170,4 +202,4 @@ Every import operation must verify that the authenticated user owns the imported
 
 ## Logging Contract
 
-Logs may include event ids, status codes, timing, file size bucket, page count bucket, language category, and non-sensitive error categories. Logs must not include full resumes, raw extracted text, source snippets, uploaded documents, authentication tokens, provider credentials, prompts, technical parser internals, or unnecessary personal data.
+Logs may include event ids, status codes, timing, file size bucket, page count bucket, language category, provider category, provider state category, and non-sensitive error categories. Logs must not include full resumes, raw extracted text, source snippets, uploaded documents, authentication tokens, provider credentials, provider session material, prompts, raw provider payloads, technical parser internals, or unnecessary personal data.
