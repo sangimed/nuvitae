@@ -87,6 +87,20 @@ export function validateAuthorizationUrl(urlLike) {
   return {
     ok: Object.values(checks).every(Boolean),
     checks,
+    redirectMetadata: {
+      scheme: redirect.protocol.replace(":", ""),
+      hostname: redirect.hostname,
+      port: redirect.port,
+      path: redirect.pathname,
+      hostname_classification:
+        redirect.hostname === "localhost"
+          ? "localhost"
+          : redirect.hostname === "127.0.0.1"
+            ? "ipv4_loopback"
+            : redirect.hostname === "::1"
+              ? "ipv6_loopback"
+              : "not_loopback",
+    },
   };
 }
 

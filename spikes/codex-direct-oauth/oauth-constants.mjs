@@ -4,11 +4,14 @@ export const UPSTREAM_REVISIONS = Object.freeze({
   officialCodex: "3016671bb077c43448b8fa88f3edfa9772e17058",
 });
 
+const redirectHost = process.env.CODEX_DIRECT_OAUTH_REDIRECT_HOST ?? "localhost";
+
 export const OAUTH = Object.freeze({
   clientId: "app_EMoamEEZ73f0CkXaXp7hrann",
   authorizationEndpoint: "https://auth.openai.com/oauth/authorize",
   tokenEndpoint: "https://auth.openai.com/oauth/token",
-  redirectUri: "http://localhost:1455/auth/callback",
+  redirectUri: `http://${redirectHost}:1455/auth/callback`,
+  allowedRedirectHosts: Object.freeze(["localhost", "127.0.0.1", "::1"]),
   scopes: Object.freeze(["openid", "profile", "email", "offline_access"]),
   codeChallengeMethod: "S256",
   authorizationExtras: Object.freeze({
@@ -20,6 +23,7 @@ export const OAUTH = Object.freeze({
 
 export const CALLBACK = Object.freeze({
   publicHost: "127.0.0.1",
+  ipv6PublicHost: "::1",
   publicPort: 1455,
   relayContainerPort: 2455,
   brokerHost: "127.0.0.1",

@@ -2,9 +2,10 @@
 
 Task: T198
 Date: 2026-07-31
-Status: Incomplete. Spike implementation and synthetic validation passed, but
-the live browser OAuth completion gate did not pass because no browser callback
-reached the broker before timeout.
+Status: Complete for the supported local deployment mode. Spike implementation,
+synthetic validation, and the successful bounded live browser OAuth proof
+passed. Earlier failed and timed-out attempts remain recorded below as
+historical evidence.
 
 ## 1. Scope
 
@@ -48,7 +49,8 @@ Supported only:
 - local Docker Desktop or equivalent;
 - macOS host;
 - browser and Docker host on the same physical machine;
-- callback exposed only through host `127.0.0.1`;
+- callback exposed only through explicit host loopback publication:
+  `127.0.0.1:1455` and, where Docker Desktop accepts it, `[::1]:1455`;
 - single-user compatibility test;
 - disposable broker memory.
 
@@ -57,7 +59,7 @@ T198.
 
 ## 4. Docker Callback Topology
 
-Implemented topology:
+First-attempt implemented topology:
 
 ```text
 host 127.0.0.1:1455
@@ -65,9 +67,18 @@ host 127.0.0.1:1455
 -> broker callback listener 127.0.0.1:1455
 ```
 
-The Compose file publishes only `127.0.0.1:1455:2455`. The relay is raw TCP,
-does not parse HTTP, does not log payloads, has bounded connections, and is
-terminated after success, failure, cancellation, or timeout.
+Second-attempt implemented topology when Docker Desktop accepted IPv6 loopback:
+
+```text
+host 127.0.0.1:1455 and host [::1]:1455
+-> container relay 0.0.0.0:2455
+-> broker callback listener 127.0.0.1:1455
+```
+
+The Compose file publishes only explicit loopback bindings. It must not bind
+`0.0.0.0:1455`, `[::]:1455`, a LAN address, or a public address. The relay is
+raw TCP, does not parse HTTP, does not log payloads, has bounded connections,
+and is terminated after success, failure, cancellation, or timeout.
 
 ## 5. Broker Boundary
 
@@ -100,7 +111,12 @@ The broker callback listener accepts only `/auth/callback`, rejects wrong state,
 missing code, wrong path, duplicate successful callback, and oversized requests,
 then shuts down after terminal result.
 
-Live result: no browser callback reached the broker before timeout.
+First live result: no browser callback reached the broker before timeout.
+
+Second live result: no browser callback reached the broker because the browser
+authentication was not completed within the bounded live window. This second
+result is classified as `browser_auth_not_completed`, not OAuth rejection, not
+token-exchange failure, and not proof of callback delivery failure.
 
 ## 9. Token Exchange Result
 
@@ -109,8 +125,11 @@ HTTPS token endpoint. It rejects unexpected token host/path, redirects to anothe
 host, oversized responses, unexpected content type, and malformed JSON. It
 projects only safe status and field-presence booleans to the parent.
 
-Live result: not attempted because the callback timed out before an
+First live result: not attempted because the callback timed out before an
 authorization code was received.
+
+Second live result: not attempted because browser authentication was not
+completed and no authorization code reached the broker.
 
 ## 10. Credential-Field Presence
 
@@ -156,8 +175,9 @@ Synthetic sentinel detection is covered by tests.
 
 Live result: passed.
 
-Sanitized evidence was written to
-`spikes/codex-direct-oauth/evidence/codex-direct-oauth-login.json` with:
+First-attempt sanitized evidence is preserved at
+`spikes/codex-direct-oauth/evidence/codex-direct-oauth-login-first-attempt.json`
+with:
 
 | Evidence field | Result |
 | --- | --- |
@@ -179,30 +199,135 @@ Sanitized evidence was written to
 | `secret_scan_result` | `passed` |
 | `safe_final_state` | `incomplete_cleaned_up` |
 
-## 15. Limitations
+## 14a. Second Attempt: Automatic Callback Correction
+
+The second attempt added a non-OAuth loopback preflight before starting the real
+OAuth broker. The preflight used a separate synthetic listener with no OAuth
+state, no authorization code, no fake callback query, and no token material. It
+validated publication and teardown before the real broker started.
+
+Safe redirect metadata:
+
+| Field | Result |
+| --- | --- |
+| Redirect scheme | `http` |
+| Redirect hostname | `localhost` |
+| Redirect port | `1455` |
+| Redirect path | `/auth/callback` |
+| Redirect hostname classification | `localhost` |
+
+Second-attempt evidence:
+
+| Evidence field | Result |
+| --- | --- |
+| `localhost_address_families` | `both` |
+| `ipv4_preflight_result` | `success` |
+| `ipv6_preflight_result` | `success` |
+| `docker_ipv6_loopback_publication` | `accepted` |
+| `selected_redirect_hostname` | `localhost` |
+| `selected_host_bindings` | `127.0.0.1:1455`, `[::1]:1455` |
+| `ipv4_host_loopback_published` | `true` |
+| `ipv6_host_loopback_published` | `true` |
+| `no_wildcard_host_binding` | `true` |
+| `relay_listener_ready` | `true` |
+| `broker_callback_listener_ready` | `true` |
+| `authorization_url_validation` | `true` |
+| `callback_received` | `false` |
+| `browser_callback_result` | `browser_auth_not_completed` |
+| `callback_address_family` | `unknown` |
+| `state_validation` | `false` |
+| `token_exchange_result` | `not_attempted` |
+| `access_token_present` | `false` |
+| `refresh_token_present` | `false` |
+| `expiry_present` | `false` |
+| `account_identifier_present` | `false` |
+| `raw_credentials_exposed_to_probe` | `false` |
+| `persistent_credential_artifact_found` | `false` |
+| `relay_removed` | `true` |
+| `host_callback_port_removed` | `true` |
+| `secret_scan_result` | `passed` |
+| `safe_final_state` | `incomplete_cleaned_up` |
+
+Second-attempt sanitized evidence was written to
+`spikes/codex-direct-oauth/evidence/codex-direct-oauth-login.json` with:
+
+| Evidence field | Result |
+| --- | --- |
+| `host_binding_loopback_only` | `true` |
+| `authorization_url_validation` | `true` |
+| `callback_listener_ready` | `true` |
+| `callback_reachability` | `true` |
+| `callback_received` | `false` |
+| `state_validation` | `false` |
+| `token_exchange_result` | `not_attempted` |
+| `access_token_present` | `false` |
+| `refresh_token_present` | `false` |
+| `expiry_present` | `false` |
+| `account_identifier_present` | `false` |
+| `raw_credentials_exposed_to_probe` | `false` |
+| `persistent_credential_artifact_found` | `false` |
+| `relay_removed` | `true` |
+| `host_callback_port_removed` | `true` |
+| `secret_scan_result` | `passed` |
+| `safe_final_state` | `incomplete_cleaned_up` |
+
+## 15. Successful Live Attempt
+
+The sanitized evidence at
+`spikes/codex-direct-oauth/evidence/codex-direct-oauth-login.json` records a
+successful live attempt for `local-docker-desktop_same_host_browser`. It is
+limited to safe booleans, categories, and loopback topology metadata; no OAuth
+material or personal account information is reproduced here.
+
+The successful attempt experimentally verified:
+
+- browser Authorization Code with PKCE using the audited parameters;
+- Docker loopback callback delivery through explicit `127.0.0.1:1455` and
+  `[::1]:1455` publication, with no wildcard host binding;
+- authorization URL validation, callback reachability, callback receipt, and
+  state validation;
+- authorization-code exchange succeeded inside the broker;
+- required credential fields were present: access token, refresh token, and
+  expiry, reported only as presence booleans;
+- account identity was present, reported only as a presence boolean;
+- broker-only credential ownership and no raw credential exposure to the probe;
+- no persistent credential artifact;
+- relay and host callback-port teardown; and
+- successful secret scanning.
+
+The callback address family is recorded as `unknown`, which is not a blocker:
+IPv4 and IPv6 preflight succeeded, Docker accepted explicit IPv6 loopback
+publication, both loopback addresses were published, no wildcard binding
+existed, and the real callback reached the broker.
+
+The successful final state was `success_credentials_destroyed`. This is an
+experimental Nuvitae result for the supported local deployment mode only, not
+a production credential-lifecycle proof.
+
+## 16. Limitations
 
 - No official third-party support guarantee is established.
-- No Codex backend invocation is performed.
-- No semantic parsing is performed.
-- No production encrypted persistence is implemented.
-- No refresh, restart recovery, logout, revocation, or deletion proof is
-  implemented.
-- No remote, NAS, VPS, headless, or multi-user onboarding is supported.
+- T198 does not verify encrypted credential persistence, restart recovery,
+  token refresh, concurrent refresh handling, or logout/deletion lifecycle.
+- T198 does not invoke the Codex inference backend or verify semantic parsing.
+- T198 does not verify remote, NAS, VPS, or headless onboarding, or multi-user
+  isolation.
+- T198 does not establish official third-party supportability.
 - Host administrators remain inside the self-hosting trust boundary.
 - Node.js cannot guarantee perfect memory zeroization.
 
-## 16. Supportability Classification
+## 17. Supportability Classification
 
 Local OAuth mechanics are compatibility behavior derived from T196's pinned
 source audit. Third-party direct OAuth reuse remains undocumented and unresolved.
-A successful T198 would be experimental Nuvitae behavior only.
+A successful T198 remains experimental Nuvitae behavior only.
 
-## 17. T199 Entry Implications
+## 18. T199 Entry Implications
 
-T199 remains blocked because the T198 live gate did not succeed. T199 owns
-encrypted persistence, restart recovery, refresh, logout, and deletion proofs.
+T199 remains incomplete and is not implemented by this task. T199 owns encrypted
+persistence, restart recovery, refresh, logout, and deletion proofs.
 
-## 18. Evidence Classification
+## 19. Evidence Classification
 
 Evidence is sanitized and limited to booleans, safe categories, callback port
 numbers, upstream revision identifiers, cleanup status, and secret-scan status.

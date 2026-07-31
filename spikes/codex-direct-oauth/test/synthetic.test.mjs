@@ -63,6 +63,13 @@ test("authorization URL allowlist accepts audited parameters", () => {
   const verifier = generatePkceVerifier();
   const url = buildAuthorizationUrl({ state, codeChallenge: createPkceChallenge(verifier) });
   assert.equal(validateAuthorizationUrl(url).ok, true);
+  assert.deepEqual(validateAuthorizationUrl(url).redirectMetadata, {
+    scheme: "http",
+    hostname: "localhost",
+    port: "1455",
+    path: "/auth/callback",
+    hostname_classification: "localhost",
+  });
 });
 
 test("authorization URL allowlist rejects unexpected redirect host", () => {
@@ -224,6 +231,10 @@ test("host loopback-only publication model is strict", () => {
   const publication = { hostIp: "127.0.0.1", hostPort: 1455, containerPort: 2455 };
   assert.deepEqual(publication, { hostIp: CALLBACK.publicHost, hostPort: CALLBACK.publicPort, containerPort: CALLBACK.relayContainerPort });
   assert.notEqual("0.0.0.0", CALLBACK.publicHost);
+});
+
+test("audited IPv4 redirect fallback host is allowlisted", () => {
+  assert.equal(OAUTH.allowedRedirectHosts.includes("127.0.0.1"), true);
 });
 
 test("credential non-propagation to parent IPC", () => {

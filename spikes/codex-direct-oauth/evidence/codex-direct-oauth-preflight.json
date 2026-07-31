@@ -1,0 +1,21 @@
+{
+  "observation_timestamp": "2026-07-31T09:32:53.676Z",
+  "localhost_address_families": "both",
+  "redirect_metadata": {
+    "scheme": "http",
+    "hostname": "localhost",
+    "port": "1455",
+    "path": "/auth/callback",
+    "hostname_classification": "localhost"
+  },
+  "ipv4_preflight_result": "success",
+  "ipv6_preflight_result": "success",
+  "docker_ipv6_loopback_publication": "accepted",
+  "selected_redirect_hostname": "localhost",
+  "selected_host_bindings": [
+    "127.0.0.1:1455",
+    "[::1]:1455"
+  ],
+  "no_wildcard_host_binding": true,
+  "preflight_port_absent_after_cleanup": true
+}

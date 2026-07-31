@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { CALLBACK, SAFE_FINAL_STATES, UPSTREAM_REVISIONS } from "./oauth-constants.mjs";
+import { CALLBACK, OAUTH, SAFE_FINAL_STATES, UPSTREAM_REVISIONS } from "./oauth-constants.mjs";
 import { createRawTcpRelay } from "./lib/relay.mjs";
 import { containsSecretLikeValue } from "./lib/sanitize.mjs";
 
@@ -32,8 +32,13 @@ function assertLocalMode() {
 }
 
 function dockerPublicationFromEnv() {
+  const hostBindings = (process.env.CODEX_DIRECT_OAUTH_HOST_BINDINGS ?? "127.0.0.1:1455")
+    .split(",")
+    .map((binding) => binding.trim())
+    .filter(Boolean);
   return {
     hostIp: process.env.CODEX_DIRECT_OAUTH_HOST_BINDING ?? "127.0.0.1",
+    hostBindings,
     hostPort: Number.parseInt(process.env.CODEX_DIRECT_OAUTH_HOST_PORT ?? "1455", 10),
     containerPort: Number.parseInt(process.env.CODEX_DIRECT_OAUTH_CONTAINER_RELAY_PORT ?? "2455", 10),
   };
@@ -43,15 +48,57 @@ function validatePublication(publication) {
   return (
     publication.hostIp === CALLBACK.publicHost &&
     publication.hostPort === CALLBACK.publicPort &&
-    publication.containerPort === CALLBACK.relayContainerPort
+    publication.containerPort === CALLBACK.relayContainerPort &&
+    publication.hostBindings.every(isAllowedHostBinding) &&
+    publication.hostBindings.includes("127.0.0.1:1455")
   );
 }
 
-function safeEvidenceSkeleton() {
+function isAllowedHostBinding(binding) {
+  return binding === "127.0.0.1:1455" || binding === "[::1]:1455";
+}
+
+function redirectMetadata() {
+  const url = new URL(OAUTH.redirectUri);
+  let hostnameClassification = "not_loopback";
+  if (url.hostname === "localhost") hostnameClassification = "localhost";
+  if (url.hostname === "127.0.0.1") hostnameClassification = "ipv4_loopback";
+  if (url.hostname === "::1") hostnameClassification = "ipv6_loopback";
+  return {
+    scheme: url.protocol.replace(":", ""),
+    hostname: url.hostname,
+    port: url.port,
+    path: url.pathname,
+    hostname_classification: hostnameClassification,
+  };
+}
+
+async function preflightEvidence() {
+  const preflightPath = path.join(evidenceDir, "codex-direct-oauth-preflight.json");
+  const raw = await fs.readFile(preflightPath, "utf8").catch(() => undefined);
+  if (!raw) return {};
+  return JSON.parse(raw);
+}
+
+function safeEvidenceSkeleton(preflight = {}) {
   return {
     observation_timestamp: new Date().toISOString(),
     audited_upstream_revision_identifiers: UPSTREAM_REVISIONS,
     deployment_mode: "local-docker-desktop_same_host_browser",
+    attempt: "second_automatic_callback_correction",
+    redirect_metadata: redirectMetadata(),
+    localhost_address_families: preflight.localhost_address_families ?? "unknown",
+    ipv4_preflight_result: preflight.ipv4_preflight_result ?? "not_run",
+    ipv6_preflight_result: preflight.ipv6_preflight_result ?? "not_run",
+    docker_ipv6_loopback_publication: preflight.docker_ipv6_loopback_publication ?? "not_run",
+    selected_redirect_hostname: new URL(OAUTH.redirectUri).hostname,
+    selected_host_bindings: preflight.selected_host_bindings ?? [],
+    ipv4_host_loopback_published: false,
+    ipv6_host_loopback_published: false,
+    ipv6_host_loopback_safely_unsupported: false,
+    no_wildcard_host_binding: false,
+    relay_listener_ready: false,
+    broker_callback_listener_ready: false,
     callback_host_port: CALLBACK.publicPort,
     container_relay_port: CALLBACK.relayContainerPort,
     host_binding_loopback_only: false,
@@ -59,6 +106,8 @@ function safeEvidenceSkeleton() {
     callback_listener_ready: false,
     callback_reachability: false,
     callback_received: false,
+    browser_callback_result: "callback_timeout",
+    callback_address_family: "unknown",
     state_validation: false,
     token_exchange_result: "not_attempted",
     access_token_present: false,
@@ -86,7 +135,8 @@ async function writeEvidence(evidence) {
 async function main() {
   assertLocalMode();
   const publication = dockerPublicationFromEnv();
-  const evidence = safeEvidenceSkeleton();
+  const preflight = await preflightEvidence();
+  const evidence = safeEvidenceSkeleton(preflight);
   let relay;
   let broker;
   let cleanupComplete = false;
@@ -96,6 +146,13 @@ async function main() {
   }
 
   evidence.host_binding_loopback_only = validatePublication(publication);
+  evidence.selected_host_bindings = publication.hostBindings;
+  evidence.ipv4_host_loopback_published = publication.hostBindings.includes("127.0.0.1:1455");
+  evidence.ipv6_host_loopback_published = publication.hostBindings.includes("[::1]:1455");
+  evidence.ipv6_host_loopback_safely_unsupported =
+    !evidence.ipv6_host_loopback_published &&
+    evidence.docker_ipv6_loopback_publication === "ipv6_loopback_publication_unsupported";
+  evidence.no_wildcard_host_binding = publication.hostBindings.every(isAllowedHostBinding);
   if (!evidence.host_binding_loopback_only) {
     throw new Error("host_publication_not_loopback_only");
   }
@@ -113,9 +170,18 @@ async function main() {
     }
     if (message.type === "callback_listener_ready") {
       evidence.callback_listener_ready = message.callback_listener_ready;
+      evidence.broker_callback_listener_ready = message.callback_listener_ready;
     }
     if (message.type === "callback_received") {
       evidence.callback_received = message.callback_received;
+      if (message.callback_received) {
+        evidence.browser_callback_result = new URL(OAUTH.redirectUri).hostname === "127.0.0.1"
+          ? "callback_received_ipv4"
+          : "callback_received_unknown_family";
+        evidence.callback_address_family = new URL(OAUTH.redirectUri).hostname === "127.0.0.1"
+          ? "ipv4"
+          : "unknown";
+      }
     }
     if (message.type === "state_valid") {
       evidence.state_validation = message.state_valid;
@@ -135,6 +201,7 @@ async function main() {
       evidence.safe_final_state = message.safe_final_state;
     }
     if (message.type === "safe_error_category") {
+      evidence.browser_callback_result = message.safe_error_category ?? "safe_other_callback_failure";
       evidence.token_exchange_result = evidence.token_exchange_result === "not_attempted"
         ? message.safe_error_category
         : evidence.token_exchange_result;
@@ -163,12 +230,15 @@ async function main() {
 
   relay = createRawTcpRelay();
   await relay.listen();
+  evidence.relay_listener_ready = true;
   evidence.callback_reachability = await portReachable("127.0.0.1", CALLBACK.relayContainerPort);
   if (!evidence.callback_reachability) {
     throw new Error("relay_not_reachable");
   }
 
   process.stdout.write("The broker is waiting for the browser callback through the Docker loopback relay.\n");
+  process.stdout.write("Open the displayed URL in the host browser, complete ChatGPT authentication, and allow the browser to redirect automatically.\n");
+  process.stdout.write("Do not copy tokens or authorization codes.\n");
 
   await new Promise((resolve) => {
     broker.on("exit", resolve);
@@ -195,8 +265,9 @@ async function main() {
 
 main().catch(async (error) => {
   try {
+    const preflight = await preflightEvidence();
     await writeEvidence({
-      ...safeEvidenceSkeleton(),
+      ...safeEvidenceSkeleton(preflight),
       safe_final_state: SAFE_FINAL_STATES.incomplete,
       safe_error_category: String(error.message ?? "unknown").slice(0, 80),
     });

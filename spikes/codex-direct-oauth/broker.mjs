@@ -61,6 +61,7 @@ async function beginLogin() {
     type: "authorization_url_validation",
     authorization_url_validation: validation.ok,
     authorization_url_validation_checks: validation.checks,
+    redirect_metadata: validation.redirectMetadata,
     audited_upstream_revisions: UPSTREAM_REVISIONS,
   });
 
@@ -84,6 +85,8 @@ async function beginLogin() {
 
   process.stdout.write("\nOpen this authorization URL in the host browser:\n");
   process.stdout.write(`${authorizationUrl.toString()}\n\n`);
+  process.stdout.write("Complete ChatGPT authentication and allow the browser to redirect automatically.\n");
+  process.stdout.write("Do not copy tokens or authorization codes.\n");
   process.stdout.write("The URL is printed live only and is not sent over IPC or persisted by the spike.\n\n");
 
   const timeout = setTimeout(() => {

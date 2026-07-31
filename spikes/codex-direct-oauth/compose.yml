@@ -11,11 +11,78 @@ services:
     environment:
       CODEX_DIRECT_OAUTH_DEPLOYMENT_MODE: local-docker-desktop
       CODEX_DIRECT_OAUTH_HOST_BINDING: "127.0.0.1"
+      CODEX_DIRECT_OAUTH_HOST_BINDINGS: "${CODEX_DIRECT_OAUTH_HOST_BINDINGS:-127.0.0.1:1455}"
       CODEX_DIRECT_OAUTH_HOST_PORT: "1455"
       CODEX_DIRECT_OAUTH_CONTAINER_RELAY_PORT: "2455"
+      CODEX_DIRECT_OAUTH_REDIRECT_HOST: "${CODEX_DIRECT_OAUTH_REDIRECT_HOST:-localhost}"
       CODEX_DIRECT_OAUTH_WAIT_MS: "${CODEX_DIRECT_OAUTH_WAIT_MS:-300000}"
     ports:
       - "127.0.0.1:1455:2455"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 192m
+    cpus: "0.5"
+
+  lifecycle-dual:
+    build:
+      context: .
+    init: true
+    read_only: true
+    volumes:
+      - ./evidence:/spike/evidence
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    environment:
+      CODEX_DIRECT_OAUTH_DEPLOYMENT_MODE: local-docker-desktop
+      CODEX_DIRECT_OAUTH_HOST_BINDING: "127.0.0.1"
+      CODEX_DIRECT_OAUTH_HOST_BINDINGS: "127.0.0.1:1455,[::1]:1455"
+      CODEX_DIRECT_OAUTH_HOST_PORT: "1455"
+      CODEX_DIRECT_OAUTH_CONTAINER_RELAY_PORT: "2455"
+      CODEX_DIRECT_OAUTH_REDIRECT_HOST: "${CODEX_DIRECT_OAUTH_REDIRECT_HOST:-localhost}"
+      CODEX_DIRECT_OAUTH_WAIT_MS: "${CODEX_DIRECT_OAUTH_WAIT_MS:-300000}"
+    ports:
+      - "127.0.0.1:1455:2455"
+      - "[::1]:1455:2455"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 192m
+    cpus: "0.5"
+
+  preflight-ipv4:
+    build:
+      context: .
+    init: true
+    read_only: true
+    command: ["node", "preflight-listener.mjs"]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    ports:
+      - "127.0.0.1:1455:2455"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 96m
+    cpus: "0.25"
+
+  preflight-dual:
+    build:
+      context: .
+    init: true
+    read_only: true
+    command: ["node", "preflight-listener.mjs"]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    ports:
+      - "127.0.0.1:1455:2455"
+      - "[::1]:1455:2455"
     cap_drop:
       - ALL
     security_opt:

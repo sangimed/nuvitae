@@ -8,7 +8,8 @@ Supported mode:
 
 - macOS with local Docker Desktop or equivalent;
 - browser and Docker host on the same physical machine;
-- host callback bound only as `127.0.0.1:1455`;
+- host callback bound only as `127.0.0.1:1455`, plus `[::1]:1455`
+  when Docker Desktop accepts explicit IPv6 loopback publication;
 - container relay on `2455`;
 - broker callback listener on container `127.0.0.1:1455`;
 - disposable broker memory only.
@@ -18,6 +19,13 @@ Run deterministic synthetic checks:
 ```sh
 node --test spikes/codex-direct-oauth/test/*.test.mjs
 node spikes/codex-direct-oauth/secret-scan.mjs
+```
+
+Run the non-OAuth loopback preflight:
+
+```sh
+cd spikes/codex-direct-oauth
+node host-preflight.mjs
 ```
 
 Validate Compose:
@@ -33,4 +41,6 @@ sh spikes/codex-direct-oauth/run-live.sh
 ```
 
 The broker prints the full authorization URL only to the live terminal. The
-parent lifecycle runner receives only booleans and safe categories.
+parent lifecycle runner receives only booleans, sanitized redirect metadata, and
+safe categories. The first live-attempt JSON is archived before the second live
+attempt writes current evidence.
