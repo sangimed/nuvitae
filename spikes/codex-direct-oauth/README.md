@@ -40,6 +40,20 @@ Run the live browser proof:
 sh spikes/codex-direct-oauth/run-live.sh
 ```
 
+Run the T199 live credential lifecycle proof (two browser authentications):
+
+```sh
+sh spikes/codex-direct-oauth/run-t199-live.sh
+```
+
+The T199 runner creates and preserves two dedicated Docker named volumes by
+default: `nuvitae-codex-direct-oauth-t199-key-live` and
+`nuvitae-codex-direct-oauth-t199-credentials-live`. The key is never a macOS
+bind mount. The broker runs as UID 1000 with a read-only root filesystem,
+read-only key volume, read/write credential volume, dropped capabilities, and
+no-new-privileges. Only safe result JSON is consumed by the host; the full
+authorization URL is printed live and is not persisted.
+
 The broker prints the full authorization URL only to the live terminal. The
 parent lifecycle runner receives only booleans, sanitized redirect metadata, and
 safe categories. The first live-attempt JSON is archived before the second live

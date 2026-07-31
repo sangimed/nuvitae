@@ -1,4 +1,29 @@
 services:
+  lifecycle-t199:
+    build:
+      context: .
+    init: true
+    command: ["node", "t199-lifecycle.mjs"]
+    read_only: true
+    user: "1000:1000"
+    volumes:
+      - t199-credentials:/spike/credentials
+      - type: bind
+        source: ${CODEX_DIRECT_OAUTH_T199_KEY_FILE:-${TMPDIR:-/tmp}/nuvitae-codex-direct-oauth-t199/master.key}
+        target: /run/secrets/codex-direct-oauth-t199-master-key
+        read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 192m
+    cpus: "0.5"
+    environment:
+      CODEX_DIRECT_OAUTH_T199_CONTAINER: "1"
+
   lifecycle:
     build:
       context: .
@@ -90,3 +115,7 @@ services:
     pids_limit: 128
     mem_limit: 192m
     cpus: "0.5"
+
+volumes:
+  t199-credentials:
+    name: nuvitae-codex-direct-oauth-t199-credentials

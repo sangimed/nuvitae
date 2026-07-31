@@ -16,6 +16,11 @@ import { createCallbackListener } from "../lib/callback-listener.mjs";
 import { createRawTcpRelay } from "../lib/relay.mjs";
 import { containsSecretLikeValue } from "../lib/sanitize.mjs";
 import { CALLBACK, OAUTH } from "../oauth-constants.mjs";
+import { createMasterKey, encryptCredentialEnvelope, decryptCredentialEnvelope, atomicWriteEnvelope, removeCredentialRecord, writeKeyFile } from "../lib/credential-store.mjs";
+import { SingleFlightRefresh, classifyRefreshResponse } from "../lib/refresh.mjs";
+import os from "node:os";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 function fakeHttpsRequest({ statusCode = 200, headers = { "content-type": "application/json" }, body = "{}" }) {
   return (_options, callback) => {
@@ -266,4 +271,84 @@ test("secret scanner catches synthetic sentinel credentials", () => {
   assert.equal(containsSecretLikeValue("access_token: sentinel-access-token-value"), true);
   assert.equal(containsSecretLikeValue("refresh_token: sentinel-refresh-token-value"), true);
   assert.equal(containsSecretLikeValue("code=syntheticAuthorizationCode123"), true);
+});
+
+test("AES-GCM envelope binds credentials and never stores plaintext", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "t199-"));
+  const file = path.join(dir, "credential.json");
+  const key = createMasterKey();
+  const bindings = { ownerNamespace: "owner-stable", connectionId: "connection-1", provider: "openai-codex" };
+  const payload = { access_token: "sentinel-access", refresh_token: "sentinel-refresh", expires_at: 1, account_id: "sentinel-account" };
+  const envelope = encryptCredentialEnvelope(payload, bindings, key);
+  assert.notEqual(envelope.nonce, encryptCredentialEnvelope(payload, bindings, key).nonce);
+  await atomicWriteEnvelope(file, envelope);
+  const bytes = await fs.readFile(file, "utf8");
+  assert.equal(bytes.includes("sentinel"), false);
+  assert.deepEqual(decryptCredentialEnvelope(JSON.parse(bytes), bindings, key).payload, payload);
+  for (const altered of [
+    { ...bindings, ownerNamespace: "other" }, { ...bindings, connectionId: "other" }, { ...bindings, provider: "other" },
+  ]) assert.throws(() => decryptCredentialEnvelope(JSON.parse(bytes), altered, key));
+  const tampered = JSON.parse(bytes); tampered.ciphertext = `${tampered.ciphertext.slice(0, -1)}A`;
+  assert.throws(() => decryptCredentialEnvelope(tampered, bindings, key));
+  const wrongVersion = { ...JSON.parse(bytes), envelope_version: 2 };
+  assert.throws(() => decryptCredentialEnvelope(wrongVersion, bindings, key), /unsupported_envelope_version/);
+  await removeCredentialRecord(file);
+  await fs.rm(dir, { recursive: true, force: true });
+});
+
+test("atomic replacement and generation compare-and-swap are fail closed", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "t199-cas-"));
+  const file = path.join(dir, "credential.json"); const key = createMasterKey();
+  const bindings = { ownerNamespace: "owner", connectionId: "connection", provider: "provider" };
+  await atomicWriteEnvelope(file, encryptCredentialEnvelope({ access_token: "a", refresh_token: "r", expires_at: 1 }, bindings, key));
+  await assert.rejects(() => atomicWriteEnvelope(file, encryptCredentialEnvelope({ access_token: "b", refresh_token: "r", expires_at: 1 }, bindings, key, 1), 0), /credential_generation_conflict/);
+  await fs.rm(dir, { recursive: true, force: true });
+});
+
+test("refresh encrypts with the loaded key and increments from the loaded generation", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "t199-refresh-"));
+  const file = path.join(dir, "credential.json");
+  const key = createMasterKey();
+  const bindings = { ownerNamespace: "owner", connectionId: "connection", provider: "provider" };
+  const currentPayload = { access_token: "a", refresh_token: "r", expires_at: 1 };
+  const currentEnvelope = encryptCredentialEnvelope(currentPayload, bindings, key);
+  await atomicWriteEnvelope(file, currentEnvelope);
+  const current = { key, envelope: currentEnvelope, ...decryptCredentialEnvelope(currentEnvelope, bindings, key) };
+  const refreshedPayload = { access_token: "b", refresh_token: "r2", expires_at: 2 };
+
+  assert.throws(
+    () => encryptCredentialEnvelope(refreshedPayload, bindings, current.generation),
+    /invalid_master_key/,
+  );
+  const next = encryptCredentialEnvelope(refreshedPayload, bindings, current.key, current.generation);
+  await atomicWriteEnvelope(file, next, current.generation);
+  assert.equal(next.credential_generation, current.generation + 1);
+  assert.deepEqual(decryptCredentialEnvelope(next, bindings, current.key).payload, refreshedPayload);
+  await fs.rm(dir, { recursive: true, force: true });
+});
+
+test("key and record permissions are restrictive and abandoned files are removed", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "t199-permissions-")); const keyPath = path.join(dir, "master.key");
+  await writeKeyFile(keyPath, createMasterKey());
+  assert.equal((await fs.stat(dir)).mode & 0o777, 0o700); assert.equal((await fs.stat(keyPath)).mode & 0o777, 0o600);
+  const record = path.join(dir, "credential.json"); await fs.writeFile(`${record}.tmp-abandoned`, "synthetic", { mode: 0o600 }); await fs.writeFile(`${record}.bak`, "synthetic", { mode: 0o600 });
+  await removeCredentialRecord(record); assert.equal(await fs.stat(`${record}.tmp-abandoned`).catch(() => undefined), undefined); assert.equal(await fs.stat(`${record}.bak`).catch(() => undefined), undefined);
+  await fs.rm(dir, { recursive: true, force: true });
+});
+
+test("concurrent refresh is single-flight and preserves safe result", async () => {
+  const flight = new SingleFlightRefresh(); let calls = 0;
+  const operation = async () => { calls += 1; await new Promise((resolve) => setTimeout(resolve, 5)); return { status: "connected", rotated: true }; };
+  const results = await Promise.all([1, 2, 3].map(() => flight.refresh("connection", operation)));
+  assert.equal(calls, 1); assert.equal(flight.networkRefreshCount, 1); assert.deepEqual(results[0], results[1]); assert.deepEqual(results[1], results[2]);
+});
+
+test("refresh failures are classified without invalidation overclaim", () => {
+  assert.equal(classifyRefreshResponse({ status: 400, body: { error: "invalid_grant" } }), "invalid_grant");
+  assert.equal(classifyRefreshResponse({ status: 401, body: {} }), "authentication_required");
+  assert.equal(classifyRefreshResponse({ status: 403, body: {} }), "authentication_required");
+  assert.equal(classifyRefreshResponse({ status: 429, body: {} }), "quota_or_rate_limit");
+  assert.equal(classifyRefreshResponse({ status: 200, body: { access_token: "a", expires_in: 1 } }), "success");
+  assert.equal(classifyRefreshResponse({ status: 200, body: { access_token: "a" } }), "malformed_token_response");
+  assert.equal(classifyRefreshResponse({ timedOut: true }), "transport_timeout");
 });

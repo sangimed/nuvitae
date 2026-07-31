@@ -17,6 +17,7 @@ const ignoredSourceLines = [
   "tokenResponse.refresh_token",
   "access_token: sentinel-access-token-value",
   "refresh_token: sentinel-refresh-token-value",
+  "refresh_token: refreshToken",
   "code=syntheticAuthorizationCode123",
 ];
 
