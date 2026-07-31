@@ -8,7 +8,13 @@ import {
   readKeyFile,
 } from "./lib/credential-store.mjs";
 import { classifyRefreshResponse, SingleFlightRefresh } from "./lib/refresh.mjs";
-import { accountIdentifierFromCredential, invokeCodexSynthetic } from "./lib/codex-transport.mjs";
+import {
+  accountIdentifierFromCredential,
+  buildExpectedAuditedRequestManifest,
+  buildPreviousMalformedCodexRequestProjection,
+  diffSanitizedRequestManifests,
+  invokeCodexSynthetic,
+} from "./lib/codex-transport.mjs";
 import { CODEX_TRANSPORT, NETWORK_LIMITS, OAUTH, UPSTREAM_REVISIONS } from "./oauth-constants.mjs";
 
 const keyPath = "/run/t199-key/master.key";
@@ -162,6 +168,35 @@ try {
     accessToken: credential.access_token,
     accountIdentifier,
   });
+  const expectedRequestManifest = buildExpectedAuditedRequestManifest();
+  const previousRequestManifest = buildPreviousMalformedCodexRequestProjection();
+  const actualRequestManifest = invocation.actual_request_manifest;
+  const requiredManifestPaths = [
+    "url_path",
+    "http_method",
+    "required_headers_present.authorization",
+    "required_headers_present.chatgpt_account_id",
+    "required_headers_present.originator",
+    "required_headers_present.accept",
+    "required_headers_present.content_type",
+    "required_headers_present.openai_beta",
+    "body_value_types.instructions",
+    "body_value_types.input",
+    "body_value_types.stream",
+    "input_item_categories",
+    "stream_boolean",
+    "model_identifier_category",
+  ];
+  const correctedRequestMismatches = diffSanitizedRequestManifests(
+    expectedRequestManifest,
+    actualRequestManifest,
+    requiredManifestPaths,
+  );
+  const previousRequestMismatches = diffSanitizedRequestManifests(
+    expectedRequestManifest,
+    previousRequestManifest,
+    requiredManifestPaths,
+  );
   const after = await recoverCredential();
   const encryptedBytes = await fs.readFile(recordPath, "utf8");
   const plaintextPreserved =
@@ -171,6 +206,7 @@ try {
 
   const mandatoryPassed =
     invocation.ok === true &&
+    correctedRequestMismatches.length === 0 &&
     after.payload?.access_token &&
     plaintextPreserved === false &&
     invocation.expected_synthetic_marker_present === true &&
@@ -198,10 +234,34 @@ try {
     client_metadata_applied: invocation.client_metadata_applied === true,
     invocation_attempted: invocation.invocation_attempted === true,
     invocation_succeeded: invocation.invocation_succeeded === true,
-    safe_http_status_category: invocation.safe_http_status_category,
-    safe_response_content_type_category: invocation.safe_response_content_type_category,
+    exact_http_status: invocation.safe_exact_http_status ?? null,
+    safe_http_status_category: invocation.safe_http_status_category ?? "unknown_status",
+    response_content_type_category: invocation.safe_response_content_type_category ?? "unknown",
+    response_content_type_parameters_present: invocation.response_content_type_parameters_present ?? false,
+    response_content_encoding_category: invocation.response_content_encoding_category ?? "unknown",
+    response_transfer_encoding_category: invocation.response_transfer_encoding_category ?? "unknown",
+    response_content_length_present: invocation.response_content_length_present ?? false,
+    response_body_present: invocation.response_body_present ?? false,
+    response_body_presence: invocation.response_body_presence ?? (invocation.response_body_present ? "present" : "absent"),
+    response_body_framing_category: invocation.response_body_framing_category ?? "unknown",
+    response_body_is_byte_stream: invocation.response_body_is_byte_stream ?? false,
+    first_non_empty_body_chunk_length_category: invocation.first_non_empty_body_chunk_length_category ?? "none",
+    first_non_empty_body_bytes_category: invocation.first_non_empty_body_bytes_category ?? "empty_content",
+    response_request_id_header_present: invocation.response_request_id_header_present ?? false,
+    retry_after_header_present: invocation.retry_after_header_present === true,
     response_protocol_valid: invocation.response_protocol_valid === true,
     response_event_count: invocation.response_event_count ?? 0,
+    unknown_event_type: invocation.unknown_event_type ?? null,
+    unknown_event_index: invocation.unknown_event_index ?? null,
+    unknown_event_assistant_output_phase: invocation.unknown_event_assistant_output_phase ?? null,
+    unknown_event_terminal_phase: invocation.unknown_event_terminal_phase ?? null,
+    unknown_event_top_level_fields: invocation.unknown_event_top_level_fields ?? [],
+    unknown_event_field_presence: invocation.unknown_event_field_presence ?? {},
+    unknown_event_field_categories: invocation.unknown_event_field_categories ?? {},
+    unknown_event_contains_text_looking_field: invocation.unknown_event_contains_text_looking_field ?? false,
+    unknown_event_followed_by_more_events: invocation.unknown_event_followed_by_more_events ?? false,
+    known_event_types_before_failure: invocation.known_event_types_before_failure ?? [],
+    terminal_event_observed_before_failure: invocation.terminal_event_observed_before_failure ?? false,
     expected_synthetic_marker_present: invocation.expected_synthetic_marker_present === true,
     response_length_category: invocation.response_length_category ?? "none",
     normalized_response_sha256: invocation.normalized_response_sha256,
@@ -216,6 +276,11 @@ try {
     no_resume_or_personal_data_transmitted: true,
     raw_request_persisted: false,
     complete_model_output_persisted: false,
+    expected_request_manifest: expectedRequestManifest,
+    previous_nuvitae_request_manifest: previousRequestManifest,
+    corrected_request_manifest: actualRequestManifest,
+    corrected_request_mismatches: correctedRequestMismatches,
+    previous_request_mismatches: previousRequestMismatches,
     broker_uid: process.getuid?.(),
     broker_only_fields_present: {
       access_token_present: true,
@@ -225,7 +290,7 @@ try {
       backend_host_category: "chatgpt.com_verified_official_source_undocumented_third_party_backend",
       backend_path_category: "backend_api_codex_responses_verified_official_source_compatibility_sensitive",
       model_category: "gpt-5.6-sol_official_bundled_model",
-      originator_category: "openclaw_observed_compatibility_originator_undocumented_support",
+      originator_category: "compatibility_originator_observed_in_audited_implementation",
     },
     safe_final_state: mandatoryPassed ? "complete" : invocation.safe_error_category ?? "safe_unknown_failure",
   });

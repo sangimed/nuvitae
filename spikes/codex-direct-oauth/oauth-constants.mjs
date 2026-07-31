@@ -1,5 +1,5 @@
 export const UPSTREAM_REVISIONS = Object.freeze({
-  openclaw: "4c331166c40cccb6e4d2da1136c921faed1cc8c1",
+  compatibilityImplementation: "4c331166c40cccb6e4d2da1136c921faed1cc8c1",
   hermesAgent: "5d6aae02bffa7714c4a94f3a0900b37774442dea",
   officialCodex: "3016671bb077c43448b8fa88f3edfa9772e17058",
 });

@@ -1,4 +1,4 @@
-# Codex Direct OAuth T198 Spike
+# Codex Direct OAuth Compatibility Spike
 
 This directory is a disposable local compatibility spike only. It is not
 production application code and is not wired into the API, web app, worker,
@@ -59,16 +59,23 @@ parent lifecycle runner receives only booleans, sanitized redirect metadata, and
 safe categories. The first live-attempt JSON is archived before the second live
 attempt writes current evidence.
 
-Run the T200 live direct invocation proof using the preserved T199 volumes:
+The completed T200 live direct invocation proof used the preserved T199 volumes:
 
 ```sh
 sh spikes/codex-direct-oauth/run-t200-live.sh
 ```
 
-T200 does not publish callback ports and does not perform browser OAuth. It
+T200 did not publish callback ports and did not perform browser OAuth. It
 builds a disposable image, runs the broker as UID 1000 with the T199 key volume
 mounted read-only and the T199 credential volume mounted read/write, performs at
 most one refresh only when the encrypted access credential is near expiry, then
 executes one fixed synthetic Codex Responses request for `NUVITAE_T200_OK`.
 Evidence is sanitized and written to
 `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t200-invocation.json`.
+
+The single bounded invocation succeeded with HTTP 200 and valid SSE framing
+detected from body bytes despite a missing `Content-Type`; 15 events were
+processed and `NUVITAE_T200_OK` was verified. This is compatibility evidence
+for the tested local topology only, not proof of a stable or officially
+supported third-party public API. OpenClaw and Hermes are corroborating audited
+references; official Codex source remains the primary behavioral reference.

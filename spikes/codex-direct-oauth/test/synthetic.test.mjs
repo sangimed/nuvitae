@@ -288,8 +288,12 @@ test("AES-GCM envelope binds credentials and never stores plaintext", async () =
   for (const altered of [
     { ...bindings, ownerNamespace: "other" }, { ...bindings, connectionId: "other" }, { ...bindings, provider: "other" },
   ]) assert.throws(() => decryptCredentialEnvelope(JSON.parse(bytes), altered, key));
-  const tampered = JSON.parse(bytes); tampered.ciphertext = `${tampered.ciphertext.slice(0, -1)}A`;
-  assert.throws(() => decryptCredentialEnvelope(tampered, bindings, key));
+  const tampered = JSON.parse(bytes);
+  const tamperedCiphertext = Buffer.from(tampered.ciphertext, "base64url");
+  tamperedCiphertext[0] ^= 1;
+  tampered.ciphertext = tamperedCiphertext.toString("base64url");
+  assert.notEqual(tampered.ciphertext, JSON.parse(bytes).ciphertext);
+  assert.throws(() => decryptCredentialEnvelope(tampered, bindings, key), /credential_authentication_failed/);
   const wrongVersion = { ...JSON.parse(bytes), envelope_version: 2 };
   assert.throws(() => decryptCredentialEnvelope(wrongVersion, bindings, key), /unsupported_envelope_version/);
   await removeCredentialRecord(file);
