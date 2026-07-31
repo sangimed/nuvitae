@@ -1,0 +1,21 @@
+[page=1 column=left item=001] EXPERIENCE
+[page=1 column=right item=002] SKILLS: TypeScript; Queues; Review
+[page=1 column=left item=003] March 2023 – Present
+[page=1 column=right item=004] LANGUAGES: French — fluent; English — working
+[page=1 column=left item=005] Harborless Example Studio (synthetic employer)
+[page=1 column=right item=006] CERTIFICATION: Fictional Queue Badge, 2025
+[page=1 column=left item=007] Workflow Operator
+[page=1 column=right item=008] EDUCATION
+[page=1 column=left item=009] - Reordered 11 fictional review cards.
+[page=1 column=right item=010] School of Example Operations
+[page=1 column=left item=011] - Checked 90 sample queue messages.
+[page=1 column=right item=012] Certificate in Operations
+[page=1 column=left item=013] Ambiguous note: “service ownership” appears without a defined scope.
+[page=1 column=right item=014] 2020–2023
+[page=1 column=left item=015] Noor Fiction
+[page=1 column=right item=016] MULTI-COLUMN PDF TEXT ORDER IS INTERLEAVED; DO NOT JOIN ADJACENT COLUMNS.
+[page=1 column=left item=017] noor.fiction@example.invalid
+[page=1 column=right item=018] 2025
+[page=1 column=left item=019] Example Delta, Fictionland
+[page=1 column=right item=020] ABSENT: phone, employer location, grade, issuer, employment type.
+[page=1 column=left item=021] SUMMARY: Operations specialist for fictional queue workflows.

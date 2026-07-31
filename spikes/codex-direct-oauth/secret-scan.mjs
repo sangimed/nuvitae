@@ -9,6 +9,7 @@ const scanRoots = [
   root,
   path.join(repoRoot, "docs/research/codex-direct-oauth-login.md"),
   path.join(repoRoot, "docs/research/codex-direct-oauth-invocation.md"),
+  path.join(repoRoot, "docs/research/codex-direct-oauth-semantic-parsing.md"),
 ];
 const ignoredSegments = new Set(["test"]);
 const ignoredSourceLines = [
@@ -27,6 +28,12 @@ const ignoredSourceLines = [
   "accountIdentifier: \"synthetic-account\"",
   "accountIdentifier: \"b\"",
   "authorization, \"Bearer synthetic-access\"",
+  "alex.exemple@example.invalid",
+  "camille.exemple@example.invalid",
+  "dana.example@example.invalid",
+  "eli.synthetic@example.invalid",
+  "noor.fiction@example.invalid",
+  "rowan.sample@example.invalid",
 ];
 
 function removeAllowlistedSourceLines(text) {

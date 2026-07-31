@@ -116,6 +116,32 @@ services:
     mem_limit: 192m
     cpus: "0.5"
 
+  t201-semantic:
+    build:
+      context: .
+    init: true
+    command: ["node", "t201-semantic-broker.mjs"]
+    read_only: true
+    user: "1000:1000"
+    volumes:
+      - t199-key-live:/run/t199-key:ro
+      - t199-credentials-live:/spike/credentials:rw
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 192m
+    cpus: "0.5"
+
 volumes:
   t199-credentials:
     name: nuvitae-codex-direct-oauth-t199-credentials
+  t199-key-live:
+    external: true
+    name: nuvitae-codex-direct-oauth-t199-key-live
+  t199-credentials-live:
+    external: true
+    name: nuvitae-codex-direct-oauth-t199-credentials-live

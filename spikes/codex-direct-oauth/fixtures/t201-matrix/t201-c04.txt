@@ -1,0 +1,21 @@
+[page=1 item=001] Eli Synthetic
+[page=1 item=002] PDF-derived extraction fixture; all content is fictional.
+[page=1 item=003] eli.synthetic@example.invalid
+[page=1 item=004] Example Coast, Fictionland
+[page=1 item=005] SUMMARY
+[page=1 item=006] Systems designer who simplifies fictional approval workflows.
+[page=1 item=007] EXPERIENCE
+[page=1 item=008] Lantern Sample Works (synthetic employer)
+[page=1 item=009] Systems Designer
+[page=1 item=010] April 2022 - December 2024
+[page=1 item=011] - Mapped 18 fictional approval paths.
+[page=1 item=012] - Wrote JSON checks for 300 sample records.
+[page=1 item=013] - “Operational resilience” is a vague source phrase requiring review.
+[page=1 item=014] EDUCATION
+[page=1 item=015] Institute of Fictional Design
+[page=1 item=016] Diploma in Systems Design
+[page=1 item=017] 2019–2022
+[page=1 item=018] SKILLS: JSON; Mapping; Testing
+[page=1 item=019] LANGUAGES: English — fluent; French — basic
+[page=1 item=020] CERTIFICATION: Sample Safety Mark, 2024
+[page=1 item=021] ABSENT: phone, employer location, grade, issuer, employment type.

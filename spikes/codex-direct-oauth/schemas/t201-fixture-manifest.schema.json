@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nuvitae.invalid/spikes/codex-direct-oauth/t201-fixture-manifest.schema.json",
+  "title": "T201 synthetic fixture manifest",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["schema_version", "fixture_id", "fixture_classification", "document_language", "language_category", "source_format_category", "layout_category", "extraction_format", "expected_section_counts", "expected_item_counts", "exact_facts", "intentionally_absent_fields", "ambiguous_facts", "forbidden_inferences", "thresholds"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "fixture_id": { "type": "string", "pattern": "^T201-C0[1-6]$" },
+    "fixture_classification": { "const": "synthetic" },
+    "document_language": { "type": "string", "minLength": 1 },
+    "language_category": { "type": "string", "minLength": 1 },
+    "source_format_category": { "type": "string", "minLength": 1 },
+    "layout_category": { "type": "string", "minLength": 1 },
+    "extraction_format": { "type": "object", "required": ["kind", "coordinate_system"] },
+    "expected_section_counts": { "type": "object", "required": ["basics", "work_experiences", "education", "skills", "languages", "certifications"] },
+    "expected_item_counts": { "type": "object", "required": ["work_experience_highlights", "warnings_or_ambiguities_minimum"] },
+    "exact_facts": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["path", "value", "priority", "line"] } },
+    "intentionally_absent_fields": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "ambiguous_facts": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["id", "source_line", "text", "expected_handling"] } },
+    "forbidden_inferences": { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["id", "forbidden_values"] } },
+    "thresholds": { "type": "object", "required": ["minimum_exact_fact_recall", "required_high_priority_fact_recall"] }
+  }
+}

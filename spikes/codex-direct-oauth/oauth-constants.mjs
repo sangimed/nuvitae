@@ -47,11 +47,39 @@ export const CODEX_TRANSPORT = Object.freeze({
   originator: "openclaw",
   userAgent: "nuvitae-t200-codex-direct-oauth-spike/0.0.0",
   marker: "NUVITAE_T200_OK",
+  requestMaxBytes: 65536,
   requestTimeoutMs: 30000,
   idleTimeoutMs: 15000,
   responseMaxBytes: 262144,
   eventMaxCount: 80,
   normalizedOutputMaxBytes: 8192,
+});
+
+export const CODEX_TRANSPORT_HARD_LIMITS = Object.freeze({
+  responseCompressedMaxBytes: 1048576,
+  responseDecompressedMaxBytes: 1048576,
+  eventMaxBytes: 262144,
+  eventMaxCount: 4096,
+  normalizedOutputMaxBytes: 65536,
+  structuredJsonMaxBytes: 65536,
+});
+
+export const CODEX_T200_TRANSPORT_LIMITS = Object.freeze({
+  responseCompressedMaxBytes: CODEX_TRANSPORT.responseMaxBytes,
+  responseDecompressedMaxBytes: CODEX_TRANSPORT.responseMaxBytes,
+  eventMaxBytes: CODEX_TRANSPORT.responseMaxBytes,
+  eventMaxCount: CODEX_TRANSPORT.eventMaxCount,
+  normalizedOutputMaxBytes: CODEX_TRANSPORT.normalizedOutputMaxBytes,
+  structuredJsonMaxBytes: CODEX_TRANSPORT.normalizedOutputMaxBytes,
+});
+
+export const CODEX_T201_TRANSPORT_LIMITS = Object.freeze({
+  responseCompressedMaxBytes: 1048576,
+  responseDecompressedMaxBytes: 1048576,
+  eventMaxBytes: 262144,
+  eventMaxCount: 4096,
+  normalizedOutputMaxBytes: 65536,
+  structuredJsonMaxBytes: 65536,
 });
 
 export const SAFE_FINAL_STATES = Object.freeze({
