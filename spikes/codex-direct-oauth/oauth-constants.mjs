@@ -40,6 +40,20 @@ export const NETWORK_LIMITS = Object.freeze({
   relayMaxConnections: 8,
 });
 
+export const CODEX_TRANSPORT = Object.freeze({
+  backendOrigin: "https://chatgpt.com",
+  backendPath: "/backend-api/codex/responses",
+  model: "gpt-5.6-sol",
+  originator: "openclaw",
+  userAgent: "nuvitae-t200-codex-direct-oauth-spike/0.0.0",
+  marker: "NUVITAE_T200_OK",
+  requestTimeoutMs: 30000,
+  idleTimeoutMs: 15000,
+  responseMaxBytes: 262144,
+  eventMaxCount: 80,
+  normalizedOutputMaxBytes: 8192,
+});
+
 export const SAFE_FINAL_STATES = Object.freeze({
   success: "success_credentials_destroyed",
   incomplete: "incomplete_cleaned_up",

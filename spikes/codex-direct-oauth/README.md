@@ -58,3 +58,17 @@ The broker prints the full authorization URL only to the live terminal. The
 parent lifecycle runner receives only booleans, sanitized redirect metadata, and
 safe categories. The first live-attempt JSON is archived before the second live
 attempt writes current evidence.
+
+Run the T200 live direct invocation proof using the preserved T199 volumes:
+
+```sh
+sh spikes/codex-direct-oauth/run-t200-live.sh
+```
+
+T200 does not publish callback ports and does not perform browser OAuth. It
+builds a disposable image, runs the broker as UID 1000 with the T199 key volume
+mounted read-only and the T199 credential volume mounted read/write, performs at
+most one refresh only when the encrypted access credential is near expiry, then
+executes one fixed synthetic Codex Responses request for `NUVITAE_T200_OK`.
+Evidence is sanitized and written to
+`spikes/codex-direct-oauth/evidence/codex-direct-oauth-t200-invocation.json`.
