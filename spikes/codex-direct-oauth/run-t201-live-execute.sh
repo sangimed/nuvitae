@@ -48,7 +48,11 @@ stdout_file="$result_dir/broker.stdout"
 stderr_file="$result_dir/broker.stderr"
 reader_stdout_file="$result_dir/reader.stdout"
 reader_stderr_file="$result_dir/reader.stderr"
-cleanup() { rm -rf "$result_dir"; }
+cleanup() {
+  if [ "${NUVITAE_T201_KEEP_TMP:-0}" != "1" ]; then
+    rm -rf "$result_dir"
+  fi
+}
 trap cleanup EXIT HUP INT TERM
 chmod 700 "$result_dir"
 runner_run_id_hash=$(node --input-type=module -e 'import { generateRunnerRunIdHash } from "./lib/t201-live-runner-evidence.mjs"; process.stdout.write(generateRunnerRunIdHash());')
