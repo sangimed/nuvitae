@@ -34,6 +34,15 @@ if lsof -nP -iTCP:1455 -sTCP:LISTEN >/dev/null 2>&1; then
   exit 1
 fi
 
+# This credential-free gate verifies that the image built by Compose is the
+# image actually used by the rootless live service before preserved volumes are
+# even inspected or mounted. It prevents a stale pre-rootless-result image from
+# reaching the semantic broker.
+if ! sh ./run-t201-live-result-channel-preflight.sh >/dev/null; then
+  echo "credential-free T201 result-channel preflight failed; refusing live semantic run" >&2
+  exit 1
+fi
+
 docker volume inspect "$key_volume" >/dev/null
 docker volume inspect "$credential_volume" >/dev/null
 docker compose build t201-semantic t201-result-reader >/dev/null

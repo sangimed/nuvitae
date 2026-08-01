@@ -11,7 +11,9 @@ import {
   verifyPreparedResultDirectory,
   writeAtomicBrokerResult,
 } from "../lib/t201-broker-result-channel.mjs";
-import { parseReaderDiagnostics, processT201RunnerEvidence } from "../lib/t201-live-runner-evidence.mjs";
+import { parseReaderDiagnostics, processT201RunnerEvidence, runnerExitCode } from "../lib/t201-live-runner-evidence.mjs";
+import { cleanupResultChannel, resultPaths } from "../lib/t201-result-channel-diagnostic.mjs";
+import { compareTopologies, normalizeTopology, staleImageDetected } from "../lib/t201-result-channel-topology.mjs";
 
 const runId = "a".repeat(32);
 const startedAt = "2026-08-01T12:00:00.000Z";
@@ -162,4 +164,53 @@ test("reader diagnostics retain only runtime identity, file privacy, and safe fa
     reader_exit_code: 1, reader_state: "safe_reader_failure", reader_effective_uid: null, reader_effective_gid: null,
     final_file_mode: null, same_filesystem: null, failure_operation: "verify_file_mode", failure_errno: "EPERM",
   });
+});
+
+test("live preflight paths retain the mounted result root", () => {
+  const paths = resultPaths("/spike/result/abcd/result.json");
+  assert.equal(paths.mount, "/spike/result");
+  assert.equal(paths.mountParent, "/spike");
+  assert.equal(paths.runDirectory, "/spike/result/abcd");
+  assert.throws(() => resultPaths("/var/tmp/abcd/result.json"), /invalid_result_mount_path/);
+});
+
+test("normalized topology comparison is sanitized and detects service, result path, and mount differences", () => {
+  const inspect = { Config: { Image: "opaque-image-id", User: "spike", WorkingDir: "/spike", Cmd: ["node", "probe"], Env: ["NUVITAE_T201_RESULT_PATH=/spike/result/a/result.json"] }, Mounts: [{ Type: "volume", Name: "opaque-volume", Destination: "/spike/result", RW: true, Driver: "local" }] };
+  const probe = { identity: { uid: 101, gid: 101 }, records: [
+    { operation: "stat_result_mount", after: { uid: 0, gid: 0, mode: 0o755, dev: 1 } },
+    { operation: "stat_result_mount_parent", after: { uid: 0, gid: 0, mode: 0o755, dev: 1 } },
+  ] };
+  const offline = normalizeTopology({ label: "offline", service: "t201-semantic", composeProject: "opaque-project", inspect, imageDigest: "image", probe });
+  const live = { ...offline, label: "live", service: "incorrect-service", result_path_environment: { NUVITAE_T201_RESULT_PATH: "/spike/result/wrong/result.json" } };
+  const comparison = compareTopologies(offline, live);
+  assert.equal(comparison.equal, false);
+  assert.deepEqual(comparison.differences.map((item) => item.field), ["service", "result_path_environment"]);
+  assert.notEqual(offline.result_mounts[0].source_hash, "opaque-volume");
+});
+
+test("stale image detection rejects a launched image distinct from the image selected for the preflight", () => {
+  assert.equal(staleImageDetected({ builtImageDigest: "same", containerImage: "same" }), false);
+  assert.equal(staleImageDetected({ builtImageDigest: "built", containerImage: "stale" }), true);
+});
+
+test("runner returns non-zero after atomic failed-attempt evidence and zero only for a qualifying success", () => {
+  assert.equal(runnerExitCode({ case_pass: false }), 1);
+  assert.equal(runnerExitCode({ case_pass: true }), 0);
+  assert.equal(runnerExitCode({ case_pass: true }, false), 1);
+});
+
+test("credential-free cleanup records both successful and failed lifecycle operations", async () => {
+  await fs.mkdir("/tmp/t201-result", { recursive: true, mode: 0o700 });
+  const root = await fs.mkdtemp("/tmp/t201-result/cleanup-");
+  await ownAsRuntime(root);
+  const run = path.join(root, "run");
+  await fs.mkdir(run, { mode: 0o700 });
+  const resultPath = path.join(run, "result.json");
+  await fs.writeFile(resultPath, "{}\n", { mode: 0o600 });
+  const success = await cleanupResultChannel(resultPath);
+  assert.equal(success.first_failure, null);
+  const failure = await cleanupResultChannel(resultPath);
+  assert.equal(failure.first_failure.operation, "unlink_result");
+  assert.equal(failure.first_failure.errno, "ENOENT");
+  await fs.rm(root, { recursive: true, force: true });
 });

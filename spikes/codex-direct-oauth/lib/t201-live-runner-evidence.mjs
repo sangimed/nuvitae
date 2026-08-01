@@ -519,6 +519,12 @@ export async function processT201RunnerEvidence({
   return writeEvidenceAtomic(evidencePath, evidence);
 }
 
+// Evidence existence is not a success signal: a failed attempt deliberately
+// writes atomic evidence before the parent returns a non-zero status.
+export function runnerExitCode(evidence, evidenceWriteSucceeded = true) {
+  return evidenceWriteSucceeded && evidence?.case_pass === true ? 0 : 1;
+}
+
 const isMain = process.argv[1] === fileURLToPath(import.meta.url);
 if (isMain) {
   const [
@@ -557,5 +563,5 @@ if (isMain) {
     readerStderrPath: process.argv[16],
     readerExitCode: Number(process.argv[17]),
   });
-  process.exit(evidence.case_pass === true ? 0 : 1);
+  process.exit(runnerExitCode(evidence));
 }
