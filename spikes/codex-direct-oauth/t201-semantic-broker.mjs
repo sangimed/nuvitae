@@ -19,7 +19,6 @@ import {
 import {
   buildLocalInputDiagnostics,
   buildT201Prompt,
-  buildValidSyntheticResult,
   evaluateModelText,
   fixtureHash,
   loadT201Artifacts,
@@ -27,20 +26,22 @@ import {
   safeErrorCategory,
   safeEvaluationProjection,
   structuredJsonSizeAudit,
+  T201_ARTIFACT_PATHS,
 } from "./lib/t201-semantic-evaluator.mjs";
+import { buildValidT201MatrixResult, evaluateT201MatrixCase, loadT201MatrixCase } from "./lib/t201-matrix-evaluator.mjs";
+import { emitBrokerResult } from "./lib/t201-broker-result-channel.mjs";
 import { CODEX_T201_TRANSPORT_LIMITS, CODEX_TRANSPORT, NETWORK_LIMITS, OAUTH, UPSTREAM_REVISIONS } from "./oauth-constants.mjs";
 
 const keyPath = "/run/t199-key/master.key";
 const recordPath = "/spike/credentials/credential.json";
 const bindings = { ownerNamespace: "live-t199-owner", connectionId: "live-t199-connection", provider: "openai-codex" };
 const expirySkewMs = 120000;
+const CASE_ID = "T201-C02";
 const runnerRunIdHash = /^[a-f0-9]{32,64}$/.test(process.env.NUVITAE_T201_RUN_ID_HASH ?? "")
   ? process.env.NUVITAE_T201_RUN_ID_HASH
   : "missing_runner_run_id";
 
-function emit(value) {
-  process.stdout.write(`${JSON.stringify(value)}\n`);
-}
+const emit = emitBrokerResult;
 
 function safeError(error) {
   const message = safeErrorCategory(error?.safeCategory ?? error?.message);
@@ -161,11 +162,44 @@ function proxyEnvironmentPresence(env = process.env) {
   return Object.fromEntries(names.map((name) => [name, Object.prototype.hasOwnProperty.call(env, name)]));
 }
 
+async function loadSelectedArtifacts() {
+  if (process.env.NUVITAE_T201_CASE_ID !== CASE_ID) {
+    throw Object.assign(new Error("transport_failure"), { safeCategory: "transport_failure", primary_failure_phase: "case_selection" });
+  }
+  const selected = await loadT201MatrixCase(CASE_ID);
+  const schema = JSON.parse(await fs.readFile(T201_ARTIFACT_PATHS.schemaPath, "utf8"));
+  return { ...selected, schema };
+}
+
+function evaluateSelectedModelText(modelText, artifacts) {
+  const parsed = evaluateModelText(modelText, artifacts.fixture, artifacts.manifest);
+  if (!parsed.parsed) return parsed;
+  const matrix = evaluateT201MatrixCase({ ...artifacts, output: parsed.parsed });
+  const absentCount = artifacts.manifest.intentionally_absent_fields.filter((path) => {
+    const parts = path.replace(/\[(\d+)\]/g, ".$1").split(".");
+    let value = parsed.parsed;
+    for (const part of parts) value = value?.[part];
+    return value === null || value === undefined;
+  }).length;
+  return {
+    ...parsed,
+    metrics: {
+      ...parsed.metrics,
+      ...matrix.metrics,
+      JSON_only_valid: true,
+      ambiguous_fact_handling_count: matrix.metrics.ambiguity_handling_pass ? artifacts.manifest.ambiguous_facts.length : 0,
+      null_for_absent_fields_count: absentCount,
+      source_grounding_pass: matrix.metrics.grounding_pass,
+    },
+    error_categories: matrix.errors,
+  };
+}
+
 try {
-  const artifacts = await loadT201Artifacts();
+  const artifacts = await loadSelectedArtifacts();
   const prompt = buildT201Prompt(artifacts);
   const requestPayload = buildSemanticCodexRequest(prompt);
-  const goldenStructuredJsonAudit = structuredJsonSizeAudit(await buildValidSyntheticResult());
+  const goldenStructuredJsonAudit = structuredJsonSizeAudit(buildValidT201MatrixResult(artifacts.fixture, artifacts.manifest));
   const serializedRequestBytes = Buffer.byteLength(JSON.stringify(requestPayload.body), "utf8");
   const localInputDiagnostics = buildLocalInputDiagnostics({
     fixture: artifacts.fixture,
@@ -222,7 +256,7 @@ try {
     transportManifestPaths,
   );
   const evaluation = invocation.raw_model_text
-    ? evaluateModelText(invocation.raw_model_text, artifacts.fixture, artifacts.manifest)
+    ? evaluateSelectedModelText(invocation.raw_model_text, artifacts)
     : notEvaluatedT201Projection({
         primaryFailureCategory: invocation.primary_failure_category === "output_too_large" ? "output_too_large" : "transport_failure",
         primaryFailurePhase: invocation.primary_failure_phase ?? "safe_unknown_phase",
@@ -243,7 +277,7 @@ try {
     after.payload?.access_token &&
     invocation.response_protocol_valid === true;
 
-  emit({
+  await emit({
     evidence_classification: "live_t201_semantic_parsing",
     observation_timestamp: new Date().toISOString(),
     runner_run_id_hash: runnerRunIdHash,
@@ -328,6 +362,8 @@ try {
     forbidden_inference_count: safeProjection.forbidden_inference_count,
     missing_evidence_count: safeProjection.missing_evidence_count,
     invalid_evidence_count: safeProjection.invalid_evidence_count,
+    ambiguity_handling_pass: safeProjection.ambiguous_fact_handling_count === artifacts.manifest.ambiguous_facts.length,
+    absent_optional_fields_pass: safeProjection.null_for_absent_fields_count === artifacts.manifest.intentionally_absent_fields.length,
     no_invention_pass: safeProjection.no_invention_pass,
     grounding_pass: safeProjection.source_grounding_pass,
     parsing_pass: safeProjection.parsing_pass,
@@ -366,7 +402,7 @@ try {
     primaryFailurePhase: error.primary_failure_phase ?? "safe_unknown_phase",
     secondaryFailureCategories: [],
   }));
-  emit({
+  await emit({
     evidence_classification: "live_t201_semantic_parsing",
     observation_timestamp: new Date().toISOString(),
     runner_run_id_hash: runnerRunIdHash,

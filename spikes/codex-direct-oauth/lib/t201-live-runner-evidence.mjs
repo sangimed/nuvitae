@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { containsSecretLikeValue } from "./sanitize.mjs";
+import { inspectBrokerResultChannel } from "./t201-broker-result-channel.mjs";
 
 const DEFAULT_PHASE = "safe_unknown_phase";
 const DEFAULT_FAILURE = "safe_unknown_failure";
@@ -79,7 +80,7 @@ export function brokerExitStatusCategory({ brokerExitCode, hasValidCurrentResult
   return "unexpected_exit";
 }
 
-export function validateBrokerResult(result, { runnerRunIdHash, runnerStartedAt }) {
+export function validateBrokerResult(result, { runnerRunIdHash, runnerStartedAt, expectedCaseId }) {
   const reasons = [];
   if (!isPlainObject(result)) reasons.push("result_not_object");
   if (!allowedRunIdPattern.test(runnerRunIdHash)) reasons.push("runner_run_id_invalid");
@@ -88,6 +89,9 @@ export function validateBrokerResult(result, { runnerRunIdHash, runnerStartedAt 
   }
   if (isPlainObject(result) && result.runner_run_id_hash !== runnerRunIdHash) {
     reasons.push("runner_run_id_mismatch");
+  }
+  if (expectedCaseId && result?.fixture_identifier !== expectedCaseId) {
+    reasons.push("fixture_identifier_mismatch");
   }
   const brokerTimestampMs = parseTimestampMs(result?.observation_timestamp);
   const runnerStartedMs = parseTimestampMs(runnerStartedAt);
@@ -102,7 +106,7 @@ export function validateBrokerResult(result, { runnerRunIdHash, runnerStartedAt 
   return { ok: reasons.length === 0, reasons };
 }
 
-export function parseCurrentBrokerResult(logText, { runnerRunIdHash, runnerStartedAt }) {
+export function parseCurrentBrokerResult(logText, { runnerRunIdHash, runnerStartedAt, expectedCaseId }) {
   const candidates = [];
   for (const line of String(logText ?? "").split(/\r?\n/)) {
     const trimmed = line.trim();
@@ -116,7 +120,7 @@ export function parseCurrentBrokerResult(logText, { runnerRunIdHash, runnerStart
 
   let firstInvalidCurrent = null;
   for (const candidate of candidates) {
-    const validation = validateBrokerResult(candidate, { runnerRunIdHash, runnerStartedAt });
+    const validation = validateBrokerResult(candidate, { runnerRunIdHash, runnerStartedAt, expectedCaseId });
     if (validation.ok) {
       return { ok: true, result: candidate, resultReceived: true, schemaValid: true, rejectionReasons: [] };
     }
@@ -228,6 +232,8 @@ function projectSafeResult(result) {
     forbidden_inference_count: countValue(result.forbidden_inference_count),
     missing_evidence_count: countValue(result.missing_evidence_count),
     invalid_evidence_count: countValue(result.invalid_evidence_count),
+    ambiguity_handling_pass: booleanValue(result.ambiguity_handling_pass),
+    absent_optional_fields_pass: booleanValue(result.absent_optional_fields_pass),
     no_invention_pass: nullableBoolean(result.no_invention_pass),
     grounding_pass: nullableBoolean(result.grounding_pass),
     parsing_pass: booleanValue(result.parsing_pass),
@@ -265,6 +271,8 @@ export function buildFinalEvidence({
   callbackPortAbsent,
   secretScanResult,
   logSecretScanResult,
+  caseId,
+  resultChannel,
   generatedAt = new Date(),
   parseOutcome,
 }) {
@@ -285,14 +293,24 @@ export function buildFinalEvidence({
     secret_scan_result: stringValue(secretScanResult, "failed"),
     log_secret_scan_result: stringValue(logSecretScanResult, "failed"),
     evidence_atomic_replace_succeeded: false,
+    broker_process_exit_code: brokerExitCode,
+    result_channel_state: resultChannel?.result_state ?? "legacy_stdout_log",
+    broker_stdout_state: resultChannel?.stdout_state ?? "not_measured",
+    broker_stdout_byte_count: resultChannel?.stdout_byte_count ?? null,
+    broker_stderr_byte_count: resultChannel?.stderr_byte_count ?? null,
+    broker_stdout_sha256: resultChannel?.stdout_sha256 ?? null,
+    broker_stderr_sha256: resultChannel?.stderr_sha256 ?? null,
+    broker_stderr_safe_category: resultChannel?.stderr_safe_category ?? "not_measured",
   };
 
   if (!hasValidCurrentResult) {
     return {
       evidence_classification: EVIDENCE_CLASSIFICATION,
+      fixture_identifier: caseId ?? "not_evaluated",
+      fixture_classified_as_synthetic: caseId === "T201-C02",
       ...common,
-      primary_failure_category: "runner_failure",
-      primary_failure_phase: "broker_result_parse",
+      primary_failure_category: resultChannel?.infrastructure_category ?? "runner_failure",
+      primary_failure_phase: resultChannel ? "broker_result_channel" : "broker_result_parse",
       model_output_received: false,
       structured_output_evaluated: false,
       semantic_quality_evaluated: false,
@@ -301,6 +319,9 @@ export function buildFinalEvidence({
       account_identifier_exposed_to_parent: false,
       credential_exposure_boolean: false,
       account_identifier_exposure_boolean: false,
+      raw_model_response_persisted: false,
+      raw_response_persisted: false,
+      encrypted_state_preserved: true,
       invocation_attempted: false,
       invocation_succeeded: false,
       response_protocol_valid: false,
@@ -315,6 +336,7 @@ export function buildFinalEvidence({
       average_sse_event_bytes_category: "no_events",
       parsing_pass: false,
       safe_final_state: "runner_failure",
+      case_pass: false,
       t201_complete: false,
     };
   }
@@ -347,7 +369,8 @@ export function buildFinalEvidence({
     evidence.secret_scan_result === "passed" &&
     evidence.log_secret_scan_result === "passed";
   evidence.safe_final_state = complete ? "complete" : evidence.safe_final_state === "complete" ? DEFAULT_FAILURE : evidence.safe_final_state;
-  evidence.t201_complete = complete;
+  evidence.case_pass = complete;
+  evidence.t201_complete = caseId === "T201-C02" ? false : complete;
   return evidence;
 }
 
@@ -374,6 +397,36 @@ export async function writeEvidenceAtomic(evidencePath, evidence) {
   return nextEvidence;
 }
 
+export async function updateC02MatrixEvidence({ evidencePath, matrixPath }) {
+  const evidence = JSON.parse(await fs.readFile(evidencePath, "utf8"));
+  if (evidence.fixture_identifier !== "T201-C02" || evidence.t201_complete !== false) {
+    throw new Error("invalid_c02_evidence_for_matrix_update");
+  }
+  const matrix = JSON.parse(await fs.readFile(matrixPath, "utf8"));
+  if (!Array.isArray(matrix.cases) || matrix.cases.length !== 6) throw new Error("invalid_t201_matrix");
+  const target = matrix.cases.find((item) => item.case_id === "T201-C02");
+  if (!target) throw new Error("missing_t201_c02_matrix_entry");
+  const metricKeys = [
+    "schema_valid", "expected_section_recall", "expected_item_recall", "exact_fact_recall",
+    "high_priority_fact_recall", "unsupported_fact_count", "forbidden_inference_count",
+    "missing_evidence_count", "invalid_evidence_count", "grounding_pass", "no_invention_pass", "parsing_pass",
+  ];
+  target.safe_metrics = {
+    ...Object.fromEntries(metricKeys.map((key) => [key, evidence.evaluation_metrics?.[key] ?? null])),
+    ambiguity_handling_pass: evidence.ambiguity_handling_pass === true,
+  };
+  target.pass = evidence.case_pass === true;
+  target.privacy_safe =
+    evidence.raw_credentials_exposed_to_parent === false &&
+    evidence.account_identifier_exposed_to_parent === false &&
+    evidence.raw_model_response_persisted === false;
+  target.credential_isolation = evidence.encrypted_state_preserved === true && evidence.broker_removed === true;
+  matrix.matrix_state = "partially_live_evaluated";
+  matrix.matrix_pass = false;
+  await writeEvidenceAtomic(matrixPath, matrix);
+  return matrix;
+}
+
 export async function processT201RunnerEvidence({
   evidencePath,
   logsPath,
@@ -384,10 +437,24 @@ export async function processT201RunnerEvidence({
   callbackPortAbsent,
   secretScanResult,
   logSecretScanResult,
+  caseId,
+  resultPath,
+  stdoutPath,
+  stderrPath,
+  processStartFailed = false,
   generatedAt,
 }) {
-  const logText = await fs.readFile(logsPath, "utf8").catch(() => "");
-  const parseOutcome = parseCurrentBrokerResult(logText, { runnerRunIdHash, runnerStartedAt });
+  const resultChannel = resultPath
+    ? await inspectBrokerResultChannel({ resultPath, stdoutPath, stderrPath, brokerExitCode, processStartFailed })
+    : null;
+  const logText = resultChannel ? "" : await fs.readFile(logsPath, "utf8").catch(() => "");
+  const parsed = resultChannel?.result;
+  const validation = parsed ? validateBrokerResult(parsed, { runnerRunIdHash, runnerStartedAt, expectedCaseId: caseId }) : null;
+  const parseOutcome = resultChannel
+    ? validation?.ok
+      ? { ok: true, result: parsed, resultReceived: true, schemaValid: true, rejectionReasons: [], infrastructureCategory: null }
+      : { ok: false, result: null, resultReceived: resultChannel.result_state !== "empty_result", schemaValid: false, rejectionReasons: validation?.reasons ?? [resultChannel.infrastructure_category], infrastructureCategory: resultChannel.infrastructure_category }
+    : parseCurrentBrokerResult(logText, { runnerRunIdHash, runnerStartedAt, expectedCaseId: caseId });
   const evidence = buildFinalEvidence({
     brokerResult: parseOutcome.ok ? parseOutcome.result : null,
     brokerExitCode,
@@ -397,6 +464,8 @@ export async function processT201RunnerEvidence({
     callbackPortAbsent,
     secretScanResult,
     logSecretScanResult,
+    caseId,
+    resultChannel,
     generatedAt,
     parseOutcome,
   });
@@ -417,6 +486,11 @@ if (isMain) {
     secretScanResult,
     logSecretScanResult,
     brokerExitCodeValue,
+    caseId,
+    resultPath,
+    stdoutPath,
+    stderrPath,
+    processStartFailedValue,
   ] = process.argv;
   const evidence = await processT201RunnerEvidence({
     evidencePath,
@@ -428,6 +502,11 @@ if (isMain) {
     callbackPortAbsent: callbackAbsentValue === "true",
     secretScanResult,
     logSecretScanResult,
+    caseId,
+    resultPath,
+    stdoutPath,
+    stderrPath,
+    processStartFailed: processStartFailedValue === "true",
   });
-  process.exit(evidence.t201_complete === true ? 0 : 1);
+  process.exit(evidence.case_pass === true ? 0 : 1);
 }
