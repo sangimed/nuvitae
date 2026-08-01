@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { test } from "node:test";
 import { validateCampaignBExecutionTopology } from "../lib/t201-campaign-b-runtime.mjs";
-import { assertImmutableImageReference, prepareImmutableT201Image, verifyPreparedT201Image } from "../lib/t201-image-contract.mjs";
+import { assertImmutableImageReference, CAMPAIGN_B_EXECUTION_TARGET, prepareImmutableT201Image, validateCampaignBExecutionEntrypoint, verifyPreparedT201Image } from "../lib/t201-image-contract.mjs";
 import { runCredentialFreePreflight } from "../lib/t201-preflight-diagnostics.mjs";
 
 const imageId = `sha256:${"b".repeat(64)}`;
@@ -36,6 +36,24 @@ test("mutable tags, unset input, root images, and stale local identities fail cl
   await assert.rejects(() => verifyPreparedT201Image({ root, execute: imageExecutor([]) }), /immutable_image_reference_required/);
   await assert.rejects(() => prepareImmutableT201Image({ root, execute: imageExecutor([], { user: "root" }) }), /immutable_image_non_root_user_required/);
   await assert.rejects(() => verifyPreparedT201Image({ root, preparedImage, execute: imageExecutor([], { image: `sha256:${"c".repeat(64)}` }) }), /immutable_image_identity_mismatch/);
+});
+
+test("Campaign B resolves its committed canonical execution target before Docker or credential access", async () => {
+  const calls = [];
+  await assert.rejects(() => validateCampaignBExecutionEntrypoint({
+    root,
+    target: CAMPAIGN_B_EXECUTION_TARGET,
+    exists: async () => { calls.push("exists"); throw Object.assign(new Error("missing"), { code: "ENOENT" }); },
+    isTracked: async () => { calls.push("tracked"); return true; },
+  }), (error) => error.code === "ENOENT" && error.target === CAMPAIGN_B_EXECUTION_TARGET);
+  assert.deepEqual(calls, ["exists"]);
+
+  await assert.rejects(() => validateCampaignBExecutionEntrypoint({
+    root,
+    exists: async () => { calls.push("local-exists"); },
+    isTracked: async () => { calls.push("local-tracked"); return false; },
+  }), (error) => error.code === "ENOTCOMMITTED");
+  assert.deepEqual(calls.slice(-2), ["local-exists", "local-tracked"]);
 });
 
 test("preflight requires the prepared ID, never builds or pulls, uses it for broker and reader, and mounts no credentials", async () => {

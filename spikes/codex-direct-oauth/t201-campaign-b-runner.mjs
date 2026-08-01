@@ -2,9 +2,16 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { executeDockerCommand, runCredentialFreePreflight } from "./lib/t201-preflight-diagnostics.mjs";
-import { prepareImmutableT201Image, safePreparedImageEvidence, T201_IMMUTABLE_IMAGE_ENV, verifyPreparedT201Image } from "./lib/t201-image-contract.mjs";
+import { prepareImmutableT201Image, safePreparedImageEvidence, T201_IMMUTABLE_IMAGE_ENV, validateCampaignBExecutionEntrypoint, verifyPreparedT201Image } from "./lib/t201-image-contract.mjs";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
+try {
+  await validateCampaignBExecutionEntrypoint({ root });
+} catch (error) {
+  process.stderr.write(`campaign_b_execution_target_resolution_failed:${error?.code ?? "UNKNOWN"}\n`);
+  process.exitCode = 1;
+  process.exit();
+}
 const preparedImage = await prepareImmutableT201Image({ root, execute: executeDockerCommand });
 const preflightImage = process.env.NUVITAE_T201_CAMPAIGN_B_INJECT_IMAGE_MISMATCH === "1"
   ? { ...preparedImage, reference: `${preparedImage.reference.slice(0, -1)}${preparedImage.reference.endsWith("0") ? "1" : "0"}` }

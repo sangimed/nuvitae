@@ -1,8 +1,49 @@
 import crypto from "node:crypto";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { spawn } from "node:child_process";
 
 export const T201_IMMUTABLE_IMAGE_ENV = "NUVITAE_T201_IMMUTABLE_IMAGE";
+export const CAMPAIGN_B_EXECUTION_TARGET = "run-t201-live-execute.sh";
 const IMMUTABLE_IMAGE_ID = /^sha256:[a-f0-9]{64}$/;
 const safeHash = (value) => crypto.createHash("sha256").update(String(value)).digest("hex");
+
+function executionTargetError(message, code, target) {
+  const error = new Error(message);
+  error.code = code;
+  error.target = target;
+  return error;
+}
+
+async function trackedInGit(root, target) {
+  return await new Promise((resolve) => {
+    const child = spawn("git", ["ls-files", "--error-unmatch", "--", target], {
+      cwd: root, shell: false, stdio: ["ignore", "ignore", "ignore"],
+    });
+    child.once("error", () => resolve(false));
+    child.once("close", (code) => resolve(code === 0));
+  });
+}
+
+// Deliberately runs before image preparation: Campaign B has no local-only
+// script fallback and does not touch Docker or credential volumes on failure.
+export async function validateCampaignBExecutionEntrypoint({
+  root,
+  target = CAMPAIGN_B_EXECUTION_TARGET,
+  exists = (file) => fs.access(file),
+  isTracked = trackedInGit,
+} = {}) {
+  const relativeTarget = String(target ?? "");
+  try {
+    await exists(path.join(root, relativeTarget));
+  } catch {
+    throw executionTargetError("campaign_b_execution_target_missing", "ENOENT", relativeTarget);
+  }
+  if (!await isTracked(root, relativeTarget)) {
+    throw executionTargetError("campaign_b_execution_target_uncommitted", "ENOTCOMMITTED", relativeTarget);
+  }
+  return relativeTarget;
+}
 
 function commandFailure(operation, command) {
   const error = new Error(`immutable_image_${operation}_failed`);
