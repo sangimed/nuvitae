@@ -9,6 +9,8 @@ import { classifyDockerFailure, runCredentialFreePreflight, splitDockerAttachOut
 const digest = (value) => crypto.createHash("sha256").update(value).digest("hex");
 const runId = "f".repeat(32);
 const root = path.resolve(path.dirname(new URL("../compose.yml", import.meta.url).pathname));
+const imageId = `sha256:${"a".repeat(64)}`;
+const preparedImage = { reference: imageId, identity_hash: digest(imageId), declared_runtime_user_hash: digest("spike") };
 
 function commandResult({ exitCode = 0, stdout = "", stderr = "", processStarted = true, timedOut = false } = {}) {
   return {
@@ -38,17 +40,17 @@ function successfulExecutor() {
   let inspectCalls = 0;
   return async ({ args }) => {
     if (args.includes("config")) return commandResult({ stdout: JSON.stringify({ services: { "t201-semantic": {} } }) });
-    if (args.includes("image") && args.includes("inspect")) return commandResult({ stdout: JSON.stringify("sha256:fresh") });
+    if (args.includes("image") && args.includes("inspect")) return commandResult({ stdout: JSON.stringify([{ Id: imageId, Config: { User: "spike" } }]) });
     if (args.includes("inspect")) {
       inspectCalls += 1;
-      return commandResult({ stdout: JSON.stringify([{ Image: "sha256:fresh", Mounts: [{ Destination: "/spike/result", RW: true }] }]) });
+      return commandResult({ stdout: JSON.stringify([{ Image: imageId, Mounts: [{ Destination: "/spike/result", RW: true }] }]) });
     }
     if (args.includes("wait")) return commandResult({ stdout: "0\n" });
     if (args.includes("cp")) {
       await fs.writeFile(args.at(-1), JSON.stringify(probe()));
       return commandResult();
     }
-    if (args.includes("start")) return commandResult({ stdout: `${JSON.stringify(probe())}\n`, stderr: "safe diagnostic only\n" });
+    if (args.includes("start")) return commandResult({ stdout: args.some((value) => String(value).includes("reader")) ? "" : `${JSON.stringify(probe())}\n`, stderr: args.some((value) => String(value).includes("reader")) ? "safe_result_reader_success:1000:1000:600:same_filesystem\n" : "safe diagnostic only\n" });
     assert.ok(inspectCalls >= 0);
     return commandResult();
   };
@@ -62,14 +64,18 @@ async function withOutput(testBody) {
 
 test("credential-free preflight records the complete inspectable success lifecycle without credentials", async () => {
   await withOutput(async (outputPath) => {
-    const result = await runCredentialFreePreflight({ root, outputPath, runId, execute: successfulExecutor() });
+    const result = await runCredentialFreePreflight({ root, outputPath, runId, preparedImage, execute: successfulExecutor() });
     assert.equal(result.success, true);
     assert.equal(result.first_failure_operation, null);
     assert.equal(result.fresh_image_identity_hash, result.created_container_image_identity_hash);
     assert.equal(result.fresh_image_identity_hash, result.launched_container_image_identity_hash);
+    assert.equal(result.fresh_image_identity_hash, result.reader_created_container_image_identity_hash);
+    assert.equal(result.fresh_image_identity_hash, result.reader_launched_container_image_identity_hash);
     assert.equal(result.stale_image_detected, false);
     assert.equal(result.effective_uid, 1000);
     assert.equal(result.effective_gid, 1000);
+    assert.equal(result.reader_effective_uid, 1000);
+    assert.equal(result.reader_effective_gid, 1000);
     assert.equal(result.result_mount_present, true);
     assert.equal(result.result_mount_read_write, true);
     assert.equal(result.cleanup_container_removed, true);
@@ -85,7 +91,7 @@ test("credential-free preflight records the complete inspectable success lifecyc
 test("injected startup failure retains the first operation, safe exit code, null downstream values, and cleanup", async () => {
   await withOutput(async (outputPath) => {
     const result = await runCredentialFreePreflight({
-      root, outputPath, runId, execute: successfulExecutor(), injectFailure: "preflight_container_start",
+      root, outputPath, runId, preparedImage, execute: successfulExecutor(), injectFailure: "preflight_container_start",
     });
     assert.equal(result.success, false);
     assert.equal(result.first_failure_operation, "preflight_container_start");
@@ -109,7 +115,7 @@ test("process-start failure writes evidence before returning nonzero and does no
       root,
       outputPath,
       runId,
-      execute: async () => commandResult({ processStarted: false, exitCode: null, stderr: "ENOENT" }),
+      preparedImage, execute: async () => commandResult({ processStarted: false, exitCode: null, stderr: "ENOENT" }),
     });
     assert.equal(result.success, false);
     assert.equal(result.first_failure_operation, "compose_config_resolution");
@@ -157,18 +163,18 @@ test("Docker attach framing is decoded before strict JSON parsing and keeps stre
 test("empty JSON, malformed JSON, mixed Compose progress, stderr diagnostics, and cleanup cannot hide failure", async () => {
   await withOutput(async (outputPath) => {
     const empty = await runCredentialFreePreflight({
-      root, outputPath, runId, execute: async ({ args }) => args.includes("config") ? commandResult({ stdout: "" }) : commandResult(),
+      root, outputPath, runId, preparedImage, execute: async ({ args }) => args.includes("config") ? commandResult({ stdout: "" }) : commandResult(),
     });
     assert.equal(empty.first_failure_category, "empty_structured_output");
   });
   await withOutput(async (outputPath) => {
     const mixed = await runCredentialFreePreflight({
-      root, outputPath, runId, execute: async ({ args }) => args.includes("config") ? commandResult({ stdout: "progress\n{}\n" }) : commandResult(),
+      root, outputPath, runId, preparedImage, execute: async ({ args }) => args.includes("config") ? commandResult({ stdout: "progress\n{}\n" }) : commandResult(),
     });
     assert.equal(mixed.first_failure_category, "malformed_structured_output");
   });
   await withOutput(async (outputPath) => {
-    const result = await runCredentialFreePreflight({ root, outputPath, runId, execute: successfulExecutor(), injectFailure: "preflight_container_start" });
+    const result = await runCredentialFreePreflight({ root, outputPath, runId, preparedImage, execute: successfulExecutor(), injectFailure: "preflight_container_start" });
     assert.equal(result.cleanup_container_removed, true);
     assert.equal(result.first_failure_operation, "preflight_container_start");
   });

@@ -3,9 +3,10 @@ import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { assertImmutableImageReference, declaredRuntimeUserIsNonRoot, T201_IMMUTABLE_IMAGE_ENV } from "./t201-image-contract.mjs";
+import { parseReaderDiagnostics } from "./t201-live-runner-evidence.mjs";
 
 const OUTPUT_HASH_LIMIT = 64 * 1024;
-const IMAGE_NAME = "codex-direct-oauth-t201-semantic";
 const SERVICE = "t201-semantic";
 const RESULT_MOUNT = "/spike/result";
 
@@ -217,8 +218,8 @@ async function writeAtomically(file, result) {
   await fs.rename(temporary, file);
 }
 
-function overlayYaml({ containerName, readerContainerName, keyVolume, credentialVolume, resultVolume, resultPath, runId }) {
-  return `services:\n  ${SERVICE}:\n    container_name: ${containerName}\n    entrypoint: [\"node\"]\n    command: [\"t201-live-result-channel-preflight.mjs\"]\n    environment:\n      NUVITAE_T201_RESULT_PATH: ${resultPath}\n      NUVITAE_T201_RUN_ID_HASH: ${runId}\n      NUVITAE_T201_CASE_ID: T201-C02\n    volumes:\n      - type: volume\n        source: ${keyVolume}\n        target: /run/t199-key\n        read_only: true\n      - type: volume\n        source: ${credentialVolume}\n        target: /spike/credentials\n      - type: volume\n        source: ${resultVolume}\n        target: /spike/result\n  t201-result-reader:\n    container_name: ${readerContainerName}\n    environment:\n      NUVITAE_T201_RESULT_PATH: ${resultPath}\n    volumes:\n      - type: volume\n        source: ${resultVolume}\n        target: /spike/result\n        read_only: true\nvolumes:\n  ${keyVolume}:\n    external: true\n  ${credentialVolume}:\n    external: true\n  ${resultVolume}:\n    external: true\n`;
+function overlayYaml({ containerName, readerContainerName, resultVolume, resultPath, runId }) {
+  return `services:\n  ${SERVICE}:\n    container_name: ${containerName}\n    entrypoint: [\"node\"]\n    command: [\"t201-live-result-channel-preflight.mjs\"]\n    environment:\n      NUVITAE_T201_RESULT_PATH: ${resultPath}\n      NUVITAE_T201_RUN_ID_HASH: ${runId}\n      NUVITAE_T201_CASE_ID: T201-C02\n    volumes:\n      - type: volume\n        source: ${resultVolume}\n        target: /spike/result\n  t201-result-reader:\n    container_name: ${readerContainerName}\n    environment:\n      NUVITAE_T201_RESULT_PATH: ${resultPath}\n    volumes:\n      - type: volume\n        source: ${resultVolume}\n        target: /spike/result\n        read_only: true\nvolumes:\n  ${resultVolume}:\n    external: true\n`;
 }
 
 function pickResultMount(inspect) {
@@ -251,17 +252,17 @@ function safeProbeFromLog(value) {
 export async function runCredentialFreePreflight({
   root,
   outputPath,
+  preparedImage,
   execute = executeDockerCommand,
   runId = crypto.randomBytes(24).toString("hex"),
   injectFailure = process.env.NUVITAE_T201_PREFLIGHT_INJECT_FAILURE ?? null,
   composeProject = process.env.COMPOSE_PROJECT_NAME ?? "codex-direct-oauth",
 } = {}) {
+  const immutableReference = assertImmutableImageReference(preparedImage?.reference);
   const resolvedRoot = path.resolve(root ?? process.cwd());
   const composeFile = path.join(resolvedRoot, "compose.yml");
   const containerName = `t201-result-preflight-${runId}`;
   const readerContainerName = `t201-result-preflight-reader-${runId}`;
-  const keyVolume = `nuvitae-codex-direct-oauth-t201-diagnostic-key-${runId}`;
-  const credentialVolume = `nuvitae-codex-direct-oauth-t201-diagnostic-credentials-${runId}`;
   const resultVolume = `nuvitae-codex-direct-oauth-t201-result-${runId}`;
   const resultPath = `${RESULT_MOUNT}/${runId}/result.json`;
   const defaultOutput = path.join(resolvedRoot, ".tmp", "t201-live-preflight-last.json");
@@ -269,7 +270,7 @@ export async function runCredentialFreePreflight({
     diagnostic: "credential_free_exact_live_service_preflight",
     semantic_invocation_attempted: false,
     preserved_credentials_mounted: false,
-    credential_mounts_are_disposable_standins: true,
+    credential_mounts_are_disposable_standins: false,
     success: false,
     first_failure_operation: null,
     first_failure_exit_code: null,
@@ -281,9 +282,13 @@ export async function runCredentialFreePreflight({
     fresh_image_identity_hash: null,
     created_container_image_identity_hash: null,
     launched_container_image_identity_hash: null,
+    reader_created_container_image_identity_hash: null,
+    reader_launched_container_image_identity_hash: null,
     stale_image_detected: null,
     effective_uid: null,
     effective_gid: null,
+    reader_effective_uid: null,
+    reader_effective_gid: null,
     result_mount_present: null,
     result_mount_read_write: null,
     result_mount_owner_uid: null,
@@ -302,7 +307,7 @@ export async function runCredentialFreePreflight({
   };
   const rawByOperation = new Map();
   let overlayPath = null;
-  const volumes = [keyVolume, credentialVolume, resultVolume];
+  const volumes = [resultVolume];
   let containerCreated = false;
   let readerCreated = false;
   let outputWritten = false;
@@ -312,7 +317,7 @@ export async function runCredentialFreePreflight({
     if (injectFailure === base.operation) {
       raw = { process_started: true, timed_out: false, exit_code: 73, stdout: "", stderr: `injected_${base.operation}_failure`, stdout_byte_count: 0, stderr_byte_count: Buffer.byteLength(`injected_${base.operation}_failure`), stdout_hash: safeHash(Buffer.alloc(0)), stderr_hash: safeHash(Buffer.from(`injected_${base.operation}_failure`)) };
     } else {
-      raw = await execute({ executable: base.command[0], args: base.command.slice(1), cwd: resolvedRoot });
+      raw = await execute({ executable: base.command[0], args: base.command.slice(1), cwd: resolvedRoot, env: base.env });
     }
     const operation = sanitizedCommandResult(base, raw);
     rawByOperation.set(base.operation, { raw, operation });
@@ -326,7 +331,8 @@ export async function runCredentialFreePreflight({
     return operation;
   };
   const docker = (operation, args, expectedStructuredOutput = null) => record(commandRecord(operation, "docker", ["docker", ...args], expectedStructuredOutput));
-  const compose = (operation, args, expectedStructuredOutput = null) => record(commandRecord(operation, "docker_compose", ["docker", "compose", "--project-name", composeProject, "--file", composeFile, ...args], expectedStructuredOutput));
+  const composeEnvironment = { ...process.env, [T201_IMMUTABLE_IMAGE_ENV]: immutableReference };
+  const compose = (operation, args, expectedStructuredOutput = null) => record({ ...commandRecord(operation, "docker_compose", ["docker", "compose", "--project-name", composeProject, "--file", composeFile, ...args], expectedStructuredOutput), env: composeEnvironment });
   const failed = () => result.first_failure_operation !== null;
 
   try {
@@ -336,17 +342,22 @@ export async function runCredentialFreePreflight({
       result.first_failure_exit_code = 0;
       result.first_failure_category = "unknown_service";
     }
-    if (!failed()) await compose("fresh_image_build", ["build", SERVICE, "t201-result-reader"]);
     if (!failed()) {
-      const imageId = (await docker("fresh_image_inspection", ["image", "inspect", "--format", "{{json .Id}}", IMAGE_NAME], "json"))._parsed;
-      result.fresh_image_identity_hash = typeof imageId === "string" ? hashIdentity(imageId) : null;
+      const inspection = (await docker("prepared_image_reinspection", ["image", "inspect", immutableReference], "json"))._parsed;
+      const image = Array.isArray(inspection) ? inspection[0] : inspection;
+      result.fresh_image_identity_hash = hashIdentity(image?.Id);
+      if (image?.Id !== immutableReference || !declaredRuntimeUserIsNonRoot(image?.Config?.User)) {
+        result.first_failure_operation = "prepared_image_reinspection";
+        result.first_failure_exit_code = 0;
+        result.first_failure_category = "inspection_failure";
+      }
     }
     for (const volume of volumes) {
-      if (!failed()) await docker(`diagnostic_volume_creation_${volume === resultVolume ? "result" : volume === keyVolume ? "key" : "credentials"}`, ["volume", "create", volume]);
+      if (!failed()) await docker("diagnostic_volume_creation_result", ["volume", "create", volume]);
     }
     if (!failed()) {
       overlayPath = path.join(await fs.mkdtemp(path.join(os.tmpdir(), "nuvitae-t201-preflight-")), "compose.preflight.yml");
-      await fs.writeFile(overlayPath, overlayYaml({ containerName, readerContainerName, keyVolume, credentialVolume, resultVolume, resultPath, runId }), { mode: 0o600 });
+      await fs.writeFile(overlayPath, overlayYaml({ containerName, readerContainerName, resultVolume, resultPath, runId }), { mode: 0o600 });
       await compose("preflight_container_creation", ["--file", overlayPath, "create", "--no-build", SERVICE, "t201-result-reader"]);
       if (!failed()) { containerCreated = true; readerCreated = true; }
     }
@@ -355,8 +366,16 @@ export async function runCredentialFreePreflight({
       createdInspect = (await docker("created_container_inspection", ["inspect", containerName], "json"))._parsed;
       const created = Array.isArray(createdInspect) ? createdInspect[0] : null;
       result.created_container_image_identity_hash = hashIdentity(created?.Image);
-      if (!failed() && !created) {
+      if (!failed() && (!created || created.Image !== immutableReference)) {
         result.first_failure_operation = "created_container_inspection";
+        result.first_failure_exit_code = 0;
+        result.first_failure_category = "inspection_failure";
+      }
+      const readerInspect = (await docker("reader_created_container_inspection", ["inspect", readerContainerName], "json"))._parsed;
+      const reader = Array.isArray(readerInspect) ? readerInspect[0] : null;
+      result.reader_created_container_image_identity_hash = hashIdentity(reader?.Image);
+      if (!failed() && (!reader || reader.Image !== immutableReference)) {
+        result.first_failure_operation = "reader_created_container_inspection";
         result.first_failure_exit_code = 0;
         result.first_failure_category = "inspection_failure";
       }
@@ -422,7 +441,26 @@ export async function runCredentialFreePreflight({
     }
     if (readerCreated) {
       await docker("preflight_reader_start", ["start", "--attach", readerContainerName]);
+      const readerStart = rawByOperation.get("preflight_reader_start")?.raw;
+      const readerAttached = splitDockerAttachOutput(readerStart?.stdout_buffer ?? readerStart?.stdout);
+      const readerDiagnosticText = Buffer.concat([readerAttached.stderr, readerStart?.stderr_buffer ?? Buffer.from(readerStart?.stderr ?? "", "utf8")]).toString("utf8");
+      const readerDiagnostics = parseReaderDiagnostics(readerDiagnosticText, readerStart?.exit_code ?? null);
+      result.reader_effective_uid = readerDiagnostics.reader_effective_uid;
+      result.reader_effective_gid = readerDiagnostics.reader_effective_gid;
       const readerWait = (await docker("preflight_reader_wait", ["wait", readerContainerName], "integer"))._parsed;
+      const readerLaunchedInspect = (await docker("reader_launched_image_verification", ["inspect", readerContainerName], "json"))._parsed;
+      const readerLaunched = Array.isArray(readerLaunchedInspect) ? readerLaunchedInspect[0] : null;
+      result.reader_launched_container_image_identity_hash = hashIdentity(readerLaunched?.Image);
+      if (!failed() && readerLaunched?.Image !== immutableReference) {
+        result.first_failure_operation = "reader_launched_image_verification";
+        result.first_failure_exit_code = 0;
+        result.first_failure_category = "inspection_failure";
+      }
+      if (!failed() && (result.reader_effective_uid !== result.effective_uid || result.reader_effective_gid !== result.effective_gid)) {
+        result.first_failure_operation = "reader_runtime_identity_verification";
+        result.first_failure_exit_code = 0;
+        result.first_failure_category = "inspection_failure";
+      }
       result.reader_path_passed = Number.isInteger(readerWait) ? readerWait === 0 : false;
       if (!failed() && !result.reader_path_passed) {
         result.first_failure_operation = "preflight_reader_wait";
@@ -443,7 +481,7 @@ export async function runCredentialFreePreflight({
     }
     const removed = [];
     for (const volume of volumes) {
-      const operation = await docker(`diagnostic_volume_removal_${volume === resultVolume ? "result" : volume === keyVolume ? "key" : "credentials"}`, ["volume", "rm", volume]);
+      const operation = await docker("diagnostic_volume_removal_result", ["volume", "rm", volume]);
       const ok = !operationFailure(operation);
       removed.push(ok);
       result.operations.at(-1).cleanup_status = ok ? "removed" : "failed";
@@ -455,7 +493,7 @@ export async function runCredentialFreePreflight({
     }
     result.cleanup_volume_removed = removed.length === volumes.length ? removed.every(Boolean) : null;
     await fs.rm(path.dirname(overlayPath ?? ""), { recursive: true, force: true }).catch(() => undefined);
-    result.success = !failed() && result.container_created !== false && result.container_started === true && result.container_exit_code === 0 && result.stale_image_detected === false && result.filesystem_probe_completed === true && result.result_mount_present === true && result.result_mount_read_write === true && result.reader_path_passed === true && result.cleanup_container_removed === true && result.cleanup_volume_removed === true;
+    result.success = !failed() && result.container_created !== false && result.container_started === true && result.container_exit_code === 0 && result.stale_image_detected === false && result.fresh_image_identity_hash === result.created_container_image_identity_hash && result.fresh_image_identity_hash === result.launched_container_image_identity_hash && result.fresh_image_identity_hash === result.reader_created_container_image_identity_hash && result.fresh_image_identity_hash === result.reader_launched_container_image_identity_hash && result.reader_effective_uid === result.effective_uid && result.reader_effective_gid === result.effective_gid && result.filesystem_probe_completed === true && result.result_mount_present === true && result.result_mount_read_write === true && result.reader_path_passed === true && result.cleanup_container_removed === true && result.cleanup_volume_removed === true;
     if (result.process_started === null) result.process_started = rawByOperation.get("compose_config_resolution")?.operation.process_started ?? null;
     result.container_created = containerCreated;
     try {

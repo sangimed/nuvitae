@@ -3,6 +3,20 @@
   "matrix_state": "partially_live_evaluated",
   "mandatory_case_count": 6,
   "matrix_pass": false,
+  "campaigns": {
+    "T201-C02-A": {
+      "state": "closed_immutable",
+      "historical_attempt_numbers": [1, 2, 3, 4, 5, 6],
+      "further_attempts_permitted": false,
+      "semantic_viability_conclusion": "not_evaluated"
+    },
+    "T201-C02-B": {
+      "state": "authorized_pending_immutable_topology_gates",
+      "first_future_attempt_identifier": "T201-C02-B01",
+      "evidence_created": false,
+      "semantic_invocation_authorized_by_this_record": false
+    }
+  },
   "cases": [
     {
       "case_id": "T201-C01",
@@ -146,6 +160,29 @@
           "invocation_succeeded": false,
           "semantic_quality_evaluated": false,
           "final_safe_classification": "infrastructure_pre_live_exact_live_result_channel_preflight_failure"
+        },
+        {
+          "case_identifier": "T201-C02",
+          "attempt_number": 6,
+          "observation_timestamp": "2026-08-01T13:06:01.103Z",
+          "fixture_hash": "083375854921cef07a537c5c056c7f3f5b89072fc96530c4974c98c2e54f4363",
+          "language_category": "French",
+          "source_format_category": "plain-text",
+          "layout_category": "single-column",
+          "pre_live_validation_result": "failed",
+          "pre_live_failure_phase": "exact_image_live_runner_contract",
+          "outer_container_process_exit_code": null,
+          "broker_exit_code": null,
+          "result_artifact_state": "not_created",
+          "process_result_channel_classification": "infrastructure_pre_live_exact_image_runner_contract_failure",
+          "valid_sanitized_broker_result_parsed": false,
+          "invocation_attempted": false,
+          "invocation_succeeded": false,
+          "semantic_backend_request_count": 0,
+          "semantic_quality_evaluated": false,
+          "final_safe_classification": "infrastructure_pre_live_exact_image_runner_contract_failure",
+          "final_attempt": true,
+          "further_attempts_permitted": false
         }
       ],
       "safe_metrics": {
