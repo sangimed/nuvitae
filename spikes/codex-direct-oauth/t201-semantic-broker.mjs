@@ -64,7 +64,25 @@ const runnerRunIdHash = /^[a-f0-9]{32,64}$/.test(
   ? process.env.NUVITAE_T201_RUN_ID_HASH
   : "missing_runner_run_id";
 
+const BROKER_PHASES = Object.freeze({
+  resultChannelPreparation: "result_channel_preparation",
+  matrixArtifactLoading: "matrix_artifact_loading",
+  promptConstruction: "prompt_construction",
+  requestConstruction: "request_construction",
+  goldenResultAudit: "golden_result_audit",
+  localInputDiagnostics: "local_input_diagnostics",
+  credentialRecovery: "credential_recovery",
+  credentialRefresh: "credential_refresh",
+  accountIdentifierResolution: "account_identifier_resolution",
+  transportInvocation: "transport_invocation",
+  responseEvaluation: "response_evaluation",
+  credentialPostVerification: "credential_post_verification",
+  resultEmission: "result_emission",
+  complete: "complete",
+});
+
 let resultArtifactPreflight = null;
+let currentPhase = BROKER_PHASES.resultChannelPreparation;
 const emit = (result) =>
   emitBrokerResult({
     ...result,
@@ -310,12 +328,17 @@ function evaluateSelectedModelText(modelText, artifacts) {
 }
 
 try {
+  currentPhase = BROKER_PHASES.resultChannelPreparation;
   resultArtifactPreflight = await prepareBrokerResultDirectory(
     process.env.NUVITAE_T201_RESULT_PATH,
   );
+  currentPhase = BROKER_PHASES.matrixArtifactLoading;
   const artifacts = await loadSelectedArtifacts();
+  currentPhase = BROKER_PHASES.promptConstruction;
   const prompt = buildT201Prompt(artifacts);
+  currentPhase = BROKER_PHASES.requestConstruction;
   const requestPayload = buildSemanticCodexRequest(prompt);
+  currentPhase = BROKER_PHASES.goldenResultAudit;
   const goldenStructuredJsonAudit = structuredJsonSizeAudit(
     buildValidT201MatrixResult(artifacts.fixture, artifacts.manifest),
   );
@@ -323,6 +346,7 @@ try {
     JSON.stringify(requestPayload.body),
     "utf8",
   );
+  currentPhase = BROKER_PHASES.localInputDiagnostics;
   const localInputDiagnostics = buildLocalInputDiagnostics({
     fixture: artifacts.fixture,
     schema: artifacts.schema,
@@ -330,10 +354,13 @@ try {
     serializedRequestBytes,
     requestLimitBytes: CODEX_TRANSPORT.requestMaxBytes,
   });
+  currentPhase = BROKER_PHASES.credentialRecovery;
   const before = await recoverCredential();
   const beforeGeneration = before.generation;
+  currentPhase = BROKER_PHASES.credentialRefresh;
   const refreshed = await maybeRefresh(before);
   const credential = refreshed.current.payload;
+  currentPhase = BROKER_PHASES.accountIdentifierResolution;
   const accountIdentifier = accountIdentifierFromCredential(credential);
   if (!accountIdentifier)
     throw Object.assign(new Error("transport_failure"), {
@@ -348,6 +375,7 @@ try {
     });
   }
 
+  currentPhase = BROKER_PHASES.transportInvocation;
   const invocation = await invokeCodexTransport({
     accessToken: credential.access_token,
     accountIdentifier,
@@ -394,6 +422,7 @@ try {
     invocation.actual_request_manifest ?? t201ComparableManifest,
     transportManifestPaths,
   );
+  currentPhase = BROKER_PHASES.responseEvaluation;
   const evaluation = invocation.raw_model_text
     ? evaluateSelectedModelText(invocation.raw_model_text, artifacts)
     : notEvaluatedT201Projection({
@@ -409,6 +438,7 @@ try {
             !["transport_failure", "output_too_large"].includes(category),
         ),
       });
+  currentPhase = BROKER_PHASES.credentialPostVerification;
   const after = await recoverCredential();
   const encryptedBytes = await fs.readFile(recordPath, "utf8");
   const credentialPlaintextPresent =
@@ -424,6 +454,7 @@ try {
     after.payload?.access_token &&
     invocation.response_protocol_valid === true;
 
+  currentPhase = BROKER_PHASES.resultEmission;
   await emit({
     evidence_classification: "live_t201_semantic_parsing",
     observation_timestamp: new Date().toISOString(),
@@ -605,6 +636,7 @@ try {
         invocation.safe_error_category ??
         "safe_unknown_failure"),
   });
+  currentPhase = BROKER_PHASES.complete;
   process.exitCode = mandatoryPassed ? 0 : 1;
 } catch (error) {
   const primaryFailureCategory =
@@ -614,7 +646,7 @@ try {
   const failureProjection = safeEvaluationProjection(
     notEvaluatedT201Projection({
       primaryFailureCategory,
-      primaryFailurePhase: error.primary_failure_phase ?? "safe_unknown_phase",
+      primaryFailurePhase: error.primary_failure_phase ?? currentPhase,
       secondaryFailureCategories: [],
     }),
   );
