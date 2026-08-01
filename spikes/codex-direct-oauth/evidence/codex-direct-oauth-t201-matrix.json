@@ -6,7 +6,14 @@
   "campaigns": {
     "T201-C02-A": {
       "state": "closed_immutable",
-      "historical_attempt_numbers": [1, 2, 3, 4, 5, 6],
+      "historical_attempt_numbers": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
       "further_attempts_permitted": false,
       "semantic_viability_conclusion": "not_evaluated"
     },
