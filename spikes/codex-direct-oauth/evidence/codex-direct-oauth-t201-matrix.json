@@ -11,10 +11,26 @@
       "semantic_viability_conclusion": "not_evaluated"
     },
     "T201-C02-B": {
-      "state": "authorized_pending_immutable_topology_gates",
-      "first_future_attempt_identifier": "T201-C02-B01",
-      "evidence_created": false,
-      "semantic_invocation_authorized_by_this_record": false
+      "state": "b01_pre_live_failed",
+      "first_attempt_identifier": "T201-C02-B01",
+      "evidence_created": true,
+      "semantic_invocation_authorized_by_this_record": false,
+      "attempt_history": [
+        {
+          "attempt_identifier": "T201-C02-B01",
+          "observation_timestamp": "2026-08-01T13:43:04Z",
+          "pre_live_validation_result": "failed",
+          "failure_phase": "repository_precondition",
+          "failure_operation": "resolve_bounded_b01_execution_entrypoint",
+          "failure_category": "missing_committed_harness_target",
+          "failure_errno": "ENOENT",
+          "image_build_count": 0,
+          "live_broker_run_count": 0,
+          "semantic_backend_request_count": 0,
+          "semantic_quality_evaluated": false,
+          "final_safe_classification": "repository_precondition_failure"
+        }
+      ]
     }
   },
   "cases": [
