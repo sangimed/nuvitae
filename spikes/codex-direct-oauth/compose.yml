@@ -184,6 +184,27 @@ services:
     mem_limit: 96m
     cpus: "0.25"
 
+  t201-credential-recovery-diagnostic:
+    image: ${NUVITAE_T201_IMMUTABLE_IMAGE:?NUVITAE_T201_IMMUTABLE_IMAGE is required for T201 credential recovery diagnostics}
+    pull_policy: never
+    build:
+      context: .
+    init: true
+    command: ["node", "t201-credential-recovery-diagnostic.mjs"]
+    read_only: true
+    volumes:
+      - t199-key-live:/run/t199-key:ro
+      - t199-credentials-live:/spike/credentials:ro
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,mode=0700
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 96m
+    cpus: "0.25"
+
 volumes:
   t199-credentials:
     name: nuvitae-codex-direct-oauth-t199-credentials
