@@ -6,6 +6,14 @@ import path from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { processT201RunnerEvidence } from "../lib/t201-live-runner-evidence.mjs";
+import {
+  brokerStateEvidence,
+  createT201BrokerExecutionState,
+  recordCredentialRecovery,
+  recordRefreshAttempt,
+  recordRefreshRequired,
+  recordTransportResult,
+} from "../lib/t201-broker-execution-state.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const runId = "b".repeat(32);
@@ -155,6 +163,42 @@ test("broker phase attribution uses only fixed pre-operation phase names", async
     source,
     /primaryFailurePhase: error\.primary_failure_phase \?\? currentPhase/,
   );
+  assert.match(source, /if \(typeof invocation\.raw_model_text === "string"\) \{\s+currentPhase = BROKER_PHASES\.responseEvaluation;/);
+});
+
+test("execution state preserves only known partial state across every failure boundary", () => {
+  const state = createT201BrokerExecutionState();
+  assert.equal(brokerStateEvidence(state).encrypted_state_recovered, false);
+  recordCredentialRecovery(state, 7);
+  recordRefreshRequired(state, true);
+  recordRefreshAttempt(state);
+  recordTransportResult(state, { invocation_attempted: true, invocation_succeeded: false, safe_exact_http_status: null, response_protocol_valid: false });
+  assert.deepEqual(brokerStateEvidence(state), {
+    encrypted_state_recovered: true, credential_generation_before: 7,
+    refresh_required: true, refresh_attempted: true, refresh_succeeded: false,
+    credential_generation_after: null, invocation_attempted: true,
+    invocation_succeeded: false, exact_http_status: null, response_protocol_valid: false,
+  });
+});
+
+test("runner preserves corrected transport phase and known partial state without secrets", async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "nuvitae-t201-partial-state-"));
+  const logsPath = path.join(directory, "partial.log");
+  const state = createT201BrokerExecutionState();
+  recordCredentialRecovery(state, 3); recordRefreshAttempt(state);
+  recordTransportResult(state, { invocation_attempted: true, invocation_succeeded: false, response_protocol_valid: false });
+  await fs.writeFile(logsPath, `${JSON.stringify({ ...sanitizedFailure(runId, "T201-C02", "transport_invocation"), ...brokerStateEvidence(state) })}\n`);
+  const evidence = await processT201RunnerEvidence({
+    evidencePath: path.join(directory, "evidence.json"), logsPath, runnerRunIdHash: runId,
+    runnerStartedAt: startedAt, brokerExitCode: 1, brokerRemoved: true, callbackPortAbsent: true,
+    secretScanResult: "passed", logSecretScanResult: "passed", caseId: "T201-C02",
+  });
+  assert.equal(evidence.primary_failure_phase, "transport_invocation");
+  assert.equal(evidence.encrypted_state_recovered, true);
+  assert.equal(evidence.refresh_attempted, true);
+  assert.equal(evidence.invocation_attempted, true);
+  assert.equal(JSON.stringify(evidence).includes("access_token"), false);
+  await fs.rm(directory, { recursive: true, force: true });
 });
 
 test("runner accepts matching sanitized failures, preserves their classification, and rejects mismatched fixture identity", async () => {

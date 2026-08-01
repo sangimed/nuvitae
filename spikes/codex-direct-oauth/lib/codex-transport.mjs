@@ -1289,7 +1289,9 @@ export async function invokeCodexTransport({
       idleTimer = setTimeout(() => request.destroy(Object.assign(new Error("transport_timeout"), { safeCategory: "transport_timeout" })), CODEX_TRANSPORT.idleTimeoutMs);
     };
 
-    const request = requestImpl(
+    let request;
+    try {
+      request = requestImpl(
       {
         protocol: endpoint.protocol,
         hostname: endpoint.hostname,
@@ -1554,7 +1556,29 @@ export async function invokeCodexTransport({
           }
         });
       },
-    );
+      );
+    } catch (error) {
+      const transport = classifyTransportFailure(error);
+      settle({
+        ok: false,
+        invocation_attempted: false,
+        invocation_succeeded: false,
+        response_protocol_valid: false,
+        model_output_received: false,
+        primary_failure_category: transport.safe_transport_classification === "response_too_large" ? "output_too_large" : "transport_failure",
+        primary_failure_phase: "transport_invocation",
+        safe_transport_classification: transport.safe_transport_classification,
+        safe_error_category: safeFailure(error.safeCategory),
+        safe_node_error_code: transport.safe_node_error_code,
+        safe_http_status_category: "not_attempted",
+        request_serialization_succeeded: true,
+        serialized_request_bytes_category: requestByteCategory(serializedBodyByteLength),
+        serialized_request_within_limit: true,
+        actual_request_manifest,
+        ...safeProjection,
+      });
+      return;
+    }
 
     request.on("timeout", () => request.destroy(Object.assign(new Error("transport_timeout"), { safeCategory: "transport_timeout" })));
     request.on("error", (error) => {
@@ -1592,7 +1616,11 @@ export async function invokeCodexTransport({
     });
     if (signal?.aborted) request.destroy(protocolError("stream_cancelled"));
     else if (signal) signal.addEventListener("abort", () => request.destroy(protocolError("stream_cancelled")), { once: true });
-    request.end(body);
+    try {
+      request.end(body);
+    } catch (error) {
+      request.emit?.("error", error);
+    }
   });
 }
 

@@ -40,6 +40,15 @@ import {
   prepareBrokerResultDirectory,
 } from "./lib/t201-broker-result-channel.mjs";
 import {
+  brokerStateEvidence,
+  createT201BrokerExecutionState,
+  recordCredentialRecovery,
+  recordRefreshAttempt,
+  recordRefreshRequired,
+  recordRefreshResult,
+  recordTransportResult,
+} from "./lib/t201-broker-execution-state.mjs";
+import {
   CODEX_T201_TRANSPORT_LIMITS,
   CODEX_TRANSPORT,
   NETWORK_LIMITS,
@@ -83,6 +92,7 @@ const BROKER_PHASES = Object.freeze({
 
 let resultArtifactPreflight = null;
 let currentPhase = BROKER_PHASES.resultChannelPreparation;
+const executionState = createT201BrokerExecutionState();
 const emit = (result) =>
   emitBrokerResult({
     ...result,
@@ -213,7 +223,7 @@ function refreshRequest(refreshToken) {
   });
 }
 
-async function maybeRefresh(current) {
+async function maybeRefresh(current, { onRefreshAttempt = () => {} } = {}) {
   const refreshRequired =
     expiryMs(current.payload) <= Date.now() + expirySkewMs;
   if (!refreshRequired)
@@ -223,6 +233,7 @@ async function maybeRefresh(current) {
       refresh_attempted: false,
       refresh_succeeded: false,
     };
+  onRefreshAttempt();
   if (
     typeof current.payload.refresh_token !== "string" ||
     current.payload.refresh_token.length === 0
@@ -357,8 +368,13 @@ try {
   currentPhase = BROKER_PHASES.credentialRecovery;
   const before = await recoverCredential();
   const beforeGeneration = before.generation;
+  recordCredentialRecovery(executionState, beforeGeneration);
   currentPhase = BROKER_PHASES.credentialRefresh;
-  const refreshed = await maybeRefresh(before);
+  recordRefreshRequired(executionState, expiryMs(before.payload) <= Date.now() + expirySkewMs);
+  const refreshed = await maybeRefresh(before, {
+    onRefreshAttempt: () => recordRefreshAttempt(executionState),
+  });
+  recordRefreshResult(executionState, refreshed);
   const credential = refreshed.current.payload;
   currentPhase = BROKER_PHASES.accountIdentifierResolution;
   const accountIdentifier = accountIdentifierFromCredential(credential);
@@ -383,6 +399,7 @@ try {
     responseLimits: CODEX_T201_TRANSPORT_LIMITS,
     exposeRawModelText: true,
   });
+  recordTransportResult(executionState, invocation);
   const expectedRequestManifest = buildExpectedAuditedRequestManifest();
   const t201ComparableManifest = buildSanitizedRequestManifest({
     url: `${CODEX_TRANSPORT.backendOrigin}${CODEX_TRANSPORT.backendPath}`,
@@ -422,24 +439,28 @@ try {
     invocation.actual_request_manifest ?? t201ComparableManifest,
     transportManifestPaths,
   );
-  currentPhase = BROKER_PHASES.responseEvaluation;
-  const evaluation = invocation.raw_model_text
-    ? evaluateSelectedModelText(invocation.raw_model_text, artifacts)
-    : notEvaluatedT201Projection({
-        primaryFailureCategory:
-          invocation.primary_failure_category === "output_too_large"
-            ? "output_too_large"
-            : "transport_failure",
-        primaryFailurePhase:
-          invocation.primary_failure_phase ?? "safe_unknown_phase",
-        secondaryFailureCategories: [invocation.safe_error_category].filter(
-          (category) =>
-            category &&
-            !["transport_failure", "output_too_large"].includes(category),
-        ),
-      });
+  let evaluation;
+  if (typeof invocation.raw_model_text === "string") {
+    currentPhase = BROKER_PHASES.responseEvaluation;
+    evaluation = evaluateSelectedModelText(invocation.raw_model_text, artifacts);
+  } else {
+    evaluation = notEvaluatedT201Projection({
+      primaryFailureCategory:
+        invocation.primary_failure_category === "output_too_large"
+          ? "output_too_large"
+          : "transport_failure",
+      primaryFailurePhase:
+        invocation.primary_failure_phase ?? BROKER_PHASES.transportInvocation,
+      secondaryFailureCategories: [invocation.safe_error_category].filter(
+        (category) =>
+          category &&
+          !["transport_failure", "output_too_large"].includes(category),
+      ),
+    });
+  }
   currentPhase = BROKER_PHASES.credentialPostVerification;
   const after = await recoverCredential();
+  recordCredentialRecovery(executionState, after.generation, { after: true });
   const encryptedBytes = await fs.readFile(recordPath, "utf8");
   const credentialPlaintextPresent =
     encryptedBytes.includes(credential.access_token) ||
@@ -467,15 +488,7 @@ try {
       artifacts.manifest.fixture_classification === "synthetic",
     ...goldenStructuredJsonAudit,
     ...localInputDiagnostics,
-    encrypted_state_recovered: true,
-    credential_generation_before: beforeGeneration,
-    refresh_required: refreshed.refresh_required,
-    refresh_attempted: refreshed.refresh_attempted,
-    refresh_succeeded: refreshed.refresh_succeeded,
-    credential_generation_after: after.generation,
-    invocation_attempted: invocation.invocation_attempted === true,
-    invocation_succeeded: invocation.invocation_succeeded === true,
-    exact_http_status: invocation.safe_exact_http_status ?? null,
+    ...brokerStateEvidence(executionState),
     safe_http_status_category:
       invocation.safe_http_status_category ?? "unknown_status",
     response_byte_limit:
@@ -558,7 +571,6 @@ try {
       invocation.response_truncated_by_safety_limit === true,
     partial_stream_statistics_preserved:
       invocation.partial_stream_statistics_preserved === true,
-    response_protocol_valid: invocation.response_protocol_valid === true,
     response_event_count: invocation.response_event_count ?? 0,
     model_output_received: safeProjection.model_output_received,
     structured_output_evaluated: safeProjection.structured_output_evaluated,
@@ -657,13 +669,7 @@ try {
     upstream_revisions: UPSTREAM_REVISIONS,
     deployment_mode: "local_macos_docker_desktop_single_user_spike",
     fixture_identifier: selectedFixtureIdentifier ?? "not_evaluated",
-    encrypted_state_recovered: false,
-    refresh_required: false,
-    refresh_attempted: false,
-    refresh_succeeded: false,
-    invocation_attempted: false,
-    invocation_succeeded: false,
-    response_protocol_valid: false,
+    ...brokerStateEvidence(executionState),
     model_output_received: false,
     structured_output_evaluated: false,
     semantic_quality_evaluated: false,

@@ -89,6 +89,23 @@ function failingHttpsRequest(error) {
   };
 }
 
+function throwingHttpsRequest(error) {
+  return () => {
+    throw error;
+  };
+}
+
+function endThrowingHttpsRequest(error) {
+  return () => {
+    const request = new EventEmitter();
+    request.end = () => {
+      throw error;
+    };
+    request.destroy = (destroyError) => request.emit("error", destroyError);
+    return request;
+  };
+}
+
 function parseChunks(chunks) {
   const parser = new BoundedSseParser();
   for (const chunk of chunks) parser.consume(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
@@ -160,6 +177,30 @@ test("T201 serialized request manifest proves the intended reductions", async ()
   assert.equal(result.actual_request_manifest.store_false, true);
   assert.equal(result.actual_request_manifest.stream_boolean, true);
   assert.equal(JSON.stringify(result.actual_request_manifest).includes("synthetic semantic prompt"), false);
+});
+
+test("transport construction and send failures return sanitized, accurately-attributed state", async () => {
+  const requestPayload = buildSemanticCodexRequest("synthetic semantic prompt");
+  const construction = await invokeCodexTransport({
+    accessToken: "synthetic-access", accountIdentifier: "synthetic-account", requestPayload,
+    responseLimits: CODEX_T201_TRANSPORT_LIMITS,
+    requestImpl: throwingHttpsRequest(Object.assign(new Error("private"), { code: "ECONNREFUSED" })),
+  });
+  assert.equal(construction.invocation_attempted, false);
+  assert.equal(construction.invocation_succeeded, false);
+  assert.equal(construction.primary_failure_phase, "transport_invocation");
+  assert.equal(construction.safe_http_status_category, "not_attempted");
+  assert.equal(JSON.stringify(construction).includes("private"), false);
+
+  const send = await invokeCodexTransport({
+    accessToken: "synthetic-access", accountIdentifier: "synthetic-account", requestPayload,
+    responseLimits: CODEX_T201_TRANSPORT_LIMITS,
+    requestImpl: endThrowingHttpsRequest(Object.assign(new Error("private"), { code: "ECONNRESET" })),
+  });
+  assert.equal(send.invocation_attempted, true);
+  assert.equal(send.invocation_succeeded, false);
+  assert.equal(send.primary_failure_phase, "request_send");
+  assert.equal(JSON.stringify(send).includes("private"), false);
 });
 
 test("T200 retains its previous proven response limits", () => {
