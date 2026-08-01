@@ -29,7 +29,7 @@ import {
   T201_ARTIFACT_PATHS,
 } from "./lib/t201-semantic-evaluator.mjs";
 import { buildValidT201MatrixResult, evaluateT201MatrixCase, loadT201MatrixCase } from "./lib/t201-matrix-evaluator.mjs";
-import { emitBrokerResult } from "./lib/t201-broker-result-channel.mjs";
+import { emitBrokerResult, prepareBrokerResultDirectory } from "./lib/t201-broker-result-channel.mjs";
 import { CODEX_T201_TRANSPORT_LIMITS, CODEX_TRANSPORT, NETWORK_LIMITS, OAUTH, UPSTREAM_REVISIONS } from "./oauth-constants.mjs";
 
 const keyPath = "/run/t199-key/master.key";
@@ -41,7 +41,8 @@ const runnerRunIdHash = /^[a-f0-9]{32,64}$/.test(process.env.NUVITAE_T201_RUN_ID
   ? process.env.NUVITAE_T201_RUN_ID_HASH
   : "missing_runner_run_id";
 
-const emit = emitBrokerResult;
+let resultArtifactPreflight = null;
+const emit = (result) => emitBrokerResult({ ...result, result_artifact_preflight: resultArtifactPreflight });
 
 function safeError(error) {
   const message = safeErrorCategory(error?.safeCategory ?? error?.message);
@@ -196,6 +197,7 @@ function evaluateSelectedModelText(modelText, artifacts) {
 }
 
 try {
+  resultArtifactPreflight = await prepareBrokerResultDirectory(process.env.NUVITAE_T201_RESULT_PATH);
   const artifacts = await loadSelectedArtifacts();
   const prompt = buildT201Prompt(artifacts);
   const requestPayload = buildSemanticCodexRequest(prompt);

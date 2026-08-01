@@ -3,11 +3,22 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { inspectBrokerResultChannel, verifyPreparedResultDirectory, writeAtomicBrokerResult } from "../lib/t201-broker-result-channel.mjs";
-import { processT201RunnerEvidence } from "../lib/t201-live-runner-evidence.mjs";
+import {
+  inspectBrokerResultChannel,
+  prepareBrokerResultDirectory,
+  readFinalBrokerResult,
+  runtimeIdentity,
+  verifyPreparedResultDirectory,
+  writeAtomicBrokerResult,
+} from "../lib/t201-broker-result-channel.mjs";
+import { parseReaderDiagnostics, processT201RunnerEvidence } from "../lib/t201-live-runner-evidence.mjs";
 
 const runId = "a".repeat(32);
 const startedAt = "2026-08-01T12:00:00.000Z";
+async function ownAsRuntime(directory) {
+  const identity = runtimeIdentity();
+  await fs.chown(directory, identity.uid, identity.gid);
+}
 function result(overrides = {}) {
   return {
     evidence_classification: "live_t201_semantic_parsing", observation_timestamp: "2026-08-01T12:00:01.000Z", runner_run_id_hash: runId,
@@ -62,10 +73,11 @@ test("result artifact writer rejects paths outside the disposable broker result 
 test("prepared private result directory supports 0600 temporary write, fsync, atomic rename, parent read, and cleanup", async () => {
   await fs.mkdir("/tmp/t201-result", { recursive: true, mode: 0o700 });
   const dir = await fs.mkdtemp("/tmp/t201-result/private-");
+  await ownAsRuntime(dir);
   const resultPath = path.join(dir, "result.json");
   await fs.chmod(dir, 0o700);
   const topology = await verifyPreparedResultDirectory(resultPath);
-  assert.equal(topology.mode, 0o700);
+  assert.equal(topology.directory_mode, 0o700);
   await writeAtomicBrokerResult(result(), resultPath);
   assert.equal((await fs.stat(resultPath)).mode & 0o777, 0o600);
   assert.deepEqual(JSON.parse(await fs.readFile(resultPath, "utf8")), result());
@@ -77,8 +89,77 @@ test("prepared private result directory supports 0600 temporary write, fsync, at
 test("prepared result directory rejects read-open ownership modes before the broker fabricates metrics", async () => {
   await fs.mkdir("/tmp/t201-result", { recursive: true, mode: 0o700 });
   const dir = await fs.mkdtemp("/tmp/t201-result/reject-");
+  await ownAsRuntime(dir);
   const resultPath = path.join(dir, "result.json");
   await fs.chmod(dir, 0o733);
   await assert.rejects(() => verifyPreparedResultDirectory(resultPath), /result_artifact_verify_directory_mode_EPERM/);
   await fs.rm(dir, { recursive: true, force: true });
+});
+
+test("broker-owned private result directory follows the actual runtime identity rather than a fixed UID/GID", async () => {
+  await fs.mkdir("/tmp/t201-result", { recursive: true, mode: 0o700 });
+  const root = await fs.mkdtemp("/tmp/t201-result/runtime-");
+  await ownAsRuntime(root);
+  const resultPath = path.join(root, "private", "result.json");
+  const identity = runtimeIdentity();
+  const topology = await prepareBrokerResultDirectory(resultPath);
+  assert.equal(topology.effective_uid, identity.uid);
+  assert.equal(topology.effective_gid, identity.gid);
+  assert.equal(topology.directory_uid, identity.uid);
+  assert.equal(topology.directory_gid, identity.gid);
+  assert.equal(topology.directory_mode, 0o700);
+  await assert.rejects(
+    () => verifyPreparedResultDirectory(resultPath, { uid: identity.uid + 1, gid: identity.gid }),
+    /result_artifact_verify_directory_owner_EPERM/,
+  );
+  await fs.rm(root, { recursive: true, force: true });
+});
+
+test("credential-free reader accepts only the final private regular JSON result", async () => {
+  await fs.mkdir("/tmp/t201-result", { recursive: true, mode: 0o700 });
+  const root = await fs.mkdtemp("/tmp/t201-result/reader-");
+  await ownAsRuntime(root);
+  const resultPath = path.join(root, "private", "result.json");
+  await prepareBrokerResultDirectory(resultPath);
+  await writeAtomicBrokerResult(result(), resultPath);
+  const received = await readFinalBrokerResult(resultPath, { NUVITAE_T201_RESULT_PATH: resultPath });
+  assert.deepEqual(received.result, result());
+  assert.equal(received.file_mode, 0o600);
+  assert.equal(received.reader_uid, runtimeIdentity().uid);
+  await fs.rm(root, { recursive: true, force: true });
+});
+
+test("reader rejects unsafe modes, symlinks, malformed JSON, oversize artifacts, and provider environments", async () => {
+  await fs.mkdir("/tmp/t201-result", { recursive: true, mode: 0o700 });
+  const root = await fs.mkdtemp("/tmp/t201-result/reader-reject-");
+  await ownAsRuntime(root);
+  const directory = path.join(root, "private");
+  const resultPath = path.join(directory, "result.json");
+  await prepareBrokerResultDirectory(resultPath);
+  await writeAtomicBrokerResult(result(), resultPath);
+  await fs.chmod(directory, 0o733);
+  await assert.rejects(() => readFinalBrokerResult(resultPath, { NUVITAE_T201_RESULT_PATH: resultPath }), /result_artifact_verify_directory_mode_EPERM/);
+  await fs.chmod(directory, 0o700);
+  await fs.rm(resultPath);
+  await fs.symlink("/dev/null", resultPath);
+  await assert.rejects(() => readFinalBrokerResult(resultPath, { NUVITAE_T201_RESULT_PATH: resultPath }), /result_artifact_lstat_file_ELOOP/);
+  await fs.rm(resultPath);
+  await fs.writeFile(resultPath, "{not-json}\n", { mode: 0o600 });
+  await assert.rejects(() => readFinalBrokerResult(resultPath, { NUVITAE_T201_RESULT_PATH: resultPath }), /result_artifact_malformed_json_EINVAL/);
+  await fs.writeFile(resultPath, "x".repeat(131073), { mode: 0o600 });
+  await assert.rejects(() => readFinalBrokerResult(resultPath, { NUVITAE_T201_RESULT_PATH: resultPath }), /result_artifact_file_size_EFBIG/);
+  await writeAtomicBrokerResult(result(), resultPath);
+  await assert.rejects(() => readFinalBrokerResult(resultPath, { NUVITAE_T201_RESULT_PATH: resultPath, OPENAI_API_KEY: "synthetic" }), /result_reader_provider_environment_forbidden/);
+  await fs.rm(root, { recursive: true, force: true });
+});
+
+test("reader diagnostics retain only runtime identity, file privacy, and safe failure categories", () => {
+  assert.deepEqual(parseReaderDiagnostics("safe_result_reader_success:456:789:600:same_filesystem\n", 0), {
+    reader_exit_code: 0, reader_state: "validated_final_json", reader_effective_uid: 456, reader_effective_gid: 789,
+    final_file_mode: 0o600, same_filesystem: true, failure_operation: null, failure_errno: null,
+  });
+  assert.deepEqual(parseReaderDiagnostics("safe_result_reader_failure:verify_file_mode:EPERM\n", 1), {
+    reader_exit_code: 1, reader_state: "safe_reader_failure", reader_effective_uid: null, reader_effective_gid: null,
+    final_file_mode: null, same_filesystem: null, failure_operation: "verify_file_mode", failure_errno: "EPERM",
+  });
 });

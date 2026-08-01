@@ -13,7 +13,20 @@ function resultArtifactError(operation, error) {
   return wrapped;
 }
 
-export async function verifyPreparedResultDirectory(resultPath) {
+function resolvedResultPath(resultPath) {
+  const resolved = path.resolve(resultPath);
+  if (!RESULT_ROOTS.some((root) => resolved.startsWith(root))) throw new Error("invalid_broker_result_path");
+  return resolved;
+}
+
+export function runtimeIdentity() {
+  const uid = process.geteuid?.() ?? process.getuid?.();
+  const gid = process.getegid?.() ?? process.getgid?.();
+  if (!Number.isInteger(uid) || !Number.isInteger(gid) || uid === 0) throw new Error("result_artifact_runtime_identity_invalid");
+  return { uid, gid };
+}
+
+export async function verifyPreparedResultDirectory(resultPath, expectedIdentity = runtimeIdentity()) {
   const directory = path.dirname(path.resolve(resultPath));
   let stat;
   try {
@@ -22,8 +35,38 @@ export async function verifyPreparedResultDirectory(resultPath) {
     throw resultArtifactError("stat_directory", error);
   }
   if (!stat.isDirectory()) throw resultArtifactError("stat_directory", { code: "ENOTDIR" });
-  if ((stat.mode & 0o077) !== 0) throw resultArtifactError("verify_directory_mode", { code: "EPERM" });
-  return { uid: stat.uid, gid: stat.gid, mode: stat.mode & 0o777 };
+  if (stat.uid !== expectedIdentity.uid || stat.gid !== expectedIdentity.gid) {
+    throw resultArtifactError("verify_directory_owner", { code: "EPERM" });
+  }
+  if ((stat.mode & 0o777) !== 0o700) throw resultArtifactError("verify_directory_mode", { code: "EPERM" });
+  return {
+    effective_uid: expectedIdentity.uid,
+    effective_gid: expectedIdentity.gid,
+    directory_uid: stat.uid,
+    directory_gid: stat.gid,
+    directory_mode: stat.mode & 0o777,
+  };
+}
+
+export async function prepareBrokerResultDirectory(resultPath) {
+  const resolved = resolvedResultPath(resultPath);
+  const directory = path.dirname(resolved);
+  try {
+    await fs.mkdir(directory, { mode: 0o700 });
+  } catch (error) {
+    if (error?.code !== "EEXIST") throw resultArtifactError("create_directory", error);
+  }
+  try {
+    await fs.chmod(directory, 0o700);
+  } catch (error) {
+    throw resultArtifactError("set_directory_mode", error);
+  }
+  const topology = await verifyPreparedResultDirectory(resolved);
+  const volume = await fs.stat(path.dirname(directory)).catch((error) => {
+    throw resultArtifactError("stat_volume_root", error);
+  });
+  if (volume.dev !== (await fs.stat(directory)).dev) throw resultArtifactError("verify_directory_filesystem", { code: "EXDEV" });
+  return { ...topology, same_filesystem: true };
 }
 
 function safeHash(value) {
@@ -49,20 +92,37 @@ function exactJson(value) {
   }
 }
 
+function assertReaderEnvironmentIsolated(env) {
+  const forbidden = Object.keys(env ?? {}).find((key) => /^(CODEX|OPENAI|OAUTH|NUVITAE_T199_)/.test(key));
+  if (forbidden) throw new Error("result_reader_provider_environment_forbidden");
+}
+
+function verifyPrivateFile(stat, identity) {
+  if (stat.isSymbolicLink()) throw resultArtifactError("lstat_file", { code: "ELOOP" });
+  if (!stat.isFile()) throw resultArtifactError("verify_file_type", { code: "EINVAL" });
+  if (stat.uid !== identity.uid || stat.gid !== identity.gid) throw resultArtifactError("verify_file_owner", { code: "EPERM" });
+  if ((stat.mode & 0o777) !== 0o600) throw resultArtifactError("verify_file_mode", { code: "EPERM" });
+  if (stat.size > MAX_RESULT_BYTES) throw resultArtifactError("file_size", { code: "EFBIG" });
+}
+
 export async function writeAtomicBrokerResult(result, resultPath = process.env.NUVITAE_T201_RESULT_PATH) {
   const serialized = JSON.stringify(result);
   if (Buffer.byteLength(serialized, "utf8") > MAX_RESULT_BYTES) throw new Error("broker_result_too_large");
   if (containsSecretLikeValue(serialized)) throw new Error("secret_like_value_in_broker_result");
   if (!resultPath) return `${serialized}\n`;
-  const resolved = path.resolve(resultPath);
-  if (!RESULT_ROOTS.some((root) => resolved.startsWith(root))) throw new Error("invalid_broker_result_path");
-  await verifyPreparedResultDirectory(resolved);
+  const resolved = resolvedResultPath(resultPath);
+  const topology = await verifyPreparedResultDirectory(resolved);
   const temp = `${resolved}.tmp-${process.pid}-${crypto.randomBytes(8).toString("hex")}`;
   let handle;
   try {
     handle = await fs.open(temp, "wx", 0o600);
     await handle.writeFile(`${serialized}\n`);
     await handle.sync();
+    const temporary = await handle.stat();
+    if (temporary.dev !== (await fs.stat(path.dirname(resolved)).catch((error) => { throw resultArtifactError("stat_directory", error); })).dev) {
+      throw resultArtifactError("verify_temp_filesystem", { code: "EXDEV" });
+    }
+    verifyPrivateFile(temporary, { uid: topology.effective_uid, gid: topology.effective_gid });
     await handle.close();
     handle = undefined;
   } catch (error) {
@@ -74,12 +134,51 @@ export async function writeAtomicBrokerResult(result, resultPath = process.env.N
   } catch (error) {
     throw resultArtifactError("rename_same_directory", error);
   }
+  try {
+    const final = await fs.lstat(resolved);
+    verifyPrivateFile(final, { uid: topology.effective_uid, gid: topology.effective_gid });
+    if (final.dev !== (await fs.stat(path.dirname(resolved)).catch((error) => { throw resultArtifactError("stat_directory", error); })).dev) {
+      throw resultArtifactError("verify_final_filesystem", { code: "EXDEV" });
+    }
+  } catch (error) {
+    if (error?.safe_result_artifact_operation) throw error;
+    throw resultArtifactError("verify_final_file", error);
+  }
   return `${serialized}\n`;
 }
 
 export async function emitBrokerResult(result) {
   const text = await writeAtomicBrokerResult(result);
   process.stdout.write(text);
+}
+
+export async function readFinalBrokerResult(resultPath = process.env.NUVITAE_T201_RESULT_PATH, env = process.env) {
+  assertReaderEnvironmentIsolated(env);
+  const resolved = resolvedResultPath(resultPath);
+  const identity = runtimeIdentity();
+  await verifyPreparedResultDirectory(resolved, identity);
+  let before;
+  try {
+    before = await fs.lstat(resolved);
+  } catch (error) {
+    throw resultArtifactError("lstat_file", error);
+  }
+  verifyPrivateFile(before, identity);
+  let handle;
+  try {
+    handle = await fs.open(resolved, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+    const opened = await handle.stat();
+    verifyPrivateFile(opened, identity);
+    if (opened.dev !== (await fs.stat(path.dirname(resolved)).catch((error) => { throw resultArtifactError("stat_directory", error); })).dev) {
+      throw resultArtifactError("verify_file_filesystem", { code: "EXDEV" });
+    }
+    const text = await handle.readFile({ encoding: "utf8" });
+    const result = exactJson(text);
+    if (!result || typeof result !== "object" || Array.isArray(result)) throw resultArtifactError("malformed_json", { code: "EINVAL" });
+    return { result, text, reader_uid: identity.uid, reader_gid: identity.gid, file_mode: opened.mode & 0o777, same_filesystem: true };
+  } finally {
+    await handle?.close().catch(() => undefined);
+  }
 }
 
 export async function inspectBrokerResultChannel({ resultPath, stdoutPath, stderrPath, brokerExitCode, processStartFailed = false }) {

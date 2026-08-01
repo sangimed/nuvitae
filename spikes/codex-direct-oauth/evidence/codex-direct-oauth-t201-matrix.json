@@ -87,6 +87,26 @@
           "broker_removed": true,
           "callback_port_absent": true,
           "final_safe_classification": "infrastructure_broker_result_channel_failure"
+        },
+        {
+          "case_identifier": "T201-C02",
+          "attempt_number": 3,
+          "observation_timestamp": "2026-08-01T10:34:32.000Z",
+          "fixture_hash": "083375854921cef07a537c5c056c7f3f5b89072fc96530c4974c98c2e54f4363",
+          "language_category": "French",
+          "source_format_category": "plain-text",
+          "layout_category": "single-column",
+          "pre_live_validation_result": "failed",
+          "pre_live_failure_phase": "offline_named_result_volume_initialization",
+          "outer_container_process_exit_code": null,
+          "broker_exit_code": null,
+          "result_artifact_state": "not_created",
+          "process_result_channel_classification": "infrastructure_pre_live_result_volume_initialization_failure",
+          "valid_sanitized_broker_result_parsed": false,
+          "invocation_attempted": false,
+          "invocation_succeeded": false,
+          "semantic_quality_evaluated": false,
+          "final_safe_classification": "infrastructure_pre_live_result_volume_initialization_failure"
         }
       ],
       "safe_metrics": {

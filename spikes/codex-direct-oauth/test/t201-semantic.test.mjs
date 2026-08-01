@@ -383,6 +383,26 @@ test("T201 broker source uses the shared transport function and does not fork HT
   assert.equal(source.includes("new BoundedSseParser"), false);
 });
 
+test("T201 result topology uses runtime identity and a credential-free reader before credential recovery", async () => {
+  const [broker, channel, compose, offline] = await Promise.all([
+    fs.readFile(new URL("../t201-semantic-broker.mjs", import.meta.url), "utf8"),
+    fs.readFile(new URL("../lib/t201-broker-result-channel.mjs", import.meta.url), "utf8"),
+    fs.readFile(new URL("../compose.yml", import.meta.url), "utf8"),
+    fs.readFile(new URL("../run-t201-result-channel-offline.sh", import.meta.url), "utf8"),
+  ]);
+  assert.equal(channel.includes("stat.uid !== 1000"), false);
+  assert.equal(channel.includes("stat.gid !== 1000"), false);
+  assert.equal(channel.includes("runtimeIdentity"), true);
+  assert.equal(broker.indexOf("resultArtifactPreflight = await prepareBrokerResultDirectory") < broker.indexOf("const before = await recoverCredential"), true);
+  const reader = compose.slice(compose.indexOf("  t201-result-reader:"), compose.indexOf("\nvolumes:"));
+  assert.equal(reader.includes("t199-key-live"), false);
+  assert.equal(reader.includes("t199-credentials-live"), false);
+  assert.equal(offline.includes("--entrypoint node t201-semantic t201-result-channel-topology-offline-broker.mjs"), true);
+  assert.equal(offline.includes("-v \"$result_volume:/spike/result:ro\""), true);
+  assert.equal(offline.includes("t199-key-live"), false);
+  assert.equal(offline.includes("t199-credentials-live"), false);
+});
+
 test("T200 and T201 Docker networking and proxy policy match", async () => {
   const [t200Runner, t201Runner, compose] = await Promise.all([
     fs.readFile(new URL("../run-t200-live.sh", import.meta.url), "utf8"),
@@ -396,7 +416,9 @@ test("T200 and T201 Docker networking and proxy policy match", async () => {
   const t201Service = compose.slice(compose.indexOf("  t201-semantic:"));
   assert.equal(/HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY|http_proxy|https_proxy|all_proxy|no_proxy/.test(t201Service), false);
   assert.equal(t200Runner.includes("--user 1000:1000"), true);
-  assert.equal(t201Service.includes('user: "1000:1000"'), true);
+  assert.equal(t201Service.includes('user: "1000:1000"'), false);
+  assert.equal(t201Service.includes("uid=1000"), false);
+  assert.equal(t201Service.includes("gid=1000"), false);
   assert.equal(t200Runner.includes("--read-only"), true);
   assert.equal(t201Service.includes("read_only: true"), true);
   assert.equal(t200Runner.includes("--memory 192m"), true);

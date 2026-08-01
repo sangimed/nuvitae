@@ -122,12 +122,8 @@ services:
     init: true
     command: ["node", "t201-semantic-broker.mjs"]
     read_only: true
-    user: "1000:1000"
-    volumes:
-      - t199-key-live:/run/t199-key:ro
-      - t199-credentials-live:/spike/credentials:rw
     tmpfs:
-      - /tmp:rw,noexec,nosuid,size=16m,uid=1000,gid=1000,mode=0700
+      - /tmp:rw,noexec,nosuid,size=16m,mode=0700
     cap_drop:
       - ALL
     security_opt:
@@ -142,9 +138,8 @@ services:
     init: true
     command: ["node", "t201-result-channel-offline-broker.mjs"]
     read_only: true
-    user: "1000:1000"
     tmpfs:
-      - /tmp:rw,noexec,nosuid,size=16m,uid=1000,gid=1000,mode=0700
+      - /tmp:rw,noexec,nosuid,size=16m,mode=0700
     cap_drop:
       - ALL
     security_opt:
@@ -159,9 +154,24 @@ services:
     init: true
     command: ["node", "t201-result-channel-topology-offline-broker.mjs"]
     read_only: true
-    user: "1000:1000"
     tmpfs:
-      - /tmp:rw,noexec,nosuid,size=16m,uid=1000,gid=1000,mode=0700
+      - /tmp:rw,noexec,nosuid,size=16m,mode=0700
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 96m
+    cpus: "0.25"
+
+  t201-result-reader:
+    build:
+      context: .
+    init: true
+    command: ["node", "t201-result-reader.mjs"]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,mode=0700
     cap_drop:
       - ALL
     security_opt:

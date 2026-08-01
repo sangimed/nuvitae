@@ -63,6 +63,46 @@ function safeEventTypeCounts(value) {
   return Object.fromEntries(SAFE_EVENT_TYPE_COUNT_KEYS.map((key) => [key, isPlainObject(value) ? countValue(value[key]) ?? 0 : 0]));
 }
 
+function safeResultArtifactPreflight(value) {
+  if (!isPlainObject(value)) return null;
+  return {
+    effective_uid: countValue(value.effective_uid),
+    effective_gid: countValue(value.effective_gid),
+    directory_uid: countValue(value.directory_uid),
+    directory_gid: countValue(value.directory_gid),
+    directory_mode: countValue(value.directory_mode),
+    same_filesystem: nullableBoolean(value.same_filesystem),
+  };
+}
+
+export function parseReaderDiagnostics(value, exitCode) {
+  const text = String(value ?? "");
+  const success = text.match(/safe_result_reader_success:(\d+):(\d+):(600|[0-7]{3}):(same_filesystem|different_filesystem)/);
+  if (success) {
+    return {
+      reader_exit_code: Number.isInteger(exitCode) ? exitCode : null,
+      reader_state: "validated_final_json",
+      reader_effective_uid: Number(success[1]),
+      reader_effective_gid: Number(success[2]),
+      final_file_mode: Number.parseInt(success[3], 8),
+      same_filesystem: success[4] === "same_filesystem",
+      failure_operation: null,
+      failure_errno: null,
+    };
+  }
+  const failure = text.match(/safe_result_reader_failure:([a-z_]+):(E[A-Z]+|unknown)/);
+  return {
+    reader_exit_code: Number.isInteger(exitCode) ? exitCode : null,
+    reader_state: failure ? "safe_reader_failure" : "not_measured",
+    reader_effective_uid: null,
+    reader_effective_gid: null,
+    final_file_mode: null,
+    same_filesystem: null,
+    failure_operation: failure?.[1] ?? null,
+    failure_errno: failure?.[2] ?? null,
+  };
+}
+
 function nullableBoolean(value) {
   if (value === null) return null;
   return typeof value === "boolean" ? value : false;
@@ -149,6 +189,7 @@ function projectSafeResult(result) {
     fixture_identifier: result.fixture_identifier,
     fixture_sha256: result.fixture_sha256,
     fixture_classified_as_synthetic: booleanValue(result.fixture_classified_as_synthetic),
+    result_artifact_preflight: safeResultArtifactPreflight(result.result_artifact_preflight),
     golden_structured_json_bytes: countValue(result.golden_structured_json_bytes),
     golden_structured_json_size_category: stringValue(result.golden_structured_json_size_category, "not_evaluated"),
     derived_expected_live_json_ceiling: countValue(result.derived_expected_live_json_ceiling),
@@ -273,6 +314,7 @@ export function buildFinalEvidence({
   logSecretScanResult,
   caseId,
   resultChannel,
+  readerDiagnostics,
   generatedAt = new Date(),
   parseOutcome,
 }) {
@@ -301,6 +343,7 @@ export function buildFinalEvidence({
     broker_stdout_sha256: resultChannel?.stdout_sha256 ?? null,
     broker_stderr_sha256: resultChannel?.stderr_sha256 ?? null,
     broker_stderr_safe_category: resultChannel?.stderr_safe_category ?? "not_measured",
+    result_reader_diagnostics: readerDiagnostics ?? parseReaderDiagnostics(undefined, null),
   };
 
   if (!hasValidCurrentResult) {
@@ -441,6 +484,8 @@ export async function processT201RunnerEvidence({
   resultPath,
   stdoutPath,
   stderrPath,
+  readerStderrPath,
+  readerExitCode,
   processStartFailed = false,
   generatedAt,
 }) {
@@ -448,6 +493,7 @@ export async function processT201RunnerEvidence({
     ? await inspectBrokerResultChannel({ resultPath, stdoutPath, stderrPath, brokerExitCode, processStartFailed })
     : null;
   const logText = resultChannel ? "" : await fs.readFile(logsPath, "utf8").catch(() => "");
+  const readerDiagnostics = parseReaderDiagnostics(await fs.readFile(readerStderrPath, "utf8").catch(() => ""), readerExitCode);
   const parsed = resultChannel?.result;
   const validation = parsed ? validateBrokerResult(parsed, { runnerRunIdHash, runnerStartedAt, expectedCaseId: caseId }) : null;
   const parseOutcome = resultChannel
@@ -466,6 +512,7 @@ export async function processT201RunnerEvidence({
     logSecretScanResult,
     caseId,
     resultChannel,
+    readerDiagnostics,
     generatedAt,
     parseOutcome,
   });
@@ -507,6 +554,8 @@ if (isMain) {
     stdoutPath,
     stderrPath,
     processStartFailed: processStartFailedValue === "true",
+    readerStderrPath: process.argv[16],
+    readerExitCode: Number(process.argv[17]),
   });
   process.exit(evidence.case_pass === true ? 0 : 1);
 }

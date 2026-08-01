@@ -19,9 +19,10 @@ fi
 mkdir -p evidence "$result_root"
 umask 077
 result_dir=$(mktemp -d "$result_root/t201-result.XXXXXX")
-result_file="$result_dir/result.json"
 stdout_file="$result_dir/broker.stdout"
 stderr_file="$result_dir/broker.stderr"
+reader_stdout_file="$result_dir/reader.stdout"
+reader_stderr_file="$result_dir/reader.stderr"
 cleanup() { rm -rf "$result_dir"; }
 trap cleanup EXIT HUP INT TERM
 chmod 700 "$result_dir"
@@ -35,31 +36,38 @@ fi
 
 docker volume inspect "$key_volume" >/dev/null
 docker volume inspect "$credential_volume" >/dev/null
-docker compose build t201-semantic >/dev/null
+docker compose build t201-semantic t201-result-reader >/dev/null
 result_volume="nuvitae-codex-direct-oauth-t201-result-$runner_run_id_hash"
-init_container="t201-result-volume-init-$runner_run_id_hash"
+reader_container="t201-result-reader-$runner_run_id_hash"
+result_path="/spike/result/$runner_run_id_hash/result.json"
 docker volume create "$result_volume" >/dev/null
-docker compose run --name "$init_container" --no-deps --user 0:0 \
-  -v "$result_volume:/spike/result:rw" \
-  --entrypoint node t201-result-channel-topology-offline t201-result-volume-init.mjs >/dev/null
-docker rm -f "$init_container" >/dev/null 2>&1
 
 set +e
-docker compose run --name "$container" \
+docker compose run --name "$container" --no-deps \
+  -v "$key_volume:/run/t199-key:ro" \
+  -v "$credential_volume:/spike/credentials:rw" \
   -v "$result_volume:/spike/result:rw" \
-  -e NUVITAE_T201_RESULT_PATH=/spike/result/result.json \
+  -e NUVITAE_T201_RESULT_PATH="$result_path" \
   -e NUVITAE_T201_RUN_ID_HASH="$runner_run_id_hash" \
   -e NUVITAE_T201_CASE_ID="$case_id" \
   t201-semantic >"$stdout_file" 2>"$stderr_file"
 status=$?
-docker cp "$container:/spike/result/result.json" "$result_file" >/dev/null 2>&1
 docker rm -f "$container" >/dev/null 2>&1
+docker compose run --name "$reader_container" --no-deps \
+  -v "$result_volume:/spike/result:ro" \
+  -e NUVITAE_T201_RESULT_PATH="$result_path" \
+  t201-result-reader >"$reader_stdout_file" 2>"$reader_stderr_file"
+reader_status=$?
+docker rm -f "$reader_container" >/dev/null 2>&1
 docker volume rm "$result_volume" >/dev/null 2>&1
 set -e
 process_start_failed=false
 
 broker_removed=true
 if docker ps -a --format '{{.Names}}' | grep -Eq '(^|[[:space:]])t201-semantic-broker($|[[:space:]])'; then
+  broker_removed=false
+fi
+if docker ps -a --format '{{.Names}}' | grep -Eq "(^|[[:space:]])$reader_container($|[[:space:]])"; then
   broker_removed=false
 fi
 
@@ -79,11 +87,11 @@ else
 fi
 
 set +e
-node --input-type=module - "$stdout_file" "$stderr_file" <<'NODE'
+node --input-type=module - "$stdout_file" "$stderr_file" "$reader_stdout_file" "$reader_stderr_file" <<'NODE'
 import fs from "node:fs/promises";
 import { containsSecretLikeValue } from "./lib/sanitize.mjs";
-const [, , stdoutPath, stderrPath] = process.argv;
-const text = `${await fs.readFile(stdoutPath, "utf8").catch(() => "")}\n${await fs.readFile(stderrPath, "utf8").catch(() => "")}`;
+const [, , stdoutPath, stderrPath, readerStdoutPath, readerStderrPath] = process.argv;
+const text = `${await fs.readFile(stdoutPath, "utf8").catch(() => "")}\n${await fs.readFile(stderrPath, "utf8").catch(() => "")}\n${await fs.readFile(readerStdoutPath, "utf8").catch(() => "")}\n${await fs.readFile(readerStderrPath, "utf8").catch(() => "")}`;
 if (containsSecretLikeValue(text)) {
   process.stderr.write("secret-like value found in T201 broker diagnostics\n");
   process.exit(1);
@@ -109,10 +117,12 @@ node lib/t201-live-runner-evidence.mjs \
   "$log_secret_scan_result" \
   "$status" \
   "$case_id" \
-  "$result_file" \
+  "$reader_stdout_file" \
   "$stdout_file" \
   "$stderr_file" \
-  "$process_start_failed"
+  "$process_start_failed" \
+  "$reader_stderr_file" \
+  "$reader_status"
 runner_status=$?
 set -e
 
