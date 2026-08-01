@@ -490,7 +490,16 @@ test("T200 and T201 Docker networking and proxy policy match", async () => {
     fs.readFile(new URL("../compose.yml", import.meta.url), "utf8"),
   ]);
   assert.equal(/--network\b/.test(t200Runner), false);
-  assert.equal(/network_mode\s*:/.test(compose), false);
+  const diagnosticStart = compose.indexOf(
+    "  t201-credential-recovery-diagnostic:",
+  );
+  const diagnostic = compose.slice(diagnosticStart);
+  const t201Service = compose.slice(
+    compose.indexOf("  t201-semantic:"),
+    diagnosticStart,
+  );
+  assert.equal(/network_mode\s*:/.test(t201Service), false);
+  assert.equal(diagnostic.includes("network_mode: none"), true);
   assert.equal(
     /HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY|http_proxy|https_proxy|all_proxy|no_proxy/.test(
       t200Runner,
@@ -503,7 +512,6 @@ test("T200 and T201 Docker networking and proxy policy match", async () => {
     ),
     false,
   );
-  const t201Service = compose.slice(compose.indexOf("  t201-semantic:"));
   assert.equal(
     /HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY|http_proxy|https_proxy|all_proxy|no_proxy/.test(
       t201Service,

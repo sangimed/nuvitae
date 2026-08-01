@@ -191,7 +191,9 @@ services:
       context: .
     init: true
     command: ["node", "t201-credential-recovery-diagnostic.mjs"]
+    user: "100:101"
     read_only: true
+    network_mode: none
     volumes:
       - t199-key-live:/run/t199-key:ro
       - t199-credentials-live:/spike/credentials:ro

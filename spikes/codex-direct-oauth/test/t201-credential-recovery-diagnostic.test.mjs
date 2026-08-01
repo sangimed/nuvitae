@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import { test } from "node:test";
 import {
   createMasterKey,
@@ -23,6 +25,23 @@ const spikeRoot = path.resolve(
   path.dirname(new URL(import.meta.url).pathname),
   "..",
 );
+const execFileAsync = promisify(execFile);
+
+async function resolvedDiagnosticService() {
+  const { stdout } = await execFileAsync(
+    "docker",
+    ["compose", "config", "--format", "json"],
+    {
+      cwd: spikeRoot,
+      env: {
+        ...process.env,
+        NUVITAE_T201_IMMUTABLE_IMAGE: `sha256:${"0".repeat(64)}`,
+      },
+      maxBuffer: 1024 * 1024,
+    },
+  );
+  return JSON.parse(stdout).services["t201-credential-recovery-diagnostic"];
+}
 
 async function fixture({
   key = true,
@@ -159,7 +178,7 @@ test("credential diagnostic reports unreadable paths and non-root runtime identi
   await fs.rm(value.root, { recursive: true, force: true });
 });
 
-test("diagnostic service uses the immutable non-root image with read-only live mounts", async () => {
+test("diagnostic service resolves to the isolated immutable live-volume configuration", async () => {
   const [compose, dockerfile, runner] = await Promise.all([
     fs.readFile(path.join(spikeRoot, "compose.yml"), "utf8"),
     fs.readFile(path.join(spikeRoot, "Dockerfile"), "utf8"),
@@ -169,10 +188,39 @@ test("diagnostic service uses the immutable non-root image with read-only live m
     ),
   ]);
   assert.match(compose, /t201-credential-recovery-diagnostic:/);
-  assert.match(compose, /t199-key-live:\/run\/t199-key:ro/);
-  assert.match(compose, /t199-credentials-live:\/spike\/credentials:ro/);
-  assert.match(compose, /read_only: true/);
   assert.match(dockerfile, /USER spike/);
   assert.match(runner, /"--no-deps"/);
   assert.doesNotMatch(runner, /"--no-build"/);
+
+  const service = await resolvedDiagnosticService();
+  assert.equal(service.user, "100:101");
+  assert.equal(service.network_mode, "none");
+  assert.equal(service.read_only, true);
+  assert.deepEqual(service.ports ?? [], []);
+  assert.equal(service.networks == null, true);
+  assert.notEqual(service.privileged, true);
+  assert.deepEqual(service.cap_add ?? [], []);
+  assert.equal(
+    service.volumes.some((mount) => mount.type === "bind" && !mount.read_only),
+    false,
+  );
+  assert.deepEqual(
+    service.volumes.map(({ source, target, read_only }) => ({
+      source,
+      target,
+      read_only,
+    })),
+    [
+      {
+        source: "t199-key-live",
+        target: "/run/t199-key",
+        read_only: true,
+      },
+      {
+        source: "t199-credentials-live",
+        target: "/spike/credentials",
+        read_only: true,
+      },
+    ],
+  );
 });
