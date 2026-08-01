@@ -1,7 +1,6 @@
 #!/bin/sh
-# Canonical Campaign-B B01 execution body. The preparation process supplies a
-# local content-addressed image ID in memory; this script never builds, pulls,
-# tags, or falls back to the historical Campaign-A runner.
+# Canonical Campaign-B execution body. The runner supplies a validated,
+# bounded contract and one local content-addressed image ID in memory.
 set -eu
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -19,14 +18,23 @@ resolved=$(docker image inspect --format '{{.Id}}' "$image")
 [ "$resolved" = "$image" ] || { echo "prepared image identity changed" >&2; exit 1; }
 
 container=t201-semantic-broker
-case_id=T201-C02
+campaign=${NUVITAE_T201_CAMPAIGN_ID:-}
+attempt=${NUVITAE_T201_ATTEMPT_ID:-}
+case_id=${NUVITAE_T201_CASE_ID:-}
+fixture=${NUVITAE_T201_FIXTURE_PATH:-}
+manifest=${NUVITAE_T201_MANIFEST_PATH:-}
 evidence=${NUVITAE_T201_EVIDENCE_PATH:-}
+max_broker_runs=${NUVITAE_T201_MAX_BROKER_RUNS:-}
+max_backend_requests=${NUVITAE_T201_MAX_SEMANTIC_BACKEND_REQUESTS:-}
+automatic_retries=${NUVITAE_T201_AUTOMATIC_RETRIES:-}
 result_root="$root/.tmp"
 
-if [ -z "$evidence" ]; then
-  echo "NUVITAE_T201_EVIDENCE_PATH is required to preserve prior attempts" >&2
+if [ -z "$campaign" ] || [ -z "$attempt" ] || [ -z "$case_id" ] || [ -z "$fixture" ] || [ -z "$manifest" ] || [ -z "$evidence" ]; then
+  echo "validated Campaign-B contract is required" >&2
   exit 1
 fi
+case "$max_broker_runs:$max_backend_requests:$automatic_retries" in 1:1:0) ;; *) echo "bounded Campaign-B contract is required" >&2; exit 1 ;; esac
+[ -f "$fixture" ] && [ -f "$manifest" ] || { echo "validated matrix artifacts are required" >&2; exit 1; }
 
 key_volume=${CODEX_DIRECT_OAUTH_T199_KEY_VOLUME:-nuvitae-codex-direct-oauth-t199-key-live}
 credential_volume=${CODEX_DIRECT_OAUTH_T199_CREDENTIAL_VOLUME:-nuvitae-codex-direct-oauth-t199-credentials-live}
@@ -55,6 +63,34 @@ result_volume="nuvitae-codex-direct-oauth-t201-result-$runner_run_id_hash"
 reader_container="t201-result-reader-$runner_run_id_hash"
 result_path="/spike/result/$runner_run_id_hash/result.json"
 docker volume create "$result_volume" >/dev/null
+
+if [ "${NUVITAE_T201_CREDENTIAL_FREE_REHEARSAL:-0}" = "1" ]; then
+  # This public-entrypoint rehearsal deliberately exercises the exact
+  # immutable-image/result-channel topology without any credential mounts,
+  # OAuth/provider environment, broker semantic request, or evidence write.
+  set +e
+  docker compose run --name "$container" --no-deps \
+    -v "$result_volume:/spike/result:rw" \
+    -e NUVITAE_T201_RESULT_PATH="$result_path" \
+    -e NUVITAE_T201_RUN_ID_HASH="$runner_run_id_hash" \
+    -e NUVITAE_T201_CASE_ID="$case_id" \
+    -e NUVITAE_T201_FIXTURE_PATH="$fixture" \
+    -e NUVITAE_T201_MANIFEST_PATH="$manifest" \
+    t201-semantic >"$stdout_file" 2>"$stderr_file"
+  status=$?
+  docker rm -f "$container" >/dev/null 2>&1
+  docker compose run --name "$reader_container" --no-deps \
+    -v "$result_volume:/spike/result:ro" \
+    -e NUVITAE_T201_RESULT_PATH="$result_path" \
+    t201-result-reader >"$reader_stdout_file" 2>"$reader_stderr_file"
+  reader_status=$?
+  docker rm -f "$reader_container" >/dev/null 2>&1
+  docker volume rm "$result_volume" >/dev/null 2>&1
+  set -e
+  [ "$status" -eq 0 ] && [ "$reader_status" -eq 0 ] || exit 1
+  printf '%s\n' "{\"campaign\":\"$campaign\",\"attempt\":\"$attempt\",\"phase\":\"credential_free_rehearsal\",\"success\":true,\"semantic_backend_requests\":0,\"evidence_written\":false}"
+  exit 0
+fi
 
 set +e
 docker compose run --name "$container" --no-deps \

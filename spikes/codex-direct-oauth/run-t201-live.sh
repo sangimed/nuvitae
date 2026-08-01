@@ -16,6 +16,6 @@ if ! git ls-files --error-unmatch -- "$target" >/dev/null 2>&1; then
   exit 1
 fi
 
-# Campaign A is closed. Preparation, preflight, and the future explicitly
-# authorized B01 runner share one process-local immutable image reference.
-exec node ./t201-campaign-b-runner.mjs
+# Campaign A is closed. The runner accepts only an explicit, registry-backed
+# bounded Campaign-B contract; it never defaults to an attempt or evidence path.
+exec node ./t201-campaign-b-runner.mjs "$@"
