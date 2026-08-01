@@ -12,7 +12,7 @@ stderr_file="$result_dir/broker.stderr"
 evidence_file="$result_dir/evidence.json"
 cleanup() { rm -rf "$result_dir"; }
 trap cleanup EXIT HUP INT TERM
-chmod 733 "$result_dir"
+chmod 700 "$result_dir"
 
 run_id=$(node --input-type=module -e 'import { generateRunnerRunIdHash } from "./lib/t201-live-runner-evidence.mjs"; process.stdout.write(generateRunnerRunIdHash());')
 started_at=$(node --input-type=module -e 'process.stdout.write(new Date().toISOString());')

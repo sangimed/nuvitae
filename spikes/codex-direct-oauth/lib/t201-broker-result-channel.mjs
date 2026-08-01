@@ -6,6 +6,26 @@ import { containsSecretLikeValue, sanitizeErrorCategory } from "./sanitize.mjs";
 const RESULT_ROOTS = ["/spike/result/", "/tmp/t201-result/"];
 const MAX_RESULT_BYTES = 131072;
 
+function resultArtifactError(operation, error) {
+  const wrapped = new Error(`result_artifact_${operation}_${error?.code ?? "unknown"}`);
+  wrapped.safe_result_artifact_operation = operation;
+  wrapped.safe_result_artifact_errno = error?.code ?? "unknown";
+  return wrapped;
+}
+
+export async function verifyPreparedResultDirectory(resultPath) {
+  const directory = path.dirname(path.resolve(resultPath));
+  let stat;
+  try {
+    stat = await fs.stat(directory);
+  } catch (error) {
+    throw resultArtifactError("stat_directory", error);
+  }
+  if (!stat.isDirectory()) throw resultArtifactError("stat_directory", { code: "ENOTDIR" });
+  if ((stat.mode & 0o077) !== 0) throw resultArtifactError("verify_directory_mode", { code: "EPERM" });
+  return { uid: stat.uid, gid: stat.gid, mode: stat.mode & 0o777 };
+}
+
 function safeHash(value) {
   return crypto.createHash("sha256").update(value, "utf8").digest("hex");
 }
@@ -36,10 +56,24 @@ export async function writeAtomicBrokerResult(result, resultPath = process.env.N
   if (!resultPath) return `${serialized}\n`;
   const resolved = path.resolve(resultPath);
   if (!RESULT_ROOTS.some((root) => resolved.startsWith(root))) throw new Error("invalid_broker_result_path");
-  await fs.mkdir(path.dirname(resolved), { recursive: true, mode: 0o700 });
+  await verifyPreparedResultDirectory(resolved);
   const temp = `${resolved}.tmp-${process.pid}-${crypto.randomBytes(8).toString("hex")}`;
-  await fs.writeFile(temp, `${serialized}\n`, { mode: 0o600 });
-  await fs.rename(temp, resolved);
+  let handle;
+  try {
+    handle = await fs.open(temp, "wx", 0o600);
+    await handle.writeFile(`${serialized}\n`);
+    await handle.sync();
+    await handle.close();
+    handle = undefined;
+  } catch (error) {
+    await handle?.close().catch(() => undefined);
+    throw resultArtifactError("create_write_fsync_temp", error);
+  }
+  try {
+    await fs.rename(temp, resolved);
+  } catch (error) {
+    throw resultArtifactError("rename_same_directory", error);
+  }
   return `${serialized}\n`;
 }
 

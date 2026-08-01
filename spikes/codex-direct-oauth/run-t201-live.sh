@@ -8,8 +8,13 @@ key_volume=${CODEX_DIRECT_OAUTH_T199_KEY_VOLUME:-nuvitae-codex-direct-oauth-t199
 credential_volume=${CODEX_DIRECT_OAUTH_T199_CREDENTIAL_VOLUME:-nuvitae-codex-direct-oauth-t199-credentials-live}
 container=t201-semantic-broker
 case_id=T201-C02
-evidence="evidence/codex-direct-oauth-t201-c02-semantic-parsing.json"
+evidence=${NUVITAE_T201_EVIDENCE_PATH:-}
 result_root="$root/.tmp"
+
+if [ -z "$evidence" ]; then
+  echo "NUVITAE_T201_EVIDENCE_PATH is required to preserve prior attempts" >&2
+  exit 1
+fi
 
 mkdir -p evidence "$result_root"
 umask 077
@@ -19,7 +24,7 @@ stdout_file="$result_dir/broker.stdout"
 stderr_file="$result_dir/broker.stderr"
 cleanup() { rm -rf "$result_dir"; }
 trap cleanup EXIT HUP INT TERM
-chmod 733 "$result_dir"
+chmod 700 "$result_dir"
 runner_run_id_hash=$(node --input-type=module -e 'import { generateRunnerRunIdHash } from "./lib/t201-live-runner-evidence.mjs"; process.stdout.write(generateRunnerRunIdHash());')
 runner_started_at=$(node --input-type=module -e 'process.stdout.write(new Date().toISOString());')
 
@@ -31,18 +36,26 @@ fi
 docker volume inspect "$key_volume" >/dev/null
 docker volume inspect "$credential_volume" >/dev/null
 docker compose build t201-semantic >/dev/null
+result_volume="nuvitae-codex-direct-oauth-t201-result-$runner_run_id_hash"
+init_container="t201-result-volume-init-$runner_run_id_hash"
+docker volume create "$result_volume" >/dev/null
+docker compose run --name "$init_container" --no-deps --user 0:0 \
+  -v "$result_volume:/spike/result:rw" \
+  --entrypoint node t201-result-channel-topology-offline t201-result-volume-init.mjs >/dev/null
+docker rm -f "$init_container" >/dev/null 2>&1
 
 set +e
 docker compose run --name "$container" \
-  -v "$result_dir:/spike/result:rw" \
+  -v "$result_volume:/spike/result:rw" \
   -e NUVITAE_T201_RESULT_PATH=/spike/result/result.json \
   -e NUVITAE_T201_RUN_ID_HASH="$runner_run_id_hash" \
   -e NUVITAE_T201_CASE_ID="$case_id" \
   t201-semantic >"$stdout_file" 2>"$stderr_file"
 status=$?
+docker cp "$container:/spike/result/result.json" "$result_file" >/dev/null 2>&1
 docker rm -f "$container" >/dev/null 2>&1
+docker volume rm "$result_volume" >/dev/null 2>&1
 set -e
-chmod 700 "$result_dir"
 process_start_failed=false
 
 broker_removed=true

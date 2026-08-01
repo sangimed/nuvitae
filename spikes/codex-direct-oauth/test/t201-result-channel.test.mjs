@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { inspectBrokerResultChannel, writeAtomicBrokerResult } from "../lib/t201-broker-result-channel.mjs";
+import { inspectBrokerResultChannel, verifyPreparedResultDirectory, writeAtomicBrokerResult } from "../lib/t201-broker-result-channel.mjs";
 import { processT201RunnerEvidence } from "../lib/t201-live-runner-evidence.mjs";
 
 const runId = "a".repeat(32);
@@ -57,4 +57,28 @@ test("valid sanitized failure result survives non-zero exit without semantic met
 
 test("result artifact writer rejects paths outside the disposable broker result mount", async () => {
   await assert.rejects(() => writeAtomicBrokerResult(result(), "/var/tmp/not-a-broker-result.json"), /invalid_broker_result_path/);
+});
+
+test("prepared private result directory supports 0600 temporary write, fsync, atomic rename, parent read, and cleanup", async () => {
+  await fs.mkdir("/tmp/t201-result", { recursive: true, mode: 0o700 });
+  const dir = await fs.mkdtemp("/tmp/t201-result/private-");
+  const resultPath = path.join(dir, "result.json");
+  await fs.chmod(dir, 0o700);
+  const topology = await verifyPreparedResultDirectory(resultPath);
+  assert.equal(topology.mode, 0o700);
+  await writeAtomicBrokerResult(result(), resultPath);
+  assert.equal((await fs.stat(resultPath)).mode & 0o777, 0o600);
+  assert.deepEqual(JSON.parse(await fs.readFile(resultPath, "utf8")), result());
+  await fs.rm(resultPath);
+  await assert.rejects(() => fs.stat(resultPath));
+  await fs.rm(dir, { recursive: true, force: true });
+});
+
+test("prepared result directory rejects read-open ownership modes before the broker fabricates metrics", async () => {
+  await fs.mkdir("/tmp/t201-result", { recursive: true, mode: 0o700 });
+  const dir = await fs.mkdtemp("/tmp/t201-result/reject-");
+  const resultPath = path.join(dir, "result.json");
+  await fs.chmod(dir, 0o733);
+  await assert.rejects(() => verifyPreparedResultDirectory(resultPath), /result_artifact_verify_directory_mode_EPERM/);
+  await fs.rm(dir, { recursive: true, force: true });
 });
