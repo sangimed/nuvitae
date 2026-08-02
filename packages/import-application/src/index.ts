@@ -1,3 +1,6 @@
 export type { ImportProcessingLimits } from "./import-processing-limits.js";
 export * from "./process-extraction.js";
+export * from "./semantic-parser/provider-errors.js";
+export * from "./semantic-parser/resume-semantic-parser-provider.js";
+export * from "./semantic-parser/validate-semantic-response.js";
 export * from "./validate-document.js";
