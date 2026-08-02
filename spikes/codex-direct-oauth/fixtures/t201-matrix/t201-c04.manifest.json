@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "fixture_id": "T201-C04",
   "fixture_classification": "synthetic",
   "document_language": "English",
@@ -10,7 +10,9 @@
     "kind": "deterministic_pdf_text",
     "coordinate_system": "one_based_page_one_based_item_zero_based_offset",
     "binary_extraction_performed": false,
-    "source_locations": "page/item/offset"
+    "source_locations": "page/item/offset",
+    "contract_version": 2,
+    "coordinate_mapping_version": 1
   },
   "expected_section_counts": {
     "basics": 1,
@@ -29,124 +31,162 @@
       "path": "basics.full_name",
       "value": "Eli Synthetic",
       "priority": "high",
-      "line": 1
+      "line": 1,
+      "category": "basics"
     },
     {
       "path": "basics.email",
       "value": "eli.synthetic@example.invalid",
       "priority": "high",
-      "line": 3
+      "line": 3,
+      "category": "basics"
     },
     {
       "path": "basics.location",
       "value": "Example Coast, Fictionland",
       "priority": "high",
-      "line": 4
+      "line": 4,
+      "category": "basics"
     },
     {
       "path": "basics.summary",
       "value": "Systems designer who simplifies fictional approval workflows.",
       "priority": "medium",
-      "line": 6
+      "line": 6,
+      "category": "basics"
     },
     {
       "path": "work_experiences[0].employer",
       "value": "Lantern Sample Works",
       "priority": "high",
-      "line": 8
+      "line": 8,
+      "category": "work"
     },
     {
       "path": "work_experiences[0].job_title",
       "value": "Systems Designer",
       "priority": "high",
-      "line": 9
+      "line": 9,
+      "category": "work"
     },
     {
       "path": "work_experiences[0].start_date",
       "value": "April 2022",
       "priority": "high",
-      "line": 10
+      "line": 10,
+      "category": "work"
     },
     {
       "path": "work_experiences[0].end_date",
       "value": "December 2024",
       "priority": "high",
-      "line": 10
+      "line": 10,
+      "category": "work"
     },
     {
       "path": "work_experiences[0].highlights[0]",
       "value": "Mapped 18 fictional approval paths.",
       "priority": "medium",
-      "line": 11
+      "line": 11,
+      "category": "work"
     },
     {
       "path": "work_experiences[0].highlights[1]",
       "value": "Wrote JSON checks for 300 sample records.",
       "priority": "medium",
-      "line": 12
+      "line": 12,
+      "category": "work"
     },
     {
       "path": "education[0].school",
       "value": "Institute of Fictional Design",
       "priority": "high",
-      "line": 15
+      "line": 15,
+      "category": "education"
     },
     {
       "path": "education[0].degree",
       "value": "Diploma in Systems Design",
       "priority": "high",
-      "line": 16
+      "line": 16,
+      "category": "education"
     },
     {
       "path": "education[0].start_date",
       "value": "2019",
       "priority": "medium",
-      "line": 17
+      "line": 17,
+      "category": "education"
     },
     {
       "path": "education[0].end_date",
       "value": "2022",
       "priority": "medium",
-      "line": 17
+      "line": 17,
+      "category": "education"
     },
-    { "path": "skills[0]", "value": "JSON", "priority": "high", "line": 18 },
-    { "path": "skills[1]", "value": "Mapping", "priority": "high", "line": 18 },
-    { "path": "skills[2]", "value": "Testing", "priority": "high", "line": 18 },
+    {
+      "path": "skills[0]",
+      "value": "JSON",
+      "priority": "high",
+      "line": 18,
+      "category": "skills"
+    },
+    {
+      "path": "skills[1]",
+      "value": "Mapping",
+      "priority": "high",
+      "line": 18,
+      "category": "skills"
+    },
+    {
+      "path": "skills[2]",
+      "value": "Testing",
+      "priority": "high",
+      "line": 18,
+      "category": "skills"
+    },
     {
       "path": "languages[0].name",
       "value": "English",
       "priority": "high",
-      "line": 19
+      "line": 19,
+      "category": "languages"
     },
     {
       "path": "languages[0].proficiency",
       "value": "fluent",
       "priority": "high",
-      "line": 19
+      "line": 19,
+      "category": "languages"
     },
     {
       "path": "languages[1].name",
       "value": "French",
       "priority": "high",
-      "line": 19
+      "line": 19,
+      "category": "languages"
     },
     {
       "path": "languages[1].proficiency",
       "value": "basic",
       "priority": "high",
-      "line": 19
+      "line": 19,
+      "category": "languages"
     },
     {
       "path": "certifications[0].name",
       "value": "Sample Safety Mark",
       "priority": "high",
-      "line": 20
+      "line": 20,
+      "category": "certifications"
     },
     {
       "path": "certifications[0].date",
       "value": "2024",
       "priority": "medium",
-      "line": 20
+      "line": 20,
+      "category": "certifications"
     }
   ],
   "intentionally_absent_fields": [
@@ -158,14 +198,16 @@
   ],
   "absence_evidence": {
     "line": 21,
-    "fragment": "ABSENT: phone, employer location, grade, issuer, employment type."
+    "fragment": "ABSENT: phone, employer location, grade, issuer, employment type.",
+    "category": "absence"
   },
   "ambiguous_facts": [
     {
       "id": "ambiguous-operational-resilience",
       "source_line": 13,
       "text": "Operational resilience",
-      "expected_handling": "Treat as an ambiguous phrase requiring review."
+      "expected_handling": "Treat as an ambiguous phrase requiring review.",
+      "category": "ambiguity"
     }
   ],
   "forbidden_inferences": [

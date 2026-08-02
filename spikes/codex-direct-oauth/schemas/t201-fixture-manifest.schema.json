@@ -22,16 +22,32 @@
     "thresholds"
   ],
   "properties": {
-    "schema_version": { "const": 1 },
-    "fixture_id": { "type": "string", "pattern": "^T201-C0[1-6]$" },
-    "fixture_classification": { "const": "synthetic" },
+    "schema_version": {
+      "enum": [1, 2]
+    },
+    "fixture_id": {
+      "type": "string",
+      "pattern": "^T201-C0[1-6]$"
+    },
+    "fixture_classification": {
+      "const": "synthetic"
+    },
     "document_language": {
       "description": "Expected document-level language classification; it is not an exact source fact and must not have a source line.",
       "enum": ["English", "French", "French/English"]
     },
-    "language_category": { "type": "string", "minLength": 1 },
-    "source_format_category": { "type": "string", "minLength": 1 },
-    "layout_category": { "type": "string", "minLength": 1 },
+    "language_category": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_format_category": {
+      "type": "string",
+      "minLength": 1
+    },
+    "layout_category": {
+      "type": "string",
+      "minLength": 1
+    },
     "extraction_format": {
       "type": "object",
       "required": ["kind", "coordinate_system"]
@@ -59,26 +75,48 @@
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["path", "value", "priority", "line"]
+        "required": ["path", "value", "priority", "line"],
+        "properties": {
+          "category": {
+            "enum": [
+              "basics",
+              "work",
+              "education",
+              "skills",
+              "languages",
+              "certifications"
+            ]
+          }
+        }
       }
     },
     "intentionally_absent_fields": {
       "type": "array",
       "minItems": 1,
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "ambiguous_facts": {
       "type": "array",
       "minItems": 1,
       "items": {
         "type": "object",
-        "required": ["id", "source_line", "text", "expected_handling"]
+        "required": ["id", "source_line", "text", "expected_handling"],
+        "properties": {
+          "category": {
+            "const": "ambiguity"
+          }
+        }
       }
     },
     "forbidden_inferences": {
       "type": "array",
       "minItems": 1,
-      "items": { "type": "object", "required": ["id", "forbidden_values"] }
+      "items": {
+        "type": "object",
+        "required": ["id", "forbidden_values"]
+      }
     },
     "thresholds": {
       "type": "object",
@@ -86,6 +124,58 @@
         "minimum_exact_fact_recall",
         "required_high_priority_fact_recall"
       ]
+    },
+    "absence_evidence": {
+      "type": "object",
+      "required": ["line", "fragment", "category"],
+      "properties": {
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fragment": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "const": "absence"
+        }
+      }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "schema_version": {
+            "const": 2
+          }
+        },
+        "required": ["schema_version"]
+      },
+      "then": {
+        "properties": {
+          "exact_facts": {
+            "items": {
+              "required": ["path", "value", "priority", "line", "category"]
+            }
+          },
+          "ambiguous_facts": {
+            "items": {
+              "required": [
+                "id",
+                "source_line",
+                "text",
+                "expected_handling",
+                "category"
+              ]
+            }
+          },
+          "absence_evidence": {
+            "required": ["line", "fragment", "category"]
+          }
+        }
+      }
+    }
+  ]
 }

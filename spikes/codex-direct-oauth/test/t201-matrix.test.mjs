@@ -15,6 +15,10 @@ import {
   buildT201Prompt,
   validateT201Schema,
 } from "../lib/t201-semantic-evaluator.mjs";
+import {
+  buildT201PdfCoordinateMapping,
+  validateT201PdfEvidenceMapping,
+} from "../lib/t201-pdf-coordinate-mapping.mjs";
 
 async function c02() {
   return loadT201MatrixCase("T201-C02");
@@ -126,6 +130,89 @@ test("T201 matrix treats missing or invalid diagnostic arrays as schema failures
   assert.ok(result.errors.includes("schema_validation_failed"));
 });
 
+test("T201 v2 requires every declared absent scalar to be explicit null and rejects invented values", async () => {
+  const item = await loadT201MatrixCase("T201-C04");
+  const output = buildValidT201MatrixResult(item.fixture, item.manifest);
+  assert.equal(output.schema_version, 2);
+  assert.equal(output.basics.phone, null);
+  assert.equal(output.work_experiences[0].location, null);
+  assert.equal(output.work_experiences[0].employment_type, null);
+  assert.equal(output.education[0].grade, null);
+  assert.equal(output.certifications[0].issuer, null);
+  assert.equal(validateT201Schema(output).ok, true);
+
+  delete output.work_experiences[0].employment_type;
+  const omitted = evaluateT201MatrixCase({ ...item, output });
+  assert.equal(omitted.metrics.schema_valid, false);
+  assert.equal(omitted.metrics.parsing_pass, false);
+
+  output.work_experiences[0].employment_type = {
+    value: "full-time",
+    evidence: output.work_experiences[0].employer.evidence,
+  };
+  const invented = evaluateT201MatrixCase({ ...item, output });
+  assert.equal(invented.metrics.no_invention_pass, false);
+  assert.equal(invented.metrics.parsing_pass, false);
+});
+
+test("T201 v2 validates PDF physical coordinates against flattened evidence and fails closed", async () => {
+  const item = await loadT201MatrixCase("T201-C04");
+  const output = buildValidT201MatrixResult(item.fixture, item.manifest);
+  const evidence = output.work_experiences[0].employer.evidence[0];
+  const mapping = buildT201PdfCoordinateMapping(item.fixture);
+  assert.equal(validateT201PdfEvidenceMapping(mapping, evidence), true);
+  assert.equal(evidence.physical.mapping_version, 1);
+  assert.equal(evidence.physical.page, 1);
+  assert.equal(evidence.physical.item, 8);
+
+  evidence.physical.item = 999;
+  const invalidItem = evaluateT201MatrixCase({ ...item, output });
+  assert.equal(invalidItem.metrics.parsing_pass, false);
+  assert.ok(invalidItem.errors.includes("evidence_coordinate_mismatch"));
+
+  const c05 = await loadT201MatrixCase("T201-C05");
+  const c05Output = buildValidT201MatrixResult(c05.fixture, c05.manifest);
+  assert.equal(
+    evaluateT201MatrixCase({ ...c05, output: c05Output }).metrics.parsing_pass,
+    true,
+  );
+  const c06 = await loadT201MatrixCase("T201-C06");
+  const c06Output = buildValidT201MatrixResult(c06.fixture, c06.manifest);
+  assert.equal(
+    Object.hasOwn(c06Output.basics.full_name.evidence[0], "physical"),
+    false,
+  );
+
+  const multiPage = buildT201PdfCoordinateMapping(
+    "[page=1 item=001] first item\n[page=2 item=001] second item\n",
+  );
+  const secondPageEvidence = {
+    line: 2,
+    start: 18,
+    end: 24,
+    physical: { mapping_version: 1, page: 2, item: 1, start: 0, end: 6 },
+  };
+  assert.equal(
+    validateT201PdfEvidenceMapping(multiPage, secondPageEvidence),
+    true,
+  );
+});
+
+test("T201 C04 deterministic offline golden output preserves its required quality gates", async () => {
+  const item = await loadT201MatrixCase("T201-C04");
+  const result = evaluateT201MatrixCase({
+    ...item,
+    output: buildValidT201MatrixResult(item.fixture, item.manifest),
+  });
+  assert.equal(result.fact_diagnostics.matched_expected_fact_count, 23);
+  assert.equal(result.fact_diagnostics.matched_high_priority_fact_count, 17);
+  assert.equal(result.metrics.document_language_classification_pass, true);
+  assert.equal(result.metrics.ambiguity_handling_pass, true);
+  assert.equal(result.metrics.grounding_pass, true);
+  assert.equal(result.metrics.no_invention_pass, true);
+  assert.equal(result.metrics.parsing_pass, true);
+});
+
 test("T201 C02 manifest ambiguities have a schema-valid, prompt-defined representation", async () => {
   const item = await c02();
   const output = c02Result(item);
@@ -210,7 +297,10 @@ test("T201 manifest-driven completeness checklist covers every selected fact wit
         new RegExp(`destination_path=${fact.path.replace(/[.[\]]/g, "\\$&")};`),
       );
       assert.match(checklist, new RegExp(`source_line_hint=${fact.line}`));
-      assert.match(checklist, /required_evidence_category=work/);
+      assert.match(
+        checklist,
+        new RegExp(`required_evidence_category=${fact.category ?? "work"}`),
+      );
       if (fact.priority === "high")
         assert.match(
           checklist,

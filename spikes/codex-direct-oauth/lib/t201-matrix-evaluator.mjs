@@ -10,6 +10,11 @@ import {
   evaluateT201DocumentLanguage,
   sourceGroundedManifestFacts,
 } from "./t201-semantic-evaluator.mjs";
+import {
+  buildT201PdfCoordinateMapping,
+  physicalCoordinatesForEvidence,
+  validateT201PdfEvidenceMapping,
+} from "./t201-pdf-coordinate-mapping.mjs";
 
 const CASE_ROOT = path.resolve(
   path.dirname(new URL(import.meta.url).pathname),
@@ -39,6 +44,42 @@ export const T201_MATRIX_METRIC_KEYS = Object.freeze([
   "no_invention_pass",
   "parsing_pass",
 ]);
+
+const CURRENT_FACT_CATEGORIES = Object.freeze({
+  "basics.": "basics",
+  work_experiences: "work",
+  education: "education",
+  skills: "skills",
+  languages: "languages",
+  certifications: "certifications",
+});
+
+function expectedCategoryForPath(pathExpression) {
+  return Object.entries(CURRENT_FACT_CATEGORIES).find(([prefix]) =>
+    pathExpression.startsWith(prefix),
+  )?.[1];
+}
+
+export function validateT201MatrixManifest(manifest) {
+  if (manifest?.schema_version !== 2) return [];
+  const errors = [];
+  for (const fact of manifest.exact_facts ?? []) {
+    const expected = expectedCategoryForPath(fact.path ?? "");
+    if (!expected || fact.category !== expected)
+      errors.push("provenance_category_mismatch");
+  }
+  for (const diagnostic of manifest.ambiguous_facts ?? [])
+    if (diagnostic.category !== "ambiguity")
+      errors.push("manifest_schema_invalid");
+  if (manifest.absence_evidence?.category !== "absence")
+    errors.push("manifest_schema_invalid");
+  if (
+    manifest.extraction_format?.kind === "deterministic_pdf_text" &&
+    manifest.extraction_format?.coordinate_mapping_version !== 1
+  )
+    errors.push("manifest_schema_invalid");
+  return errors;
+}
 
 function matrixFactIdentifier(manifest, pathExpression) {
   return `${manifest.fixture_id}:${pathExpression}`;
@@ -205,7 +246,7 @@ function evidenceForManifestFact(lines, fact) {
 export function buildValidT201MatrixResult(fixture, manifest) {
   const lines = fixture.replace(/\n$/, "").split("\n");
   const result = {
-    schema_version: 1,
+    schema_version: manifest.schema_version,
     document_language: manifest.document_language,
     basics: {
       full_name: null,
@@ -222,10 +263,16 @@ export function buildValidT201MatrixResult(fixture, manifest) {
     ambiguities: [],
     warnings: [],
   };
-  const wrap = (fact) => ({
-    value: fact.value,
-    evidence: [evidenceForManifestFact(lines, fact)],
-  });
+  const pdfMapping =
+    manifest.extraction_format?.kind === "deterministic_pdf_text"
+      ? buildT201PdfCoordinateMapping(fixture)
+      : null;
+  const wrap = (fact) => {
+    const evidence = evidenceForManifestFact(lines, fact);
+    if (pdfMapping)
+      evidence.physical = physicalCoordinatesForEvidence(pdfMapping, evidence);
+    return { value: fact.value, evidence: [evidence] };
+  };
   for (const fact of manifest.exact_facts) {
     if (fact.path === "document_language") continue;
     const parts = fact.path.replace(/\[(\d+)\]/g, ".$1").split(".");
@@ -242,7 +289,10 @@ export function buildValidT201MatrixResult(fixture, manifest) {
     const leaf = parts.at(-1);
     current[leaf] = wrap(fact);
   }
-  for (const work of result.work_experiences) work.location ??= null;
+  for (const work of result.work_experiences) {
+    work.location ??= null;
+    if (manifest.schema_version >= 2) work.employment_type ??= null;
+  }
   for (const education of result.education) education.grade ??= null;
   for (const certification of result.certifications)
     certification.issuer ??= null;
@@ -277,7 +327,9 @@ export function buildValidT201MatrixResult(fixture, manifest) {
 export function evaluateT201MatrixCase({ caseId, fixture, manifest, output }) {
   const lines = fixture.replace(/\n$/, "").split("\n");
   const schema = validateT201Schema(output);
+  const manifestErrors = validateT201MatrixManifest(manifest);
   const errors = new Set(schema.errors.map((item) => item.category));
+  manifestErrors.forEach((error) => errors.add(error));
   let missingEvidence = 0;
   let invalidEvidence = 0;
   let unsupported = 0;
@@ -288,6 +340,27 @@ export function evaluateT201MatrixCase({ caseId, fixture, manifest, output }) {
       continue;
     }
     const supported = item.evidence.some((evidence) => {
+      if (
+        manifest.schema_version === 2 &&
+        evidence.category !==
+          expectedCategoryForPath(item.at.replace(/^\$\./, ""))
+      ) {
+        invalidEvidence += 1;
+        errors.add("provenance_category_mismatch");
+        return false;
+      }
+      if (manifest.extraction_format?.kind === "deterministic_pdf_text") {
+        const mapping = buildT201PdfCoordinateMapping(fixture);
+        if (!validateT201PdfEvidenceMapping(mapping, evidence)) {
+          invalidEvidence += 1;
+          errors.add("evidence_coordinate_mismatch");
+          return false;
+        }
+      } else if (Object.hasOwn(evidence, "physical")) {
+        invalidEvidence += 1;
+        errors.add("evidence_coordinate_mismatch");
+        return false;
+      }
       const fragment = evidenceFragment(lines, evidence);
       if (!fragment) {
         invalidEvidence += 1;
@@ -362,8 +435,10 @@ export function evaluateT201MatrixCase({ caseId, fixture, manifest, output }) {
   let forbidden = 0;
   for (const pathExpression of manifest.intentionally_absent_fields ?? [])
     if (
-      valueAtPath(output, pathExpression) !== null &&
-      valueAtPath(output, pathExpression) !== undefined
+      manifest.schema_version >= 2
+        ? valueAtPath(output, pathExpression) !== null
+        : valueAtPath(output, pathExpression) !== null &&
+          valueAtPath(output, pathExpression) !== undefined
     )
       forbidden += 1;
   const allOutputValues = allValueObjects(output).map((item) =>
@@ -403,11 +478,13 @@ export function evaluateT201MatrixCase({ caseId, fixture, manifest, output }) {
     missingEvidence === 0 && invalidEvidence === 0 && unsupported === 0;
   const absentPass = (manifest.intentionally_absent_fields ?? []).every(
     (pathExpression) =>
-      valueAtPath(output, pathExpression) === null ||
-      valueAtPath(output, pathExpression) === undefined,
+      manifest.schema_version >= 2
+        ? valueAtPath(output, pathExpression) === null
+        : valueAtPath(output, pathExpression) === null ||
+          valueAtPath(output, pathExpression) === undefined,
   );
   const metrics = {
-    schema_valid: schema.ok,
+    schema_valid: schema.ok && manifestErrors.length === 0,
     expected_section_recall: Number(sectionRecall.toFixed(4)),
     expected_item_recall: Number(itemRecall.toFixed(4)),
     exact_fact_recall: Number(exactRecall.toFixed(4)),

@@ -513,7 +513,7 @@ function validateEvidence(value, errors, at) {
   if (
     !assertKeys(
       value,
-      ["line", "start", "end", "fragment_hash", "category"],
+      ["line", "start", "end", "fragment_hash", "category", "physical"],
       ["line", "start", "end", "fragment_hash", "category"],
       errors,
       at,
@@ -553,6 +553,10 @@ function validateEvidence(value, errors, at) {
       "absence",
       "ambiguity",
       "warning",
+      "basics",
+      "skills",
+      "languages",
+      "certifications",
     ].includes(value.category)
   ) {
     fail(
@@ -611,12 +615,12 @@ export function validateT201Schema(value) {
   ) {
     return { ok: false, errors };
   }
-  if (value.schema_version !== 1)
+  if (![1, 2].includes(value.schema_version))
     fail(
       errors,
       "schema_validation_failed",
       "$.schema_version",
-      "schema_version must be 1",
+      "schema_version must be 1 or 2",
     );
   if (!DOCUMENT_LANGUAGE_VALUES.has(value.document_language)) {
     fail(
@@ -670,22 +674,42 @@ export function validateT201Schema(value) {
       if (
         !assertKeys(
           item,
-          [
-            "employer",
-            "job_title",
-            "start_date",
-            "end_date",
-            "location",
-            "highlights",
-          ],
-          [
-            "employer",
-            "job_title",
-            "start_date",
-            "end_date",
-            "location",
-            "highlights",
-          ],
+          value.schema_version === 2
+            ? [
+                "employer",
+                "job_title",
+                "start_date",
+                "end_date",
+                "location",
+                "employment_type",
+                "highlights",
+              ]
+            : [
+                "employer",
+                "job_title",
+                "start_date",
+                "end_date",
+                "location",
+                "highlights",
+              ],
+          value.schema_version === 2
+            ? [
+                "employer",
+                "job_title",
+                "start_date",
+                "end_date",
+                "location",
+                "employment_type",
+                "highlights",
+              ]
+            : [
+                "employer",
+                "job_title",
+                "start_date",
+                "end_date",
+                "location",
+                "highlights",
+              ],
           errors,
           at,
         )
@@ -696,6 +720,13 @@ export function validateT201Schema(value) {
       validateValueWithEvidence(item.start_date, errors, `${at}.start_date`);
       validateValueWithEvidence(item.end_date, errors, `${at}.end_date`);
       validateValueWithEvidence(item.location, errors, `${at}.location`, true);
+      if (value.schema_version === 2)
+        validateValueWithEvidence(
+          item.employment_type,
+          errors,
+          `${at}.employment_type`,
+          true,
+        );
       if (!Array.isArray(item.highlights) || item.highlights.length > 8)
         fail(
           errors,
@@ -1118,7 +1149,10 @@ export function evaluateT201Output(output, fixture, manifest) {
     if (!work || typeof work !== "object") continue;
     if (work.location !== null && work.location !== undefined)
       forbiddenInferenceCount += 1;
-    if (Object.prototype.hasOwnProperty.call(work, "employment_type"))
+    if (
+      manifest?.schema_version === 1 &&
+      Object.prototype.hasOwnProperty.call(work, "employment_type")
+    )
       forbiddenInferenceCount += 1;
     if (Object.prototype.hasOwnProperty.call(work, "management_responsibility"))
       forbiddenInferenceCount += 1;
@@ -1328,7 +1362,7 @@ export function buildT201Prompt({ fixture, manifest, schema }) {
     "You are parsing one deliberately synthetic resume for a local compatibility spike.",
     "Return exactly one compact minified JSON object and nothing else. No Markdown fences. No prose before or after JSON.",
     "Do not include explanations, Markdown, commentary, source excerpts, repeated fixture text, reasoning summaries, or optional fields outside the strict schema.",
-    "Use schema_version 1 and the exact top-level fields defined by the schema.",
+    `Use schema_version ${manifest.schema_version ?? 1} and the exact top-level fields defined by the schema.`,
     "Every non-null extracted value must be an object with value and evidence.",
     "document_language is a document-level classification of the full synthetic source, not an extracted fact. Set it to exactly English, French, or French/English. Do not attach source evidence to it.",
     "Evidence line numbers refer to the numbered source below; start/end are zero-based offsets in the original line text after the `NNN| ` prefix, end exclusive.",
@@ -1336,7 +1370,7 @@ export function buildT201Prompt({ fixture, manifest, schema }) {
     "Evidence objects may contain only line, start, end, fragment_hash, and category.",
     "You may use whole-line evidence by setting start=0, end=the source line length, and fragment_hash=the whole_line_sha256 from SOURCE LINE HASH INDEX.",
     "Do not persist or repeat large source excerpts beyond extracted values.",
-    "Return null for absent optional values.",
+    "Return explicit null for every manifest-declared absent optional path; do not omit it. Absent collections must be []. Null requires no value evidence.",
     "Do not invent phone, employer location, skill proficiency, management responsibility, employment type, degree grade, certification issuer, normalized dates more precise than source, or technologies absent from the source.",
     "For every REQUIRED AMBIGUITY below, add exactly one diagnostic under ambiguities or warnings using its exact code, ambiguity-category evidence covering the listed source text, and a message that states the listed safe handling. Do not convert it into a hard achievement.",
     "For work highlights, include only concrete bullet facts; do not include the deliberately ambiguous platform-reliability statement as a highlight.",

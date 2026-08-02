@@ -63,6 +63,8 @@ single canonical live validation. Its sanitized evidence is
 
 C01, C02, and C03 have passed canonical live validation. C04-C06 remain
 unexecuted. T201 remains incomplete; T202, T203, T164, and T165 remain blocked.
+T205 completed the current-version offline contract reconciliation; it does not
+authorize or execute C04.
 Any future Campaign B attempt remains separately authorized and limited to one
 broker run, one maximum semantic backend request, and zero automatic retries.
 

@@ -17,7 +17,9 @@
     "warnings"
   ],
   "properties": {
-    "schema_version": { "const": 1 },
+    "schema_version": {
+      "enum": [1, 2]
+    },
     "document_language": {
       "description": "Document-level language classification, derived from the complete document without source-line evidence.",
       "enum": ["English", "French", "French/English"]
@@ -27,16 +29,28 @@
       "additionalProperties": false,
       "required": ["full_name", "email", "phone", "location", "summary"],
       "properties": {
-        "full_name": { "$ref": "#/$defs/value_with_evidence" },
-        "email": { "$ref": "#/$defs/value_with_evidence" },
+        "full_name": {
+          "$ref": "#/$defs/value_with_evidence"
+        },
+        "email": {
+          "$ref": "#/$defs/value_with_evidence"
+        },
         "phone": {
           "anyOf": [
-            { "$ref": "#/$defs/value_with_evidence" },
-            { "type": "null" }
+            {
+              "$ref": "#/$defs/value_with_evidence"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
-        "location": { "$ref": "#/$defs/value_with_evidence" },
-        "summary": { "$ref": "#/$defs/value_with_evidence" }
+        "location": {
+          "$ref": "#/$defs/value_with_evidence"
+        },
+        "summary": {
+          "$ref": "#/$defs/value_with_evidence"
+        }
       }
     },
     "work_experiences": {
@@ -55,21 +69,45 @@
           "highlights"
         ],
         "properties": {
-          "employer": { "$ref": "#/$defs/value_with_evidence" },
-          "job_title": { "$ref": "#/$defs/value_with_evidence" },
-          "start_date": { "$ref": "#/$defs/value_with_evidence" },
-          "end_date": { "$ref": "#/$defs/value_with_evidence" },
+          "employer": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "job_title": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "start_date": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "end_date": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
           "location": {
             "anyOf": [
-              { "$ref": "#/$defs/value_with_evidence" },
-              { "type": "null" }
+              {
+                "$ref": "#/$defs/value_with_evidence"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "highlights": {
             "type": "array",
             "minItems": 0,
             "maxItems": 8,
-            "items": { "$ref": "#/$defs/value_with_evidence" }
+            "items": {
+              "$ref": "#/$defs/value_with_evidence"
+            }
+          },
+          "employment_type": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/value_with_evidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       }
@@ -83,14 +121,26 @@
         "additionalProperties": false,
         "required": ["school", "degree", "start_date", "end_date", "grade"],
         "properties": {
-          "school": { "$ref": "#/$defs/value_with_evidence" },
-          "degree": { "$ref": "#/$defs/value_with_evidence" },
-          "start_date": { "$ref": "#/$defs/value_with_evidence" },
-          "end_date": { "$ref": "#/$defs/value_with_evidence" },
+          "school": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "degree": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "start_date": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "end_date": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
           "grade": {
             "anyOf": [
-              { "$ref": "#/$defs/value_with_evidence" },
-              { "type": "null" }
+              {
+                "$ref": "#/$defs/value_with_evidence"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         }
@@ -100,7 +150,9 @@
       "type": "array",
       "minItems": 0,
       "maxItems": 20,
-      "items": { "$ref": "#/$defs/value_with_evidence" }
+      "items": {
+        "$ref": "#/$defs/value_with_evidence"
+      }
     },
     "languages": {
       "type": "array",
@@ -111,8 +163,12 @@
         "additionalProperties": false,
         "required": ["name", "proficiency"],
         "properties": {
-          "name": { "$ref": "#/$defs/value_with_evidence" },
-          "proficiency": { "$ref": "#/$defs/value_with_evidence" }
+          "name": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "proficiency": {
+            "$ref": "#/$defs/value_with_evidence"
+          }
         }
       }
     },
@@ -125,12 +181,20 @@
         "additionalProperties": false,
         "required": ["name", "date", "issuer"],
         "properties": {
-          "name": { "$ref": "#/$defs/value_with_evidence" },
-          "date": { "$ref": "#/$defs/value_with_evidence" },
+          "name": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "date": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
           "issuer": {
             "anyOf": [
-              { "$ref": "#/$defs/value_with_evidence" },
-              { "type": "null" }
+              {
+                "$ref": "#/$defs/value_with_evidence"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         }
@@ -140,13 +204,17 @@
       "type": "array",
       "minItems": 0,
       "maxItems": 10,
-      "items": { "$ref": "#/$defs/diagnostic_with_evidence" }
+      "items": {
+        "$ref": "#/$defs/diagnostic_with_evidence"
+      }
     },
     "warnings": {
       "type": "array",
       "minItems": 0,
       "maxItems": 10,
-      "items": { "$ref": "#/$defs/diagnostic_with_evidence" }
+      "items": {
+        "$ref": "#/$defs/diagnostic_with_evidence"
+      }
     }
   },
   "$defs": {
@@ -155,12 +223,18 @@
       "additionalProperties": false,
       "required": ["value", "evidence"],
       "properties": {
-        "value": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
         "evidence": {
           "type": "array",
           "minItems": 1,
           "maxItems": 4,
-          "items": { "$ref": "#/$defs/evidence" }
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
         }
       }
     },
@@ -169,13 +243,23 @@
       "additionalProperties": false,
       "required": ["code", "message", "evidence"],
       "properties": {
-        "code": { "type": "string", "minLength": 1, "maxLength": 80 },
-        "message": { "type": "string", "minLength": 1, "maxLength": 400 },
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
         "evidence": {
           "type": "array",
           "minItems": 1,
           "maxItems": 4,
-          "items": { "$ref": "#/$defs/evidence" }
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
         }
       }
     },
@@ -184,10 +268,25 @@
       "additionalProperties": false,
       "required": ["line", "start", "end", "fragment_hash", "category"],
       "properties": {
-        "line": { "type": "integer", "minimum": 1, "maximum": 200 },
-        "start": { "type": "integer", "minimum": 0, "maximum": 2000 },
-        "end": { "type": "integer", "minimum": 1, "maximum": 2000 },
-        "fragment_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2000
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000
+        },
+        "fragment_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
         "category": {
           "type": "string",
           "enum": [
@@ -198,12 +297,71 @@
             "skill",
             "language",
             "certification",
-            "absence",
+            "warning",
+            "basics",
+            "skills",
+            "languages",
+            "certifications",
             "ambiguity",
-            "warning"
+            "absence"
           ]
+        },
+        "physical": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mapping_version", "page", "item", "start", "end"],
+          "properties": {
+            "mapping_version": {
+              "const": 1
+            },
+            "page": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "item": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "start": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "end": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
         }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "schema_version": {
+            "const": 2
+          }
+        },
+        "required": ["schema_version"]
+      },
+      "then": {
+        "properties": {
+          "work_experiences": {
+            "items": {
+              "required": [
+                "employer",
+                "job_title",
+                "start_date",
+                "end_date",
+                "location",
+                "employment_type",
+                "highlights"
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
 }
