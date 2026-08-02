@@ -141,6 +141,23 @@ test("T201 C02 manifest ambiguities have a schema-valid, prompt-defined represen
   }
 });
 
+test("T201 C03 bilingual contract is represented by the prompt and evaluator", async () => {
+  const item = await loadT201MatrixCase("T201-C03");
+  const output = buildValidT201MatrixResult(item.fixture, item.manifest);
+  const prompt = buildT201Prompt({ ...item, schema: { type: "object" } });
+  const result = evaluateT201MatrixCase({ ...item, output });
+
+  assert.equal(validateT201Schema(output).ok, true);
+  assert.equal(output.basics.phone, null);
+  assert.equal(output.work_experiences[0].employment_type, undefined);
+  assert.equal(result.metrics.ambiguity_handling_pass, true);
+  assert.equal(result.metrics.no_invention_pass, true);
+  assert.equal(result.metrics.parsing_pass, true);
+  assert.match(prompt, /ambiguous-seasonal-support/);
+  assert.match(prompt, /does not establish a contract type/);
+  assert.match(prompt, /Return null for absent optional values/);
+});
+
 test("T201 C02 ambiguity contract accepts only the exact grounded diagnostic", async () => {
   const item = await c02();
   const correct = c02Result(item);

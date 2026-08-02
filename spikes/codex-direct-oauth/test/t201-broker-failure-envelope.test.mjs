@@ -92,6 +92,27 @@ test("broker failure at credential recovery retains only safe fixture identity",
   await fs.rm(directory, { recursive: true, force: true });
 });
 
+test("broker selects C03 through the matrix contract before credential recovery", async () => {
+  await fs.mkdir("/tmp/t201-result", { recursive: true, mode: 0o700 });
+  const directory = await fs.mkdtemp(
+    "/tmp/t201-result/nuvitae-t201-broker-c03-",
+  );
+  await fs.chown(directory, process.geteuid(), process.getegid());
+  const resultPath = path.join(directory, "result.json");
+  const run = await runBroker({
+    NUVITAE_T201_CASE_ID: "T201-C03",
+    NUVITAE_T201_RUN_ID_HASH: runId,
+    NUVITAE_T201_RESULT_PATH: resultPath,
+  });
+  const result = JSON.parse(run.stdout);
+  assert.equal(run.code, 1);
+  assert.equal(result.fixture_identifier, "T201-C03");
+  assert.equal(result.primary_failure_phase, "credential_recovery");
+  assert.equal(result.invocation_attempted, false);
+  assert.equal(JSON.stringify(result).includes("credential.json"), false);
+  await fs.rm(directory, { recursive: true, force: true });
+});
+
 test("broker phase attribution uses only fixed pre-operation phase names", async () => {
   const source = await fs.readFile(
     path.join(root, "t201-semantic-broker.mjs"),
@@ -284,16 +305,16 @@ test("runner accepts matching sanitized failures, preserves their classification
   await fs.rm(directory, { recursive: true, force: true });
 });
 
-test("success and failure envelopes derive the same C02 fixture identity from the selected case contract", async () => {
+test("success and failure envelopes derive fixture identity from the selected matrix case contract", async () => {
   const source = await fs.readFile(
     path.join(root, "t201-semantic-broker.mjs"),
     "utf8",
   );
   assert.match(
     source,
-    /const selectedFixtureIdentifier =\s+process\.env\.NUVITAE_T201_CASE_ID === CASE_ID \? CASE_ID : null/,
+    /const selectedFixtureIdentifier = T201_MATRIX_CASE_IDS\.includes\(\s+process\.env\.NUVITAE_T201_CASE_ID,\s+\)/,
   );
-  assert.match(source, /fixture_identifier: CASE_ID/);
+  assert.match(source, /fixture_identifier: selectedFixtureIdentifier/);
   assert.match(
     source,
     /fixture_identifier: selectedFixtureIdentifier \?\? "not_evaluated"/,

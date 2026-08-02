@@ -34,6 +34,7 @@ import {
   buildValidT201MatrixResult,
   evaluateT201MatrixCase,
   loadT201MatrixCase,
+  T201_MATRIX_CASE_IDS,
 } from "./lib/t201-matrix-evaluator.mjs";
 import {
   emitBrokerResult,
@@ -64,9 +65,11 @@ const bindings = {
   provider: "openai-codex",
 };
 const expirySkewMs = 120000;
-const CASE_ID = "T201-C02";
-const selectedFixtureIdentifier =
-  process.env.NUVITAE_T201_CASE_ID === CASE_ID ? CASE_ID : null;
+const selectedFixtureIdentifier = T201_MATRIX_CASE_IDS.includes(
+  process.env.NUVITAE_T201_CASE_ID,
+)
+  ? process.env.NUVITAE_T201_CASE_ID
+  : null;
 const runnerRunIdHash = /^[a-f0-9]{32,64}$/.test(
   process.env.NUVITAE_T201_RUN_ID_HASH ?? "",
 )
@@ -290,13 +293,13 @@ function proxyEnvironmentPresence(env = process.env) {
 }
 
 async function loadSelectedArtifacts() {
-  if (process.env.NUVITAE_T201_CASE_ID !== CASE_ID) {
+  if (!selectedFixtureIdentifier) {
     throw Object.assign(new Error("transport_failure"), {
       safeCategory: "transport_failure",
       primary_failure_phase: "case_selection",
     });
   }
-  const selected = await loadT201MatrixCase(CASE_ID);
+  const selected = await loadT201MatrixCase(selectedFixtureIdentifier);
   const schema = JSON.parse(
     await fs.readFile(T201_ARTIFACT_PATHS.schemaPath, "utf8"),
   );
@@ -370,7 +373,10 @@ try {
   const beforeGeneration = before.generation;
   recordCredentialRecovery(executionState, beforeGeneration);
   currentPhase = BROKER_PHASES.credentialRefresh;
-  recordRefreshRequired(executionState, expiryMs(before.payload) <= Date.now() + expirySkewMs);
+  recordRefreshRequired(
+    executionState,
+    expiryMs(before.payload) <= Date.now() + expirySkewMs,
+  );
   const refreshed = await maybeRefresh(before, {
     onRefreshAttempt: () => recordRefreshAttempt(executionState),
   });
@@ -442,7 +448,10 @@ try {
   let evaluation;
   if (typeof invocation.raw_model_text === "string") {
     currentPhase = BROKER_PHASES.responseEvaluation;
-    evaluation = evaluateSelectedModelText(invocation.raw_model_text, artifacts);
+    evaluation = evaluateSelectedModelText(
+      invocation.raw_model_text,
+      artifacts,
+    );
   } else {
     evaluation = notEvaluatedT201Projection({
       primaryFailureCategory:
@@ -482,7 +491,7 @@ try {
     runner_run_id_hash: runnerRunIdHash,
     upstream_revisions: UPSTREAM_REVISIONS,
     deployment_mode: "local_macos_docker_desktop_single_user_spike",
-    fixture_identifier: CASE_ID,
+    fixture_identifier: selectedFixtureIdentifier,
     fixture_sha256: fixtureHash(artifacts.fixture),
     fixture_classified_as_synthetic:
       artifacts.manifest.fixture_classification === "synthetic",
