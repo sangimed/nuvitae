@@ -66,6 +66,48 @@ test("T201 matrix contains the six bounded provider-independent cases", async ()
   assert.match(docx.fixture, /Table row=0 cell=0/);
 });
 
+test("T201 v2 provenance vocabulary and specification agree, while v1 remains historical only", async () => {
+  const v2Categories = new Set([
+    "basics",
+    "work",
+    "education",
+    "skills",
+    "languages",
+    "certifications",
+    "ambiguity",
+    "absence",
+  ]);
+  const cases = await loadAllT201MatrixCases();
+  for (const item of cases.filter(
+    (candidate) => candidate.manifest.schema_version === 2,
+  )) {
+    for (const fact of item.manifest.exact_facts)
+      assert.equal(
+        v2Categories.has(fact.category),
+        true,
+        `${item.case_id}:${fact.path}`,
+      );
+    for (const diagnostic of item.manifest.ambiguous_facts)
+      assert.equal(diagnostic.category, "ambiguity", item.case_id);
+    assert.equal(
+      item.manifest.absence_evidence.category,
+      "absence",
+      item.case_id,
+    );
+  }
+  const spec = await fs.readFile(
+    new URL("../../../specs/001-import-resume/spec.md", import.meta.url),
+    "utf8",
+  );
+  const fr009g = spec.match(/^[-*] \*\*FR-009g\*\*:.+$/m)?.[0] ?? "";
+  for (const category of v2Categories)
+    assert.match(fr009g, new RegExp(`\\\`${category}\\\``));
+  assert.match(
+    fr009g,
+    /historical only and is not normative for new v2 manifests/,
+  );
+});
+
 test("every T201 matrix fixture and manifest passes independently with deterministic grounded output", async () => {
   const results = [];
   for (const item of await loadAllT201MatrixCases()) {

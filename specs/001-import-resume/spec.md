@@ -40,7 +40,7 @@
 - Q: What PDF evidence-coordinate model is canonical? → A: Preserve both deterministically: AI-result evidence uses canonical flattened `line`/`start`/`end` coordinates over the normalized extraction transcript, while the extraction provenance record carries page/item/offset coordinates and the adapter must provide a deterministic mapping between them. DOCX and plain text use their native provenance plus the same flattened transcript coordinates where supplied to the parser.
 - Q: How are fact categories and T201 status governed? → A: Every expected fact and diagnostic must declare an explicit allowed provenance category. Category/path correctness is semantic evaluation, while enum membership and required presence are schema validation. `docs/research/codex-direct-semantic-parsing.md` is the canonical current-status source; historical task, checklist, and Campaign-B decision wording remains historical and must not override it. A dedicated reconciliation implementation task is required before any C04 authorization or execution.
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Start From an Existing Resume (Priority: P1)
 
@@ -185,7 +185,7 @@ A user's imported resume, extracted content, processing state, and review draft 
 - No AI provider is connected, or the configured provider is unavailable, rate-limited, unauthenticated, disconnected, or out of subscription quota.
 - A user chooses manual entry from initial creation, unsupported-file, no-usable-extraction, timeout, processing-failure, expired-draft, unsupported-language, no-provider, provider-unavailable, provider-rate-limited, provider-unauthenticated, or provider-quota-exceeded states.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -221,7 +221,7 @@ A user's imported resume, extracted content, processing state, and review draft 
 - **FR-009d**: For every optional resume scalar or optional nested-object field that is explicitly absent from the source, the versioned Nuvitae extraction response MUST include the property with JSON `null`; it MUST NOT omit the property or infer a value. This rule applies identically to PDF, DOCX, and plain-text imports. `basics.phone`, `work_experiences[].location`, `work_experiences[].employment_type`, `education[].grade`, and `certifications[].issuer` are required nullable properties. An absent optional section collection is an empty array, and an absent optional object is `null`, never an empty object.
 - **FR-009e**: A null absent field MUST carry no value evidence and MUST NOT count as an exact-recall fact. Fixture or evaluation manifests MUST declare each expected absent path in `intentionally_absent_fields`; an optional bounded absence diagnostic may cite the source using the `absence` category. Validation MUST reject omission where null is required and reject any non-null value at a declared absent path, so diagnostics distinguish schema omission from an invented value without lowering grounding, recall, or no-invention thresholds.
 - **FR-009f**: Provider-facing semantic evidence MUST use flattened `line`, `start`, and `end` coordinates over a versioned normalized extraction transcript, with fragment hashes and bounds validated against that transcript. For PDF, the adapter MUST order pages ascending and then source text items by the extractor's stable reading-order ordinal, emit one transcript line per source text item, and record the source page, item ordinal, and zero-based item offsets for every flattened range; its mapping is therefore `line`→(page,item) and `start`/`end`→the same item offsets after the transcript's declared normalization. The mapping definition and offset unit MUST be versioned, emitted with the provenance record, and tested with multi-page, multi-item, whitespace, and multi-column input; it cannot be inferred from a one-page fixture. DOCX and plain-text provenance MUST likewise retain their native source locations while using the same flattened transcript coordinates whenever text is sent to a provider.
-- **FR-009g**: Every expected fact and diagnostic in an import fixture or provider response contract MUST declare one provenance category. The permitted categories are `identity`, `summary`, `work`, `education`, `skill`, `language`, `certification`, `absence`, `ambiguity`, and `warning`; expected mappings are basics→`identity` (or `summary` for summary), work experiences→`work`, education→`education`, skills→`skill`, languages→`language`, certifications→`certification`, and ambiguity diagnostics→`ambiguity`. Schema validation MUST require a permitted category; semantic evaluation MUST verify category/path correctness and fail closed for a missing, unrelated, or mismatched category.
+- **FR-009g**: Every expected fact and diagnostic in a current v2 import fixture or provider response contract MUST declare exactly one provenance category. The only permitted v2 categories are `basics`, `work`, `education`, `skills`, `languages`, `certifications`, `ambiguity`, and `absence`. Semantic category-to-path rules are: `basics` for basics fields; `work` for work experience fields and work highlights; `education` for education fields; `skills` for skills fields; `languages` for languages fields; `certifications` for certifications fields; `ambiguity` for ambiguity diagnostics; and `absence` for optional absence diagnostics or declarations where applicable. Schema validation MUST require a permitted category; semantic evaluation MUST verify category/path correctness and fail closed for a missing, unrelated, or mismatched category. Immutable v1 C01-C03 historical outputs may retain their recorded legacy compatibility vocabulary (`identity`, `summary`, `skill`, `language`, `certification`, and `warning`), but that vocabulary is historical only and is not normative for new v2 manifests.
 - **FR-010**: Nuvitae MUST identify missing, ambiguous, conflicting, duplicate, and low-confidence information in the review interface using plain-language labels and visual emphasis.
 - **FR-010a**: Nuvitae MUST mark uncertain, missing, duplicate, and conflicting fields as needing review until the user confirms, edits, excludes, or intentionally leaves each warning.
 - **FR-010b**: Field confidence status MUST use explicit categories of `high`, `medium`, `low`, and `not_applicable`. Low confidence applies when extraction can associate a value with document evidence but cannot reliably classify the section, field path, date meaning, role association, semantic grouping, or duplicate/conflict resolution without user review. User-added fields use `not_applicable` unless later compared with source content.
@@ -288,7 +288,7 @@ A user's imported resume, extracted content, processing state, and review draft 
 - **FR-029c**: Nuvitae MUST identify warnings using text and non-colour visual treatment, not colour alone.
 - **FR-029d**: Nuvitae MUST move focus to an error summary after failed validation and restore focus logically after confirmation, cancellation, retry, or deletion dialogs close.
 
-### Key Entities *(include if feature involves data)*
+### Key Entities _(include if feature involves data)_
 
 - **Imported Document**: The uploaded source file supplied by the user. It has an initiating user, visible filename, upload status, validation status, deletion status, and retention expiry based on the original upload time. It remains distinct from the structured resume, is never directly modified, and is deleted no later than 7 days after original upload unless the user deletes it earlier.
 - **Derived Extraction Artifact**: Any temporary or derived data capable of reconstructing source content, including extracted raw text, field source snippets, page references, thumbnails, temporary files, cached parsing results, future OCR outputs, embeddings if any, and equivalent artifacts. It has the same owner and retention deadline as the imported document.
@@ -305,7 +305,7 @@ A user's imported resume, extracted content, processing state, and review draft 
 - **Manual Structured-Resume Draft**: A blank editable structured-resume draft created at `/resumes/new/manual` without an imported document or import job. Fields entered through this draft are marked as user-added.
 - **User Correction**: A change made by the user during review, including editing, removing, adding, excluding, or confirming an extracted field.
 
-## Constitutional Requirements *(mandatory)*
+## Constitutional Requirements _(mandatory)_
 
 - **Non-technical UX**: The import journey is visual, guided, and written in plain language. Users never see JSON, YAML, prompts, parsing internals, model names, technical diagnostics, provider credentials, session details, or provider configuration; they do receive plain-language disclosure that resume content is sent to the configured AI provider when provider-backed semantic parsing is used.
 - **Import-first onboarding**: The feature directly implements the preferred onboarding path by making resume import the prominent option when creating a resume, while preserving manual entry as a fallback.
@@ -318,7 +318,7 @@ A user's imported resume, extracted content, processing state, and review draft 
 - **Accessibility and recovery**: Upload controls, progress states, warning labels, review fields, correction controls, retry, cancel, discard, deletion, and confirmation must meet WCAG 2.2 AA expectations, be accessible by label, and be keyboard operable. Failure states must explain what happened and give a recoverable next step.
 - **Documentation and failure states**: User-facing help must explain supported files, supported languages, bilingual support, upload limits, rendered page limits, selectable-text requirements, configured AI provider use, unsupported-language handling, import privacy, retention, deletion, partial extraction, unsupported documents, and confirmation. Failure states must cover authentication required, validation failure, unreadable content, partial extraction, no-supported-field extraction, no provider, provider unavailable, provider rate-limited, provider unauthenticated, provider quota exceeded, processing failure, cancellation, retry, timeout, rate limiting, unsupported language, ambiguous mixed documents, and expired import drafts.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
