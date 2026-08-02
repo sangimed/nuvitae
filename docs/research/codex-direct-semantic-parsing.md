@@ -6,14 +6,14 @@ OAuth login, credential refresh, T202, T203, or T164-T165.
 
 ## Coverage matrix
 
-| Case | Language | Source format | Layout | Status |
-|---|---|---|---|---|
-| T201-C01 | English | plain text | single-column | Existing successful live baseline; preserved unchanged |
-| T201-C02 | French | plain text | single-column | B13 independently passed with sanitized evidence |
-| T201-C03 | French/English | bilingual plain text | single-column | Fixture and manifest prepared; no live invocation |
-| T201-C04 | English | PDF-derived extracted text | single-column | Fixture and manifest prepared; no binary extraction |
-| T201-C05 | English | PDF-derived extracted text | multi-column interleaved | Fixture and manifest prepared; regrouping test only |
-| T201-C06 | English | DOCX-derived extracted text | structural artifacts | Fixture and manifest prepared; no binary extraction |
+| Case     | Language       | Source format               | Layout                   | Status                                                                                                                                                                                        |
+| -------- | -------------- | --------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T201-C01 | English        | plain text                  | single-column            | Passed canonical live validation; preserved unchanged                                                                                                                                         |
+| T201-C02 | French         | plain text                  | single-column            | Passed canonical live validation in Campaign B13 with sanitized evidence                                                                                                                      |
+| T201-C03 | French/English | bilingual plain text        | single-column            | B01 failed semantic recall; B02 failed under the former `document_language` contract; offline correction completed; fresh canonical live validation remains pending and B03 is not authorized |
+| T201-C04 | English        | PDF-derived extracted text  | single-column            | Unexecuted; fixture and manifest prepared; no binary extraction                                                                                                                               |
+| T201-C05 | English        | PDF-derived extracted text  | multi-column interleaved | Unexecuted; fixture and manifest prepared; regrouping test only                                                                                                                               |
+| T201-C06 | English        | DOCX-derived extracted text | structural artifacts     | Unexecuted; fixture and manifest prepared; no binary extraction                                                                                                                               |
 
 All six cases are fictional, anonymous, and independently manifested. C02-C06
 contain absent optional fields, an ambiguity, forbidden-inference rules,
@@ -42,12 +42,37 @@ fixture text or model output. The existing C01 sanitized live evidence remains
 at `evidence/codex-direct-oauth-t201-semantic-parsing.json` and is not rewritten
 as multi-case evidence.
 
+## Canonical live-status record
+
+C03 has executed twice. These are immutable historical live outcomes, distinct
+from later offline evaluator and contract work:
+
+1. `T201-C03-B01` ran once and failed semantic recall.
+2. `T201-C03-B02` ran once and failed under the former
+   `document_language` contract.
+3. Commit `def8f1d` corrected that contract offline: `document_language` is a
+   document-level classification with its own required gate, excluded from
+   exact-fact recall, high-priority recall, fact diagnostics, and source-line
+   evidence. The grounding and recall thresholds for every real resume fact are
+   unchanged.
+
+Neither the offline correction nor a deterministic evaluator pass converts B01
+or B02 into a live pass. C03 therefore still requires a fresh canonical live
+validation. `T201-C03-B03` is not authorized in
+`spikes/codex-direct-oauth/campaign-b-authorizations.json`.
+
+C01 and C02 have passed canonical live validation. C04-C06 remain unexecuted.
+T201 remains incomplete; T202, T203, T164, and T165 remain blocked. Any future
+Campaign B attempt remains separately authorized and limited to one broker run,
+one maximum semantic backend request, and zero automatic retries.
+
 ## Execution boundary
 
 The remaining bounded sequence, only after an explicitly authorized live run, is:
 
-1. C02 passed independently in authorized Campaign B13; its evidence remains source-local.
-2. Run C03 alone and inspect its sanitized result.
+1. Preserve C01 and C02's independently passing source-local evidence.
+2. Do not rerun C03 B01 or B02; only a separately authorized future C03 attempt
+   may produce new evidence, which must be inspected independently.
 3. Run C04 alone and inspect its sanitized result.
 4. Run C05 alone and inspect semantic regrouping and evidence coordinates.
 5. Run C06 alone and inspect DOCX structural-artifact handling.
@@ -64,4 +89,4 @@ limit, privacy, failure, and evidence details remain preserved there while
 this file is the canonical path for the T201 matrix going forward.
 
 T201 remains incomplete until every mandatory case has an independently passing
-bounded evaluation. T202, T203, T164, and T165 remain incomplete.
+bounded evaluation. T202, T203, T164, and T165 remain blocked.

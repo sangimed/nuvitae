@@ -530,3 +530,7 @@ After Foundation:
 - T139-T145 remain completed and historical; T145 does not block all Codex subscription integration, but T164-T165 must not proceed from T145 alone.
 - T189-T195 remain completed historical app-server research; T195 NO-GO applies only to the tested app-server candidate and does not reopen T192-T193.
 - Codex-specific production adapter tasks T164-T165 must not be implemented unless T203 records GO or a qualifying CONDITIONAL GO whose stated conditions have been satisfied, including successful direct OAuth, credential lifecycle, invocation, semantic evaluation, and all mandatory security conditions; adapter-independent contracts and recovery behavior still proceed.
+
+## Phase 11: Convergence
+
+- [X] T204 Reconcile the canonical T201 status record before any further live Campaign B execution: record that C02 passed canonical live validation, C03 B01 and B02 are immutable failed evidence and C03 remains pending live validation, C04-C06 remain pending, and T202, T203, T164, and T165 remain blocked; preserve one-run/one-request/zero-retry limits; retain every real-resume-fact grounding and recall threshold; require `document_language` as a separately evaluated document-level classification gate excluded from exact/high-priority fact recall; and retain only sanitized canonical evidence with no raw model output. Do not authorize or run C03 B03 as part of this reconciliation. Trace to T201, FR-019, FR-021, FR-021f, and Constitution VI/IX/X/XIII (partial).

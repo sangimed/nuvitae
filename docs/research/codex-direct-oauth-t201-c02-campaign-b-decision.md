@@ -1,6 +1,6 @@
 # T201-C02 Campaign B engineering decision
 
-Status: prospective; no B01 evidence exists.
+Status at decision: prospective; no B01 evidence existed.
 
 Campaign A (`T201-C02`, attempts 1–6) is immutable and closed. Its final
 attempt correctly records `further_attempts_permitted: false`, no broker start,
@@ -24,6 +24,14 @@ pass before preserved credential volumes are checked for existence. B01
 (`T201-C02-B01`) has its own bounded stop and sanitized evidence path; it is not
 created, authorized, or executed by this decision.
 
-T201 remains incomplete and C02 remains semantically unevaluated pending a
-separately authorized B01. C03–C06, T202–T203, and T164–T165 remain unexecuted
-or incomplete as recorded in the canonical task plan.
+At the time of this decision, T201 remained incomplete and C02 remained
+semantically unevaluated pending a separately authorized B01. C03-C06,
+T202-T203, and T164-T165 were then unexecuted or incomplete as recorded in the
+canonical task plan.
+
+Later status is maintained by the canonical T201 matrix at
+`docs/research/codex-direct-semantic-parsing.md`: C02 subsequently passed
+canonical live validation, while C03 B01 and B02 were later executed and failed.
+Those C03 outcomes remain immutable historical evidence; C03 is pending fresh
+canonical live validation, C04-C06 remain unexecuted, and T202, T203, T164, and
+T165 remain blocked.
