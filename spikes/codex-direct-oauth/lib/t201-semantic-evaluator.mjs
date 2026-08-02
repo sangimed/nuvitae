@@ -889,6 +889,10 @@ function safeArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function diagnosticItems(output) {
+  return [...safeArray(output?.ambiguities), ...safeArray(output?.warnings)];
+}
+
 function manifestFacts(manifest) {
   return safeArray(manifest?.exact_facts);
 }
@@ -910,6 +914,56 @@ function evidenceFragment(lines, evidence) {
   )
     return null;
   return line.slice(evidence.start, evidence.end);
+}
+
+export function evaluateT201AmbiguityHandling(output, fixture, manifest) {
+  const lines = fixture.replace(/\n$/, "").split("\n");
+  const diagnostics = diagnosticItems(output);
+  let handledCount = 0;
+  let invalidEvidenceCount = 0;
+  const errorCategories = new Set();
+
+  for (const expected of safeArray(manifest?.ambiguous_facts)) {
+    const matchingDiagnostics = diagnostics.filter(
+      (diagnostic) => diagnostic?.code === expected?.id,
+    );
+    let handled = false;
+    for (const diagnostic of matchingDiagnostics) {
+      for (const evidence of safeArray(diagnostic?.evidence)) {
+        const fragment = evidenceFragment(lines, evidence);
+        if (fragment === null) {
+          invalidEvidenceCount += 1;
+          errorCategories.add("evidence_out_of_bounds");
+          continue;
+        }
+        if (fragmentHash(fragment) !== evidence.fragment_hash) {
+          invalidEvidenceCount += 1;
+          errorCategories.add("evidence_mismatch");
+          continue;
+        }
+        if (
+          evidence.line !== expected.source_line ||
+          evidence.category !== "ambiguity" ||
+          !normalizeComparable(fragment).includes(
+            normalizeComparable(expected.text),
+          )
+        ) {
+          invalidEvidenceCount += 1;
+          errorCategories.add("ambiguity_evidence_mismatch");
+          continue;
+        }
+        handled = true;
+      }
+    }
+    if (handled) handledCount += 1;
+  }
+
+  return {
+    handled_count: handledCount,
+    pass: handledCount === safeArray(manifest?.ambiguous_facts).length,
+    invalid_evidence_count: invalidEvidenceCount,
+    error_categories: [...errorCategories].sort(),
+  };
 }
 
 export function evaluateT201Output(output, fixture, manifest) {
@@ -1061,15 +1115,12 @@ export function evaluateT201Output(output, fixture, manifest) {
   }
   if (forbiddenInferenceCount > 0) errorCategories.add("forbidden_inference");
 
-  const ambiguousTextHandled = [
-    ...safeArray(output.ambiguities),
-    ...safeArray(output.warnings),
-  ].some((item) =>
-    /platform reliability|ambig/i.test(
-      `${item?.code ?? ""} ${item?.message ?? ""}`,
-    ),
+  const ambiguity = evaluateT201AmbiguityHandling(output, fixture, manifest);
+  invalidEvidenceCount += ambiguity.invalid_evidence_count;
+  ambiguity.error_categories.forEach((category) =>
+    errorCategories.add(category),
   );
-  const ambiguityMishandled = !ambiguousTextHandled;
+  const ambiguityMishandled = !ambiguity.pass;
   if (ambiguityMishandled) errorCategories.add("ambiguity_mishandled");
 
   const nullForAbsentFieldsCount = [
@@ -1090,7 +1141,7 @@ export function evaluateT201Output(output, fixture, manifest) {
     unsupported_fact_count: unsupportedFactCount,
     missing_evidence_count: missingEvidenceCount,
     invalid_evidence_count: invalidEvidenceCount,
-    ambiguous_fact_handling_count: ambiguousTextHandled ? 1 : 0,
+    ambiguous_fact_handling_count: ambiguity.handled_count,
     forbidden_inference_count: forbiddenInferenceCount,
     null_for_absent_fields_count: nullForAbsentFieldsCount,
     source_grounding_pass:
@@ -1201,6 +1252,12 @@ export function buildT201Prompt({ fixture, manifest, schema }) {
   const evidenceHints = manifest.exact_facts
     .map((fact) => `${fact.path}: line ${fact.line}`)
     .join("\n");
+  const ambiguityHints = safeArray(manifest.ambiguous_facts)
+    .map(
+      (fact) =>
+        `code=${fact.id}; evidence line=${fact.source_line}; category=ambiguity; source must cover=${JSON.stringify(fact.text)}; handling=${fact.expected_handling}`,
+    )
+    .join("\n");
   return [
     "You are parsing one deliberately synthetic resume for a local compatibility spike.",
     "Return exactly one compact minified JSON object and nothing else. No Markdown fences. No prose before or after JSON.",
@@ -1214,7 +1271,7 @@ export function buildT201Prompt({ fixture, manifest, schema }) {
     "Do not persist or repeat large source excerpts beyond extracted values.",
     "Return null for absent optional values.",
     "Do not invent phone, employer location, skill proficiency, management responsibility, employment type, degree grade, certification issuer, normalized dates more precise than source, or technologies absent from the source.",
-    "Record ambiguous source statements under ambiguities or warnings instead of converting them into hard achievements.",
+    "For every REQUIRED AMBIGUITY below, add exactly one diagnostic under ambiguities or warnings using its exact code, ambiguity-category evidence covering the listed source text, and a message that states the listed safe handling. Do not convert it into a hard achievement.",
     "For work highlights, include only concrete bullet facts; do not include the deliberately ambiguous platform-reliability statement as a highlight.",
     "The expected-facts hint below is a line-reference aid, not a model output source of truth.",
     "",
@@ -1223,6 +1280,9 @@ export function buildT201Prompt({ fixture, manifest, schema }) {
     "",
     "EXPECTED FACT LINE HINTS:",
     evidenceHints,
+    "",
+    "REQUIRED AMBIGUITY DIAGNOSTICS:",
+    ambiguityHints,
     "",
     "SOURCE LINE HASH INDEX:",
     lineHashes,

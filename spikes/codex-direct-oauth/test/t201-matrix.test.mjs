@@ -8,7 +8,20 @@ import {
   buildValidT201MatrixResult,
   evaluateT201MatrixCase,
   loadAllT201MatrixCases,
+  loadT201MatrixCase,
 } from "../lib/t201-matrix-evaluator.mjs";
+import {
+  buildT201Prompt,
+  validateT201Schema,
+} from "../lib/t201-semantic-evaluator.mjs";
+
+async function c02() {
+  return loadT201MatrixCase("T201-C02");
+}
+
+function c02Result(item) {
+  return buildValidT201MatrixResult(item.fixture, item.manifest);
+}
 
 test("T201 matrix contains the six bounded provider-independent cases", async () => {
   const cases = await loadAllT201MatrixCases();
@@ -105,6 +118,81 @@ test("T201 matrix treats missing or invalid diagnostic arrays as schema failures
   assert.equal(result.metrics.schema_valid, false);
   assert.equal(result.metrics.parsing_pass, false);
   assert.ok(result.errors.includes("schema_validation_failed"));
+});
+
+test("T201 C02 manifest ambiguities have a schema-valid, prompt-defined representation", async () => {
+  const item = await c02();
+  const output = c02Result(item);
+  const prompt = buildT201Prompt({
+    ...item,
+    schema: { type: "object" },
+  });
+
+  assert.equal(validateT201Schema(output).ok, true);
+  for (const expected of item.manifest.ambiguous_facts) {
+    const diagnostic = output.ambiguities.find(
+      (candidate) => candidate.code === expected.id,
+    );
+    assert.ok(diagnostic, expected.id);
+    assert.equal(diagnostic.evidence[0].line, expected.source_line);
+    assert.equal(diagnostic.evidence[0].category, "ambiguity");
+    assert.ok(prompt.includes(`code=${expected.id}`));
+    assert.ok(prompt.includes(`evidence line=${expected.source_line}`));
+  }
+});
+
+test("T201 C02 ambiguity contract accepts only the exact grounded diagnostic", async () => {
+  const item = await c02();
+  const correct = c02Result(item);
+  const expected = item.manifest.ambiguous_facts[0];
+  const verify = (output) =>
+    evaluateT201MatrixCase({ ...item, output }).metrics;
+
+  const correctMetrics = verify(correct);
+  assert.equal(correctMetrics.schema_valid, true);
+  assert.equal(correctMetrics.ambiguity_handling_pass, true);
+  assert.equal(correctMetrics.parsing_pass, true);
+  assert.equal(correctMetrics.expected_section_recall, 1);
+  assert.equal(correctMetrics.expected_item_recall, 1);
+  assert.equal(correctMetrics.exact_fact_recall, 1);
+  assert.equal(correctMetrics.high_priority_fact_recall, 1);
+  assert.equal(correctMetrics.grounding_pass, true);
+  assert.equal(correctMetrics.no_invention_pass, true);
+  assert.equal(correctMetrics.unsupported_fact_count, 0);
+  assert.equal(correctMetrics.forbidden_inference_count, 0);
+
+  const omitted = c02Result(item);
+  omitted.ambiguities = [];
+  assert.equal(verify(omitted).ambiguity_handling_pass, false);
+  assert.equal(verify(omitted).parsing_pass, false);
+
+  const guessed = c02Result(item);
+  guessed.ambiguities = [];
+  guessed.work_experiences[0].highlights.push({
+    value:
+      "La fiabilité de plateforme établit une responsabilité de direction.",
+    evidence: correct.ambiguities[0].evidence,
+  });
+  assert.equal(verify(guessed).ambiguity_handling_pass, false);
+  assert.equal(verify(guessed).parsing_pass, false);
+
+  const nullOnly = c02Result(item);
+  nullOnly.ambiguities = [];
+  assert.equal(nullOnly.basics.phone, null);
+  assert.equal(verify(nullOnly).ambiguity_handling_pass, false);
+  assert.equal(verify(nullOnly).no_invention_pass, true);
+
+  const wrongPath = c02Result(item);
+  wrongPath.ambiguities[0].evidence = [correct.basics.full_name.evidence[0]];
+  assert.equal(verify(wrongPath).ambiguity_handling_pass, false);
+  assert.equal(verify(wrongPath).invalid_evidence_count, 1);
+
+  const invalidEvidence = c02Result(item);
+  invalidEvidence.ambiguities[0].evidence[0].fragment_hash = "0".repeat(64);
+  assert.equal(verify(invalidEvidence).ambiguity_handling_pass, false);
+  assert.equal(verify(invalidEvidence).invalid_evidence_count, 1);
+
+  assert.equal(correct.ambiguities[0].code, expected.id);
 });
 
 test("T201 matrix evidence is source-local and aggregate evidence has no fixture or model text", async () => {

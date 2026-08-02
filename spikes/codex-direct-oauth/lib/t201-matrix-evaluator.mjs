@@ -6,6 +6,7 @@ import {
   lineEvidenceFor,
   fixtureHash,
   normalizeFragment,
+  evaluateT201AmbiguityHandling,
 } from "./t201-semantic-evaluator.mjs";
 
 const CASE_ROOT = path.resolve(
@@ -314,8 +315,14 @@ export function evaluateT201MatrixCase({ caseId, fixture, manifest, output }) {
       )
         forbidden += 1;
   }
-  const ambiguityHandling = (manifest.ambiguous_facts ?? []).every((item) =>
-    diagnostics.some((diagnostic) => diagnostic?.code === item.id),
+  const ambiguityHandling = evaluateT201AmbiguityHandling(
+    output,
+    fixture,
+    manifest,
+  );
+  invalidEvidence += ambiguityHandling.invalid_evidence_count;
+  ambiguityHandling.error_categories.forEach((category) =>
+    errors.add(category),
   );
   const grounding =
     missingEvidence === 0 && invalidEvidence === 0 && unsupported === 0;
@@ -334,7 +341,7 @@ export function evaluateT201MatrixCase({ caseId, fixture, manifest, output }) {
     forbidden_inference_count: forbidden,
     missing_evidence_count: missingEvidence,
     invalid_evidence_count: invalidEvidence,
-    ambiguity_handling_pass: ambiguityHandling,
+    ambiguity_handling_pass: ambiguityHandling.pass,
     grounding_pass: grounding,
     no_invention_pass: forbidden === 0 && absentPass,
     parsing_pass:
@@ -345,7 +352,7 @@ export function evaluateT201MatrixCase({ caseId, fixture, manifest, output }) {
       highRecall >= manifest.thresholds.required_high_priority_fact_recall &&
       grounding &&
       forbidden === 0 &&
-      ambiguityHandling &&
+      ambiguityHandling.pass &&
       absentPass,
   };
   return {

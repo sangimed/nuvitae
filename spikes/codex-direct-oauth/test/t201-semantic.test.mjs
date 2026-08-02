@@ -261,14 +261,16 @@ test("T201 invented skill fails", async () => {
 
 test("T201 ambiguous statement represented as warning or ambiguity passes", async () => {
   const { fixture, manifest, output } = await validFixture();
+  const ambiguityEvidence = output.ambiguities[0].evidence;
   output.ambiguities = [];
   output.warnings.push({
-    code: "platform-reliability-ambiguous",
+    code: manifest.ambiguous_facts[0].id,
     message: "The platform reliability line is ambiguous.",
-    evidence: output.warnings[0].evidence,
+    evidence: ambiguityEvidence,
   });
   const evaluation = evaluateT201Output(output, fixture, manifest);
   assert.equal(evaluation.metrics.ambiguous_fact_handling_count, 1);
+  assert.equal(evaluation.metrics.parsing_pass, true);
 });
 
 test("T201 ambiguous statement incorrectly asserted as hard fact fails", async () => {
