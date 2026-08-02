@@ -330,6 +330,7 @@ function evaluateSelectedModelText(modelText, artifacts) {
     metrics: {
       ...parsed.metrics,
       ...matrix.metrics,
+      ...matrix.fact_diagnostics,
       JSON_only_valid: true,
       ambiguous_fact_handling_count: matrix.metrics.ambiguity_handling_pass
         ? artifacts.manifest.ambiguous_facts.length
@@ -476,7 +477,9 @@ try {
     encryptedBytes.includes(credential.refresh_token ?? "") ||
     encryptedBytes.includes(accountIdentifier);
 
-  const safeProjection = safeEvaluationProjection(evaluation);
+  const safeProjection = safeEvaluationProjection(evaluation, {
+    manifest: artifacts.manifest,
+  });
   const mandatoryPassed =
     invocation.ok === true &&
     safeProjection.parsing_pass === true &&

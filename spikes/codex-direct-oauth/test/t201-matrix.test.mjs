@@ -9,6 +9,7 @@ import {
   evaluateT201MatrixCase,
   loadAllT201MatrixCases,
   loadT201MatrixCase,
+  projectT201MatrixFactDiagnostics,
 } from "../lib/t201-matrix-evaluator.mjs";
 import {
   buildT201Prompt,
@@ -156,6 +157,110 @@ test("T201 C03 bilingual contract is represented by the prompt and evaluator", a
   assert.match(prompt, /ambiguous-seasonal-support/);
   assert.match(prompt, /does not establish a contract type/);
   assert.match(prompt, /Return null for absent optional values/);
+});
+
+test("T201 C03 fact diagnostics are allowlisted, complete, and source-free", async () => {
+  const item = await loadT201MatrixCase("T201-C03");
+  const result = evaluateT201MatrixCase({
+    ...item,
+    output: buildValidT201MatrixResult(item.fixture, item.manifest),
+  });
+  const diagnostics = result.fact_diagnostics;
+
+  assert.equal(
+    diagnostics.expected_fact_count,
+    item.manifest.exact_facts.length,
+  );
+  assert.equal(diagnostics.matched_expected_fact_count, 24);
+  assert.equal(diagnostics.high_priority_fact_count, 18);
+  assert.equal(diagnostics.matched_high_priority_fact_count, 18);
+  assert.deepEqual(diagnostics.missing_expected_fact_ids, []);
+  assert.deepEqual(diagnostics.missing_high_priority_fact_ids, []);
+  assert.equal(diagnostics.matched_expected_fact_ids.length, 24);
+  for (const identifier of diagnostics.matched_expected_fact_ids)
+    assert.match(identifier, /^T201-C03:[a-z_[\]0-9.]+$/);
+  assert.equal(JSON.stringify(diagnostics).includes("Dana Example"), false);
+});
+
+test("T201 C03 fact diagnostics identify omissions without accepting variants, wrong paths, or duplicates", async () => {
+  const item = await loadT201MatrixCase("T201-C03");
+  const expectedId = (path) => `T201-C03:${path}`;
+  const evaluate = (output) =>
+    evaluateT201MatrixCase({ ...item, output }).fact_diagnostics;
+
+  const ordinaryOmitted = buildValidT201MatrixResult(
+    item.fixture,
+    item.manifest,
+  );
+  ordinaryOmitted.basics.summary.value = "different summary";
+  assert.deepEqual(evaluate(ordinaryOmitted).missing_expected_fact_ids, [
+    expectedId("basics.summary"),
+  ]);
+
+  const highOmitted = buildValidT201MatrixResult(item.fixture, item.manifest);
+  highOmitted.basics.full_name.value = "different identity";
+  assert.deepEqual(evaluate(highOmitted).missing_high_priority_fact_ids, [
+    expectedId("basics.full_name"),
+  ]);
+
+  const multipleOmitted = buildValidT201MatrixResult(
+    item.fixture,
+    item.manifest,
+  );
+  multipleOmitted.basics.summary.value = "different summary";
+  multipleOmitted.basics.full_name.value = "different identity";
+  assert.deepEqual(evaluate(multipleOmitted).missing_expected_fact_ids, [
+    expectedId("basics.full_name"),
+    expectedId("basics.summary"),
+  ]);
+
+  const punctuationVariant = buildValidT201MatrixResult(
+    item.fixture,
+    item.manifest,
+  );
+  punctuationVariant.skills[0].value = "SQL.";
+  assert.equal(
+    evaluate(punctuationVariant).missing_expected_fact_ids.length,
+    0,
+  );
+
+  const wrongPath = buildValidT201MatrixResult(item.fixture, item.manifest);
+  wrongPath.basics.summary.value = wrongPath.education[0].degree.value;
+  wrongPath.education[0].degree.value = "different degree";
+  const wrongPathDiagnostics = evaluate(wrongPath);
+  assert.ok(
+    wrongPathDiagnostics.missing_expected_fact_ids.includes(
+      expectedId("basics.summary"),
+    ),
+  );
+  assert.ok(
+    wrongPathDiagnostics.missing_expected_fact_ids.includes(
+      expectedId("education[0].degree"),
+    ),
+  );
+
+  const duplicate = buildValidT201MatrixResult(item.fixture, item.manifest);
+  duplicate.skills[1].value = duplicate.skills[0].value;
+  assert.ok(
+    evaluate(duplicate).missing_expected_fact_ids.includes(
+      expectedId("skills[1]"),
+    ),
+  );
+});
+
+test("T201 C03 fact-diagnostic projection fails closed for unknown identifiers", async () => {
+  const item = await loadT201MatrixCase("T201-C03");
+  const identifiers = item.manifest.exact_facts.map(
+    (fact) => `T201-C03:${fact.path}`,
+  );
+  await assert.rejects(
+    async () =>
+      projectT201MatrixFactDiagnostics(item.manifest, {
+        matchedExpectedFactIds: identifiers.slice(1),
+        missingExpectedFactIds: ["secret-like-identifier"],
+      }),
+    /t201_matrix_fact_diagnostic_unknown_identifier/,
+  );
 });
 
 test("T201 C02 ambiguity contract accepts only the exact grounded diagnostic", async () => {

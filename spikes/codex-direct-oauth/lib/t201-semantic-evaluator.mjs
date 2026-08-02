@@ -1293,7 +1293,57 @@ export function buildT201Prompt({ fixture, manifest, schema }) {
   ].join("\n");
 }
 
-export function safeEvaluationProjection(evaluation) {
+function safeManifestFactDiagnostics(manifest, metrics) {
+  const facts = Array.isArray(manifest?.exact_facts)
+    ? manifest.exact_facts
+    : null;
+  if (!facts || typeof manifest.fixture_id !== "string")
+    throw new Error("t201_manifest_fact_diagnostic_manifest_invalid");
+  const allowed = new Set(
+    facts.map((fact) => `${manifest.fixture_id}:${fact.path}`),
+  );
+  const high = new Set(
+    facts
+      .filter((fact) => fact.priority === "high")
+      .map((fact) => `${manifest.fixture_id}:${fact.path}`),
+  );
+  const read = (field) => {
+    const value = metrics[field];
+    if (!Array.isArray(value) || new Set(value).size !== value.length)
+      throw new Error("t201_manifest_fact_diagnostic_identifier_invalid");
+    if (value.some((identifier) => !allowed.has(identifier)))
+      throw new Error("t201_manifest_fact_diagnostic_identifier_unknown");
+    return value;
+  };
+  const matched = read("matched_expected_fact_ids");
+  const missing = read("missing_expected_fact_ids");
+  const missingHigh = read("missing_high_priority_fact_ids");
+  if (
+    matched.some((identifier) => missing.includes(identifier)) ||
+    matched.length + missing.length !== allowed.size ||
+    missingHigh.some((identifier) => !missing.includes(identifier)) ||
+    missingHigh.some((identifier) => !high.has(identifier))
+  )
+    throw new Error("t201_manifest_fact_diagnostic_partition_invalid");
+  const matchedHigh = matched.filter((identifier) => high.has(identifier));
+  const counts = {
+    expected_fact_count: allowed.size,
+    matched_expected_fact_count: matched.length,
+    high_priority_fact_count: high.size,
+    matched_high_priority_fact_count: matchedHigh.length,
+  };
+  for (const [field, expected] of Object.entries(counts))
+    if (metrics[field] !== expected)
+      throw new Error("t201_manifest_fact_diagnostic_count_invalid");
+  return {
+    ...counts,
+    missing_expected_fact_ids: missing,
+    missing_high_priority_fact_ids: missingHigh,
+    matched_expected_fact_ids: matched,
+  };
+}
+
+export function safeEvaluationProjection(evaluation, { manifest } = {}) {
   if (evaluation.metrics_measurement_state === "not_measured") {
     return {
       primary_failure_category: evaluation.primary_failure_category,
@@ -1318,6 +1368,13 @@ export function safeEvaluationProjection(evaluation) {
       source_grounding_pass: null,
       no_invention_pass: null,
       parsing_pass: false,
+      expected_fact_count: null,
+      matched_expected_fact_count: null,
+      missing_expected_fact_ids: [],
+      high_priority_fact_count: null,
+      matched_high_priority_fact_count: null,
+      missing_high_priority_fact_ids: [],
+      matched_expected_fact_ids: [],
       safe_error_categories: [
         evaluation.primary_failure_category,
         ...evaluation.secondary_failure_categories,
@@ -1338,6 +1395,17 @@ export function safeEvaluationProjection(evaluation) {
           : schemaInvalid
             ? "schema_validation_failed"
             : safeErrorCategory(evaluation.error_categories[0]);
+  const factDiagnostics = manifest
+    ? safeManifestFactDiagnostics(manifest, evaluation.metrics)
+    : {
+        expected_fact_count: null,
+        matched_expected_fact_count: null,
+        missing_expected_fact_ids: [],
+        high_priority_fact_count: null,
+        matched_high_priority_fact_count: null,
+        missing_high_priority_fact_ids: [],
+        matched_expected_fact_ids: [],
+      };
   return {
     primary_failure_category: primaryFailureCategory,
     primary_failure_phase:
@@ -1402,6 +1470,7 @@ export function safeEvaluationProjection(evaluation) {
       ? null
       : evaluation.metrics.no_invention_pass,
     parsing_pass: evaluation.metrics.parsing_pass,
+    ...factDiagnostics,
     safe_error_categories: outputTooLarge
       ? ["output_too_large"]
       : evaluation.error_categories,

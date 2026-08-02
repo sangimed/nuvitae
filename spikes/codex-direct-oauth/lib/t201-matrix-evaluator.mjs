@@ -37,6 +37,65 @@ export const T201_MATRIX_METRIC_KEYS = Object.freeze([
   "parsing_pass",
 ]);
 
+function matrixFactIdentifier(manifest, pathExpression) {
+  return `${manifest.fixture_id}:${pathExpression}`;
+}
+
+function matrixFactIdentifiers(manifest) {
+  return new Set(
+    (manifest.exact_facts ?? []).map((fact) =>
+      matrixFactIdentifier(manifest, fact.path),
+    ),
+  );
+}
+
+function validateFactIdentifierList(value, allowed) {
+  if (!Array.isArray(value))
+    throw new Error("t201_matrix_fact_diagnostic_invalid_identifier_list");
+  const unique = new Set(value);
+  if (
+    unique.size !== value.length ||
+    value.some(
+      (identifier) =>
+        typeof identifier !== "string" || !allowed.has(identifier),
+    )
+  )
+    throw new Error("t201_matrix_fact_diagnostic_unknown_identifier");
+  return [...value];
+}
+
+export function projectT201MatrixFactDiagnostics(
+  manifest,
+  { matchedExpectedFactIds, missingExpectedFactIds },
+) {
+  const allowed = matrixFactIdentifiers(manifest);
+  const matched = validateFactIdentifierList(matchedExpectedFactIds, allowed);
+  const missing = validateFactIdentifierList(missingExpectedFactIds, allowed);
+  if (
+    matched.some((identifier) => missing.includes(identifier)) ||
+    matched.length + missing.length !== allowed.size
+  )
+    throw new Error("t201_matrix_fact_diagnostic_partition_invalid");
+  const high = new Set(
+    (manifest.exact_facts ?? [])
+      .filter((fact) => fact.priority === "high")
+      .map((fact) => matrixFactIdentifier(manifest, fact.path)),
+  );
+  return Object.freeze({
+    expected_fact_count: allowed.size,
+    matched_expected_fact_count: matched.length,
+    missing_expected_fact_ids: missing,
+    high_priority_fact_count: high.size,
+    matched_high_priority_fact_count: matched.filter((identifier) =>
+      high.has(identifier),
+    ).length,
+    missing_high_priority_fact_ids: missing.filter((identifier) =>
+      high.has(identifier),
+    ),
+    matched_expected_fact_ids: matched,
+  });
+}
+
 export async function loadT201MatrixCase(caseId) {
   if (!T201_MATRIX_CASE_IDS.includes(caseId))
     throw new Error(`unknown T201 matrix case: ${caseId}`);
@@ -277,18 +336,24 @@ export function evaluateT201MatrixCase({ caseId, fixture, manifest, output }) {
       diagnostics.length >=
         manifest.expected_item_counts.warnings_or_ambiguities_minimum,
     ].filter(Boolean).length / 2;
-  const matches = manifest.exact_facts.map(
-    (fact) =>
+  const outcomes = manifest.exact_facts.map((fact) => ({
+    identifier: matrixFactIdentifier(manifest, fact.path),
+    matched:
       comparable(valueAtPath(output, fact.path)) === comparable(fact.value),
-  );
+  }));
+  const factDiagnostics = projectT201MatrixFactDiagnostics(manifest, {
+    matchedExpectedFactIds: outcomes
+      .filter((outcome) => outcome.matched)
+      .map((outcome) => outcome.identifier),
+    missingExpectedFactIds: outcomes
+      .filter((outcome) => !outcome.matched)
+      .map((outcome) => outcome.identifier),
+  });
   const exactRecall =
-    matches.filter(Boolean).length / manifest.exact_facts.length;
+    factDiagnostics.matched_expected_fact_count / manifest.exact_facts.length;
   const high = manifest.exact_facts.filter((fact) => fact.priority === "high");
   const highRecall = high.length
-    ? high.filter(
-        (fact) =>
-          comparable(valueAtPath(output, fact.path)) === comparable(fact.value),
-      ).length / high.length
+    ? factDiagnostics.matched_high_priority_fact_count / high.length
     : 1;
   let forbidden = 0;
   for (const pathExpression of manifest.intentionally_absent_fields ?? [])
@@ -362,6 +427,7 @@ export function evaluateT201MatrixCase({ caseId, fixture, manifest, output }) {
     language_category: manifest.language_category,
     source_format_category: manifest.source_format_category,
     layout_category: manifest.layout_category,
+    fact_diagnostics: factDiagnostics,
     errors: [...errors].sort(),
   };
 }

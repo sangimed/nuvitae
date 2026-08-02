@@ -27,6 +27,11 @@ import {
   processT201RunnerEvidence,
 } from "../lib/t201-live-runner-evidence.mjs";
 import { CODEX_T201_TRANSPORT_LIMITS } from "../oauth-constants.mjs";
+import {
+  buildValidT201MatrixResult,
+  evaluateT201MatrixCase,
+  loadT201MatrixCase,
+} from "../lib/t201-matrix-evaluator.mjs";
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -570,10 +575,7 @@ test("T200 and T201 Docker networking and proxy policy match", async () => {
   const readerStart = compose.indexOf("  t201-result-reader:");
   const diagnostic = compose.slice(diagnosticStart);
   const t201Service = compose.slice(semanticStart, readerStart);
-  const reader = compose.slice(
-    readerStart,
-    diagnosticStart,
-  );
+  const reader = compose.slice(readerStart, diagnosticStart);
   assert.equal(/network_mode\s*:/.test(t201Service), false);
   assert.equal(reader.includes("network_mode: none"), true);
   assert.equal(diagnostic.includes("network_mode: none"), true);
@@ -794,6 +796,90 @@ test("T201 runner writes fresh complete evidence for broker exit 0 with current 
   assert.equal(persisted.evidence_schema_valid, true);
   assert.equal(persisted.evidence_atomic_replace_succeeded, true);
   assert.equal(persisted.t201_complete, true);
+});
+
+test("T201 runner preserves manifest-validated fact diagnostics only", async () => {
+  const runId = "c".repeat(32);
+  const item = await loadT201MatrixCase("T201-C03");
+  const matrix = evaluateT201MatrixCase({
+    ...item,
+    output: buildValidT201MatrixResult(item.fixture, item.manifest),
+  });
+  const projection = safeEvaluationProjection(
+    {
+      metrics: {
+        ...matrix.metrics,
+        ...matrix.fact_diagnostics,
+        JSON_only_valid: true,
+      },
+      error_categories: [],
+      missing_expected_facts: [],
+    },
+    { manifest: item.manifest },
+  );
+  const result = t201RunnerBrokerResult(runId, {
+    evaluation_metrics: projection,
+  });
+  const { persisted } = await runnerEvidenceCase([JSON.stringify(result)], {
+    runnerRunIdHash: runId,
+    brokerExitCode: 1,
+  });
+  assert.deepEqual(
+    {
+      expected_fact_count: persisted.evaluation_metrics.expected_fact_count,
+      matched_expected_fact_count:
+        persisted.evaluation_metrics.matched_expected_fact_count,
+      missing_expected_fact_ids:
+        persisted.evaluation_metrics.missing_expected_fact_ids,
+      high_priority_fact_count:
+        persisted.evaluation_metrics.high_priority_fact_count,
+      matched_high_priority_fact_count:
+        persisted.evaluation_metrics.matched_high_priority_fact_count,
+      missing_high_priority_fact_ids:
+        persisted.evaluation_metrics.missing_high_priority_fact_ids,
+      matched_expected_fact_ids:
+        persisted.evaluation_metrics.matched_expected_fact_ids,
+    },
+    {
+      expected_fact_count: projection.expected_fact_count,
+      matched_expected_fact_count: projection.matched_expected_fact_count,
+      missing_expected_fact_ids: projection.missing_expected_fact_ids,
+      high_priority_fact_count: projection.high_priority_fact_count,
+      matched_high_priority_fact_count:
+        projection.matched_high_priority_fact_count,
+      missing_high_priority_fact_ids: projection.missing_high_priority_fact_ids,
+      matched_expected_fact_ids: projection.matched_expected_fact_ids,
+    },
+  );
+  assert.equal(
+    JSON.stringify(persisted).includes("model-provided-value"),
+    false,
+  );
+});
+
+test("T201 safe fact projection rejects unknown identifiers against C03 manifest", async () => {
+  const item = await loadT201MatrixCase("T201-C03");
+  const matrix = evaluateT201MatrixCase({
+    ...item,
+    output: buildValidT201MatrixResult(item.fixture, item.manifest),
+  });
+  assert.throws(
+    () =>
+      safeEvaluationProjection(
+        {
+          metrics: {
+            ...matrix.metrics,
+            ...matrix.fact_diagnostics,
+            JSON_only_valid: true,
+            missing_expected_fact_ids: ["secret-like-identifier"],
+          },
+          error_categories: [],
+          missing_expected_facts: [],
+        },
+        { manifest: item.manifest },
+      ),
+    /t201_manifest_fact_diagnostic_identifier_unknown/,
+  );
 });
 
 test("T201 runner treats broker exit 1 with valid current JSON as evaluated gate failure", async () => {
