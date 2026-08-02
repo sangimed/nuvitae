@@ -7,6 +7,8 @@ import {
   fixtureHash,
   normalizeFragment,
   evaluateT201AmbiguityHandling,
+  evaluateT201DocumentLanguage,
+  sourceGroundedManifestFacts,
 } from "./t201-semantic-evaluator.mjs";
 
 const CASE_ROOT = path.resolve(
@@ -27,6 +29,7 @@ export const T201_MATRIX_METRIC_KEYS = Object.freeze([
   "expected_item_recall",
   "exact_fact_recall",
   "high_priority_fact_recall",
+  "document_language_classification_pass",
   "unsupported_fact_count",
   "forbidden_inference_count",
   "missing_evidence_count",
@@ -43,7 +46,7 @@ function matrixFactIdentifier(manifest, pathExpression) {
 
 function matrixFactIdentifiers(manifest) {
   return new Set(
-    (manifest.exact_facts ?? []).map((fact) =>
+    sourceGroundedManifestFacts(manifest).map((fact) =>
       matrixFactIdentifier(manifest, fact.path),
     ),
   );
@@ -77,7 +80,7 @@ export function projectT201MatrixFactDiagnostics(
   )
     throw new Error("t201_matrix_fact_diagnostic_partition_invalid");
   const high = new Set(
-    (manifest.exact_facts ?? [])
+    sourceGroundedManifestFacts(manifest)
       .filter((fact) => fact.priority === "high")
       .map((fact) => matrixFactIdentifier(manifest, fact.path)),
   );
@@ -336,7 +339,8 @@ export function evaluateT201MatrixCase({ caseId, fixture, manifest, output }) {
       diagnostics.length >=
         manifest.expected_item_counts.warnings_or_ambiguities_minimum,
     ].filter(Boolean).length / 2;
-  const outcomes = manifest.exact_facts.map((fact) => ({
+  const facts = sourceGroundedManifestFacts(manifest);
+  const outcomes = facts.map((fact) => ({
     identifier: matrixFactIdentifier(manifest, fact.path),
     matched:
       comparable(valueAtPath(output, fact.path)) === comparable(fact.value),
@@ -350,8 +354,8 @@ export function evaluateT201MatrixCase({ caseId, fixture, manifest, output }) {
       .map((outcome) => outcome.identifier),
   });
   const exactRecall =
-    factDiagnostics.matched_expected_fact_count / manifest.exact_facts.length;
-  const high = manifest.exact_facts.filter((fact) => fact.priority === "high");
+    factDiagnostics.matched_expected_fact_count / facts.length;
+  const high = facts.filter((fact) => fact.priority === "high");
   const highRecall = high.length
     ? factDiagnostics.matched_high_priority_fact_count / high.length
     : 1;
@@ -385,6 +389,12 @@ export function evaluateT201MatrixCase({ caseId, fixture, manifest, output }) {
     fixture,
     manifest,
   );
+  const documentLanguage = evaluateT201DocumentLanguage(
+    output,
+    fixture,
+    manifest,
+  );
+  if (!documentLanguage.pass) errors.add("document_language_misclassified");
   invalidEvidence += ambiguityHandling.invalid_evidence_count;
   ambiguityHandling.error_categories.forEach((category) =>
     errors.add(category),
@@ -409,12 +419,14 @@ export function evaluateT201MatrixCase({ caseId, fixture, manifest, output }) {
     ambiguity_handling_pass: ambiguityHandling.pass,
     grounding_pass: grounding,
     no_invention_pass: forbidden === 0 && absentPass,
+    document_language_classification_pass: documentLanguage.pass,
     parsing_pass:
       schema.ok &&
       sectionRecall >= 1 &&
       itemRecall >= 1 &&
       exactRecall >= manifest.thresholds.minimum_exact_fact_recall &&
       highRecall >= manifest.thresholds.required_high_priority_fact_recall &&
+      documentLanguage.pass &&
       grounding &&
       forbidden === 0 &&
       ambiguityHandling.pass &&

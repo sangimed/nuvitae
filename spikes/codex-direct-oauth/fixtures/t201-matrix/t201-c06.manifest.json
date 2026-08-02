@@ -1,10 +1,193 @@
 {
-  "schema_version": 1, "fixture_id": "T201-C06", "fixture_classification": "synthetic", "document_language": "English", "language_category": "English", "source_format_category": "docx-derived-text", "layout_category": "structural-artifacts",
-  "extraction_format": { "kind": "deterministic_ooxml_text", "coordinate_system": "one_based_extracted_line_zero_based_offset", "binary_extraction_performed": false, "source_locations": "part/paragraph/style/table-cell metadata" },
-  "expected_section_counts": { "basics": 1, "work_experiences": 1, "education": 1, "skills": 3, "languages": 2, "certifications": 1 }, "expected_item_counts": { "work_experience_highlights": 2, "warnings_or_ambiguities_minimum": 1 },
+  "schema_version": 1,
+  "fixture_id": "T201-C06",
+  "fixture_classification": "synthetic",
+  "document_language": "English",
+  "language_category": "English",
+  "source_format_category": "docx-derived-text",
+  "layout_category": "structural-artifacts",
+  "extraction_format": {
+    "kind": "deterministic_ooxml_text",
+    "coordinate_system": "one_based_extracted_line_zero_based_offset",
+    "binary_extraction_performed": false,
+    "source_locations": "part/paragraph/style/table-cell metadata"
+  },
+  "expected_section_counts": {
+    "basics": 1,
+    "work_experiences": 1,
+    "education": 1,
+    "skills": 3,
+    "languages": 2,
+    "certifications": 1
+  },
+  "expected_item_counts": {
+    "work_experience_highlights": 2,
+    "warnings_or_ambiguities_minimum": 1
+  },
   "exact_facts": [
-    { "path": "document_language", "value": "English", "priority": "high", "line": 1 }, { "path": "basics.full_name", "value": "Rowan Sample", "priority": "high", "line": 1 }, { "path": "basics.email", "value": "rowan.sample@example.invalid", "priority": "high", "line": 3 }, { "path": "basics.location", "value": "Example Borough, Fictionland", "priority": "high", "line": 4 }, { "path": "basics.summary", "value": "Technical writer who turns fictional policies into readable checklists.", "priority": "medium", "line": 6 },
-    { "path": "work_experiences[0].employer", "value": "Fable Documentation Unit", "priority": "high", "line": 8 }, { "path": "work_experiences[0].job_title", "value": "Technical Writer", "priority": "high", "line": 9 }, { "path": "work_experiences[0].start_date", "value": "2021", "priority": "high", "line": 10 }, { "path": "work_experiences[0].end_date", "value": "2024", "priority": "high", "line": 10 }, { "path": "work_experiences[0].highlights[0]", "value": "Published 7 fictional guidance sets.", "priority": "medium", "line": 11 }, { "path": "work_experiences[0].highlights[1]", "value": "Edited 42 sample policy pages.", "priority": "medium", "line": 12 },
-    { "path": "education[0].school", "value": "Example College of Clear Systems", "priority": "high", "line": 15 }, { "path": "education[0].degree", "value": "Diploma in Technical Writing", "priority": "high", "line": 16 }, { "path": "education[0].start_date", "value": "2018", "priority": "medium", "line": 17 }, { "path": "education[0].end_date", "value": "2021", "priority": "medium", "line": 18 }, { "path": "skills[0]", "value": "Markdown", "priority": "high", "line": 20 }, { "path": "skills[1]", "value": "XML", "priority": "high", "line": 20 }, { "path": "skills[2]", "value": "Editing", "priority": "high", "line": 20 }, { "path": "languages[0].name", "value": "English", "priority": "high", "line": 22 }, { "path": "languages[0].proficiency", "value": "fluent", "priority": "high", "line": 22 }, { "path": "languages[1].name", "value": "French", "priority": "high", "line": 23 }, { "path": "languages[1].proficiency", "value": "reading", "priority": "high", "line": 23 }, { "path": "certifications[0].name", "value": "Fictional Style Certificate", "priority": "high", "line": 25 }, { "path": "certifications[0].date", "value": "2023", "priority": "medium", "line": 25 }
-  ], "intentionally_absent_fields": ["basics.phone", "work_experiences[0].location", "work_experiences[0].employment_type", "education[0].grade", "certifications[0].issuer"], "absence_evidence": { "line": 26, "fragment": "Absent fields: phone, employer location, grade, issuer, employment type." }, "ambiguous_facts": [{ "id": "ambiguous-documentation-ownership", "source_line": 13, "text": "Documentation ownership", "expected_handling": "Record as ambiguous; the DOCX text does not define a team boundary." }], "forbidden_inferences": [{ "id": "docx-layout-inference", "forbidden_values": ["manager", "team lead", "full-time", "honors", "+1", "Example College location"] }], "thresholds": { "minimum_exact_fact_recall": 0.9, "required_high_priority_fact_recall": 1 }
+    {
+      "path": "basics.full_name",
+      "value": "Rowan Sample",
+      "priority": "high",
+      "line": 1
+    },
+    {
+      "path": "basics.email",
+      "value": "rowan.sample@example.invalid",
+      "priority": "high",
+      "line": 3
+    },
+    {
+      "path": "basics.location",
+      "value": "Example Borough, Fictionland",
+      "priority": "high",
+      "line": 4
+    },
+    {
+      "path": "basics.summary",
+      "value": "Technical writer who turns fictional policies into readable checklists.",
+      "priority": "medium",
+      "line": 6
+    },
+    {
+      "path": "work_experiences[0].employer",
+      "value": "Fable Documentation Unit",
+      "priority": "high",
+      "line": 8
+    },
+    {
+      "path": "work_experiences[0].job_title",
+      "value": "Technical Writer",
+      "priority": "high",
+      "line": 9
+    },
+    {
+      "path": "work_experiences[0].start_date",
+      "value": "2021",
+      "priority": "high",
+      "line": 10
+    },
+    {
+      "path": "work_experiences[0].end_date",
+      "value": "2024",
+      "priority": "high",
+      "line": 10
+    },
+    {
+      "path": "work_experiences[0].highlights[0]",
+      "value": "Published 7 fictional guidance sets.",
+      "priority": "medium",
+      "line": 11
+    },
+    {
+      "path": "work_experiences[0].highlights[1]",
+      "value": "Edited 42 sample policy pages.",
+      "priority": "medium",
+      "line": 12
+    },
+    {
+      "path": "education[0].school",
+      "value": "Example College of Clear Systems",
+      "priority": "high",
+      "line": 15
+    },
+    {
+      "path": "education[0].degree",
+      "value": "Diploma in Technical Writing",
+      "priority": "high",
+      "line": 16
+    },
+    {
+      "path": "education[0].start_date",
+      "value": "2018",
+      "priority": "medium",
+      "line": 17
+    },
+    {
+      "path": "education[0].end_date",
+      "value": "2021",
+      "priority": "medium",
+      "line": 18
+    },
+    {
+      "path": "skills[0]",
+      "value": "Markdown",
+      "priority": "high",
+      "line": 20
+    },
+    { "path": "skills[1]", "value": "XML", "priority": "high", "line": 20 },
+    { "path": "skills[2]", "value": "Editing", "priority": "high", "line": 20 },
+    {
+      "path": "languages[0].name",
+      "value": "English",
+      "priority": "high",
+      "line": 22
+    },
+    {
+      "path": "languages[0].proficiency",
+      "value": "fluent",
+      "priority": "high",
+      "line": 22
+    },
+    {
+      "path": "languages[1].name",
+      "value": "French",
+      "priority": "high",
+      "line": 23
+    },
+    {
+      "path": "languages[1].proficiency",
+      "value": "reading",
+      "priority": "high",
+      "line": 23
+    },
+    {
+      "path": "certifications[0].name",
+      "value": "Fictional Style Certificate",
+      "priority": "high",
+      "line": 25
+    },
+    {
+      "path": "certifications[0].date",
+      "value": "2023",
+      "priority": "medium",
+      "line": 25
+    }
+  ],
+  "intentionally_absent_fields": [
+    "basics.phone",
+    "work_experiences[0].location",
+    "work_experiences[0].employment_type",
+    "education[0].grade",
+    "certifications[0].issuer"
+  ],
+  "absence_evidence": {
+    "line": 26,
+    "fragment": "Absent fields: phone, employer location, grade, issuer, employment type."
+  },
+  "ambiguous_facts": [
+    {
+      "id": "ambiguous-documentation-ownership",
+      "source_line": 13,
+      "text": "Documentation ownership",
+      "expected_handling": "Record as ambiguous; the DOCX text does not define a team boundary."
+    }
+  ],
+  "forbidden_inferences": [
+    {
+      "id": "docx-layout-inference",
+      "forbidden_values": [
+        "manager",
+        "team lead",
+        "full-time",
+        "honors",
+        "+1",
+        "Example College location"
+      ]
+    }
+  ],
+  "thresholds": {
+    "minimum_exact_fact_recall": 0.9,
+    "required_high_priority_fact_recall": 1
+  }
 }

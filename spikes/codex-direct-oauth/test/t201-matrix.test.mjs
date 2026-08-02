@@ -73,6 +73,11 @@ test("every T201 matrix fixture and manifest passes independently with determini
     assert.equal(result.metrics.expected_item_recall, 1, item.case_id);
     assert.equal(result.metrics.exact_fact_recall, 1, item.case_id);
     assert.equal(result.metrics.high_priority_fact_recall, 1, item.case_id);
+    assert.equal(
+      result.metrics.document_language_classification_pass,
+      true,
+      item.case_id,
+    );
     assert.equal(result.metrics.unsupported_fact_count, 0, item.case_id);
     assert.equal(result.metrics.forbidden_inference_count, 0, item.case_id);
     assert.equal(result.metrics.missing_evidence_count, 0, item.case_id);
@@ -142,21 +147,47 @@ test("T201 C02 manifest ambiguities have a schema-valid, prompt-defined represen
   }
 });
 
-test("T201 C03 bilingual contract is represented by the prompt and evaluator", async () => {
+test("T201 classifies English, French, and bilingual documents separately from extracted facts", async () => {
+  for (const [caseId, expected] of [
+    ["T201-C01", "English"],
+    ["T201-C02", "French"],
+    ["T201-C03", "French/English"],
+  ]) {
+    const item = await loadT201MatrixCase(caseId);
+    const output = buildValidT201MatrixResult(item.fixture, item.manifest);
+    const result = evaluateT201MatrixCase({ ...item, output });
+    assert.equal(output.document_language, expected, caseId);
+    assert.equal(result.metrics.document_language_classification_pass, true);
+    assert.equal(result.metrics.parsing_pass, true);
+  }
   const item = await loadT201MatrixCase("T201-C03");
   const output = buildValidT201MatrixResult(item.fixture, item.manifest);
-  const prompt = buildT201Prompt({ ...item, schema: { type: "object" } });
+  output.document_language = "English";
   const result = evaluateT201MatrixCase({ ...item, output });
+  assert.equal(result.metrics.document_language_classification_pass, false);
+  assert.equal(result.metrics.exact_fact_recall, 1);
+  assert.equal(result.metrics.high_priority_fact_recall, 1);
+  assert.equal(result.metrics.grounding_pass, true);
+  assert.equal(result.metrics.parsing_pass, false);
+  assert.ok(result.errors.includes("document_language_misclassified"));
 
-  assert.equal(validateT201Schema(output).ok, true);
-  assert.equal(output.basics.phone, null);
-  assert.equal(output.work_experiences[0].employment_type, undefined);
-  assert.equal(result.metrics.ambiguity_handling_pass, true);
-  assert.equal(result.metrics.no_invention_pass, true);
-  assert.equal(result.metrics.parsing_pass, true);
-  assert.match(prompt, /ambiguous-seasonal-support/);
-  assert.match(prompt, /does not establish a contract type/);
-  assert.match(prompt, /Return null for absent optional values/);
+  const English = await loadT201MatrixCase("T201-C01");
+  const manifestMismatch = buildValidT201MatrixResult(
+    English.fixture,
+    English.manifest,
+  );
+  manifestMismatch.document_language = "French";
+  const manifestResult = evaluateT201MatrixCase({
+    ...English,
+    manifest: { ...English.manifest, document_language: "French" },
+    output: manifestMismatch,
+  });
+  assert.equal(
+    manifestResult.metrics.document_language_classification_pass,
+    false,
+  );
+  assert.equal(manifestResult.metrics.exact_fact_recall, 1);
+  assert.equal(manifestResult.metrics.high_priority_fact_recall, 1);
 });
 
 test("T201 manifest-driven completeness checklist covers every selected fact without treating absences as facts", async () => {
@@ -220,12 +251,16 @@ test("T201 completeness instructions preserve bilingual coverage, ambiguity safe
     prompt,
     /Return exactly one compact minified JSON object and nothing else/,
   );
+  assert.match(
+    prompt,
+    /document-level classification of the full synthetic source/,
+  );
   assert.match(prompt, /Do not reveal this internal check or any reasoning/);
   assert.doesNotMatch(prompt, /chain of thought/i);
   assert.doesNotMatch(prompt, /respond with prose/i);
 });
 
-test("T201 C03 fact diagnostics are allowlisted, complete, and source-free", async () => {
+test("T201 C03 fact diagnostics exclude document language but retain every real source fact", async () => {
   const item = await loadT201MatrixCase("T201-C03");
   const result = evaluateT201MatrixCase({
     ...item,
@@ -235,14 +270,22 @@ test("T201 C03 fact diagnostics are allowlisted, complete, and source-free", asy
 
   assert.equal(
     diagnostics.expected_fact_count,
-    item.manifest.exact_facts.length,
+    item.manifest.exact_facts.filter(
+      (fact) => fact.path !== "document_language",
+    ).length,
   );
-  assert.equal(diagnostics.matched_expected_fact_count, 24);
-  assert.equal(diagnostics.high_priority_fact_count, 18);
-  assert.equal(diagnostics.matched_high_priority_fact_count, 18);
+  assert.equal(diagnostics.matched_expected_fact_count, 23);
+  assert.equal(diagnostics.high_priority_fact_count, 17);
+  assert.equal(diagnostics.matched_high_priority_fact_count, 17);
   assert.deepEqual(diagnostics.missing_expected_fact_ids, []);
   assert.deepEqual(diagnostics.missing_high_priority_fact_ids, []);
-  assert.equal(diagnostics.matched_expected_fact_ids.length, 24);
+  assert.equal(diagnostics.matched_expected_fact_ids.length, 23);
+  assert.equal(
+    diagnostics.matched_expected_fact_ids.includes(
+      "T201-C03:document_language",
+    ),
+    false,
+  );
   for (const identifier of diagnostics.matched_expected_fact_ids)
     assert.match(identifier, /^T201-C03:[a-z_[\]0-9.]+$/);
   assert.equal(JSON.stringify(diagnostics).includes("Dana Example"), false);
@@ -329,13 +372,13 @@ test("T201 C03 evaluator still rejects threshold-breaking ordinary omissions and
     ...item,
     output: ordinaryOmitted,
   });
-  assert.equal(ordinaryResult.metrics.exact_fact_recall, 0.875);
+  assert.equal(ordinaryResult.metrics.exact_fact_recall, 0.8696);
   assert.equal(ordinaryResult.metrics.parsing_pass, false);
 
   const highOmitted = buildValidT201MatrixResult(item.fixture, item.manifest);
   highOmitted.basics.full_name.value = "different identity";
   const highResult = evaluateT201MatrixCase({ ...item, output: highOmitted });
-  assert.equal(highResult.metrics.high_priority_fact_recall, 0.9444);
+  assert.equal(highResult.metrics.high_priority_fact_recall, 0.9412);
   assert.equal(highResult.metrics.parsing_pass, false);
 });
 

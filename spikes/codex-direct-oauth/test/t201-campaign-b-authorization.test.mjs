@@ -15,7 +15,21 @@ import {
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repo = path.resolve(root, "../..");
 const registry = await loadCampaignBAuthorizationRegistry({ root });
-const contract = Object.freeze(registry.authorized_attempts.at(-1));
+const sha256 = (value) =>
+  crypto.createHash("sha256").update(value).digest("hex");
+const historicalContract = registry.authorized_attempts.at(-1);
+const contract = Object.freeze({
+  ...historicalContract,
+  attempt: "B99",
+  evidence:
+    "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b99-semantic-parsing.json",
+  fixture_sha256: sha256(
+    await fs.readFile(path.join(repo, historicalContract.fixture)),
+  ),
+  manifest_sha256: sha256(
+    await fs.readFile(path.join(repo, historicalContract.manifest)),
+  ),
+});
 const argv = (value = contract) => [
   "--campaign",
   value.campaign,
@@ -36,9 +50,6 @@ const argv = (value = contract) => [
   "--automatic-retries",
   String(value.automatic_retries),
 ];
-const sha256 = (value) =>
-  crypto.createHash("sha256").update(value).digest("hex");
-
 async function beforeEvidenceExists(target) {
   if (String(target).endsWith(contract.evidence))
     throw Object.assign(new Error("not yet written"), { code: "ENOENT" });
@@ -84,10 +95,26 @@ test("Campaign B parses only a complete explicit generic attempt contract", () =
   );
 });
 
-test("registry authorizes only its declared attempt and binds matrix artifacts", async () => {
+test("registry rejects stale historical manifest pins and authorizes only a current test contract", async () => {
+  await assert.rejects(
+    () =>
+      validateCampaignBAuthorization({
+        root,
+        invocation: parseCampaignBAttemptArguments(argv(historicalContract)),
+        exists: async (target) => {
+          if (String(target).endsWith(historicalContract.evidence))
+            throw Object.assign(new Error("not yet written"), {
+              code: "ENOENT",
+            });
+          await beforeEvidenceExists(target);
+        },
+      }),
+    /campaign_b_matrix_artifact_hash_mismatch/,
+  );
   const authorized = await validateCampaignBAuthorization({
     root,
     invocation: parseCampaignBAttemptArguments(argv()),
+    registry: { schema_version: 1, authorized_attempts: [contract] },
     exists: beforeEvidenceExists,
   });
   assert.equal(authorized.attempt, contract.attempt);
@@ -96,8 +123,9 @@ test("registry authorizes only its declared attempt and binds matrix artifacts",
     () =>
       validateCampaignBAuthorization({
         root,
+        registry: { schema_version: 1, authorized_attempts: [contract] },
         invocation: parseCampaignBAttemptArguments(
-          argv({ ...contract, attempt: "B99" }),
+          argv({ ...contract, attempt: "B98" }),
         ),
         exists: beforeEvidenceExists,
       }),
@@ -107,6 +135,7 @@ test("registry authorizes only its declared attempt and binds matrix artifacts",
     () =>
       validateCampaignBAuthorization({
         root,
+        registry: { schema_version: 1, authorized_attempts: [contract] },
         invocation: parseCampaignBAttemptArguments(
           argv({ ...contract, campaign: "T201-C02-A", attempt: "A07" }),
         ),
@@ -118,6 +147,7 @@ test("registry authorizes only its declared attempt and binds matrix artifacts",
     () =>
       validateCampaignBAuthorization({
         root,
+        registry: { schema_version: 1, authorized_attempts: [contract] },
         invocation: parseCampaignBAttemptArguments(
           argv({
             ...contract,
@@ -133,6 +163,7 @@ test("registry authorizes only its declared attempt and binds matrix artifacts",
     () =>
       validateCampaignBAuthorization({
         root,
+        registry: { schema_version: 1, authorized_attempts: [contract] },
         invocation: parseCampaignBAttemptArguments(
           argv({
             ...contract,
@@ -220,6 +251,7 @@ test("registry rejects reused evidence, multiple requests, retries, and a missin
     () =>
       validateCampaignBAuthorization({
         root,
+        registry: { schema_version: 1, authorized_attempts: [contract] },
         invocation: parseCampaignBAttemptArguments(argv()),
         exists: async (target) => {
           if (String(target).endsWith("run-t201-live-execute.sh"))

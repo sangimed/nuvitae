@@ -82,6 +82,7 @@ const ERROR_CATEGORIES = new Set([
   "forbidden_inference",
   "expected_fact_missing",
   "ambiguity_mishandled",
+  "document_language_misclassified",
   "transport_failure",
   "refresh_failure",
   "upstream_protocol_changed",
@@ -617,11 +618,7 @@ export function validateT201Schema(value) {
       "$.schema_version",
       "schema_version must be 1",
     );
-  if (
-    typeof value.document_language !== "string" ||
-    value.document_language.length < 1 ||
-    value.document_language.length > 40
-  ) {
+  if (!DOCUMENT_LANGUAGE_VALUES.has(value.document_language)) {
     fail(
       errors,
       "schema_validation_failed",
@@ -893,8 +890,43 @@ function diagnosticItems(output) {
   return [...safeArray(output?.ambiguities), ...safeArray(output?.warnings)];
 }
 
-function manifestFacts(manifest) {
-  return safeArray(manifest?.exact_facts);
+export function sourceGroundedManifestFacts(manifest) {
+  return safeArray(manifest?.exact_facts).filter(
+    (fact) => fact?.path !== "document_language",
+  );
+}
+
+const DOCUMENT_LANGUAGE_VALUES = new Set([
+  "English",
+  "French",
+  "French/English",
+]);
+const FRENCH_DOCUMENT_LANGUAGE_MARKERS =
+  /[àâçéèêëîïôûùüÿœ]|\b(?:analyste|anglais|certificat|compétence|créé|données|expérience|français|ingénieure|langues|présent|professionnelle|résumé|synthétique|téléphone)\b/iu;
+const ENGLISH_DOCUMENT_LANGUAGE_MARKERS =
+  /\b(?:all|and|analyst|built|certificate|education|english|experience|for|from|languages|present|professional|skills|summary|synthetic|the|with)\b/i;
+
+export function classifyT201DocumentLanguage(fixture) {
+  if (typeof fixture !== "string") return null;
+  const hasFrench = FRENCH_DOCUMENT_LANGUAGE_MARKERS.test(fixture);
+  const hasEnglish = ENGLISH_DOCUMENT_LANGUAGE_MARKERS.test(fixture);
+  if (hasFrench && hasEnglish) return "French/English";
+  if (hasFrench) return "French";
+  if (hasEnglish) return "English";
+  return null;
+}
+
+export function evaluateT201DocumentLanguage(output, fixture, manifest) {
+  const expected = manifest?.document_language;
+  const actual = output?.document_language;
+  const classified = classifyT201DocumentLanguage(fixture);
+  return {
+    pass:
+      classified !== null &&
+      DOCUMENT_LANGUAGE_VALUES.has(expected) &&
+      actual === expected &&
+      actual === classified,
+  };
 }
 
 function normalizeComparable(value) {
@@ -975,6 +1007,13 @@ export function evaluateT201Output(output, fixture, manifest) {
   let invalidEvidenceCount = 0;
   let unsupportedFactCount = 0;
   const errorCategories = new Set(schema.errors.map((error) => error.category));
+  const documentLanguage = evaluateT201DocumentLanguage(
+    output,
+    fixture,
+    manifest,
+  );
+  if (!documentLanguage.pass)
+    errorCategories.add("document_language_misclassified");
 
   for (const item of valueObjects) {
     if (!Array.isArray(item.evidence) || item.evidence.length === 0) {
@@ -1048,7 +1087,7 @@ export function evaluateT201Output(output, fixture, manifest) {
 
   let exactFactMatches = 0;
   let highPriorityMatches = 0;
-  const facts = manifestFacts(manifest);
+  const facts = sourceGroundedManifestFacts(manifest);
   const highPriorityFacts = facts.filter((fact) => fact.priority === "high");
   const missingFacts = [];
   for (const fact of facts) {
@@ -1150,6 +1189,7 @@ export function evaluateT201Output(output, fixture, manifest) {
       unsupportedFactCount === 0,
     no_invention_pass:
       forbiddenInferenceCount === 0 && nullForAbsentFieldsCount === 5,
+    document_language_classification_pass: documentLanguage.pass,
   };
   metrics.parsing_pass =
     metrics.schema_valid &&
@@ -1163,6 +1203,7 @@ export function evaluateT201Output(output, fixture, manifest) {
       manifest?.thresholds?.minimum_exact_fact_recall &&
     metrics.high_priority_fact_recall >=
       manifest?.thresholds?.required_high_priority_fact_recall &&
+    metrics.document_language_classification_pass &&
     ambiguityMishandled === false;
 
   return {
@@ -1193,6 +1234,7 @@ export function evaluateModelText(
         expected_item_recall: 0,
         exact_fact_recall: 0,
         high_priority_fact_recall: 0,
+        document_language_classification_pass: false,
         unsupported_fact_count: 0,
         missing_evidence_count: 0,
         invalid_evidence_count: 0,
@@ -1204,7 +1246,9 @@ export function evaluateModelText(
         parsing_pass: false,
       },
       schema_errors: [],
-      missing_expected_facts: manifestFacts(manifest).map((fact) => fact.path),
+      missing_expected_facts: sourceGroundedManifestFacts(manifest).map(
+        (fact) => fact.path,
+      ),
       error_categories: [category],
     };
   }
@@ -1220,6 +1264,7 @@ export function evaluateModelText(
         expected_item_recall: 0,
         exact_fact_recall: 0,
         high_priority_fact_recall: 0,
+        document_language_classification_pass: false,
         unsupported_fact_count: 0,
         missing_evidence_count: 0,
         invalid_evidence_count: 0,
@@ -1231,7 +1276,9 @@ export function evaluateModelText(
         parsing_pass: false,
       },
       schema_errors: [],
-      missing_expected_facts: manifestFacts(manifest).map((fact) => fact.path),
+      missing_expected_facts: sourceGroundedManifestFacts(manifest).map(
+        (fact) => fact.path,
+      ),
       error_categories: ["safe_unknown_failure"],
       safe_evaluation_failure_phase: "response_semantic_evaluation",
     };
@@ -1249,10 +1296,11 @@ export function buildT201Prompt({ fixture, manifest, schema }) {
         `${String(index + 1).padStart(3, "0")}| length=${line.length} whole_line_sha256=${fragmentHash(line)}`,
     )
     .join("\n");
-  const evidenceHints = manifest.exact_facts
+  const facts = sourceGroundedManifestFacts(manifest);
+  const evidenceHints = facts
     .map((fact) => `${fact.path}: line ${fact.line}`)
     .join("\n");
-  const completenessChecklist = manifest.exact_facts
+  const completenessChecklist = facts
     .map((fact) => {
       const factId = `${manifest.fixture_id}:${fact.path}`;
       const evidenceCategory = fact.category ?? "work";
@@ -1282,6 +1330,7 @@ export function buildT201Prompt({ fixture, manifest, schema }) {
     "Do not include explanations, Markdown, commentary, source excerpts, repeated fixture text, reasoning summaries, or optional fields outside the strict schema.",
     "Use schema_version 1 and the exact top-level fields defined by the schema.",
     "Every non-null extracted value must be an object with value and evidence.",
+    "document_language is a document-level classification of the full synthetic source, not an extracted fact. Set it to exactly English, French, or French/English. Do not attach source evidence to it.",
     "Evidence line numbers refer to the numbered source below; start/end are zero-based offsets in the original line text after the `NNN| ` prefix, end exclusive.",
     "fragment_hash is lowercase SHA-256 of the whitespace-normalized source fragment for those offsets.",
     "Evidence objects may contain only line, start, end, fragment_hash, and category.",
@@ -1320,7 +1369,7 @@ export function buildT201Prompt({ fixture, manifest, schema }) {
 
 function safeManifestFactDiagnostics(manifest, metrics) {
   const facts = Array.isArray(manifest?.exact_facts)
-    ? manifest.exact_facts
+    ? sourceGroundedManifestFacts(manifest)
     : null;
   if (!facts || typeof manifest.fixture_id !== "string")
     throw new Error("t201_manifest_fact_diagnostic_manifest_invalid");
@@ -1384,6 +1433,7 @@ export function safeEvaluationProjection(evaluation, { manifest } = {}) {
       expected_item_recall: null,
       exact_fact_recall: null,
       high_priority_fact_recall: null,
+      document_language_classification_pass: null,
       unsupported_fact_count: null,
       missing_evidence_count: null,
       invalid_evidence_count: null,
@@ -1470,6 +1520,9 @@ export function safeEvaluationProjection(evaluation, { manifest } = {}) {
     high_priority_fact_recall: outputTooLarge
       ? null
       : evaluation.metrics.high_priority_fact_recall,
+    document_language_classification_pass: outputTooLarge
+      ? null
+      : evaluation.metrics.document_language_classification_pass,
     unsupported_fact_count: outputTooLarge
       ? null
       : evaluation.metrics.unsupported_fact_count,

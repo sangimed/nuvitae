@@ -18,7 +18,10 @@
   ],
   "properties": {
     "schema_version": { "const": 1 },
-    "document_language": { "type": "string", "minLength": 1, "maxLength": 40 },
+    "document_language": {
+      "description": "Document-level language classification, derived from the complete document without source-line evidence.",
+      "enum": ["English", "French", "French/English"]
+    },
     "basics": {
       "type": "object",
       "additionalProperties": false,
@@ -26,7 +29,12 @@
       "properties": {
         "full_name": { "$ref": "#/$defs/value_with_evidence" },
         "email": { "$ref": "#/$defs/value_with_evidence" },
-        "phone": { "anyOf": [{ "$ref": "#/$defs/value_with_evidence" }, { "type": "null" }] },
+        "phone": {
+          "anyOf": [
+            { "$ref": "#/$defs/value_with_evidence" },
+            { "type": "null" }
+          ]
+        },
         "location": { "$ref": "#/$defs/value_with_evidence" },
         "summary": { "$ref": "#/$defs/value_with_evidence" }
       }
@@ -38,13 +46,25 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["employer", "job_title", "start_date", "end_date", "location", "highlights"],
+        "required": [
+          "employer",
+          "job_title",
+          "start_date",
+          "end_date",
+          "location",
+          "highlights"
+        ],
         "properties": {
           "employer": { "$ref": "#/$defs/value_with_evidence" },
           "job_title": { "$ref": "#/$defs/value_with_evidence" },
           "start_date": { "$ref": "#/$defs/value_with_evidence" },
           "end_date": { "$ref": "#/$defs/value_with_evidence" },
-          "location": { "anyOf": [{ "$ref": "#/$defs/value_with_evidence" }, { "type": "null" }] },
+          "location": {
+            "anyOf": [
+              { "$ref": "#/$defs/value_with_evidence" },
+              { "type": "null" }
+            ]
+          },
           "highlights": {
             "type": "array",
             "minItems": 0,
@@ -67,7 +87,12 @@
           "degree": { "$ref": "#/$defs/value_with_evidence" },
           "start_date": { "$ref": "#/$defs/value_with_evidence" },
           "end_date": { "$ref": "#/$defs/value_with_evidence" },
-          "grade": { "anyOf": [{ "$ref": "#/$defs/value_with_evidence" }, { "type": "null" }] }
+          "grade": {
+            "anyOf": [
+              { "$ref": "#/$defs/value_with_evidence" },
+              { "type": "null" }
+            ]
+          }
         }
       }
     },
@@ -102,7 +127,12 @@
         "properties": {
           "name": { "$ref": "#/$defs/value_with_evidence" },
           "date": { "$ref": "#/$defs/value_with_evidence" },
-          "issuer": { "anyOf": [{ "$ref": "#/$defs/value_with_evidence" }, { "type": "null" }] }
+          "issuer": {
+            "anyOf": [
+              { "$ref": "#/$defs/value_with_evidence" },
+              { "type": "null" }
+            ]
+          }
         }
       }
     },
@@ -158,7 +188,21 @@
         "start": { "type": "integer", "minimum": 0, "maximum": 2000 },
         "end": { "type": "integer", "minimum": 1, "maximum": 2000 },
         "fragment_hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-        "category": { "type": "string", "enum": ["identity", "summary", "work", "education", "skill", "language", "certification", "absence", "ambiguity", "warning"] }
+        "category": {
+          "type": "string",
+          "enum": [
+            "identity",
+            "summary",
+            "work",
+            "education",
+            "skill",
+            "language",
+            "certification",
+            "absence",
+            "ambiguity",
+            "warning"
+          ]
+        }
       }
     }
   }
