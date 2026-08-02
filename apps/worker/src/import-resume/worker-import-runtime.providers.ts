@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import type { Provider } from "@nestjs/common";
 import {
   DeterministicLanguageDetector,
-  DeterministicResumeFieldExtractor,
   IsolatedParserRunner,
   LibreOfficeRenderedPageCounter,
   OoxmlDocxAdapter,
@@ -10,10 +9,10 @@ import {
   type ExtractionSourceReader,
 } from "@nuvitae/extraction";
 import {
-  ProcessExtractionService,
   ValidateDocumentService,
   type ImportProcessingLimits,
 } from "@nuvitae/import-application";
+import type { ResumeSemanticParserProvider } from "@nuvitae/import-application";
 import type {
   ImportResumeRepository,
   PersistenceTransactionRunner,
@@ -23,6 +22,7 @@ import {
   WORKER_IMPORT_EXTRACTION_USE_CASE,
   WORKER_IMPORT_VALIDATION_USE_CASE,
 } from "./import-processing.processor.js";
+import { SemanticImportProcessor } from "./semantic-import.processor.js";
 import { parseWorkerImportProcessingLimits } from "./import-processing-limits.js";
 import {
   WORKER_IMPORT_RESUME_REPOSITORY,
@@ -37,6 +37,9 @@ export const WORKER_PRIVATE_IMPORT_STORAGE = Symbol(
 );
 export const WORKER_PRIVATE_SOURCE_READER = Symbol(
   "WORKER_PRIVATE_SOURCE_READER",
+);
+export const WORKER_SEMANTIC_PARSER_PROVIDER = Symbol(
+  "WORKER_SEMANTIC_PARSER_PROVIDER",
 );
 
 class PrivateStorageSourceReader implements ExtractionSourceReader {
@@ -147,12 +150,17 @@ export const workerImportRuntimeProviders: Provider[] = [
     ],
   },
   {
+    provide: WORKER_SEMANTIC_PARSER_PROVIDER,
+    useFactory: (): ResumeSemanticParserProvider | undefined => undefined,
+  },
+  {
     provide: WORKER_IMPORT_EXTRACTION_USE_CASE,
     useFactory: (
       repository: ImportResumeRepository,
       transactionRunner: PersistenceTransactionRunner,
       sourceReader: ExtractionSourceReader,
       limits: ImportProcessingLimits,
+      provider: ResumeSemanticParserProvider | undefined,
     ) => {
       const pdf = new PdfJsPdfAdapter(sourceReader, {
         maximumFileSizeBytes: limits.maxUploadSizeBytes + 1,
@@ -162,20 +170,14 @@ export const workerImportRuntimeProviders: Provider[] = [
         sourceReader,
         docxValidationLimits(limits),
       );
-      return new ProcessExtractionService({
+      return new SemanticImportProcessor({
         repository,
         transactionRunner,
         sourceReader,
         pdfTextExtractor: pdf,
         docxTextExtractor: docx,
-        fieldExtractor: new DeterministicResumeFieldExtractor(),
+        provider,
         clock: { now: () => new Date() },
-        ids: {
-          draftId: () => randomUUID(),
-          fieldId: () => randomUUID(),
-          warningId: () => randomUUID(),
-          requestId: () => randomUUID(),
-        },
         logger,
       });
     },
@@ -184,6 +186,7 @@ export const workerImportRuntimeProviders: Provider[] = [
       WORKER_PERSISTENCE_TRANSACTION_RUNNER,
       WORKER_PRIVATE_SOURCE_READER,
       WORKER_IMPORT_PROCESSING_LIMITS,
+      WORKER_SEMANTIC_PARSER_PROVIDER,
     ],
   },
 ];
