@@ -10,7 +10,7 @@ OAuth login, credential refresh, T202, T203, or T164-T165.
 | -------- | -------------- | --------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | T201-C01 | English        | plain text                  | single-column            | Passed canonical live validation; preserved unchanged                                                                                                                                         |
 | T201-C02 | French         | plain text                  | single-column            | Passed canonical live validation in Campaign B13 with sanitized evidence                                                                                                                      |
-| T201-C03 | French/English | bilingual plain text        | single-column            | B01 failed semantic recall; B02 failed under the former `document_language` contract; offline correction completed; fresh canonical live validation remains pending and B03 is not authorized |
+| T201-C03 | French/English | bilingual plain text        | single-column            | B01 and B02 remain immutable failed historical attempts; B03 passed canonical live validation with sanitized evidence |
 | T201-C04 | English        | PDF-derived extracted text  | single-column            | Unexecuted; fixture and manifest prepared; no binary extraction                                                                                                                               |
 | T201-C05 | English        | PDF-derived extracted text  | multi-column interleaved | Unexecuted; fixture and manifest prepared; regrouping test only                                                                                                                               |
 | T201-C06 | English        | DOCX-derived extracted text | structural artifacts     | Unexecuted; fixture and manifest prepared; no binary extraction                                                                                                                               |
@@ -57,14 +57,14 @@ from later offline evaluator and contract work:
    unchanged.
 
 Neither the offline correction nor a deterministic evaluator pass converts B01
-or B02 into a live pass. C03 therefore still requires a fresh canonical live
-validation. `T201-C03-B03` is not authorized in
-`spikes/codex-direct-oauth/campaign-b-authorizations.json`.
+or B02 into a live pass. `T201-C03-B03` then passed its separately authorized
+single canonical live validation. Its sanitized evidence is
+`spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json`.
 
-C01 and C02 have passed canonical live validation. C04-C06 remain unexecuted.
-T201 remains incomplete; T202, T203, T164, and T165 remain blocked. Any future
-Campaign B attempt remains separately authorized and limited to one broker run,
-one maximum semantic backend request, and zero automatic retries.
+C01, C02, and C03 have passed canonical live validation. C04-C06 remain
+unexecuted. T201 remains incomplete; T202, T203, T164, and T165 remain blocked.
+Any future Campaign B attempt remains separately authorized and limited to one
+broker run, one maximum semantic backend request, and zero automatic retries.
 
 ## Execution boundary
 
