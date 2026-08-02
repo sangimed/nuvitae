@@ -17,7 +17,18 @@ const repo = path.resolve(root, "../..");
 const registry = await loadCampaignBAuthorizationRegistry({ root });
 const sha256 = (value) =>
   crypto.createHash("sha256").update(value).digest("hex");
-const historicalContract = registry.authorized_attempts.at(-1);
+const historicalContracts = registry.authorized_attempts.filter(
+  ({ campaign, attempt, semantic_case }) =>
+    campaign === "T201-C03-B" &&
+    attempt === "B02" &&
+    semantic_case === "T201-C03",
+);
+assert.equal(
+  historicalContracts.length,
+  1,
+  "expected exactly one historical T201-C03-B B02 authorization",
+);
+const [historicalContract] = historicalContracts;
 const contract = Object.freeze({
   ...historicalContract,
   attempt: "B99",
