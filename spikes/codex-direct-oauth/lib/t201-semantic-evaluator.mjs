@@ -1252,6 +1252,24 @@ export function buildT201Prompt({ fixture, manifest, schema }) {
   const evidenceHints = manifest.exact_facts
     .map((fact) => `${fact.path}: line ${fact.line}`)
     .join("\n");
+  const completenessChecklist = manifest.exact_facts
+    .map((fact) => {
+      const factId = `${manifest.fixture_id}:${fact.path}`;
+      const evidenceCategory = fact.category ?? "work";
+      return [
+        `fact_id=${factId}`,
+        `destination_path=${fact.path}`,
+        `source_line_hint=${fact.line}`,
+        `high_priority=${fact.priority === "high"}`,
+        `required_evidence_category=${evidenceCategory}`,
+      ].join("; ");
+    })
+    .join("\n");
+  const intentionallyAbsentChecklist = safeArray(
+    manifest.intentionally_absent_fields,
+  )
+    .map((path) => `destination_path=${path}; required_output=null`)
+    .join("\n");
   const ambiguityHints = safeArray(manifest.ambiguous_facts)
     .map(
       (fact) =>
@@ -1274,12 +1292,19 @@ export function buildT201Prompt({ fixture, manifest, schema }) {
     "For every REQUIRED AMBIGUITY below, add exactly one diagnostic under ambiguities or warnings using its exact code, ambiguity-category evidence covering the listed source text, and a message that states the listed safe handling. Do not convert it into a hard achievement.",
     "For work highlights, include only concrete bullet facts; do not include the deliberately ambiguous platform-reliability statement as a highlight.",
     "The expected-facts hint below is a line-reference aid, not a model output source of truth.",
+    "Before emitting the JSON, internally inspect every REQUIRED COMPLETENESS CHECKLIST entry; extract every source-supported value; leave only intentionally absent fields null; do not omit a supported value merely because it appears in bilingual text; verify that every extracted value has valid source evidence; and verify that every required destination path has been addressed. Do not reveal this internal check or any reasoning.",
     "",
     "STRICT OUTPUT SCHEMA:",
     JSON.stringify(schema),
     "",
     "EXPECTED FACT LINE HINTS:",
     evidenceHints,
+    "",
+    "REQUIRED COMPLETENESS CHECKLIST:",
+    completenessChecklist,
+    "",
+    "INTENTIONALLY ABSENT OPTIONAL FIELDS (must remain null; these are not expected facts):",
+    intentionallyAbsentChecklist,
     "",
     "REQUIRED AMBIGUITY DIAGNOSTICS:",
     ambiguityHints,

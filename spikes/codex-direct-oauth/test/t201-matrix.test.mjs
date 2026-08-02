@@ -159,6 +159,72 @@ test("T201 C03 bilingual contract is represented by the prompt and evaluator", a
   assert.match(prompt, /Return null for absent optional values/);
 });
 
+test("T201 manifest-driven completeness checklist covers every selected fact without treating absences as facts", async () => {
+  for (const caseId of ["T201-C02", "T201-C03"]) {
+    const item = await loadT201MatrixCase(caseId);
+    const prompt = buildT201Prompt({ ...item, schema: { type: "object" } });
+    const checklist = prompt
+      .split("REQUIRED COMPLETENESS CHECKLIST:\n")[1]
+      .split("\n\nINTENTIONALLY ABSENT OPTIONAL FIELDS")[0];
+
+    for (const fact of item.manifest.exact_facts) {
+      const factId = `${item.manifest.fixture_id}:${fact.path}`;
+      assert.equal(
+        checklist.split(`fact_id=${factId}`).length - 1,
+        1,
+        `${caseId} ${factId}`,
+      );
+      assert.match(
+        checklist,
+        new RegExp(`destination_path=${fact.path.replace(/[.[\]]/g, "\\$&")};`),
+      );
+      assert.match(checklist, new RegExp(`source_line_hint=${fact.line}`));
+      assert.match(checklist, /required_evidence_category=work/);
+      if (fact.priority === "high")
+        assert.match(
+          checklist,
+          new RegExp(
+            `fact_id=${factId.replace(/[.[\]]/g, "\\$&")};[^\n]*high_priority=true`,
+          ),
+        );
+    }
+    for (const path of item.manifest.intentionally_absent_fields) {
+      assert.equal(checklist.includes(`destination_path=${path}`), false);
+      assert.match(
+        prompt,
+        new RegExp(
+          `INTENTIONALLY ABSENT OPTIONAL FIELDS[\\s\\S]*destination_path=${path.replace(/[.[\]]/g, "\\$&")}; required_output=null`,
+        ),
+      );
+    }
+  }
+});
+
+test("T201 completeness instructions preserve bilingual coverage, ambiguity safety, and JSON-only output", async () => {
+  const item = await loadT201MatrixCase("T201-C03");
+  const prompt = buildT201Prompt({ ...item, schema: { type: "object" } });
+  assert.match(
+    prompt,
+    /do not omit a supported value merely because it appears in bilingual text/,
+  );
+  assert.match(
+    prompt,
+    /verify that every extracted value has valid source evidence/,
+  );
+  assert.match(
+    prompt,
+    /verify that every required destination path has been addressed/,
+  );
+  assert.match(prompt, /For every REQUIRED AMBIGUITY/);
+  assert.match(
+    prompt,
+    /Return exactly one compact minified JSON object and nothing else/,
+  );
+  assert.match(prompt, /Do not reveal this internal check or any reasoning/);
+  assert.doesNotMatch(prompt, /chain of thought/i);
+  assert.doesNotMatch(prompt, /respond with prose/i);
+});
+
 test("T201 C03 fact diagnostics are allowlisted, complete, and source-free", async () => {
   const item = await loadT201MatrixCase("T201-C03");
   const result = evaluateT201MatrixCase({
@@ -246,6 +312,31 @@ test("T201 C03 fact diagnostics identify omissions without accepting variants, w
       expectedId("skills[1]"),
     ),
   );
+});
+
+test("T201 C03 evaluator still rejects threshold-breaking ordinary omissions and every high-priority omission", async () => {
+  const item = await loadT201MatrixCase("T201-C03");
+  const ordinaryOmitted = buildValidT201MatrixResult(
+    item.fixture,
+    item.manifest,
+  );
+  ordinaryOmitted.basics.summary.value = "different summary";
+  ordinaryOmitted.work_experiences[0].highlights[0].value =
+    "different highlight";
+  ordinaryOmitted.work_experiences[0].highlights[1].value =
+    "another different highlight";
+  const ordinaryResult = evaluateT201MatrixCase({
+    ...item,
+    output: ordinaryOmitted,
+  });
+  assert.equal(ordinaryResult.metrics.exact_fact_recall, 0.875);
+  assert.equal(ordinaryResult.metrics.parsing_pass, false);
+
+  const highOmitted = buildValidT201MatrixResult(item.fixture, item.manifest);
+  highOmitted.basics.full_name.value = "different identity";
+  const highResult = evaluateT201MatrixCase({ ...item, output: highOmitted });
+  assert.equal(highResult.metrics.high_priority_fact_recall, 0.9444);
+  assert.equal(highResult.metrics.parsing_pass, false);
 });
 
 test("T201 C03 fact-diagnostic projection fails closed for unknown identifiers", async () => {
