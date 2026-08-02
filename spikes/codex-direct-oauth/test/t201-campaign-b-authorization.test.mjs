@@ -122,7 +122,7 @@ test("registry authorizes only its declared attempt and binds matrix artifacts",
           argv({
             ...contract,
             fixture:
-              "spikes/codex-direct-oauth/fixtures/t201-matrix/t201-c03.txt",
+              "spikes/codex-direct-oauth/fixtures/t201-matrix/t201-not-authorized.txt",
           }),
         ),
         exists: beforeEvidenceExists,
