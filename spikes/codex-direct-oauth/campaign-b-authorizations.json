@@ -146,6 +146,19 @@
     },
     {
       "campaign": "T201-C03-B",
+      "attempt": "B03",
+      "semantic_case": "T201-C03",
+      "maximum_live_broker_runs": 1,
+      "maximum_semantic_backend_requests": 1,
+      "automatic_retries": 0,
+      "fixture": "spikes/codex-direct-oauth/fixtures/t201-matrix/t201-c03.txt",
+      "manifest": "spikes/codex-direct-oauth/fixtures/t201-matrix/t201-c03.manifest.json",
+      "evidence": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+      "fixture_sha256": "50f370ecfc601a22fe7f2668ad5c4ce7fe845aea74394c1ed6b62e126ec81d51",
+      "manifest_sha256": "a980bca7ab382b2565d0e4cc44df2b18ce811f135f0292608842122bac0f730e"
+    },
+    {
+      "campaign": "T201-C03-B",
       "attempt": "B02",
       "semantic_case": "T201-C03",
       "maximum_live_broker_runs": 1,
