@@ -86,7 +86,7 @@ async function command(execute, operation, executable, args, cwd, env) {
 export async function prepareImmutableT201Image({ root, execute, runId = crypto.randomBytes(16).toString("hex"), env = process.env } = {}) {
   if (typeof execute !== "function") throw new Error("immutable_image_execute_required");
   const buildTag = `nuvitae-codex-direct-oauth-t201-prepared-${runId}`;
-  await command(execute, "preparation_image_build", "docker", ["build", "--pull=false", "--tag", buildTag, "."], root, env);
+  await command(execute, "preparation_image_build", "docker", ["build", "--pull=false", "--network=none", "--tag", buildTag, "."], root, env);
   const inspection = parseImageInspection(await command(execute, "preparation_image_inspection", "docker", ["image", "inspect", buildTag], root, env));
   const reference = assertImmutableImageReference(inspection?.Id);
   const declaredUser = inspection?.Config?.User;

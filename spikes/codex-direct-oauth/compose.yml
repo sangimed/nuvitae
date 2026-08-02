@@ -119,8 +119,6 @@ services:
   t201-semantic:
     image: ${NUVITAE_T201_IMMUTABLE_IMAGE:?NUVITAE_T201_IMMUTABLE_IMAGE is required for T201 Campaign B}
     pull_policy: never
-    build:
-      context: .
     init: true
     command: ["node", "t201-semantic-broker.mjs"]
     read_only: true
@@ -169,8 +167,6 @@ services:
   t201-result-reader:
     image: ${NUVITAE_T201_IMMUTABLE_IMAGE:?NUVITAE_T201_IMMUTABLE_IMAGE is required for T201 Campaign B}
     pull_policy: never
-    build:
-      context: .
     init: true
     command: ["node", "t201-result-reader.mjs"]
     read_only: true

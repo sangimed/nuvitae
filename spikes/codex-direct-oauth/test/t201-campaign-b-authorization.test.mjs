@@ -289,8 +289,8 @@ case "$all" in
   *"image inspect"*"--format"*) printf '%s\\n' '${image}' ;;
   *"image inspect"*) printf '%s\\n' '[{"Id":"${image}","Config":{"User":"spike"}}]' ;;
   *" build "*|build\\ *) : ;;
-  *" config --format json"*) printf '%s\\n' '{"services":{"t201-semantic":{},"t201-result-reader":{}}}' ;;
-  inspect\\ *|*" inspect "*) printf '%s\\n' '[{"Image":"${image}","Mounts":[{"Destination":"/spike/result","RW":true}]}]' ;;
+  *" config --format json"*) printf '%s\\n' '{"services":{"t201-semantic":{"image":"${image}","network_mode":"none"},"t201-result-reader":{"image":"${image}","network_mode":"none"}}}' ;;
+  inspect\\ *|*" inspect "*) printf '%s\\n' '[{"Image":"${image}","HostConfig":{"NetworkMode":"none"},"Mounts":[{"Destination":"/spike/result","RW":true}]}]' ;;
   wait\\ *|*" wait "*) printf '0\\n' ;;
   start\\ --attach\\ *reader*|*" start --attach "*reader*) printf '%s\\n' 'safe_result_reader_success:1000:1000:600:same_filesystem' >&2 ;;
   cp\\ *|*" cp "*) for last; do :; done; printf '%s\\n' '{"probe":"t201_live_result_channel","semantic_invocation_attempted":false,"identity":{"uid":1000,"gid":1000},"records":[{"operation":"stat_result_mount","after":{"uid":1000,"gid":1000,"mode":448}}],"first_failure":null}' > "$last" ;;

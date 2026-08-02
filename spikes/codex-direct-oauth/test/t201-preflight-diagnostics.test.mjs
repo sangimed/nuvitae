@@ -11,6 +11,7 @@ const runId = "f".repeat(32);
 const root = path.resolve(path.dirname(new URL("../compose.yml", import.meta.url).pathname));
 const imageId = `sha256:${"a".repeat(64)}`;
 const preparedImage = { reference: imageId, identity_hash: digest(imageId), declared_runtime_user_hash: digest("spike") };
+const composeConfig = () => ({ services: { "t201-semantic": { image: imageId, network_mode: "none" }, "t201-result-reader": { image: imageId, network_mode: "none" } } });
 
 function commandResult({ exitCode = 0, stdout = "", stderr = "", processStarted = true, timedOut = false } = {}) {
   return {
@@ -39,11 +40,11 @@ function probe() {
 function successfulExecutor() {
   let inspectCalls = 0;
   return async ({ args }) => {
-    if (args.includes("config")) return commandResult({ stdout: JSON.stringify({ services: { "t201-semantic": {} } }) });
+    if (args.includes("config")) return commandResult({ stdout: JSON.stringify(composeConfig()) });
     if (args.includes("image") && args.includes("inspect")) return commandResult({ stdout: JSON.stringify([{ Id: imageId, Config: { User: "spike" } }]) });
     if (args.includes("inspect")) {
       inspectCalls += 1;
-      return commandResult({ stdout: JSON.stringify([{ Image: imageId, Mounts: [{ Destination: "/spike/result", RW: true }] }]) });
+      return commandResult({ stdout: JSON.stringify([{ Image: imageId, HostConfig: { NetworkMode: "none" }, Mounts: [{ Destination: "/spike/result", RW: true }] }]) });
     }
     if (args.includes("wait")) return commandResult({ stdout: "0\n" });
     if (args.includes("cp")) {
@@ -82,6 +83,8 @@ test("credential-free preflight records the complete inspectable success lifecyc
     assert.equal(result.cleanup_volume_removed, true);
     assert.equal(result.preserved_credentials_mounted, false);
     assert.equal(result.semantic_invocation_attempted, false);
+    assert.equal(result.broker_network_isolated, true);
+    assert.equal(result.reader_network_isolated, true);
     assert.deepEqual(JSON.parse(await fs.readFile(outputPath, "utf8")), result);
     assert.equal(result.operations.some((operation) => operation.operation === "preflight_container_start"), true);
     assert.equal(result.operations.every((operation) => typeof operation.stdout_hash === "string" && typeof operation.stderr_hash === "string"), true);

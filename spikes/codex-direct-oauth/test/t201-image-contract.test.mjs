@@ -9,6 +9,7 @@ const imageId = `sha256:${"b".repeat(64)}`;
 const hash = (value) => crypto.createHash("sha256").update(value).digest("hex");
 const preparedImage = { reference: imageId, identity_hash: hash(imageId), declared_runtime_user_hash: hash("spike") };
 const root = new URL("../", import.meta.url).pathname;
+const composeConfig = () => ({ services: { "t201-semantic": { image: imageId, network_mode: "none" }, "t201-result-reader": { image: imageId, network_mode: "none" } } });
 
 function result({ stdout = "", stderr = "", exitCode = 0 } = {}) {
   return { process_started: true, timed_out: false, exit_code: exitCode, stdout, stderr, stdout_byte_count: Buffer.byteLength(stdout), stderr_byte_count: Buffer.byteLength(stderr), stdout_hash: hash(stdout), stderr_hash: hash(stderr) };
@@ -29,6 +30,7 @@ test("preparation builds exactly once, resolves a local immutable ID, and verifi
   assert.equal(prepared.reference, imageId);
   assert.match(prepared.identity_hash, /^[a-f0-9]{64}$/);
   assert.equal(calls[0].includes("--pull=false"), true);
+  assert.equal(calls[0].includes("--network=none"), true);
 });
 
 test("mutable tags, unset input, root images, and stale local identities fail closed", async () => {
@@ -61,9 +63,9 @@ test("preflight requires the prepared ID, never builds or pulls, uses it for bro
   let inspect = 0;
   const execute = async ({ args }) => {
     calls.push(args);
-    if (args.includes("config")) return result({ stdout: JSON.stringify({ services: { "t201-semantic": {} } }) });
+    if (args.includes("config")) return result({ stdout: JSON.stringify(composeConfig()) });
     if (args[0] === "image") return result({ stdout: JSON.stringify([{ Id: imageId, Config: { User: "spike" } }]) });
-    if (args.includes("inspect")) { inspect += 1; return result({ stdout: JSON.stringify([{ Image: imageId, Mounts: [{ Destination: "/spike/result", RW: true }] }]) }); }
+    if (args.includes("inspect")) { inspect += 1; return result({ stdout: JSON.stringify([{ Image: imageId, HostConfig: { NetworkMode: "none" }, Mounts: [{ Destination: "/spike/result", RW: true }] }]) }); }
     if (args.includes("wait")) return result({ stdout: "0\n" });
     if (args.includes("cp")) { await (await import("node:fs/promises")).writeFile(args.at(-1), JSON.stringify({ probe: "t201_live_result_channel", semantic_invocation_attempted: false, identity: { uid: 1000, gid: 1000 }, records: [{ operation: "stat_result_mount", after: { uid: 1000, gid: 1000, mode: 448 } }], first_failure: null })); return result(); }
     if (args.includes("start")) return result(args.some((value) => String(value).includes("reader")) ? { stderr: "safe_result_reader_success:1000:1000:600:same_filesystem\n" } : { stdout: "{}\n" });
@@ -83,7 +85,7 @@ test("a deterministic prepared-image mismatch aborts before any volume creation 
   const mismatch = `sha256:${"e".repeat(64)}`;
   const value = await runCredentialFreePreflight({ root, preparedImage: { ...preparedImage, reference: mismatch }, execute: async ({ args }) => {
     calls.push(args);
-    if (args.includes("config")) return result({ stdout: JSON.stringify({ services: { "t201-semantic": {} } }) });
+    if (args.includes("config")) return result({ stdout: JSON.stringify({ services: { "t201-semantic": { image: mismatch }, "t201-result-reader": { image: mismatch } } }) });
     if (args[0] === "image") return result({ stdout: JSON.stringify([{ Id: imageId, Config: { User: "spike" } }]) });
     return result();
   }, runId: "e".repeat(32) });
@@ -98,9 +100,9 @@ test("preflight rejects missing input plus created and launched container image 
   for (const [label, mismatchAt, expected] of [["created", 1, "created_container_inspection"], ["launched", 3, "launched_image_verification"]]) {
     let inspect = 0;
     const value = await runCredentialFreePreflight({ root, preparedImage, runId: `${label[0]}`.repeat(32), execute: async ({ args }) => {
-      if (args.includes("config")) return result({ stdout: JSON.stringify({ services: { "t201-semantic": {} } }) });
+      if (args.includes("config")) return result({ stdout: JSON.stringify(composeConfig()) });
       if (args[0] === "image") return result({ stdout: JSON.stringify([{ Id: imageId, Config: { User: "spike" } }]) });
-      if (args.includes("inspect")) { inspect += 1; return result({ stdout: JSON.stringify([{ Image: inspect === mismatchAt ? `sha256:${"f".repeat(64)}` : imageId, Mounts: [{ Destination: "/spike/result", RW: true }] }]) }); }
+      if (args.includes("inspect")) { inspect += 1; return result({ stdout: JSON.stringify([{ Image: inspect === mismatchAt ? `sha256:${"f".repeat(64)}` : imageId, HostConfig: { NetworkMode: "none" }, Mounts: [{ Destination: "/spike/result", RW: true }] }]) }); }
       if (args.includes("wait")) return result({ stdout: "0\n" });
       return result();
     } });
@@ -108,6 +110,19 @@ test("preflight rejects missing input plus created and launched container image 
     assert.equal(value.first_failure_operation, expected, label);
     assert.equal(value.preserved_credentials_mounted, false, label);
   }
+});
+
+test("preflight rejects mutable Compose builds and a non-isolated diagnostic topology before container creation", async () => {
+  const mutable = await runCredentialFreePreflight({ root, preparedImage, runId: "m".repeat(32), execute: async ({ args }) => args.includes("config") ? result({ stdout: JSON.stringify({ services: { "t201-semantic": { image: imageId, build: { context: "." } }, "t201-result-reader": { image: imageId } } }) }) : result() });
+  assert.equal(mutable.first_failure_operation, "compose_config_resolution");
+  assert.equal(mutable.first_failure_category, "invalid_compose_configuration");
+  const network = await runCredentialFreePreflight({ root, preparedImage, runId: "n".repeat(32), execute: async ({ args }) => {
+    if (args.includes("config")) return result({ stdout: JSON.stringify(args.filter((value) => value === "--file").length === 2 ? { services: { "t201-semantic": { image: imageId }, "t201-result-reader": { image: imageId } } } : composeConfig()) });
+    if (args[0] === "image") return result({ stdout: JSON.stringify([{ Id: imageId, Config: { User: "spike" } }]) });
+    return result();
+  } });
+  assert.equal(network.first_failure_operation, "preflight_compose_config_resolution");
+  assert.equal(network.first_failure_category, "invalid_compose_configuration");
 });
 
 test("Campaign B topology rejects post-preflight build, pull, implicit Compose build, and created image mismatches before credentials", async () => {

@@ -207,7 +207,8 @@ function sanitizedCommandResult(base, raw) {
 }
 
 function publicOperation(record) {
-  const { _parsed, ...safe } = record;
+  const safe = { ...record };
+  delete safe._parsed;
   return safe;
 }
 
@@ -219,7 +220,12 @@ async function writeAtomically(file, result) {
 }
 
 function overlayYaml({ containerName, readerContainerName, resultVolume, resultPath, runId }) {
-  return `services:\n  ${SERVICE}:\n    container_name: ${containerName}\n    entrypoint: [\"node\"]\n    command: [\"t201-live-result-channel-preflight.mjs\"]\n    environment:\n      NUVITAE_T201_RESULT_PATH: ${resultPath}\n      NUVITAE_T201_RUN_ID_HASH: ${runId}\n      NUVITAE_T201_CASE_ID: T201-C02\n    volumes:\n      - type: volume\n        source: ${resultVolume}\n        target: /spike/result\n  t201-result-reader:\n    container_name: ${readerContainerName}\n    environment:\n      NUVITAE_T201_RESULT_PATH: ${resultPath}\n    volumes:\n      - type: volume\n        source: ${resultVolume}\n        target: /spike/result\n        read_only: true\nvolumes:\n  ${resultVolume}:\n    external: true\n`;
+  return `services:\n  ${SERVICE}:\n    container_name: ${containerName}\n    network_mode: none\n    entrypoint: ["node"]\n    command: ["t201-live-result-channel-preflight.mjs"]\n    environment:\n      NUVITAE_T201_RESULT_PATH: ${resultPath}\n      NUVITAE_T201_RUN_ID_HASH: ${runId}\n      NUVITAE_T201_CASE_ID: T201-C02\n    volumes:\n      - type: volume\n        source: ${resultVolume}\n        target: /spike/result\n  t201-result-reader:\n    container_name: ${readerContainerName}\n    network_mode: none\n    environment:\n      NUVITAE_T201_RESULT_PATH: ${resultPath}\n    volumes:\n      - type: volume\n        source: ${resultVolume}\n        target: /spike/result\n        read_only: true\nvolumes:\n  ${resultVolume}:\n    external: true\n`;
+}
+
+function isExactImmutableService(config, service, immutableReference, networkIsolated = false) {
+  const definition = config?.services?.[service];
+  return Boolean(definition && definition.image === immutableReference && !Object.hasOwn(definition, "build") && (!networkIsolated || definition.network_mode === "none"));
 }
 
 function pickResultMount(inspect) {
@@ -302,6 +308,8 @@ export async function runCredentialFreePreflight({
     cleanup_container_removed: null,
     cleanup_volume_removed: null,
     reader_path_passed: null,
+    broker_network_isolated: null,
+    reader_network_isolated: null,
     evidence_written: false,
     operations: [],
   };
@@ -337,10 +345,10 @@ export async function runCredentialFreePreflight({
 
   try {
     const config = (await compose("compose_config_resolution", ["config", "--format", "json"], "json"))._parsed;
-    if (!failed() && (!config?.services?.[SERVICE])) {
+    if (!failed() && (!isExactImmutableService(config, SERVICE, immutableReference) || !isExactImmutableService(config, "t201-result-reader", immutableReference))) {
       result.first_failure_operation = "compose_config_resolution";
       result.first_failure_exit_code = 0;
-      result.first_failure_category = "unknown_service";
+      result.first_failure_category = "invalid_compose_configuration";
     }
     if (!failed()) {
       const inspection = (await docker("prepared_image_reinspection", ["image", "inspect", immutableReference], "json"))._parsed;
@@ -358,14 +366,23 @@ export async function runCredentialFreePreflight({
     if (!failed()) {
       overlayPath = path.join(await fs.mkdtemp(path.join(os.tmpdir(), "nuvitae-t201-preflight-")), "compose.preflight.yml");
       await fs.writeFile(overlayPath, overlayYaml({ containerName, readerContainerName, resultVolume, resultPath, runId }), { mode: 0o600 });
-      await compose("preflight_container_creation", ["--file", overlayPath, "create", "--no-build", SERVICE, "t201-result-reader"]);
-      if (!failed()) { containerCreated = true; readerCreated = true; }
+      const preflightConfig = (await compose("preflight_compose_config_resolution", ["--file", overlayPath, "config", "--format", "json"], "json"))._parsed;
+      if (!failed() && (!isExactImmutableService(preflightConfig, SERVICE, immutableReference, true) || !isExactImmutableService(preflightConfig, "t201-result-reader", immutableReference, true))) {
+        result.first_failure_operation = "preflight_compose_config_resolution";
+        result.first_failure_exit_code = 0;
+        result.first_failure_category = "invalid_compose_configuration";
+      }
+      if (!failed()) {
+        await compose("preflight_container_creation", ["--file", overlayPath, "create", "--no-build", SERVICE, "t201-result-reader"]);
+        if (!failed()) { containerCreated = true; readerCreated = true; }
+      }
     }
     let createdInspect = null;
     if (containerCreated) {
       createdInspect = (await docker("created_container_inspection", ["inspect", containerName], "json"))._parsed;
       const created = Array.isArray(createdInspect) ? createdInspect[0] : null;
       result.created_container_image_identity_hash = hashIdentity(created?.Image);
+      result.broker_network_isolated = created?.HostConfig?.NetworkMode === "none";
       if (!failed() && (!created || created.Image !== immutableReference)) {
         result.first_failure_operation = "created_container_inspection";
         result.first_failure_exit_code = 0;
@@ -374,6 +391,7 @@ export async function runCredentialFreePreflight({
       const readerInspect = (await docker("reader_created_container_inspection", ["inspect", readerContainerName], "json"))._parsed;
       const reader = Array.isArray(readerInspect) ? readerInspect[0] : null;
       result.reader_created_container_image_identity_hash = hashIdentity(reader?.Image);
+      result.reader_network_isolated = reader?.HostConfig?.NetworkMode === "none";
       if (!failed() && (!reader || reader.Image !== immutableReference)) {
         result.first_failure_operation = "reader_created_container_inspection";
         result.first_failure_exit_code = 0;
@@ -493,7 +511,7 @@ export async function runCredentialFreePreflight({
     }
     result.cleanup_volume_removed = removed.length === volumes.length ? removed.every(Boolean) : null;
     await fs.rm(path.dirname(overlayPath ?? ""), { recursive: true, force: true }).catch(() => undefined);
-    result.success = !failed() && result.container_created !== false && result.container_started === true && result.container_exit_code === 0 && result.stale_image_detected === false && result.fresh_image_identity_hash === result.created_container_image_identity_hash && result.fresh_image_identity_hash === result.launched_container_image_identity_hash && result.fresh_image_identity_hash === result.reader_created_container_image_identity_hash && result.fresh_image_identity_hash === result.reader_launched_container_image_identity_hash && result.reader_effective_uid === result.effective_uid && result.reader_effective_gid === result.effective_gid && result.filesystem_probe_completed === true && result.result_mount_present === true && result.result_mount_read_write === true && result.reader_path_passed === true && result.cleanup_container_removed === true && result.cleanup_volume_removed === true;
+    result.success = !failed() && result.container_created !== false && result.container_started === true && result.container_exit_code === 0 && result.stale_image_detected === false && result.fresh_image_identity_hash === result.created_container_image_identity_hash && result.fresh_image_identity_hash === result.launched_container_image_identity_hash && result.fresh_image_identity_hash === result.reader_created_container_image_identity_hash && result.fresh_image_identity_hash === result.reader_launched_container_image_identity_hash && result.broker_network_isolated === true && result.reader_network_isolated === true && result.reader_effective_uid === result.effective_uid && result.reader_effective_gid === result.effective_gid && result.filesystem_probe_completed === true && result.result_mount_present === true && result.result_mount_read_write === true && result.reader_path_passed === true && result.cleanup_container_removed === true && result.cleanup_volume_removed === true;
     if (result.process_started === null) result.process_started = rawByOperation.get("compose_config_resolution")?.operation.process_started ?? null;
     result.container_created = containerCreated;
     try {
