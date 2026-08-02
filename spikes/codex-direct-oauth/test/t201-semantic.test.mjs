@@ -532,8 +532,19 @@ test("T201 result topology uses runtime identity and a credential-free reader be
     readerStart,
   );
   const reader = compose.slice(readerStart, readerEnd);
+  assert.equal(reader.includes("network_mode: none"), true);
   assert.equal(reader.includes("t199-key-live"), false);
   assert.equal(reader.includes("t199-credentials-live"), false);
+  assert.equal(
+    /CODEX_DIRECT_OAUTH|HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY|http_proxy|https_proxy|all_proxy|no_proxy/.test(
+      reader,
+    ),
+    false,
+  );
+  assert.equal(/ports\s*:/.test(reader), false);
+  assert.equal(/privileged\s*:/.test(reader), false);
+  assert.equal(/cap_add\s*:/.test(reader), false);
+  assert.equal(reader.includes("read_only: true"), true);
   assert.equal(
     offline.includes(
       "--entrypoint node t201-semantic t201-result-channel-topology-offline-broker.mjs",
@@ -555,12 +566,16 @@ test("T200 and T201 Docker networking and proxy policy match", async () => {
   const diagnosticStart = compose.indexOf(
     "  t201-credential-recovery-diagnostic:",
   );
+  const semanticStart = compose.indexOf("  t201-semantic:");
+  const readerStart = compose.indexOf("  t201-result-reader:");
   const diagnostic = compose.slice(diagnosticStart);
-  const t201Service = compose.slice(
-    compose.indexOf("  t201-semantic:"),
+  const t201Service = compose.slice(semanticStart, readerStart);
+  const reader = compose.slice(
+    readerStart,
     diagnosticStart,
   );
   assert.equal(/network_mode\s*:/.test(t201Service), false);
+  assert.equal(reader.includes("network_mode: none"), true);
   assert.equal(diagnostic.includes("network_mode: none"), true);
   assert.equal(
     /HTTP_PROXY|HTTPS_PROXY|ALL_PROXY|NO_PROXY|http_proxy|https_proxy|all_proxy|no_proxy/.test(
