@@ -12,8 +12,14 @@ import {
 
 test("T201 matrix contains the six bounded provider-independent cases", async () => {
   const cases = await loadAllT201MatrixCases();
-  assert.deepEqual(cases.map((item) => item.case_id), T201_MATRIX_CASE_IDS);
-  assert.deepEqual(cases.map((item) => item.manifest.fixture_classification), Array(6).fill("synthetic"));
+  assert.deepEqual(
+    cases.map((item) => item.case_id),
+    T201_MATRIX_CASE_IDS,
+  );
+  assert.deepEqual(
+    cases.map((item) => item.manifest.fixture_classification),
+    Array(6).fill("synthetic"),
+  );
   for (const item of cases) {
     assert.ok(item.manifest.exact_facts.length > 0);
     assert.ok(item.manifest.intentionally_absent_fields.length > 0);
@@ -27,11 +33,17 @@ test("T201 matrix contains the six bounded provider-independent cases", async ()
   const bilingual = cases.find((item) => item.case_id === "T201-C03");
   assert.match(bilingual.fixture, /SUMMARY \/ RÉSUMÉ/);
   const columns = cases.find((item) => item.case_id === "T201-C05");
-  assert.equal(columns.manifest.extraction_format.reading_order_artifact, "adjacent_columns_interleaved");
+  assert.equal(
+    columns.manifest.extraction_format.reading_order_artifact,
+    "adjacent_columns_interleaved",
+  );
   assert.match(columns.fixture, /column=left/);
   assert.match(columns.fixture, /column=right/);
   const docx = cases.find((item) => item.case_id === "T201-C06");
-  assert.equal(docx.manifest.extraction_format.kind, "deterministic_ooxml_text");
+  assert.equal(
+    docx.manifest.extraction_format.kind,
+    "deterministic_ooxml_text",
+  );
   assert.match(docx.fixture, /style=ListBullet/);
   assert.match(docx.fixture, /Table row=0 cell=0/);
 });
@@ -59,13 +71,22 @@ test("every T201 matrix fixture and manifest passes independently with determini
   const aggregate = aggregateT201Matrix(results);
   assert.equal(aggregate.all_cases_pass, true);
   assert.equal(aggregate.case_count, 6);
-  for (const item of aggregate.cases) assert.deepEqual(Object.keys(item.metrics).sort(), [...T201_MATRIX_METRIC_KEYS].sort());
+  for (const item of aggregate.cases)
+    assert.deepEqual(
+      Object.keys(item.metrics).sort(),
+      [...T201_MATRIX_METRIC_KEYS].sort(),
+    );
 });
 
 test("T201 aggregate fails when one mandatory case fails even if the others pass", async () => {
   const results = [];
   for (const item of await loadAllT201MatrixCases()) {
-    results.push(evaluateT201MatrixCase({ ...item, output: buildValidT201MatrixResult(item.fixture, item.manifest) }));
+    results.push(
+      evaluateT201MatrixCase({
+        ...item,
+        output: buildValidT201MatrixResult(item.fixture, item.manifest),
+      }),
+    );
   }
   results[3].metrics.parsing_pass = false;
   const aggregate = aggregateT201Matrix(results);
@@ -73,19 +94,45 @@ test("T201 aggregate fails when one mandatory case fails even if the others pass
   assert.equal(aggregate.cases.filter((item) => item.pass).length, 5);
 });
 
+test("T201 matrix treats missing or invalid diagnostic arrays as schema failures, not exceptions", async () => {
+  const item = (await loadAllT201MatrixCases()).find(
+    (candidate) => candidate.case_id === "T201-C02",
+  );
+  const output = buildValidT201MatrixResult(item.fixture, item.manifest);
+  delete output.ambiguities;
+  output.warnings = { not: "an array" };
+  const result = evaluateT201MatrixCase({ ...item, output });
+  assert.equal(result.metrics.schema_valid, false);
+  assert.equal(result.metrics.parsing_pass, false);
+  assert.ok(result.errors.includes("schema_validation_failed"));
+});
+
 test("T201 matrix evidence is source-local and aggregate evidence has no fixture or model text", async () => {
-  const item = (await loadAllT201MatrixCases()).find((candidate) => candidate.case_id === "T201-C05");
+  const item = (await loadAllT201MatrixCases()).find(
+    (candidate) => candidate.case_id === "T201-C05",
+  );
   const output = buildValidT201MatrixResult(item.fixture, item.manifest);
   const result = evaluateT201MatrixCase({ ...item, output });
   assert.equal(result.metrics.grounding_pass, true);
   const aggregate = aggregateT201Matrix([result]);
   const serialized = JSON.stringify(aggregate);
   assert.match(serialized, /fixture_hash/);
-  assert.doesNotMatch(serialized, /Harborless Example Studio|Noor Fiction|raw_model|response_text/);
+  assert.doesNotMatch(
+    serialized,
+    /Harborless Example Studio|Noor Fiction|raw_model|response_text/,
+  );
 });
 
 test("persisted T201 aggregate evidence contains only the approved safe fields", async () => {
-  const evidence = JSON.parse(await fs.readFile(new URL("../evidence/codex-direct-oauth-t201-matrix.json", import.meta.url), "utf8"));
+  const evidence = JSON.parse(
+    await fs.readFile(
+      new URL(
+        "../evidence/codex-direct-oauth-t201-matrix.json",
+        import.meta.url,
+      ),
+      "utf8",
+    ),
+  );
   assert.equal(evidence.matrix_pass, false);
   for (const item of evidence.cases) {
     assert.ok(item.case_id);

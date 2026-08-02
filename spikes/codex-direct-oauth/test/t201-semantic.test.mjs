@@ -299,6 +299,66 @@ test("T201 malformed JSON fails JSON-only gate", async () => {
   assert.ok(evaluation.error_categories.includes("invalid_json"));
 });
 
+test("T201 empty, fenced, and prose-wrapped output fail safely without stripping content", async () => {
+  const { fixture, manifest, output } = await validFixture();
+  for (const text of [
+    "",
+    `\`\`\`json\n${JSON.stringify(output)}\n\`\`\``,
+    `Here is the JSON: ${JSON.stringify(output)}`,
+    `${JSON.stringify(output)} Thank you.`,
+    "[]",
+  ]) {
+    const evaluation = evaluateModelText(text, fixture, manifest);
+    assert.equal(evaluation.metrics.JSON_only_valid, false);
+    assert.equal(evaluation.metrics.schema_valid, false);
+    assert.equal(evaluation.metrics.parsing_pass, false);
+    assert.deepEqual(evaluation.error_categories, ["invalid_json"]);
+  }
+});
+
+test("T201 schema-invalid JSON with missing diagnostic arrays evaluates safely", async () => {
+  const { fixture, manifest, output } = await validFixture();
+  delete output.ambiguities;
+  delete output.warnings;
+  const evaluation = evaluateModelText(
+    JSON.stringify(output),
+    fixture,
+    manifest,
+  );
+  const projection = safeEvaluationProjection(evaluation);
+  assert.equal(evaluation.metrics.JSON_only_valid, true);
+  assert.equal(evaluation.metrics.schema_valid, false);
+  assert.equal(evaluation.metrics.parsing_pass, false);
+  assert.equal(projection.primary_failure_category, "schema_validation_failed");
+  assert.equal(projection.primary_failure_phase, "response_schema_validation");
+});
+
+test("T201 evaluator exceptions become a secret-free safe semantic failure", async () => {
+  const { fixture, manifest, output } = await validFixture();
+  const evaluation = evaluateModelText(
+    JSON.stringify(output),
+    fixture,
+    manifest,
+    {
+      evaluateOutput() {
+        throw new Error("private evaluator detail");
+      },
+    },
+  );
+  const projection = safeEvaluationProjection(evaluation);
+  assert.equal(projection.schema_valid, false);
+  assert.equal(projection.parsing_pass, false);
+  assert.equal(
+    projection.primary_failure_phase,
+    "response_semantic_evaluation",
+  );
+  assert.deepEqual(projection.safe_error_categories, ["safe_unknown_failure"]);
+  assert.equal(
+    JSON.stringify(projection).includes("private evaluator detail"),
+    false,
+  );
+});
+
 test("T201 structured JSON limit is a bounded compatibility budget below the absolute response ceiling", () => {
   assert.equal(
     T201_DERIVED_LIMIT_AUDIT.derivedMaximumMinifiedJsonBytes,

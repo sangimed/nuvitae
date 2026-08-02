@@ -60,7 +60,12 @@ function categoryValue(value) {
 }
 
 function safeEventTypeCounts(value) {
-  return Object.fromEntries(SAFE_EVENT_TYPE_COUNT_KEYS.map((key) => [key, isPlainObject(value) ? countValue(value[key]) ?? 0 : 0]));
+  return Object.fromEntries(
+    SAFE_EVENT_TYPE_COUNT_KEYS.map((key) => [
+      key,
+      isPlainObject(value) ? (countValue(value[key]) ?? 0) : 0,
+    ]),
+  );
 }
 
 function safeResultArtifactPreflight(value) {
@@ -77,7 +82,9 @@ function safeResultArtifactPreflight(value) {
 
 export function parseReaderDiagnostics(value, exitCode) {
   const text = String(value ?? "");
-  const success = text.match(/safe_result_reader_success:(\d+):(\d+):(600|[0-7]{3}):(same_filesystem|different_filesystem)/);
+  const success = text.match(
+    /safe_result_reader_success:(\d+):(\d+):(600|[0-7]{3}):(same_filesystem|different_filesystem)/,
+  );
   if (success) {
     return {
       reader_exit_code: Number.isInteger(exitCode) ? exitCode : null,
@@ -90,7 +97,9 @@ export function parseReaderDiagnostics(value, exitCode) {
       failure_errno: null,
     };
   }
-  const failure = text.match(/safe_result_reader_failure:([a-z_]+):(E[A-Z]+|unknown)/);
+  const failure = text.match(
+    /safe_result_reader_failure:([a-z_]+):(E[A-Z]+|unknown)/,
+  );
   return {
     reader_exit_code: Number.isInteger(exitCode) ? exitCode : null,
     reader_state: failure ? "safe_reader_failure" : "not_measured",
@@ -113,18 +122,28 @@ function parseTimestampMs(value) {
   return Date.parse(value);
 }
 
-export function brokerExitStatusCategory({ brokerExitCode, hasValidCurrentResult }) {
+export function brokerExitStatusCategory({
+  brokerExitCode,
+  hasValidCurrentResult,
+}) {
   if (!hasValidCurrentResult) return "runner_or_container_failure";
   if (brokerExitCode === 0) return "success";
   if (brokerExitCode === 1) return "evaluated_gate_failure";
   return "unexpected_exit";
 }
 
-export function validateBrokerResult(result, { runnerRunIdHash, runnerStartedAt, expectedCaseId }) {
+export function validateBrokerResult(
+  result,
+  { runnerRunIdHash, runnerStartedAt, expectedCaseId },
+) {
   const reasons = [];
   if (!isPlainObject(result)) reasons.push("result_not_object");
-  if (!allowedRunIdPattern.test(runnerRunIdHash)) reasons.push("runner_run_id_invalid");
-  if (isPlainObject(result) && result.evidence_classification !== EVIDENCE_CLASSIFICATION) {
+  if (!allowedRunIdPattern.test(runnerRunIdHash))
+    reasons.push("runner_run_id_invalid");
+  if (
+    isPlainObject(result) &&
+    result.evidence_classification !== EVIDENCE_CLASSIFICATION
+  ) {
     reasons.push("classification_mismatch");
   }
   if (isPlainObject(result) && result.runner_run_id_hash !== runnerRunIdHash) {
@@ -135,36 +154,61 @@ export function validateBrokerResult(result, { runnerRunIdHash, runnerStartedAt,
   }
   const brokerTimestampMs = parseTimestampMs(result?.observation_timestamp);
   const runnerStartedMs = parseTimestampMs(runnerStartedAt);
-  if (!Number.isFinite(brokerTimestampMs)) reasons.push("broker_timestamp_invalid");
-  if (!Number.isFinite(runnerStartedMs)) reasons.push("runner_timestamp_invalid");
-  if (Number.isFinite(brokerTimestampMs) && Number.isFinite(runnerStartedMs) && brokerTimestampMs < runnerStartedMs) {
+  if (!Number.isFinite(brokerTimestampMs))
+    reasons.push("broker_timestamp_invalid");
+  if (!Number.isFinite(runnerStartedMs))
+    reasons.push("runner_timestamp_invalid");
+  if (
+    Number.isFinite(brokerTimestampMs) &&
+    Number.isFinite(runnerStartedMs) &&
+    brokerTimestampMs < runnerStartedMs
+  ) {
     reasons.push("broker_timestamp_before_runner");
   }
-  if (isPlainObject(result) && containsSecretLikeValue(JSON.stringify(result))) {
+  if (
+    isPlainObject(result) &&
+    containsSecretLikeValue(JSON.stringify(result))
+  ) {
     reasons.push("secret_like_value_in_broker_result");
   }
   return { ok: reasons.length === 0, reasons };
 }
 
-export function parseCurrentBrokerResult(logText, { runnerRunIdHash, runnerStartedAt, expectedCaseId }) {
+export function parseCurrentBrokerResult(
+  logText,
+  { runnerRunIdHash, runnerStartedAt, expectedCaseId },
+) {
   const candidates = [];
   for (const line of String(logText ?? "").split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!(trimmed.startsWith("{") && trimmed.endsWith("}"))) continue;
     try {
       candidates.push(JSON.parse(trimmed));
-    } catch (_error) {
+    } catch {
       // Non-JSON Docker output is ignored; validity is decided below.
     }
   }
 
   let firstInvalidCurrent = null;
   for (const candidate of candidates) {
-    const validation = validateBrokerResult(candidate, { runnerRunIdHash, runnerStartedAt, expectedCaseId });
+    const validation = validateBrokerResult(candidate, {
+      runnerRunIdHash,
+      runnerStartedAt,
+      expectedCaseId,
+    });
     if (validation.ok) {
-      return { ok: true, result: candidate, resultReceived: true, schemaValid: true, rejectionReasons: [] };
+      return {
+        ok: true,
+        result: candidate,
+        resultReceived: true,
+        schemaValid: true,
+        rejectionReasons: [],
+      };
     }
-    if (candidate?.runner_run_id_hash === runnerRunIdHash && firstInvalidCurrent === null) {
+    if (
+      candidate?.runner_run_id_hash === runnerRunIdHash &&
+      firstInvalidCurrent === null
+    ) {
       firstInvalidCurrent = validation.reasons;
     }
   }
@@ -174,13 +218,23 @@ export function parseCurrentBrokerResult(logText, { runnerRunIdHash, runnerStart
     result: null,
     resultReceived: candidates.length > 0,
     schemaValid: false,
-    rejectionReasons: firstInvalidCurrent ?? (candidates.length > 0 ? ["no_current_broker_result"] : ["no_json_broker_result"]),
+    rejectionReasons:
+      firstInvalidCurrent ??
+      (candidates.length > 0
+        ? ["no_current_broker_result"]
+        : ["no_json_broker_result"]),
   };
 }
 
 function projectSafeResult(result) {
-  const primaryFailureCategory = stringValue(result.primary_failure_category, "none");
-  const primaryFailurePhase = stringValue(result.primary_failure_phase, primaryFailureCategory === "none" ? "none" : DEFAULT_PHASE);
+  const primaryFailureCategory = stringValue(
+    result.primary_failure_category,
+    "none",
+  );
+  const primaryFailurePhase = stringValue(
+    result.primary_failure_phase,
+    primaryFailureCategory === "none" ? "none" : DEFAULT_PHASE,
+  );
   return {
     evidence_classification: result.evidence_classification,
     broker_observation_timestamp: result.observation_timestamp,
@@ -188,83 +242,185 @@ function projectSafeResult(result) {
     deployment_mode: result.deployment_mode,
     fixture_identifier: result.fixture_identifier,
     fixture_sha256: result.fixture_sha256,
-    fixture_classified_as_synthetic: booleanValue(result.fixture_classified_as_synthetic),
-    result_artifact_preflight: safeResultArtifactPreflight(result.result_artifact_preflight),
-    golden_structured_json_bytes: countValue(result.golden_structured_json_bytes),
-    golden_structured_json_size_category: stringValue(result.golden_structured_json_size_category, "not_evaluated"),
-    derived_expected_live_json_ceiling: countValue(result.derived_expected_live_json_ceiling),
+    fixture_classified_as_synthetic: booleanValue(
+      result.fixture_classified_as_synthetic,
+    ),
+    result_artifact_preflight: safeResultArtifactPreflight(
+      result.result_artifact_preflight,
+    ),
+    golden_structured_json_bytes: countValue(
+      result.golden_structured_json_bytes,
+    ),
+    golden_structured_json_size_category: stringValue(
+      result.golden_structured_json_size_category,
+      "not_evaluated",
+    ),
+    derived_expected_live_json_ceiling: countValue(
+      result.derived_expected_live_json_ceiling,
+    ),
     fixture_file_readable: booleanValue(result.fixture_file_readable),
     schema_file_readable: booleanValue(result.schema_file_readable),
     json_schema_parsed_locally: booleanValue(result.json_schema_parsed_locally),
-    fixture_bytes_category: stringValue(result.fixture_bytes_category, "not_evaluated"),
-    schema_bytes_category: stringValue(result.schema_bytes_category, "not_evaluated"),
-    prompt_bytes_category: stringValue(result.prompt_bytes_category, "not_evaluated"),
-    serialized_request_bytes_category: stringValue(result.serialized_request_bytes_category, "not_evaluated"),
-    serialized_request_within_limit: booleanValue(result.serialized_request_within_limit),
-    request_serialization_succeeded: booleanValue(result.request_serialization_succeeded),
+    fixture_bytes_category: stringValue(
+      result.fixture_bytes_category,
+      "not_evaluated",
+    ),
+    schema_bytes_category: stringValue(
+      result.schema_bytes_category,
+      "not_evaluated",
+    ),
+    prompt_bytes_category: stringValue(
+      result.prompt_bytes_category,
+      "not_evaluated",
+    ),
+    serialized_request_bytes_category: stringValue(
+      result.serialized_request_bytes_category,
+      "not_evaluated",
+    ),
+    serialized_request_within_limit: booleanValue(
+      result.serialized_request_within_limit,
+    ),
+    request_serialization_succeeded: booleanValue(
+      result.request_serialization_succeeded,
+    ),
     encrypted_state_recovered: booleanValue(result.encrypted_state_recovered),
+    credential_generation_before: countValue(
+      result.credential_generation_before,
+    ),
     refresh_required: booleanValue(result.refresh_required),
     refresh_attempted: booleanValue(result.refresh_attempted),
     refresh_succeeded: booleanValue(result.refresh_succeeded),
+    credential_generation_after: countValue(result.credential_generation_after),
     invocation_attempted: booleanValue(result.invocation_attempted),
     invocation_succeeded: booleanValue(result.invocation_succeeded),
     exact_http_status: result.exact_http_status ?? null,
-    safe_http_status_category: stringValue(result.safe_http_status_category, "unknown_status"),
+    safe_http_status_category: stringValue(
+      result.safe_http_status_category,
+      "unknown_status",
+    ),
     response_byte_limit: countValue(result.response_byte_limit),
-    response_bytes_observed_before_abort: countValue(result.response_bytes_observed_before_abort),
-    response_bytes_category: stringValue(result.response_bytes_category, "not_evaluated"),
-    response_compressed_byte_limit: countValue(result.response_compressed_byte_limit),
-    response_compressed_bytes_observed_before_abort: countValue(result.response_compressed_bytes_observed_before_abort),
-    response_compressed_bytes_category: stringValue(result.response_compressed_bytes_category, "not_evaluated"),
-    response_decompressed_byte_limit: countValue(result.response_decompressed_byte_limit),
-    response_decompressed_bytes_observed_before_abort: countValue(result.response_decompressed_bytes_observed_before_abort),
-    response_decompressed_bytes_category: stringValue(result.response_decompressed_bytes_category, "not_evaluated"),
+    response_bytes_observed_before_abort: countValue(
+      result.response_bytes_observed_before_abort,
+    ),
+    response_bytes_category: stringValue(
+      result.response_bytes_category,
+      "not_evaluated",
+    ),
+    response_compressed_byte_limit: countValue(
+      result.response_compressed_byte_limit,
+    ),
+    response_compressed_bytes_observed_before_abort: countValue(
+      result.response_compressed_bytes_observed_before_abort,
+    ),
+    response_compressed_bytes_category: stringValue(
+      result.response_compressed_bytes_category,
+      "not_evaluated",
+    ),
+    response_decompressed_byte_limit: countValue(
+      result.response_decompressed_byte_limit,
+    ),
+    response_decompressed_bytes_observed_before_abort: countValue(
+      result.response_decompressed_bytes_observed_before_abort,
+    ),
+    response_decompressed_bytes_category: stringValue(
+      result.response_decompressed_bytes_category,
+      "not_evaluated",
+    ),
     response_event_byte_limit: countValue(result.response_event_byte_limit),
-    largest_sse_event_bytes_observed: countValue(result.largest_sse_event_bytes_observed),
+    largest_sse_event_bytes_observed: countValue(
+      result.largest_sse_event_bytes_observed,
+    ),
     triggering_sse_event_bytes: countValue(result.triggering_sse_event_bytes),
-    response_event_count_semantics: stringValue(result.response_event_count_semantics, "not_evaluated"),
+    response_event_count_semantics: stringValue(
+      result.response_event_count_semantics,
+      "not_evaluated",
+    ),
     raw_chunk_count: countValue(result.raw_chunk_count),
     sse_line_count: countValue(result.sse_line_count),
     sse_comment_count: countValue(result.sse_comment_count),
-    sse_blank_line_dispatch_count: countValue(result.sse_blank_line_dispatch_count),
+    sse_blank_line_dispatch_count: countValue(
+      result.sse_blank_line_dispatch_count,
+    ),
     sse_empty_dispatch_count: countValue(result.sse_empty_dispatch_count),
     sse_data_dispatch_count: countValue(result.sse_data_dispatch_count),
     json_event_count: countValue(result.json_event_count),
     typed_protocol_event_count: countValue(result.typed_protocol_event_count),
-    recognized_protocol_event_count: countValue(result.recognized_protocol_event_count),
-    unknown_protocol_event_count: countValue(result.unknown_protocol_event_count),
-    average_protocol_event_bytes_denominator: countValue(result.average_protocol_event_bytes_denominator),
-    average_protocol_event_bytes_denominator_semantics: stringValue(result.average_protocol_event_bytes_denominator_semantics, "not_evaluated"),
-    estimated_average_protocol_event_bytes: countValue(result.estimated_average_protocol_event_bytes),
-    average_protocol_event_bytes_category: categoryValue(result.average_protocol_event_bytes_category),
-    estimated_average_sse_event_bytes: countValue(result.estimated_average_sse_event_bytes),
-    average_sse_event_bytes_category: categoryValue(result.average_sse_event_bytes_category),
+    recognized_protocol_event_count: countValue(
+      result.recognized_protocol_event_count,
+    ),
+    unknown_protocol_event_count: countValue(
+      result.unknown_protocol_event_count,
+    ),
+    average_protocol_event_bytes_denominator: countValue(
+      result.average_protocol_event_bytes_denominator,
+    ),
+    average_protocol_event_bytes_denominator_semantics: stringValue(
+      result.average_protocol_event_bytes_denominator_semantics,
+      "not_evaluated",
+    ),
+    estimated_average_protocol_event_bytes: countValue(
+      result.estimated_average_protocol_event_bytes,
+    ),
+    average_protocol_event_bytes_category: categoryValue(
+      result.average_protocol_event_bytes_category,
+    ),
+    estimated_average_sse_event_bytes: countValue(
+      result.estimated_average_sse_event_bytes,
+    ),
+    average_sse_event_bytes_category: categoryValue(
+      result.average_sse_event_bytes_category,
+    ),
     response_event_limit: countValue(result.response_event_limit),
-    response_events_observed_before_abort: countValue(result.response_events_observed_before_abort),
+    response_events_observed_before_abort: countValue(
+      result.response_events_observed_before_abort,
+    ),
     event_type_counts: safeEventTypeCounts(result.event_type_counts),
-    output_text_delta_event_count: countValue(result.output_text_delta_event_count),
+    output_text_delta_event_count: countValue(
+      result.output_text_delta_event_count,
+    ),
     reasoning_event_count: countValue(result.reasoning_event_count),
     structural_event_count: countValue(result.structural_event_count),
     assistant_output_byte_limit: countValue(result.assistant_output_byte_limit),
-    assistant_output_bytes_observed_before_abort: countValue(result.assistant_output_bytes_observed_before_abort),
+    assistant_output_bytes_observed_before_abort: countValue(
+      result.assistant_output_bytes_observed_before_abort,
+    ),
     assistant_output_started: booleanValue(result.assistant_output_started),
     terminal_event_observed: booleanValue(result.terminal_event_observed),
     structured_json_byte_limit: countValue(result.structured_json_byte_limit),
-    limit_that_triggered: result.limit_that_triggered === null ? null : stringValue(result.limit_that_triggered, "unknown_limit"),
-    response_truncated_by_safety_limit: booleanValue(result.response_truncated_by_safety_limit),
-    partial_stream_statistics_preserved: booleanValue(result.partial_stream_statistics_preserved),
+    limit_that_triggered:
+      result.limit_that_triggered === null
+        ? null
+        : stringValue(result.limit_that_triggered, "unknown_limit"),
+    response_truncated_by_safety_limit: booleanValue(
+      result.response_truncated_by_safety_limit,
+    ),
+    partial_stream_statistics_preserved: booleanValue(
+      result.partial_stream_statistics_preserved,
+    ),
     response_protocol_valid: booleanValue(result.response_protocol_valid),
-    response_event_count: Number.isInteger(result.response_event_count) ? result.response_event_count : 0,
+    response_event_count: Number.isInteger(result.response_event_count)
+      ? result.response_event_count
+      : 0,
     model_output_received: booleanValue(result.model_output_received),
-    structured_output_evaluated: booleanValue(result.structured_output_evaluated),
+    structured_output_evaluated: booleanValue(
+      result.structured_output_evaluated,
+    ),
     semantic_quality_evaluated: booleanValue(result.semantic_quality_evaluated),
-    metrics_measurement_state: stringValue(result.metrics_measurement_state, "not_measured"),
+    metrics_measurement_state: stringValue(
+      result.metrics_measurement_state,
+      "not_measured",
+    ),
     primary_failure_category: primaryFailureCategory,
     primary_failure_phase: primaryFailurePhase,
-    secondary_failure_categories: arrayValue(result.secondary_failure_categories),
+    secondary_failure_categories: arrayValue(
+      result.secondary_failure_categories,
+    ),
     safe_transport_classification: result.safe_transport_classification ?? null,
     safe_node_error_code: result.safe_node_error_code ?? null,
-    structured_output_mechanism_category: stringValue(result.structured_output_mechanism_category, "json_only_local_strict_parser"),
+    structured_output_mechanism_category: stringValue(
+      result.structured_output_mechanism_category,
+      "json_only_local_strict_parser",
+    ),
     schema_valid: nullableBoolean(result.schema_valid),
     expected_section_counts: result.expected_section_counts,
     expected_item_counts: result.expected_item_counts,
@@ -274,32 +430,68 @@ function projectSafeResult(result) {
     missing_evidence_count: countValue(result.missing_evidence_count),
     invalid_evidence_count: countValue(result.invalid_evidence_count),
     ambiguity_handling_pass: booleanValue(result.ambiguity_handling_pass),
-    absent_optional_fields_pass: booleanValue(result.absent_optional_fields_pass),
+    absent_optional_fields_pass: booleanValue(
+      result.absent_optional_fields_pass,
+    ),
     no_invention_pass: nullableBoolean(result.no_invention_pass),
     grounding_pass: nullableBoolean(result.grounding_pass),
     parsing_pass: booleanValue(result.parsing_pass),
-    credential_exposure_boolean: booleanValue(result.credential_exposure_boolean),
-    account_identifier_exposure_boolean: booleanValue(result.account_identifier_exposure_boolean),
-    raw_credentials_exposed_to_parent: booleanValue(result.raw_credentials_exposed_to_parent),
-    account_identifier_exposed_to_parent: booleanValue(result.account_identifier_exposed_to_parent),
-    raw_model_response_persisted: booleanValue(result.raw_model_response_persisted),
+    credential_exposure_boolean: booleanValue(
+      result.credential_exposure_boolean,
+    ),
+    account_identifier_exposure_boolean: booleanValue(
+      result.account_identifier_exposure_boolean,
+    ),
+    raw_credentials_exposed_to_parent: booleanValue(
+      result.raw_credentials_exposed_to_parent,
+    ),
+    account_identifier_exposed_to_parent: booleanValue(
+      result.account_identifier_exposed_to_parent,
+    ),
+    raw_model_response_persisted: booleanValue(
+      result.raw_model_response_persisted,
+    ),
     raw_response_persisted: booleanValue(result.raw_response_persisted),
     encrypted_state_preserved: booleanValue(result.encrypted_state_preserved),
     safe_error_categories: arrayValue(result.safe_error_categories),
-    t201_transport_manifest_matches_t200: booleanValue(result.t201_transport_manifest_matches_t200),
+    t201_transport_manifest_matches_t200: booleanValue(
+      result.t201_transport_manifest_matches_t200,
+    ),
     t201_transport_mismatches: arrayValue(result.t201_transport_mismatches),
-    t201_request_reasoning_effort_category: stringValue(result.t201_request_reasoning_effort_category, "not_evaluated"),
-    t201_request_reasoning_summary_present: booleanValue(result.t201_request_reasoning_summary_present),
-    t201_request_include_category: stringValue(result.t201_request_include_category, "not_evaluated"),
-    t201_request_text_verbosity_category: stringValue(result.t201_request_text_verbosity_category, "not_evaluated"),
+    t201_request_reasoning_effort_category: stringValue(
+      result.t201_request_reasoning_effort_category,
+      "not_evaluated",
+    ),
+    t201_request_reasoning_summary_present: booleanValue(
+      result.t201_request_reasoning_summary_present,
+    ),
+    t201_request_include_category: stringValue(
+      result.t201_request_include_category,
+      "not_evaluated",
+    ),
+    t201_request_text_verbosity_category: stringValue(
+      result.t201_request_text_verbosity_category,
+      "not_evaluated",
+    ),
     t201_request_tools_present: booleanValue(result.t201_request_tools_present),
     t201_request_store_false: booleanValue(result.t201_request_store_false),
-    t201_request_stream_boolean: booleanValue(result.t201_request_stream_boolean),
+    t201_request_stream_boolean: booleanValue(
+      result.t201_request_stream_boolean,
+    ),
     proxy_environment_present: booleanValue(result.proxy_environment_present),
     proxy_environment_ignored: booleanValue(result.proxy_environment_ignored),
-    proxy_environment_keys_present: isPlainObject(result.proxy_environment_keys_present) ? result.proxy_environment_keys_present : {},
-    network_configuration_matches_t200: booleanValue(result.network_configuration_matches_t200),
-    safe_final_state: stringValue(result.safe_final_state, primaryFailureCategory === "none" ? "complete" : primaryFailureCategory),
+    proxy_environment_keys_present: isPlainObject(
+      result.proxy_environment_keys_present,
+    )
+      ? result.proxy_environment_keys_present
+      : {},
+    network_configuration_matches_t200: booleanValue(
+      result.network_configuration_matches_t200,
+    ),
+    safe_final_state: stringValue(
+      result.safe_final_state,
+      primaryFailureCategory === "none" ? "complete" : primaryFailureCategory,
+    ),
   };
 }
 
@@ -319,7 +511,10 @@ export function buildFinalEvidence({
   parseOutcome,
 }) {
   const hasValidCurrentResult = Boolean(brokerResult);
-  const exitCategory = brokerExitStatusCategory({ brokerExitCode, hasValidCurrentResult });
+  const exitCategory = brokerExitStatusCategory({
+    brokerExitCode,
+    hasValidCurrentResult,
+  });
   const common = {
     observation_timestamp: generatedAt.toISOString(),
     runner_run_id_hash: runnerRunIdHash,
@@ -331,7 +526,9 @@ export function buildFinalEvidence({
     evidence_schema_valid: hasValidCurrentResult,
     evidence_rejection_reasons: arrayValue(parseOutcome?.rejectionReasons),
     broker_removed: booleanValue(brokerRemoved),
-    callback_port_absent: booleanValue(callbackPortAbsent) && booleanValue(brokerResult?.callback_port_absent, true),
+    callback_port_absent:
+      booleanValue(callbackPortAbsent) &&
+      booleanValue(brokerResult?.callback_port_absent, true),
     secret_scan_result: stringValue(secretScanResult, "failed"),
     log_secret_scan_result: stringValue(logSecretScanResult, "failed"),
     evidence_atomic_replace_succeeded: false,
@@ -342,8 +539,10 @@ export function buildFinalEvidence({
     broker_stderr_byte_count: resultChannel?.stderr_byte_count ?? null,
     broker_stdout_sha256: resultChannel?.stdout_sha256 ?? null,
     broker_stderr_sha256: resultChannel?.stderr_sha256 ?? null,
-    broker_stderr_safe_category: resultChannel?.stderr_safe_category ?? "not_measured",
-    result_reader_diagnostics: readerDiagnostics ?? parseReaderDiagnostics(undefined, null),
+    broker_stderr_safe_category:
+      resultChannel?.stderr_safe_category ?? "not_measured",
+    result_reader_diagnostics:
+      readerDiagnostics ?? parseReaderDiagnostics(undefined, null),
   };
 
   if (!hasValidCurrentResult) {
@@ -352,8 +551,11 @@ export function buildFinalEvidence({
       fixture_identifier: caseId ?? "not_evaluated",
       fixture_classified_as_synthetic: caseId === "T201-C02",
       ...common,
-      primary_failure_category: resultChannel?.infrastructure_category ?? "runner_failure",
-      primary_failure_phase: resultChannel ? "broker_result_channel" : "broker_result_parse",
+      primary_failure_category:
+        resultChannel?.infrastructure_category ?? "runner_failure",
+      primary_failure_phase: resultChannel
+        ? "broker_result_channel"
+        : "broker_result_parse",
       model_output_received: false,
       structured_output_evaluated: false,
       semantic_quality_evaluated: false,
@@ -411,7 +613,11 @@ export function buildFinalEvidence({
     evidence.callback_port_absent === true &&
     evidence.secret_scan_result === "passed" &&
     evidence.log_secret_scan_result === "passed";
-  evidence.safe_final_state = complete ? "complete" : evidence.safe_final_state === "complete" ? DEFAULT_FAILURE : evidence.safe_final_state;
+  evidence.safe_final_state = complete
+    ? "complete"
+    : evidence.safe_final_state === "complete"
+      ? DEFAULT_FAILURE
+      : evidence.safe_final_state;
   evidence.case_pass = complete;
   evidence.t201_complete = caseId === "T201-C02" ? false : complete;
   return evidence;
@@ -433,29 +639,52 @@ export async function removeAbandonedTempEvidence(evidencePath) {
 export async function writeEvidenceAtomic(evidencePath, evidence) {
   await fs.mkdir(path.dirname(evidencePath), { recursive: true });
   await removeAbandonedTempEvidence(evidencePath);
-  const tempPath = path.join(path.dirname(evidencePath), `${TMP_PREFIX}${process.pid}-${crypto.randomBytes(8).toString("hex")}`);
+  const tempPath = path.join(
+    path.dirname(evidencePath),
+    `${TMP_PREFIX}${process.pid}-${crypto.randomBytes(8).toString("hex")}`,
+  );
   const nextEvidence = { ...evidence, evidence_atomic_replace_succeeded: true };
-  await fs.writeFile(tempPath, `${JSON.stringify(nextEvidence, null, 2)}\n`, { mode: 0o600 });
+  await fs.writeFile(tempPath, `${JSON.stringify(nextEvidence, null, 2)}\n`, {
+    mode: 0o600,
+  });
   await fs.rename(tempPath, evidencePath);
   return nextEvidence;
 }
 
 export async function updateC02MatrixEvidence({ evidencePath, matrixPath }) {
   const evidence = JSON.parse(await fs.readFile(evidencePath, "utf8"));
-  if (evidence.fixture_identifier !== "T201-C02" || evidence.t201_complete !== false) {
+  if (
+    evidence.fixture_identifier !== "T201-C02" ||
+    evidence.t201_complete !== false
+  ) {
     throw new Error("invalid_c02_evidence_for_matrix_update");
   }
   const matrix = JSON.parse(await fs.readFile(matrixPath, "utf8"));
-  if (!Array.isArray(matrix.cases) || matrix.cases.length !== 6) throw new Error("invalid_t201_matrix");
+  if (!Array.isArray(matrix.cases) || matrix.cases.length !== 6)
+    throw new Error("invalid_t201_matrix");
   const target = matrix.cases.find((item) => item.case_id === "T201-C02");
   if (!target) throw new Error("missing_t201_c02_matrix_entry");
   const metricKeys = [
-    "schema_valid", "expected_section_recall", "expected_item_recall", "exact_fact_recall",
-    "high_priority_fact_recall", "unsupported_fact_count", "forbidden_inference_count",
-    "missing_evidence_count", "invalid_evidence_count", "grounding_pass", "no_invention_pass", "parsing_pass",
+    "schema_valid",
+    "expected_section_recall",
+    "expected_item_recall",
+    "exact_fact_recall",
+    "high_priority_fact_recall",
+    "unsupported_fact_count",
+    "forbidden_inference_count",
+    "missing_evidence_count",
+    "invalid_evidence_count",
+    "grounding_pass",
+    "no_invention_pass",
+    "parsing_pass",
   ];
   target.safe_metrics = {
-    ...Object.fromEntries(metricKeys.map((key) => [key, evidence.evaluation_metrics?.[key] ?? null])),
+    ...Object.fromEntries(
+      metricKeys.map((key) => [
+        key,
+        evidence.evaluation_metrics?.[key] ?? null,
+      ]),
+    ),
     ambiguity_handling_pass: evidence.ambiguity_handling_pass === true,
   };
   target.pass = evidence.case_pass === true;
@@ -463,7 +692,9 @@ export async function updateC02MatrixEvidence({ evidencePath, matrixPath }) {
     evidence.raw_credentials_exposed_to_parent === false &&
     evidence.account_identifier_exposed_to_parent === false &&
     evidence.raw_model_response_persisted === false;
-  target.credential_isolation = evidence.encrypted_state_preserved === true && evidence.broker_removed === true;
+  target.credential_isolation =
+    evidence.encrypted_state_preserved === true &&
+    evidence.broker_removed === true;
   matrix.matrix_state = "partially_live_evaluated";
   matrix.matrix_pass = false;
   await writeEvidenceAtomic(matrixPath, matrix);
@@ -490,17 +721,54 @@ export async function processT201RunnerEvidence({
   generatedAt,
 }) {
   const resultChannel = resultPath
-    ? await inspectBrokerResultChannel({ resultPath, stdoutPath, stderrPath, brokerExitCode, processStartFailed })
+    ? await inspectBrokerResultChannel({
+        resultPath,
+        stdoutPath,
+        stderrPath,
+        brokerExitCode,
+        processStartFailed,
+      })
     : null;
-  const logText = resultChannel ? "" : await fs.readFile(logsPath, "utf8").catch(() => "");
-  const readerDiagnostics = parseReaderDiagnostics(await fs.readFile(readerStderrPath, "utf8").catch(() => ""), readerExitCode);
+  const logText = resultChannel
+    ? ""
+    : await fs.readFile(logsPath, "utf8").catch(() => "");
+  const readerDiagnostics = parseReaderDiagnostics(
+    await fs.readFile(readerStderrPath, "utf8").catch(() => ""),
+    readerExitCode,
+  );
   const parsed = resultChannel?.result;
-  const validation = parsed ? validateBrokerResult(parsed, { runnerRunIdHash, runnerStartedAt, expectedCaseId: caseId }) : null;
+  const validation = parsed
+    ? validateBrokerResult(parsed, {
+        runnerRunIdHash,
+        runnerStartedAt,
+        expectedCaseId: caseId,
+      })
+    : null;
   const parseOutcome = resultChannel
     ? validation?.ok
-      ? { ok: true, result: parsed, resultReceived: true, schemaValid: true, rejectionReasons: [], infrastructureCategory: null }
-      : { ok: false, result: null, resultReceived: resultChannel.result_state !== "empty_result", schemaValid: false, rejectionReasons: validation?.reasons ?? [resultChannel.infrastructure_category], infrastructureCategory: resultChannel.infrastructure_category }
-    : parseCurrentBrokerResult(logText, { runnerRunIdHash, runnerStartedAt, expectedCaseId: caseId });
+      ? {
+          ok: true,
+          result: parsed,
+          resultReceived: true,
+          schemaValid: true,
+          rejectionReasons: [],
+          infrastructureCategory: null,
+        }
+      : {
+          ok: false,
+          result: null,
+          resultReceived: resultChannel.result_state !== "empty_result",
+          schemaValid: false,
+          rejectionReasons: validation?.reasons ?? [
+            resultChannel.infrastructure_category,
+          ],
+          infrastructureCategory: resultChannel.infrastructure_category,
+        }
+    : parseCurrentBrokerResult(logText, {
+        runnerRunIdHash,
+        runnerStartedAt,
+        expectedCaseId: caseId,
+      });
   const evidence = buildFinalEvidence({
     brokerResult: parseOutcome.ok ? parseOutcome.result : null,
     brokerExitCode,
