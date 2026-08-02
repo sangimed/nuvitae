@@ -9,7 +9,7 @@ OAuth login, credential refresh, T202, T203, or T164-T165.
 | Case | Language | Source format | Layout | Status |
 |---|---|---|---|---|
 | T201-C01 | English | plain text | single-column | Existing successful live baseline; preserved unchanged |
-| T201-C02 | French | plain text | single-column | Fixture and manifest prepared; no live invocation |
+| T201-C02 | French | plain text | single-column | B13 independently passed with sanitized evidence |
 | T201-C03 | French/English | bilingual plain text | single-column | Fixture and manifest prepared; no live invocation |
 | T201-C04 | English | PDF-derived extracted text | single-column | Fixture and manifest prepared; no binary extraction |
 | T201-C05 | English | PDF-derived extracted text | multi-column interleaved | Fixture and manifest prepared; regrouping test only |
@@ -44,9 +44,9 @@ as multi-case evidence.
 
 ## Execution boundary
 
-The next bounded sequence, only after an explicitly authorized live run, is:
+The remaining bounded sequence, only after an explicitly authorized live run, is:
 
-1. Run C02 alone and inspect its sanitized result.
+1. C02 passed independently in authorized Campaign B13; its evidence remains source-local.
 2. Run C03 alone and inspect its sanitized result.
 3. Run C04 alone and inspect its sanitized result.
 4. Run C05 alone and inspect semantic regrouping and evidence coordinates.
