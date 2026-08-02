@@ -263,6 +263,99 @@ test("registry rejects reused evidence, multiple requests, retries, and a missin
   );
 });
 
+test("registry fails closed for an unavailable Git client", async () => {
+  await assert.rejects(
+    () =>
+      validateCampaignBAuthorization({
+        root,
+        registry: { schema_version: 1, authorized_attempts: [contract] },
+        invocation: parseCampaignBAttemptArguments(argv()),
+        exists: beforeEvidenceExists,
+        gitCommand: "nuvitae-git-unavailable-for-test",
+      }),
+    /campaign_b_canonical_target_tracking_unavailable/,
+  );
+});
+
+test("real Git rejects an untracked canonical Campaign-B entrypoint", async () => {
+  const directory = await fs.mkdtemp(
+    path.join(os.tmpdir(), "nuvitae-campaign-b-untracked-"),
+  );
+  const copiedRoot = path.join(
+    directory,
+    "repo",
+    "spikes",
+    "codex-direct-oauth",
+  );
+  const copiedRepo = path.join(directory, "repo");
+  try {
+    await fs.cp(root, copiedRoot, { recursive: true });
+    assert.equal((await run("git", ["init"], { cwd: copiedRepo })).code, 0);
+    assert.equal(
+      (
+        await run(
+          "git",
+          [
+            "add",
+            "spikes/codex-direct-oauth/run-t201-live.sh",
+            "spikes/codex-direct-oauth/t201-campaign-b-runner.mjs",
+          ],
+          { cwd: copiedRepo },
+        )
+      ).code,
+      0,
+    );
+    await assert.rejects(
+      () =>
+        validateCampaignBAuthorization({
+          root: copiedRoot,
+          registry: { schema_version: 1, authorized_attempts: [contract] },
+          invocation: parseCampaignBAttemptArguments(argv()),
+          exists: async (target) => {
+            if (String(target).endsWith(contract.evidence))
+              throw Object.assign(new Error("not yet written"), {
+                code: "ENOENT",
+              });
+            await fs.access(target);
+          },
+        }),
+      /campaign_b_canonical_target_untracked/,
+    );
+  } finally {
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("Campaign-B authorization Git is isolated to its declared test image", async () => {
+  const [baseTestDockerfile, authorizationDockerfile, compose] =
+    await Promise.all([
+      fs.readFile(path.join(repo, "docker/test/Dockerfile"), "utf8"),
+      fs.readFile(
+        path.join(repo, "docker/test/t201-authorization.Dockerfile"),
+        "utf8",
+      ),
+      fs.readFile(path.join(repo, "compose.yml"), "utf8"),
+    ]);
+  assert.doesNotMatch(baseTestDockerfile, /install[^\n]*\bgit\b/);
+  assert.match(
+    authorizationDockerfile,
+    /install --yes --no-install-recommends git/,
+  );
+  assert.match(
+    compose,
+    /t201-authorization-test:[\s\S]*docker\/test\/t201-authorization\.Dockerfile/,
+  );
+  for (const runtimeDockerfile of [
+    "docker/web/Dockerfile",
+    "docker/api/Dockerfile",
+    "docker/worker/Dockerfile",
+  ])
+    assert.doesNotMatch(
+      await fs.readFile(path.join(repo, runtimeDockerfile), "utf8"),
+      /install[^\n]*\bgit\b/,
+    );
+});
+
 test("registry-backed attempts remain bounded and use distinct evidence paths", () => {
   assert.ok(registry.authorized_attempts.length > 0);
   const evidencePaths = new Set();
@@ -305,7 +398,6 @@ test("exact public entrypoint completes a registry-backed credential-free rehear
   const copiedRoot = path.join(repoRoot, "spikes", "codex-direct-oauth");
   const dockerLog = path.join(directory, "docker.log");
   const docker = path.join(directory, "docker");
-  const git = path.join(directory, "git");
   const rehearsal = {
     ...contract,
     attempt: "B99",
@@ -338,7 +430,22 @@ esac
     JSON.stringify({ schema_version: 1, authorized_attempts: [rehearsal] }),
   );
   await fs.writeFile(docker, dockerScript, { mode: 0o700 });
-  await fs.writeFile(git, "#!/bin/sh\nexit 0\n", { mode: 0o700 });
+  assert.equal((await run("git", ["init"], { cwd: repoRoot })).code, 0);
+  assert.equal(
+    (
+      await run(
+        "git",
+        [
+          "add",
+          "spikes/codex-direct-oauth/run-t201-live.sh",
+          "spikes/codex-direct-oauth/t201-campaign-b-runner.mjs",
+          "spikes/codex-direct-oauth/run-t201-live-execute.sh",
+        ],
+        { cwd: repoRoot },
+      )
+    ).code,
+    0,
+  );
   const result = await run(
     "sh",
     [path.join(copiedRoot, "run-t201-live.sh"), ...argv(rehearsal)],
