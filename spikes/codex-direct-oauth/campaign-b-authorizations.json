@@ -169,6 +169,19 @@
       "evidence": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b02-semantic-parsing.json",
       "fixture_sha256": "50f370ecfc601a22fe7f2668ad5c4ce7fe845aea74394c1ed6b62e126ec81d51",
       "manifest_sha256": "3af07cf353c3c22234912ef806d9feda5f2d91b100ccd0605c08e3fe6ee7a892"
+    },
+    {
+      "campaign": "T201-C04-B",
+      "attempt": "B01",
+      "semantic_case": "T201-C04",
+      "maximum_live_broker_runs": 1,
+      "maximum_semantic_backend_requests": 1,
+      "automatic_retries": 0,
+      "fixture": "spikes/codex-direct-oauth/fixtures/t201-matrix/t201-c04.txt",
+      "manifest": "spikes/codex-direct-oauth/fixtures/t201-matrix/t201-c04.manifest.json",
+      "evidence": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b01-semantic-parsing.json",
+      "fixture_sha256": "d195a3f0c2597ba29ae1127a10d049f9a2a557de25e5c9cf5c5d91648c9464e3",
+      "manifest_sha256": "1c7f21deb799fa278e324142054d882c3f8ff70a2f741e1fa91ba87851f61c43"
     }
   ]
 }
