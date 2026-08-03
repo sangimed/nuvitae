@@ -14,6 +14,11 @@ import {
   workerPersistenceRepositoryProviders,
 } from "./persistence/worker-persistence.module";
 import {
+  WORKER_SEMANTIC_PARSER_PROVIDER,
+  createProductionSemanticParserProvider,
+  workerImportRuntimeProviders,
+} from "./import-resume/worker-import-runtime.providers";
+import {
   removeWorkerReadinessFile,
   writeWorkerReadinessFile,
 } from "./readiness/worker-readiness";
@@ -83,5 +88,28 @@ describe("worker persistence providers", () => {
     expect(transactionRunner).toBe(repository);
     await execution.execute(async (value) => value);
     expect(managedDataSource.transaction).toHaveBeenCalledOnce();
+  });
+});
+
+describe("production semantic provider isolation", () => {
+  it("never activates a semantic provider in production registration", () => {
+    expect(createProductionSemanticParserProvider()).toBeUndefined();
+    const registration = workerImportRuntimeProviders.find((entry) => {
+      if (
+        typeof entry !== "object" ||
+        entry === null ||
+        !("provide" in entry)
+      ) {
+        return false;
+      }
+      return (
+        (entry as { provide?: unknown }).provide ===
+        WORKER_SEMANTIC_PARSER_PROVIDER
+      );
+    });
+    expect(registration).toBeDefined();
+    const factory = (registration as { useFactory?: () => unknown }).useFactory;
+    expect(typeof factory).toBe("function");
+    expect(factory?.()).toBeUndefined();
   });
 });

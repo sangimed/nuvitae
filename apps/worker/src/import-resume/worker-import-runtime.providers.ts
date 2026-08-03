@@ -42,6 +42,20 @@ export const WORKER_SEMANTIC_PARSER_PROVIDER = Symbol(
   "WORKER_SEMANTIC_PARSER_PROVIDER",
 );
 
+/**
+ * Production semantic-provider registration boundary.
+ *
+ * Production mode never activates a semantic provider: the deterministic test
+ * adapter is available only through explicit dependency injection for
+ * automated/local integration testing and must not be selected here. Absence
+ * of a production provider fails closed through the provider-neutral
+ * `provider_unavailable` worker state.
+ */
+export function createProductionSemanticParserProvider():
+  ResumeSemanticParserProvider | undefined {
+  return undefined;
+}
+
 class PrivateStorageSourceReader implements ExtractionSourceReader {
   constructor(private readonly storage: LocalPrivateImportStorage) {}
 
@@ -151,7 +165,7 @@ export const workerImportRuntimeProviders: Provider[] = [
   },
   {
     provide: WORKER_SEMANTIC_PARSER_PROVIDER,
-    useFactory: (): ResumeSemanticParserProvider | undefined => undefined,
+    useFactory: createProductionSemanticParserProvider,
   },
   {
     provide: WORKER_IMPORT_EXTRACTION_USE_CASE,
