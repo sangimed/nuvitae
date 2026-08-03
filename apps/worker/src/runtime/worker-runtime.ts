@@ -6,6 +6,7 @@ import {
   workerReadinessPath,
   writeWorkerReadinessFile,
 } from "../readiness/worker-readiness";
+import { parseSemanticProviderRuntimeMode } from "../import-resume/semantic-provider-mode";
 import { WorkerModule } from "../worker.module";
 
 export interface WorkerRuntime {
@@ -18,7 +19,12 @@ interface WorkerRuntimeDependencies {
 }
 
 async function createWorkerApplication(): Promise<INestApplicationContext> {
-  return NestFactory.createApplicationContext(WorkerModule, {
+  const runtimeMode = parseSemanticProviderRuntimeMode();
+  const workerModule =
+    runtimeMode === "deterministic-e2e-test"
+      ? (await import("../worker-e2e.module.js")).WorkerE2EModule
+      : WorkerModule;
+  return NestFactory.createApplicationContext(workerModule, {
     // Bootstrap failures are reported once by main without raw driver details.
     logger: false,
   });

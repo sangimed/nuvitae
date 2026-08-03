@@ -1,7 +1,6 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type {
   NuvitaeSemanticExtractionResponse,
-  ResumeSemanticParseRequest,
   SemanticValue,
 } from "@nuvitae/contracts";
 import {
@@ -31,6 +30,7 @@ import type {
   ImportResumeRepository,
   PersistenceTransactionRunner,
 } from "@nuvitae/persistence";
+import { buildSemanticParseRequest } from "./build-semantic-parse-request.js";
 
 export interface SemanticImportProcessorPorts {
   readonly repository: ImportResumeRepository;
@@ -106,7 +106,11 @@ export class SemanticImportProcessor {
         return;
       }
       const requestResult = resumeSemanticParseRequestSchema.safeParse(
-        buildRequest(document, extracted.fragments, input.correlationId),
+        buildSemanticParseRequest(
+          document,
+          extracted.fragments,
+          input.correlationId,
+        ),
       );
       if (!requestResult.success) {
         await this.transition(document, "semantic_response_invalid");
@@ -159,7 +163,7 @@ export class SemanticImportProcessor {
       }
       const draftResult = buildExtractionDraft({
         importedDocument: document,
-        fields: mapFields(validation.response, document, extracted.fragments),
+        fields: mapFields(validation.response, document),
         warnings: mapWarnings(validation.response),
         missingOrUnprocessedSections: [],
         ids: {
@@ -289,206 +293,292 @@ export class SemanticImportProcessor {
   }
 }
 
-function buildRequest(
-  document: ImportedDocument,
-  fragments: readonly ResumeSourceFragment[],
-  correlationId?: string,
-): ResumeSemanticParseRequest {
-  const normalized = fragments
-    .map((fragment) =>
-      fragment.text.normalize("NFKC").replace(/\s+/gu, " ").trim(),
-    )
-    .filter(Boolean);
-  const text = normalized.join("\n");
-  const sourceFragments = fragments
-    .map((fragment, index) => ({
-      order: index,
-      line: index + 1,
-      text: fragment.text.normalize("NFKC").replace(/\s+/gu, " ").trim(),
-      hash: hash(fragment.text),
-      bounds: {
-        lineStart: index + 1,
-        lineEnd: index + 1,
-        start: 0,
-        end: fragment.text.length,
-      },
-    }))
-    .filter((fragment) => fragment.text.length > 0);
-  return {
-    contractVersion: resumeSemanticParserContractVersion,
-    importId: document.id,
-    correlationId: correlationId ?? document.id,
-    documentFormat: document.fileExtension === "docx" ? "docx" : "pdf",
-    languageContext: {
-      detectedLanguage:
-        document.detectedLanguage && document.detectedLanguage !== "unsupported"
-          ? document.detectedLanguage
-          : "unknown",
-      confidence: null,
-      textDirection: "ltr",
-    },
-    normalizedTranscript: {
-      text,
-      sha256: hash(text),
-      lineCount: Math.max(1, text.split("\n").length),
-    },
-    sourceFragments,
-    fragmentHashes: sourceFragments.map((fragment) => fragment.hash),
-    formatMetadata: {
-      sourceFormat: document.fileExtension === "docx" ? "docx" : "pdf",
-      extractionMode: "selectable_text",
-      renderedPageCount: document.renderedPageCount ?? null,
-      parserVersion: null,
-    },
-  } as ResumeSemanticParseRequest;
-}
-
 function mapFields(
   response: NuvitaeSemanticExtractionResponse,
   document: ImportedDocument,
-  fragments: readonly ResumeSourceFragment[],
 ): DeterministicResumeFieldCandidate[] {
   const fields: DeterministicResumeFieldCandidate[] = [];
-  const add = (
+  const push = (
     section: DeterministicResumeFieldCandidate["section"],
     fieldPath: string,
-    value: SemanticValue | null,
+    semanticValue: SemanticValue | null,
+    value: DeterministicResumeFieldCandidate["value"],
     order: number,
   ) => {
-    if (!value) return;
+    if (!semanticValue) return;
     fields.push({
       section,
       fieldPath,
-      value: { kind: "text", value: value.value },
+      value,
+      sourceLocation: minimalLocation(document),
+      confidence: semanticValue.confidence,
+      inferenceStatus:
+        semanticValue.classification === "inferred"
+          ? "inferred_needs_review"
+          : "not_inferred",
+      sourceOrder: order,
+    });
+  };
+
+  const contact = response.sections.contact;
+  push(
+    "contact",
+    "contact.full_name",
+    contact.fullName,
+    textValue(contact.fullName),
+    fields.length,
+  );
+  push(
+    "contact",
+    "contact.email",
+    contact.email,
+    textValue(contact.email),
+    fields.length,
+  );
+  push(
+    "contact",
+    "contact.phone",
+    contact.phone,
+    textValue(contact.phone),
+    fields.length,
+  );
+  push(
+    "contact",
+    "contact.location",
+    contact.location,
+    textValue(contact.location),
+    fields.length,
+  );
+  push(
+    "contact",
+    "contact.website",
+    contact.website,
+    textValue(contact.website),
+    fields.length,
+  );
+  push(
+    "headline",
+    "headline",
+    response.sections.headline,
+    textValue(response.sections.headline),
+    fields.length,
+  );
+  push(
+    "summary",
+    "summary",
+    response.sections.summary,
+    textValue(response.sections.summary),
+    fields.length,
+  );
+
+  response.sections.workExperience.forEach((work, workIndex) => {
+    work.roles.forEach((role, roleIndex) => {
+      const prefix = `work_experience.${workIndex}.roles.${roleIndex}`;
+      push(
+        "work_experience",
+        `${prefix}.employer`,
+        work.employerName,
+        textValue(work.employerName),
+        fields.length,
+      );
+      push(
+        "work_experience",
+        `${prefix}.employer_location`,
+        work.employerLocation,
+        textValue(work.employerLocation),
+        fields.length,
+      );
+      push(
+        "work_experience",
+        `${prefix}.title`,
+        role.title,
+        textValue(role.title),
+        fields.length,
+      );
+      push(
+        "work_experience",
+        `${prefix}.location`,
+        role.location,
+        textValue(role.location),
+        fields.length,
+      );
+      const dateRange = buildRoleDateRange(role);
+      if (dateRange !== undefined) {
+        push(
+          "work_experience",
+          `${prefix}.date_range`,
+          role.startDate ?? role.endDate,
+          dateRange,
+          fields.length,
+        );
+      }
+      role.responsibilities.forEach((value) =>
+        push(
+          "work_experience",
+          `${prefix}.responsibility`,
+          value,
+          textValue(value),
+          fields.length,
+        ),
+      );
+      role.achievements.forEach((value) =>
+        push(
+          "work_experience",
+          `${prefix}.achievement`,
+          value,
+          textValue(value),
+          fields.length,
+        ),
+      );
+    });
+  });
+
+  response.sections.education.forEach((item, index) => {
+    const prefix = `education.${index}`;
+    push(
+      "education",
+      `${prefix}.institution`,
+      item.institution,
+      textValue(item.institution),
+      fields.length,
+    );
+    push(
+      "education",
+      `${prefix}.credential`,
+      item.degree,
+      textValue(item.degree),
+      fields.length,
+    );
+    push(
+      "education",
+      `${prefix}.field_of_study`,
+      item.fieldOfStudy,
+      textValue(item.fieldOfStudy),
+      fields.length,
+    );
+  });
+
+  response.sections.skills.forEach((item, index) =>
+    push(
+      "skills",
+      `skills.${index}.name`,
+      item.name,
+      textValue(item.name),
+      fields.length,
+    ),
+  );
+
+  response.sections.languages.forEach((item, index) => {
+    if (item.name === null) return;
+    fields.push({
+      section: "languages",
+      fieldPath: `languages.${index}.name`,
+      value: {
+        kind: "language",
+        name: item.name.value,
+        ...(item.proficiency === null
+          ? {}
+          : { proficiency: item.proficiency.value }),
+      },
+      sourceLocation: minimalLocation(document),
+      confidence: item.name.confidence,
+      inferenceStatus:
+        item.name.classification === "inferred"
+          ? "inferred_needs_review"
+          : "not_inferred",
+      sourceOrder: fields.length,
+    });
+  });
+
+  response.sections.projects.forEach((item, index) => {
+    const prefix = `projects.${index}`;
+    push(
+      "projects",
+      `${prefix}.name`,
+      item.name,
+      textValue(item.name),
+      fields.length,
+    );
+    push(
+      "projects",
+      `${prefix}.description`,
+      item.description,
+      textValue(item.description),
+      fields.length,
+    );
+  });
+
+  response.sections.certifications.forEach((item, index) => {
+    const prefix = `certifications.${index}`;
+    push(
+      "certifications",
+      `${prefix}.name`,
+      item.name,
+      textValue(item.name),
+      fields.length,
+    );
+    push(
+      "certifications",
+      `${prefix}.issuer`,
+      item.issuer,
+      textValue(item.issuer),
+      fields.length,
+    );
+  });
+
+  response.sections.professionalLinks.forEach((value) => {
+    if (value === null) return;
+    fields.push({
+      section: "professional_links",
+      fieldPath: "professional_links.url",
+      value: { kind: "link", url: value.value },
       sourceLocation: minimalLocation(document),
       confidence: value.confidence,
       inferenceStatus:
         value.classification === "inferred"
           ? "inferred_needs_review"
           : "not_inferred",
-      sourceOrder: order,
-    });
-  };
-  for (const [key, value] of Object.entries(response.sections.contact))
-    add("contact", `contact.${key}`, value, fields.length);
-  add("headline", "headline", response.sections.headline, fields.length);
-  add("summary", "summary", response.sections.summary, fields.length);
-  response.sections.workExperience.forEach((work, index) => {
-    add(
-      "work_experience",
-      `workExperience[${index}].employerName`,
-      work.employerName,
-      fields.length,
-    );
-    work.roles.forEach((role, roleIndex) => {
-      for (const [key, value] of Object.entries(role))
-        if (["title", "location", "startDate", "endDate"].includes(key))
-          add(
-            "work_experience",
-            `workExperience[${index}].roles[${roleIndex}].${key}`,
-            value as SemanticValue | null,
-            fields.length,
-          );
-      for (const [key, values] of [
-        ["responsibilities", role.responsibilities],
-        ["achievements", role.achievements],
-      ] as const)
-        values.forEach((value, valueIndex) =>
-          add(
-            "work_experience",
-            `workExperience[${index}].roles[${roleIndex}].${key}[${valueIndex}]`,
-            value,
-            fields.length,
-          ),
-        );
+      sourceOrder: fields.length,
     });
   });
-  response.sections.education.forEach((item, index) =>
-    Object.entries(item).forEach(
-      ([key, value]) =>
-        key !== "candidateId" &&
-        (Array.isArray(value)
-          ? value.forEach((v, i) =>
-              add(
-                "education",
-                `education[${index}].${key}[${i}]`,
-                v,
-                fields.length,
-              ),
-            )
-          : add(
-              "education",
-              `education[${index}].${key}`,
-              value as SemanticValue | null,
-              fields.length,
-            )),
-    ),
-  );
-  response.sections.skills.forEach((item, index) => {
-    add("skills", `skills[${index}].name`, item.name, fields.length);
-    add("skills", `skills[${index}].category`, item.category, fields.length);
-  });
-  response.sections.languages.forEach((item, index) => {
-    add("languages", `languages[${index}].name`, item.name, fields.length);
-    add(
-      "languages",
-      `languages[${index}].proficiency`,
-      item.proficiency,
-      fields.length,
-    );
-  });
-  response.sections.projects.forEach((item, index) =>
-    Object.entries(item).forEach(
-      ([key, value]) =>
-        key !== "candidateId" &&
-        (Array.isArray(value)
-          ? value.forEach((v, i) =>
-              add(
-                "projects",
-                `projects[${index}].${key}[${i}]`,
-                v,
-                fields.length,
-              ),
-            )
-          : add(
-              "projects",
-              `projects[${index}].${key}`,
-              value as SemanticValue | null,
-              fields.length,
-            )),
-    ),
-  );
-  response.sections.certifications.forEach((item, index) =>
-    Object.entries(item).forEach(
-      ([key, value]) =>
-        key !== "candidateId" &&
-        (Array.isArray(value)
-          ? value.forEach((v, i) =>
-              add(
-                "certifications",
-                `certifications[${index}].${key}[${i}]`,
-                v,
-                fields.length,
-              ),
-            )
-          : add(
-              "certifications",
-              `certifications[${index}].${key}`,
-              value as SemanticValue | null,
-              fields.length,
-            )),
-    ),
-  );
-  response.sections.professionalLinks.forEach((value, index) =>
-    add(
-      "professional_links",
-      `professionalLinks[${index}]`,
-      value,
-      fields.length,
-    ),
-  );
-  void fragments;
   return fields;
+}
+
+function textValue(
+  value: SemanticValue | null,
+): DeterministicResumeFieldCandidate["value"] {
+  if (value === null) return { kind: "text", value: "" };
+  return { kind: "text", value: value.value };
+}
+
+function buildRoleDateRange(role: {
+  readonly startDate: SemanticValue | null;
+  readonly endDate: SemanticValue | null;
+  readonly isOngoing: boolean | null;
+}): DeterministicResumeFieldCandidate["value"] | undefined {
+  const start = role.startDate?.value;
+  const end = role.endDate?.value;
+  const startDate = parseResumeYear(start);
+  const endDate = parseResumeYear(end);
+  const isOngoing =
+    role.isOngoing === true || (end !== undefined && /present/i.test(end));
+  if (startDate === undefined && endDate === undefined && !isOngoing)
+    return undefined;
+  return {
+    kind: "date_range",
+    ...(startDate === undefined ? {} : { startDate }),
+    ...(endDate === undefined ? {} : { endDate }),
+    isOngoing,
+  };
+}
+
+function parseResumeYear(
+  value: string | undefined,
+): { readonly year: number; readonly precision: "year" } | undefined {
+  if (value === undefined) return undefined;
+  const match = /\b(19|20)\d{2}\b/.exec(value);
+  if (match === null) return undefined;
+  return { year: Number(match[0]), precision: "year" };
 }
 
 function mapWarnings(
@@ -525,11 +615,6 @@ function minimalLocation(document: ImportedDocument) {
     sourceDeletedAt: undefined,
     documentId: document.id,
   };
-}
-function hash(value: string): string {
-  return createHash("sha256")
-    .update(value.normalize("NFKC").replace(/\s+/gu, " ").trim())
-    .digest("hex");
 }
 function bucket(value: number): string {
   return value < 5

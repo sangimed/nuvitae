@@ -71,6 +71,17 @@ run_phase() {
   fi
 }
 
+assert_worker_mode() {
+  local expected="$1"
+  local actual
+  actual="$(compose exec -T worker printenv NUVITAE_SEMANTIC_PROVIDER_MODE)"
+  if [[ "$actual" != "$expected" ]]; then
+    printf 'Expected worker semantic-provider mode %s, got %s\n' \
+      "$expected" "$actual" >&2
+    return 1
+  fi
+}
+
 trap cleanup EXIT INT TERM
 
 mkdir -p "$artifact_dir"
@@ -81,9 +92,12 @@ if ! docker compose version >/dev/null 2>&1; then
   exit 1
 fi
 
-run_phase "generate anonymous fixture" \
-  node tests/fixtures/resumes/generate-anonymous-selectable-resume.mjs
 run_phase "build workspace image" compose build workspace
+run_phase "install workspace dependencies" \
+  compose run --rm workspace pnpm install --frozen-lockfile
+run_phase "generate anonymous fixture" \
+  compose run --rm workspace node \
+    tests/fixtures/resumes/generate-anonymous-selectable-resume.mjs
 run_phase "build runtime images" compose build api web worker
 run_phase "build playwright image" compose --profile test build playwright-test
 run_phase "start dependencies" compose up -d postgres queue
@@ -91,8 +105,56 @@ run_phase "run migrations" compose run --rm workspace pnpm db:migration:run
 run_phase "prepare private storage volume" \
   compose run --rm --user root --entrypoint /bin/sh api \
   -c "mkdir -p /var/lib/nuvitae/private && chown -R 10001:10001 /var/lib/nuvitae/private"
-run_phase "start local stack" compose up -d web api worker
-run_phase "wait for local stack health" compose up --wait web api worker postgres queue
+run_phase "start local stack" \
+  env NUVITAE_SEMANTIC_PROVIDER_MODE=production \
+    docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
+    up -d web api worker
+run_phase "wait for local stack health" \
+  env NUVITAE_SEMANTIC_PROVIDER_MODE=production \
+    docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
+    up --wait web api worker postgres queue
+
+run_phase "semantic vertical slice: no provider" \
+  env NUVITAE_SEMANTIC_PROVIDER_MODE=production \
+    docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
+    --profile test run --rm \
+      -e LOCAL_PLAY_ARTIFACT_DIR=/workspace/.local-play/artifacts \
+      playwright-test pnpm exec playwright test \
+        --config=playwright.local-play.config.ts \
+        tests/browser/import-resume/semantic-import-vertical-slice.spec.ts \
+        -g "no production semantic provider"
+
+run_phase "switch worker to explicit deterministic E2E composition" \
+  env NUVITAE_SEMANTIC_PROVIDER_MODE=deterministic-e2e-test \
+    docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
+    up -d --force-recreate worker
+run_phase "verify E2E worker mode" \
+  assert_worker_mode deterministic-e2e-test
+run_phase "wait for E2E worker health" \
+  env NUVITAE_SEMANTIC_PROVIDER_MODE=deterministic-e2e-test \
+    docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
+    up --wait --no-recreate worker
+
+run_phase "semantic vertical slice: real PDF and DOCX" \
+  env NUVITAE_SEMANTIC_PROVIDER_MODE=deterministic-e2e-test \
+    docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
+    --profile test run --rm \
+      -e LOCAL_PLAY_ARTIFACT_DIR=/workspace/.local-play/artifacts \
+      playwright-test pnpm exec playwright test \
+        --config=playwright.local-play.config.ts \
+        tests/browser/import-resume/semantic-import-vertical-slice.spec.ts \
+        -g "real"
+
+run_phase "restore production worker composition" \
+  env NUVITAE_SEMANTIC_PROVIDER_MODE=production \
+    docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
+    up -d --force-recreate worker
+run_phase "verify production worker mode" \
+  assert_worker_mode production
+run_phase "wait for production worker health" \
+  env NUVITAE_SEMANTIC_PROVIDER_MODE=production \
+    docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
+    up --wait --no-recreate worker
 
 phase="playwright regression"
 playwright_args=(
@@ -106,9 +168,11 @@ if [[ "$headed" -eq 1 ]]; then
 fi
 
 set +e
-compose --profile test run --rm \
-  -e LOCAL_PLAY_ARTIFACT_DIR=/workspace/.local-play/artifacts \
-  playwright-test "${playwright_args[@]}"
+env NUVITAE_SEMANTIC_PROVIDER_MODE=production \
+  docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
+  --profile test run --rm \
+    -e LOCAL_PLAY_ARTIFACT_DIR=/workspace/.local-play/artifacts \
+    playwright-test "${playwright_args[@]}"
 playwright_status=$?
 set -e
 if [[ "$playwright_status" -ne 0 ]]; then

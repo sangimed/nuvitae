@@ -121,6 +121,42 @@ describe("ImportStatusService", () => {
     });
   });
 
+  it("maps provider_unavailable to a privacy-safe terminal recovery state", async () => {
+    const harness = createHarness({
+      document: document({
+        validationStatus: "accepted",
+        processingStatus: "provider_unavailable",
+      }),
+      queueProgress: {
+        step: "preparing_review",
+        progressKnown: true,
+        progressPercent: 99,
+        updatedAt: new Date("2026-07-29T10:00:00.000Z"),
+      },
+    });
+
+    const response = await harness.service.readStatus({
+      importId,
+      ownerUserId,
+      requestId,
+    });
+    expect(response).toMatchObject({
+      status: "terminal_processing_failure",
+      progressKnown: false,
+      failure: {
+        code: "terminal_failure",
+        retryable: false,
+        recoveryActions: ["replace_upload", "manual_entry"],
+      },
+      allowedRecoveryActions: ["replace_upload", "manual_entry"],
+    });
+    expect(response.failure?.userMessage).not.toMatch(
+      /provider|parser|storage/i,
+    );
+    expect(JSON.stringify(response)).not.toContain("resume.pdf");
+    expect(JSON.stringify(response)).not.toContain("storage");
+  });
+
   it("maps ready drafts and partial drafts without exposing source data", async () => {
     const ready = createHarness({
       document: document({ processingStatus: "ready_for_review" }),

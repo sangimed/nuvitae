@@ -35,6 +35,7 @@ services:
   worker:
     environment:
       NODE_ENV: development
+      NUVITAE_SEMANTIC_PROVIDER_MODE: ${NUVITAE_SEMANTIC_PROVIDER_MODE:-production}
       NUVITAE_PRIVATE_STORAGE_ROOT: /var/lib/nuvitae/private
       NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET: "local-play-storage-signing-secret-not-for-production"
       NUVITAE_PRIVATE_STORAGE_MAX_SIGNED_REFERENCE_TTL_SECONDS: 300
@@ -51,6 +52,15 @@ services:
       LOCAL_PLAY_BASE_URL: http://web:3000
       LOCAL_PLAY_API_HEALTH_URL: http://api:3001/health
       LOCAL_PLAY_DISABLED_API_URL: http://api-local-mode-off:3001
+      LOCAL_PLAY_USER_ID: "00000000-0000-4000-8000-000000000101"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-nuvitae}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nuvitae_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-nuvitae}
+      POSTGRES_SSL: "false"
+    volumes:
+      - persistence-node-modules:/workspace/packages/persistence/node_modules
     depends_on:
       web:
         condition: service_healthy

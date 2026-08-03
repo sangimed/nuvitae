@@ -161,6 +161,25 @@ export class ImportStatusService {
       });
     }
 
+    if (document.processingStatus === "provider_unavailable") {
+      return parseStatus({
+        requestId,
+        importId: document.id,
+        status: "terminal_processing_failure",
+        progressKnown: false,
+        failure: {
+          code: "terminal_failure",
+          retryable: false,
+          recoveryActions: ["replace_upload", "manual_entry"],
+          userMessage:
+            "Reliable resume parsing is not available on this server right now. Upload a different file or enter your resume manually.",
+        },
+        allowedRecoveryActions: ["replace_upload", "manual_entry"],
+        userMessage:
+          "We could not prepare this resume for review. Upload a different file or enter your resume manually.",
+      });
+    }
+
     if (document.processingStatus === "cancelled") {
       return parseStatus({
         requestId,

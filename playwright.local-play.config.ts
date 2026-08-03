@@ -1,8 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "tests/e2e/local-play",
-  testMatch: "**/*.e2e.test.ts",
+  testDir: "tests",
+  testMatch: ["**/*.e2e.test.ts", "**/*.spec.ts"],
   outputDir:
     process.env.PLAYWRIGHT_OUTPUT_DIR ?? ".local-play/artifacts/test-results",
   timeout: 120_000,
