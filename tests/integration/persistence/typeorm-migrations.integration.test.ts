@@ -61,6 +61,9 @@ describe("project-local TypeORM migration workflow", () => {
     expect(after.stdout).toMatch(
       /\[X\]\s+\d+\s+ImportDraftReviewRevision1722340800000/,
     );
+    expect(after.stdout).toMatch(
+      /\[X\]\s+6\s+ProviderRuntimeConnections1722600000000/,
+    );
     const tables = await database.dataSource.query<{ table_name: string }[]>(
       `SELECT table_name FROM information_schema.tables
        WHERE table_schema = $1 AND table_name IN ('imported_documents', 'structured_resumes')`,
@@ -80,7 +83,7 @@ describe("project-local TypeORM migration workflow", () => {
     const tracking = await database.dataSource.query<{ count: string }[]>(
       `SELECT count(*) FROM "${database.schema}"."typeorm_migrations"`,
     );
-    expect(tracking[0]?.count).toBe("5");
+    expect(tracking[0]?.count).toBe("6");
 
     await command("db:migration:revert");
     const reverted = await command("db:migration:show");
@@ -89,18 +92,18 @@ describe("project-local TypeORM migration workflow", () => {
       "[X] 4 SemanticImportProcessingStates1722427200000",
     );
     expect(reverted.stdout).toContain(
-      "[ ] SemanticParserPersistence1722513600000",
+      "[ ] ProviderRuntimeConnections1722600000000",
     );
-    const revertedSemanticTables = await database.dataSource.query<
+    const revertedRuntimeConnectionTables = await database.dataSource.query<
       {
         table_name: string;
       }[]
     >(
       `SELECT table_name FROM information_schema.tables
-       WHERE table_schema = $1 AND table_name IN ('semantic_parse_attempts', 'nuvitae_extraction_responses', 'evidence_records', 'provider_capability_snapshots', 'semantic_parser_validation_statuses')`,
+       WHERE table_schema = $1 AND table_name IN ('ai_provider_runtime_connections')`,
       [database.schema],
     );
-    expect(revertedSemanticTables).toHaveLength(0);
+    expect(revertedRuntimeConnectionTables).toHaveLength(0);
 
     await command("db:migration:run");
     const restored = await command("db:migration:show");
@@ -117,10 +120,20 @@ describe("project-local TypeORM migration workflow", () => {
       [database.schema],
     );
     expect(restoredSemanticTables).toHaveLength(5);
+    const restoredRuntimeConnectionTables = await database.dataSource.query<
+      {
+        table_name: string;
+      }[]
+    >(
+      `SELECT table_name FROM information_schema.tables
+       WHERE table_schema = $1 AND table_name IN ('ai_provider_runtime_connections')`,
+      [database.schema],
+    );
+    expect(restoredRuntimeConnectionTables).toHaveLength(1);
     const rerun = await database.dataSource.query<{ count: string }[]>(
       `SELECT count(*) FROM "${database.schema}"."typeorm_migrations"`,
     );
-    expect(rerun[0]?.count).toBe("5");
+    expect(rerun[0]?.count).toBe("6");
 
     const result = await command("db:migration:create");
     expect(result.stdout).toContain(".tmp/migrations/");
