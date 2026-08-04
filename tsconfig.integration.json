@@ -23,6 +23,7 @@
     }
   },
   "include": [
+    "tests/architecture/**/*.ts",
     "tests/contract/**/*.ts",
     "tests/integration/import-resume/**/*.ts",
     "tests/integration/persistence/**/*.ts"
