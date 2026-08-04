@@ -7,6 +7,7 @@ import { ManualStructuredResumeDrafts1722254400000 } from "./migrations/17222544
 import { ImportDraftReviewRevision1722340800000 } from "./migrations/1722340800000-ImportDraftReviewRevision.js";
 import { SemanticImportProcessingStates1722427200000 } from "./migrations/1722427200000-SemanticImportProcessingStates.js";
 import { SemanticParserPersistence1722513600000 } from "./migrations/1722513600000-SemanticParserPersistence.js";
+import { ProviderRuntimeConnections1722600000000 } from "./migrations/1722600000000-ProviderRuntimeConnections.js";
 
 export interface PersistenceConfig {
   readonly host: string;
@@ -145,6 +146,7 @@ export function createTypeOrmOptions(
       ImportDraftReviewRevision1722340800000,
       SemanticImportProcessingStates1722427200000,
       SemanticParserPersistence1722513600000,
+      ProviderRuntimeConnections1722600000000,
     ],
     migrationsTableName: "typeorm_migrations",
     migrationsRun: false,

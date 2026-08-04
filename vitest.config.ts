@@ -42,6 +42,7 @@ export default defineConfig({
       "tests/architecture/**/*.test.ts",
       "tests/contract/**/*.test.ts",
       "tests/integration/import-resume/**/*.test.ts",
+      "tests/security/**/*.test.ts",
     ],
     environment: "node",
   },

@@ -8,6 +8,7 @@ import {
   PrimaryColumn,
   Unique,
 } from "typeorm";
+import { AIProviderRuntimeConnectionEntity } from "./ai-provider-runtime-connection.entity.js";
 import { ImportedDocumentEntity } from "./import-resume.entities.js";
 
 @Entity({ name: "semantic_parse_attempts" })
@@ -72,14 +73,6 @@ export class SemanticParseAttemptEntity {
   @Column("uuid", { name: "owner_user_id" })
   ownerUserId!: string;
 
-  /**
-   * Optional provider runtime connection reference.
-   *
-   * The `AIProviderRuntimeConnection` persistence table is owned by T162 and is
-   * intentionally not implemented here, so this column deliberately has no
-   * foreign key. When T162 lands, the FK should reference
-   * `ai_provider_runtime_connections(id, owner_user_id)`.
-   */
   @Column("uuid", {
     name: "provider_runtime_connection_id",
     nullable: true,
@@ -157,4 +150,18 @@ export class SemanticParseAttemptEntity {
     { name: "owner_user_id", referencedColumnName: "ownerUserId" },
   ])
   importedDocument!: ImportedDocumentEntity;
+
+  @ManyToOne(() => AIProviderRuntimeConnectionEntity, {
+    onDelete: "NO ACTION",
+    nullable: true,
+  })
+  @JoinColumn([
+    {
+      name: "provider_runtime_connection_id",
+      referencedColumnName: "id",
+      foreignKeyConstraintName: "fk_semantic_parse_attempts_owner_connection",
+    },
+    { name: "owner_user_id", referencedColumnName: "ownerUserId" },
+  ])
+  providerRuntimeConnection!: AIProviderRuntimeConnectionEntity | null;
 }

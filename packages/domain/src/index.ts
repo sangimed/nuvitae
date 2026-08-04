@@ -13,5 +13,6 @@ export * from "./resume-import/validation.js";
 export * from "./resume-import/extraction-draft.js";
 export * from "./resume-import/manual-draft.js";
 export * from "./resume-import/review.js";
+export * from "./resume-import/provider-runtime-connection.js";
 export * from "./resume-import/semantic-parser-persistence.js";
 export * from "./resume-import/structured-resume-mapper.js";

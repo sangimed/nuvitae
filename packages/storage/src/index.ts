@@ -14,3 +14,15 @@ export {
   type VerifiedSignedStorageReference,
   type VerifySignedStorageReferenceInput,
 } from "./private-import-storage.js";
+export {
+  LocalProviderSessionStorage,
+  ProviderSessionStorageError,
+  generateProviderSessionStorageKey,
+  validateProviderSessionStorageKey,
+  type ProviderSessionDeleteResult,
+  type ProviderSessionStorageConfig,
+  type ProviderSessionStorageErrorCode,
+  type ProviderSessionStorageInput,
+  type ProviderSessionStore,
+  type ProviderSessionWriteInput,
+} from "./provider-session-storage.js";
