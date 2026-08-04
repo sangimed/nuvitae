@@ -1,17 +1,17 @@
+import { serializeSemanticValidationDiagnostic } from "@nuvitae/import-application";
 import type { SemanticValidationDiagnostic } from "@nuvitae/import-application";
+import type { ImportEventMetadataFor } from "@nuvitae/import-application";
 
 export interface ProviderImportEvent {
   readonly event:
     "provider.request" | "provider.response" | "provider.validation";
-  readonly importId: string | null;
-  readonly correlationId: string | null;
+  readonly importId?: string;
+  readonly correlationId?: string;
   readonly category: string;
   readonly code: string;
   readonly retryable: boolean;
   readonly requiresReview: boolean;
   readonly path: readonly (string | number)[];
-  readonly fragmentId: string | null;
-  readonly line: number | null;
 }
 
 export function serializeProviderImportDiagnostic(
@@ -22,16 +22,18 @@ export function serializeProviderImportDiagnostic(
     readonly correlationId?: string | null;
   } = {},
 ): ProviderImportEvent {
+  const shared: ImportEventMetadataFor<"semantic.validation_diagnostics"> =
+    serializeSemanticValidationDiagnostic(diagnostic, identifiers);
   return {
     event,
-    importId: identifiers.importId ?? null,
-    correlationId: identifiers.correlationId ?? null,
-    category: diagnostic.category,
-    code: diagnostic.code,
-    retryable: diagnostic.retryable,
-    requiresReview: diagnostic.requiresReview,
-    path: [...diagnostic.path],
-    fragmentId: diagnostic.fragmentId,
-    line: diagnostic.line,
+    ...(shared.importId === undefined ? {} : { importId: shared.importId }),
+    ...(shared.correlationId === undefined
+      ? {}
+      : { correlationId: shared.correlationId }),
+    category: shared.category,
+    code: shared.code,
+    retryable: shared.retryable,
+    requiresReview: shared.requiresReview,
+    path: shared.path,
   };
 }
