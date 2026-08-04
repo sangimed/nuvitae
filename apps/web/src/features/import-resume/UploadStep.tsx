@@ -7,6 +7,7 @@ import {
   type ChangeEvent,
   type FormEvent,
 } from "react";
+import { ProviderDisclosure } from "./ProviderDisclosure";
 
 const maximumFileSizeBytes = 10 * 1024 * 1024;
 const allowedExtensions = [".pdf", ".docx"] as const;
@@ -81,6 +82,8 @@ export function UploadStep(props: {
           </li>
         </ul>
       </div>
+
+      <ProviderDisclosure />
 
       <form className="upload-form" onSubmit={submit} noValidate>
         {error === undefined ? null : (

@@ -98,7 +98,7 @@ test.describe("import resume upload and progress accessibility", () => {
     expect(uploadCount).toBe(1);
   });
 
-  test("announces draft-ready terminal state without inventing review UI", async ({
+  test("announces draft-ready state and exposes the review entry", async ({
     page,
   }) => {
     await page.route("**/import-resume", async (route) => {
@@ -135,8 +135,7 @@ test.describe("import resume upload and progress accessibility", () => {
             warningCount: 0,
           },
           allowedRecoveryActions: ["manual_entry"],
-          userMessage:
-            "Your imported resume draft is ready. Review will be available in a later step.",
+          userMessage: "Your imported resume draft is ready for review.",
         }),
       });
     });
@@ -158,7 +157,10 @@ test.describe("import resume upload and progress accessibility", () => {
       page.getByText("Your imported resume draft is ready"),
     ).toBeVisible();
     await expect(
-      page.getByText("Review is not available in this slice yet."),
+      page.getByRole("button", { name: "Review imported resume" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Open review page" }),
     ).toBeVisible();
     await expect(page.getByRole("main")).toBeVisible();
   });
@@ -197,7 +199,12 @@ test.describe("import resume upload and progress accessibility", () => {
     ).toBeVisible();
     await page.getByRole("button", { name: "Back" }).click();
     await page.getByRole("link", { name: "Enter manually" }).click();
-    await expect(page).toHaveURL(/\/resumes\/new\/manual$/);
+    await expect(page).toHaveURL((url) => {
+      return (
+        url.pathname === "/resumes/new/manual" &&
+        url.searchParams.get("creationKey") !== null
+      );
+    });
   });
 
   test("timeout state exposes only supported manual-entry and replacement actions", async ({
