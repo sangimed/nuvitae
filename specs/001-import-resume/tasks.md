@@ -216,7 +216,7 @@
 
 ### Application Integration, Recovery, And Fallbacks
 
-- [ ] T166 [P] Add worker integration tests proving orchestration runs through `ResumeSemanticParserProvider`, validates schema and grounding before persistence, creates unconfirmed AI semantic candidates, and creates warnings before review-draft creation in `tests/integration/import-resume/semantic-parser-worker.integration.test.ts`
+- [x] T166 [P] Add worker integration tests proving orchestration runs through `ResumeSemanticParserProvider`, validates schema and grounding before persistence, creates unconfirmed AI semantic candidates, and creates warnings before review-draft creation in `tests/integration/import-resume/semantic-parser-worker.integration.test.ts`
 - [ ] T167 [P] Add no-provider, expired-session, provider-unavailable, quota-exhausted, timeout, malformed-output, retry, alternative-provider, limited deterministic partial extraction, and manual-entry fallback recovery tests in `tests/integration/import-resume/provider-recovery.integration.test.ts`; depends on T185-T188 for the explicit limited deterministic partial fallback contract
 - [ ] T168 [P] Add credential isolation tests proving provider session material is private to the authenticated user, revocable, isolated from resume source artifacts, and absent from diagnostics in `tests/security/import-resume/provider-credential-isolation.security.test.ts`
 - [ ] T169 [P] Add realistic anonymous parser fixtures and expected structured JSON outputs for French, English, bilingual, single-column, multi-column, PDF, and DOCX resumes in `packages/test-fixtures/src/resume-import/semantic-parser-fixtures.ts` and `packages/test-fixtures/src/resume-import/expected-semantic-json.ts`
