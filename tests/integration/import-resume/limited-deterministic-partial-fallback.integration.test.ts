@@ -142,6 +142,32 @@ describe("limited deterministic partial fallback integration", () => {
     expect(JSON.stringify(outcome)).not.toContain("timeout");
   });
 
+  it("handles the rate-limited flow with the T187 disclosure and no provider-native rate-limit detail", () => {
+    const outcome = runFallback(["Email: jane@example.com"], {
+      trigger: "rate_limited",
+    });
+    expect(outcome.status).toBe("partial");
+    expect(outcome.meetsDraftThreshold).toBe(true);
+    expect(outcome.acceptedCandidates[0]).toMatchObject({
+      fieldPath: "contact.email",
+      value: "jane@example.com",
+      classification: "explicit",
+      confidence: "high",
+      reviewStatus: "unreviewed",
+    });
+    expect(outcome.disclosure.isPartial).toBe(true);
+    expect(outcome.disclosure.notReliableFullSemanticParsing).toBe(true);
+    expect(outcome.recoveryActions).toContain("retry");
+    expect(outcome.recoveryActions).toContain("manual_entry");
+    const serialized = JSON.stringify(outcome).toLowerCase();
+    expect(serialized).not.toContain("rate_limited");
+    expect(serialized).not.toContain("rate limited");
+    expect(serialized).not.toContain("429");
+    expect(serialized).not.toContain("retry-after");
+    expect(serialized).not.toContain("retry_after");
+    expect(serialized).not.toContain("throttle");
+  });
+
   it("handles the malformed-provider-output flow without raw provider payloads", () => {
     const outcome = runFallback(["Email: jane@example.com"], {
       trigger: "malformed_provider_output",
@@ -421,6 +447,7 @@ describe("limited deterministic partial fallback integration", () => {
       "timeout",
       "malformed_provider_output",
       "provider_unavailable",
+      "rate_limited",
     ]) {
       expect(lower).not.toContain(token);
     }

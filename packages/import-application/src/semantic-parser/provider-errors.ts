@@ -83,11 +83,7 @@ const defaultRecoveryByCode: Record<
     "limited_deterministic_partial_extraction",
     "manual_entry",
   ],
-  unsupported_capability: [
-    "choose_another_provider",
-    "limited_deterministic_partial_extraction",
-    "manual_entry",
-  ],
+  unsupported_capability: ["choose_another_provider", "manual_entry"],
   timeout: ["retry", "choose_another_provider", "manual_entry"],
   cancelled: ["retry", "replace_upload", "manual_entry"],
   invalid_provider_response: [

@@ -120,7 +120,12 @@ const defaultRecoveryByCategory: Record<
     "limited_deterministic_partial_extraction",
     "manual_entry",
   ],
-  rate_limited: ["retry", "choose_another_provider", "manual_entry"],
+  rate_limited: [
+    "retry",
+    "choose_another_provider",
+    "limited_deterministic_partial_extraction",
+    "manual_entry",
+  ],
   quota_exceeded: ["choose_another_provider", "manual_entry"],
   timeout: ["retry", "choose_another_provider", "manual_entry"],
 };

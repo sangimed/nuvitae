@@ -13,6 +13,8 @@ import {
   limitedDeterministicFallbackForbiddenFieldGroups,
   limitedDeterministicFallbackMinimumDraftAcceptedCandidates,
   limitedDeterministicFallbackOutcomeSchema,
+  limitedDeterministicFallbackProviderTriggerSchema,
+  limitedDeterministicFallbackProviderTriggers,
   limitedDeterministicFallbackRecoveryActions,
   limitedDeterministicFallbackRejectedCandidateSchema,
   limitedDeterministicFallbackRejectionReasons,
@@ -69,6 +71,42 @@ const rejectedCandidate = (
 });
 
 describe("limited deterministic partial fallback contract", () => {
+  it("owns a closed provider-neutral trigger set that includes rate_limited", () => {
+    expect(limitedDeterministicFallbackProviderTriggers).toEqual([
+      "no_provider",
+      "provider_unavailable",
+      "expired_session",
+      "quota_exhausted",
+      "timeout",
+      "malformed_provider_output",
+      "rate_limited",
+    ]);
+    expect(limitedDeterministicFallbackProviderTriggers).toContain(
+      "rate_limited",
+    );
+    expect(limitedDeterministicFallbackProviderTriggers).not.toContain(
+      "unsupported_capability",
+    );
+    for (const trigger of limitedDeterministicFallbackProviderTriggers) {
+      expect(
+        limitedDeterministicFallbackProviderTriggerSchema.parse(trigger),
+      ).toBe(trigger);
+    }
+    for (const unsupported of [
+      "unsupported_capability",
+      "revoked_session",
+      "disconnected",
+      "schema_invalid",
+      "invented",
+      "unknown_trigger",
+    ]) {
+      expect(
+        limitedDeterministicFallbackProviderTriggerSchema.safeParse(unsupported)
+          .success,
+      ).toBe(false);
+    }
+  });
+
   it("exposes an explicit, closed allowed field set", () => {
     expect(limitedDeterministicFallbackAllowedFields).toEqual([
       "contact.full_name",

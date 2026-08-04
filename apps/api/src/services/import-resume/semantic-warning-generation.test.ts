@@ -224,6 +224,31 @@ describe("generateSemanticWarnings (T173)", () => {
     }
   });
 
+  it("keeps limited deterministic fallback advertised for rate_limited only", () => {
+    const rateLimited = generateSemanticWarnings({
+      providerError: createPrivacySafeSemanticProviderError("rate_limited"),
+    });
+    expect(rateLimited.warnings[0]?.recoveryActions).toEqual([
+      "retry",
+      "choose_another_provider",
+      "limited_deterministic_partial_extraction",
+      "manual_entry",
+    ]);
+
+    const unsupportedCapability = generateSemanticWarnings({
+      providerError: createPrivacySafeSemanticProviderError(
+        "unsupported_capability",
+      ),
+    });
+    expect(unsupportedCapability.warnings[0]?.recoveryActions).toEqual([
+      "choose_another_provider",
+      "manual_entry",
+    ]);
+    expect(unsupportedCapability.warnings[0]?.recoveryActions).not.toContain(
+      "limited_deterministic_partial_extraction",
+    );
+  });
+
   it("does not generate a warning for intentional cancellation", () => {
     const result = generateSemanticWarnings({
       providerError: createPrivacySafeSemanticProviderError("cancelled"),

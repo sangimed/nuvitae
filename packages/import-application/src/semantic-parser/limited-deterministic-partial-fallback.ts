@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import {
   buildLimitedDeterministicFallbackOutcome,
+  limitedDeterministicFallbackProviderTriggerSchema,
   limitedDeterministicFallbackRuleByField,
   type LimitedDeterministicFallbackAcceptedCandidate,
   type LimitedDeterministicFallbackAllowedField,
@@ -11,6 +12,7 @@ import {
   type LimitedDeterministicFallbackOutcome,
   type LimitedDeterministicFallbackRejectedCandidate,
   type LimitedDeterministicFallbackRejectionReason,
+  type LimitedDeterministicFallbackProviderTrigger,
 } from "@nuvitae/contracts";
 import type { ResumeSemanticParseRequest } from "@nuvitae/contracts";
 
@@ -28,21 +30,11 @@ import type { ResumeSemanticParseRequest } from "@nuvitae/contracts";
  */
 
 /**
- * Closed provider-neutral failure triggers that may lead to the fallback.
- * These are categories only: no provider identity, payload, prompt, raw
- * error, or session material is accepted or serialized.
+ * T187 owns the closed provider-neutral trigger vocabulary. The API-facing
+ * T188 module re-exports it so callers keep one import surface.
  */
-export const limitedDeterministicFallbackProviderTriggers = [
-  "no_provider",
-  "provider_unavailable",
-  "expired_session",
-  "quota_exhausted",
-  "timeout",
-  "malformed_provider_output",
-] as const;
-
-export type LimitedDeterministicFallbackProviderTrigger =
-  (typeof limitedDeterministicFallbackProviderTriggers)[number];
+export { limitedDeterministicFallbackProviderTriggers } from "@nuvitae/contracts";
+export type { LimitedDeterministicFallbackProviderTrigger };
 
 export interface LimitedDeterministicPartialFallbackInput {
   /**
@@ -211,7 +203,10 @@ interface RejectionSummary {
 export function runLimitedDeterministicPartialFallback(
   input: LimitedDeterministicPartialFallbackInput,
 ): LimitedDeterministicFallbackOutcome {
-  if (!limitedDeterministicFallbackProviderTriggers.includes(input.trigger)) {
+  if (
+    !limitedDeterministicFallbackProviderTriggerSchema.safeParse(input.trigger)
+      .success
+  ) {
     throw new Error("unsupported limited deterministic fallback trigger");
   }
   if (input.normalizedTranscript.text.length === 0) {

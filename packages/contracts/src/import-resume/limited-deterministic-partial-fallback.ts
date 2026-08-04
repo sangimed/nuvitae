@@ -14,6 +14,31 @@ export const limitedDeterministicFallbackContractVersion =
   "nuvitae.limited-deterministic-partial-fallback.v1" as const;
 
 /**
+ * Closed provider-neutral failure triggers that may lead to the fallback.
+ * These are categories only: no provider identity, payload, prompt, raw
+ * error, or session material is accepted or serialized. `rate_limited` is a
+ * supported temporary provider failure; `unsupported_capability` is
+ * deliberately outside the set and recovers via alternative provider or
+ * manual entry instead.
+ */
+export const limitedDeterministicFallbackProviderTriggers = [
+  "no_provider",
+  "provider_unavailable",
+  "expired_session",
+  "quota_exhausted",
+  "timeout",
+  "malformed_provider_output",
+  "rate_limited",
+] as const;
+
+export type LimitedDeterministicFallbackProviderTrigger =
+  (typeof limitedDeterministicFallbackProviderTriggers)[number];
+
+export const limitedDeterministicFallbackProviderTriggerSchema = z.enum(
+  limitedDeterministicFallbackProviderTriggers,
+);
+
+/**
  * Deterministic minimum number of accepted candidates required before a
  * partial fallback draft may be created. Aligned with FR-013: at least one
  * supported candidate with required document evidence. Rejected candidates
