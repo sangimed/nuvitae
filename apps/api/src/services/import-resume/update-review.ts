@@ -11,15 +11,17 @@ import {
   type ExtractedValue,
   type ReviewCommand,
 } from "@nuvitae/domain";
-import type {
-  ImportResumeRepository,
-  PersistenceTransactionRunner,
+import {
+  ReviewCorrectionOperationIdConflictError,
+  type ImportResumeRepository,
+  type PersistenceTransactionRunner,
 } from "@nuvitae/persistence";
 import type { EntityManager } from "typeorm";
 import {
   API_IMPORT_RESUME_REPOSITORY,
   API_PERSISTENCE_TRANSACTION_RUNNER,
 } from "../../persistence/api-persistence.module.js";
+import type { ImportEventEmitter } from "../../observability/import-events.js";
 import type {
   StartImportClock,
   StartImportIdGenerator,
@@ -28,6 +30,7 @@ import {
   IMPORT_STATUS_REQUEST_ID_GENERATOR,
   START_IMPORT_CLOCK,
   START_IMPORT_ID_GENERATOR,
+  START_IMPORT_PRIVACY_LOGGER,
 } from "../../import-resume/start-import.tokens.js";
 import type { ImportStatusRequestIdGenerator } from "../../import-resume/import-status.ports.js";
 import { buildReviewDraftResponse } from "./read-draft.js";
@@ -60,6 +63,8 @@ export class UpdateImportReviewService {
     private readonly ids: StartImportIdGenerator,
     @Inject(IMPORT_STATUS_REQUEST_ID_GENERATOR)
     private readonly requestIds: ImportStatusRequestIdGenerator,
+    @Inject(START_IMPORT_PRIVACY_LOGGER)
+    private readonly logger: ImportEventEmitter,
   ) {}
 
   async update(input: {
@@ -81,15 +86,33 @@ export class UpdateImportReviewService {
       };
     }
 
-    return this.transactions.transaction((manager) =>
-      this.updateInTransaction({
-        ownerUserId: input.ownerUserId,
-        importId: input.importId,
-        requestId,
-        request: parsed.data,
-        manager,
-      }),
-    );
+    try {
+      return await this.transactions.transaction((manager) =>
+        this.updateInTransaction({
+          ownerUserId: input.ownerUserId,
+          importId: input.importId,
+          requestId,
+          request: parsed.data,
+          manager,
+        }),
+      );
+    } catch (error) {
+      if (error instanceof ReviewCorrectionOperationIdConflictError) {
+        this.logger.emit("import.resource_not_found", {
+          importId: input.importId,
+          operation: "review",
+        });
+        return {
+          ok: false,
+          status: 404,
+          code: "not_found",
+          requestId,
+          message:
+            "We could not find that import. It may be unavailable or no longer accessible.",
+        };
+      }
+      throw error;
+    }
   }
 
   private async updateInTransaction(input: {
@@ -106,6 +129,10 @@ export class UpdateImportReviewService {
         input.manager,
       );
     if (draft === null) {
+      this.logger.emit("import.resource_not_found", {
+        importId: input.importId,
+        operation: "review",
+      });
       return {
         ok: false,
         status: 404,
@@ -137,6 +164,13 @@ export class UpdateImportReviewService {
       if (existing.importDraftId !== draft.id) {
         return stale(input.requestId);
       }
+      this.emitReviewCorrected(
+        input.importId,
+        draft.id,
+        input.request.action.type,
+        draft.reviewRevision,
+        input.requestId,
+      );
       return {
         ok: true,
         response: this.response(input.requestId, input.importId, draft),
@@ -170,6 +204,13 @@ export class UpdateImportReviewService {
         previousReviewRevision: draft.reviewRevision,
       },
       input.manager,
+    );
+    this.emitReviewCorrected(
+      input.importId,
+      saved.id,
+      input.request.action.type,
+      saved.reviewRevision,
+      input.requestId,
     );
     return {
       ok: true,
@@ -219,6 +260,29 @@ export class UpdateImportReviewService {
       reviewRevision: draft.reviewRevision,
       draft: read,
       userMessage: "Your review change was saved.",
+    });
+  }
+
+  private emitReviewCorrected(
+    importId: string,
+    draftId: string,
+    operationType:
+      | "confirm_field"
+      | "edit_field"
+      | "remove_field"
+      | "add_field"
+      | "complete_missing_field"
+      | "resolve_warning"
+      | "exclude_section",
+    reviewRevision: number,
+    requestId: string,
+  ): void {
+    this.logger.emit("review.corrected", {
+      importId,
+      draftId,
+      operationType,
+      reviewRevision,
+      requestId,
     });
   }
 }

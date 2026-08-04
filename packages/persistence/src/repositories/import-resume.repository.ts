@@ -118,6 +118,19 @@ export interface ImportResumeRepository {
   ): Promise<DeletionJob | null>;
 }
 
+/**
+ * Raised when a review mutation attempts to persist a correction whose
+ * operation id already exists under another owner. Callers map this to the
+ * same opaque not-found result as missing resources so no existence oracle
+ * is introduced and no cross-user row is created.
+ */
+export class ReviewCorrectionOperationIdConflictError extends Error {
+  constructor() {
+    super("review_correction_operation_id_conflict");
+    this.name = "ReviewCorrectionOperationIdConflictError";
+  }
+}
+
 export interface PersistenceTransactionRunner {
   transaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T>;
 }

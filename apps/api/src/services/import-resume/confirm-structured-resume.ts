@@ -23,6 +23,7 @@ import type {
   PersistenceTransactionRunner,
 } from "@nuvitae/persistence";
 import type { EntityManager } from "typeorm";
+import type { ImportEventEmitter } from "../../observability/import-events.js";
 import {
   API_IMPORT_RESUME_REPOSITORY,
   API_PERSISTENCE_TRANSACTION_RUNNER,
@@ -36,6 +37,7 @@ import {
   IMPORT_STATUS_REQUEST_ID_GENERATOR,
   START_IMPORT_CLOCK,
   START_IMPORT_ID_GENERATOR,
+  START_IMPORT_PRIVACY_LOGGER,
 } from "../../import-resume/start-import.tokens.js";
 
 export type ConfirmationServiceResult<T> =
@@ -76,6 +78,8 @@ export class ConfirmStructuredResumeService {
     private readonly ids: StartImportIdGenerator,
     @Inject(IMPORT_STATUS_REQUEST_ID_GENERATOR)
     private readonly requestIds: ImportStatusRequestIdGenerator,
+    @Inject(START_IMPORT_PRIVACY_LOGGER)
+    private readonly logger: ImportEventEmitter,
   ) {}
 
   async confirm(input: {
@@ -86,8 +90,12 @@ export class ConfirmStructuredResumeService {
   }): Promise<ConfirmationServiceResult<ConfirmStructuredResumeResponse>> {
     const requestId = input.requestId ?? this.requestIds.nextRequestId();
     const parsed = confirmStructuredResumeRequestSchema.safeParse(input.body);
-    if (!parsed.success) return validationFailed(requestId);
-    return this.transactions.transaction((manager) =>
+    if (!parsed.success) {
+      const result = validationFailed(requestId);
+      this.emitConfirmationResult(result, input.importId);
+      return result;
+    }
+    const result = await this.transactions.transaction((manager) =>
       this.confirmInTransaction({
         ownerUserId: input.ownerUserId,
         importId: input.importId,
@@ -96,6 +104,8 @@ export class ConfirmStructuredResumeService {
         manager,
       }),
     );
+    this.emitConfirmationResult(result, input.importId);
+    return result;
   }
 
   async discard(input: {
@@ -106,8 +116,12 @@ export class ConfirmStructuredResumeService {
   }): Promise<ConfirmationServiceResult<DiscardImportResponse>> {
     const requestId = input.requestId ?? this.requestIds.nextRequestId();
     const parsed = discardImportRequestSchema.safeParse(input.body);
-    if (!parsed.success) return validationFailed(requestId);
-    return this.transactions.transaction((manager) =>
+    if (!parsed.success) {
+      const result = validationFailed(requestId);
+      this.emitDiscardResult(result, input.importId);
+      return result;
+    }
+    const result = await this.transactions.transaction((manager) =>
       this.discardInTransaction({
         ownerUserId: input.ownerUserId,
         importId: input.importId,
@@ -117,6 +131,8 @@ export class ConfirmStructuredResumeService {
         manager,
       }),
     );
+    this.emitDiscardResult(result, input.importId);
+    return result;
   }
 
   async readConfirmed(input: {
@@ -131,7 +147,13 @@ export class ConfirmStructuredResumeService {
       input.structuredResumeId,
       input.ownerUserId,
     );
-    if (resume === null) return notFound(requestId);
+    if (resume === null) {
+      this.logger.emit("import.resource_not_found", {
+        importId: input.structuredResumeId,
+        operation: "structured_resume",
+      });
+      return notFound(requestId);
+    }
     return {
       ok: true,
       response: confirmedStructuredResumeReadResponseSchema.parse({
@@ -381,8 +403,12 @@ export class ConfirmStructuredResumeService {
         message: "This import cannot be discarded in its current state.",
       };
     }
+    // The deletion job id is generated server-side. The client operation id
+    // remains an idempotency token only; using a client-supplied id as the
+    // deletion job primary key would let a foreign job id reparent another
+    // user's deletion row through the repository upsert.
     const job: DeletionJob = {
-      id: input.operationId,
+      id: this.ids.nextId(),
       importedDocumentId: input.importId,
       ownerUserId: input.ownerUserId,
       reason: "user_discarded_import",
@@ -404,6 +430,62 @@ export class ConfirmStructuredResumeService {
         saved.id,
       ),
     };
+  }
+
+  private emitConfirmationResult(
+    result: ConfirmationServiceResult<ConfirmStructuredResumeResponse>,
+    importId: string,
+  ): void {
+    if (result.ok) {
+      this.logger.emit("confirm.completed", {
+        importId: result.response.importId,
+        draftId: result.response.draftId,
+        requestId: result.response.requestId,
+      });
+      return;
+    }
+    if (result.code === "not_found") {
+      this.logger.emit("import.resource_not_found", {
+        importId,
+        operation: "confirm",
+      });
+      return;
+    }
+    this.logger.emit("confirm.failed", {
+      ...(result.importId === undefined ? {} : { importId: result.importId }),
+      ...(result.draftId === undefined ? {} : { draftId: result.draftId }),
+      errorCategory: result.code,
+      statusCode: result.status,
+      requestId: result.requestId,
+    });
+  }
+
+  private emitDiscardResult(
+    result: ConfirmationServiceResult<DiscardImportResponse>,
+    importId: string,
+  ): void {
+    if (result.ok) {
+      this.logger.emit("import.discarded", {
+        importId: result.response.importId,
+        deletionJobId: result.response.deletionJobId,
+        requestId: result.response.requestId,
+      });
+      return;
+    }
+    if (result.code === "not_found") {
+      this.logger.emit("import.resource_not_found", {
+        importId,
+        operation: "discard",
+      });
+      return;
+    }
+    this.logger.emit("import.discard_failed", {
+      ...(result.importId === undefined ? {} : { importId: result.importId }),
+      ...(result.draftId === undefined ? {} : { draftId: result.draftId }),
+      errorCategory: discardFailureCategory(result.code),
+      statusCode: result.status,
+      requestId: result.requestId,
+    });
   }
 }
 
@@ -462,6 +544,25 @@ function validationFailed(requestId: string): ConfirmationServiceResult<never> {
     requestId,
     message: "The request could not be accepted safely.",
   };
+}
+
+function discardFailureCategory(
+  code: string,
+):
+  | "validation_failed"
+  | "stale_review"
+  | "expired"
+  | "lifecycle_not_discardable" {
+  switch (code) {
+    case "stale_review":
+      return "stale_review";
+    case "expired":
+      return "expired";
+    case "lifecycle_not_discardable":
+      return "lifecycle_not_discardable";
+    default:
+      return "validation_failed";
+  }
 }
 
 function notFound(requestId: string): ConfirmationServiceResult<never> {
