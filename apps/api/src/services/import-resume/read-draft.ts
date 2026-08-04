@@ -18,9 +18,13 @@ import {
   type SourceLocation,
 } from "@nuvitae/domain";
 import type { ImportResumeRepository } from "@nuvitae/persistence";
+import type { ImportEventEmitter } from "../../observability/import-events.js";
 import { API_IMPORT_RESUME_REPOSITORY } from "../../persistence/api-persistence.module.js";
 import type { ImportStatusRequestIdGenerator } from "../../import-resume/import-status.ports.js";
-import { IMPORT_STATUS_REQUEST_ID_GENERATOR } from "../../import-resume/start-import.tokens.js";
+import {
+  IMPORT_STATUS_REQUEST_ID_GENERATOR,
+  START_IMPORT_PRIVACY_LOGGER,
+} from "../../import-resume/start-import.tokens.js";
 
 const sections = [
   "personal",
@@ -67,6 +71,8 @@ export class ReadImportDraftService {
     private readonly repository: ImportResumeRepository,
     @Inject(IMPORT_STATUS_REQUEST_ID_GENERATOR)
     private readonly requestIds: ImportStatusRequestIdGenerator,
+    @Inject(START_IMPORT_PRIVACY_LOGGER)
+    private readonly logger: ImportEventEmitter,
   ) {}
 
   async read(input: {
@@ -80,6 +86,10 @@ export class ReadImportDraftService {
       input.ownerUserId,
     );
     if (aggregate === null) {
+      this.logger.emit("import.resource_not_found", {
+        importId: input.importId,
+        operation: "review",
+      });
       return {
         ok: false,
         status: 404,

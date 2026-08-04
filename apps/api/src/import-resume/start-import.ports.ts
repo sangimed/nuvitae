@@ -8,6 +8,7 @@ import type {
   ImportLimitReservation,
   ImportReservationResult,
 } from "../services/import-resume/import-limits.js";
+import type { ImportEventEmitter } from "../observability/import-events.js";
 
 export interface StartImportClock {
   now(): Date;
@@ -57,10 +58,7 @@ export interface StartImportLimitPort {
   ): Promise<void>;
 }
 
-export interface StartImportPrivacyLogger {
-  info(event: string, metadata?: Readonly<Record<string, unknown>>): void;
-  warn(event: string, metadata?: Readonly<Record<string, unknown>>): void;
-}
+export type StartImportPrivacyLogger = ImportEventEmitter;
 
 export interface BufferedResumeUpload {
   readonly originalname: string;

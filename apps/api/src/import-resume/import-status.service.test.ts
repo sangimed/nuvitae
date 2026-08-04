@@ -203,6 +203,7 @@ function createHarness(options: {
   const service = new ImportStatusService(
     repository,
     { nextRequestId: () => requestId },
+    { emit: () => undefined },
     queueReader,
   );
   return { service, repository, queueReader };

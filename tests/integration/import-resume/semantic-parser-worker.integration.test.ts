@@ -301,10 +301,7 @@ describe("semantic parser worker integration", () => {
       readonly metadata: Readonly<Record<string, unknown>>;
     }[] = [];
     const logger: SemanticImportLogger = {
-      info: (event, metadata = {}) => {
-        logs.push({ event, metadata });
-      },
-      warn: (event, metadata = {}) => {
+      emit: (event, metadata) => {
         logs.push({ event, metadata });
       },
     };

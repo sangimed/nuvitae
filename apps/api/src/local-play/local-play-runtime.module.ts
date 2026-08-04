@@ -9,7 +9,7 @@ import { BullModule } from "@nestjs/bullmq";
 import { randomUUID } from "node:crypto";
 import { IMPORT_RESUME_PROCESSING_QUEUE } from "@nuvitae/contracts";
 import { LocalPrivateImportStorage } from "@nuvitae/storage";
-import { PrivacyLogger } from "../observability/privacy-logger.js";
+import { createImportEventEmitter } from "../observability/import-events.js";
 import { ApiPersistenceModule } from "../persistence/api-persistence.module.js";
 import { ImportResumeModule } from "../import-resume/import-resume.module.js";
 import { StartImportQueue } from "../import-resume/start-import.queue.js";
@@ -64,12 +64,11 @@ const localPlayProviders: Provider[] = [
   },
   {
     provide: START_IMPORT_PRIVACY_LOGGER,
-    useFactory: () =>
-      new PrivacyLogger({
-        write: (record) => {
-          console.log(JSON.stringify(record));
-        },
-      }),
+    useValue: createImportEventEmitter({
+      write: (record) => {
+        console.log(JSON.stringify(record));
+      },
+    }),
   },
   StartImportQueue,
   { provide: START_IMPORT_QUEUE_PUBLISHER, useExisting: StartImportQueue },

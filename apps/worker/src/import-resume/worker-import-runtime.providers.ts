@@ -10,6 +10,7 @@ import {
 } from "@nuvitae/extraction";
 import {
   ValidateDocumentService,
+  createImportEventEmitter,
   type ImportProcessingLimits,
 } from "@nuvitae/import-application";
 import type { ResumeSemanticParserProvider } from "@nuvitae/import-application";
@@ -19,6 +20,7 @@ import type {
 } from "@nuvitae/persistence";
 import { LocalPrivateImportStorage } from "@nuvitae/storage";
 import {
+  WORKER_IMPORT_EVENT_EMITTER,
   WORKER_IMPORT_EXTRACTION_USE_CASE,
   WORKER_IMPORT_VALIDATION_USE_CASE,
 } from "./import-processing.processor.js";
@@ -72,20 +74,19 @@ class PrivateStorageSourceReader implements ExtractionSourceReader {
   }
 }
 
-const logger = {
-  info: (event: string, metadata?: Readonly<Record<string, unknown>>) => {
-    console.log(
-      JSON.stringify({ level: "info", event, metadata: metadata ?? {} }),
-    );
+const importEventEmitter = createImportEventEmitter({
+  write: (record) => {
+    console.log(JSON.stringify(record));
   },
-  warn: (event: string, metadata?: Readonly<Record<string, unknown>>) => {
-    console.warn(
-      JSON.stringify({ level: "warn", event, metadata: metadata ?? {} }),
-    );
-  },
-};
+});
+
+const logger = importEventEmitter;
 
 export const workerImportRuntimeProviders: Provider[] = [
+  {
+    provide: WORKER_IMPORT_EVENT_EMITTER,
+    useValue: importEventEmitter,
+  },
   {
     provide: WORKER_IMPORT_PROCESSING_LIMITS,
     useFactory: () => parseWorkerImportProcessingLimits(),

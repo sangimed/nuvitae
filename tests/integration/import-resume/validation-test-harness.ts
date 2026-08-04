@@ -88,8 +88,7 @@ export function createValidationHarness(): ValidationHarness {
   };
   const logs: ValidationHarness["logs"] = [];
   const logger: ValidateDocumentPrivacyLogger = {
-    info: (event, metadata = {}) => logs.push({ event, metadata }),
-    warn: (event, metadata = {}) => logs.push({ event, metadata }),
+    emit: (event, metadata) => logs.push({ event, metadata }),
   };
   let requestSequence = 1;
   let clockSequence = 0;

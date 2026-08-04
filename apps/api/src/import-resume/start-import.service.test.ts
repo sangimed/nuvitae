@@ -225,9 +225,9 @@ describe("StartImportService", () => {
     expect(error).toMatchObject({ status: 500, code: "internal_failure" });
     expect(JSON.stringify(error)).not.toContain("database");
     expect(JSON.stringify(error)).not.toContain("filesystem");
-    expect(harness.logger.warn).toHaveBeenCalledWith(
-      "import.storage_compensation_failed",
-      expect.objectContaining({ importId }),
+    expect(harness.logger.emit).toHaveBeenCalledWith(
+      "import.storage_delete_failed",
+      expect.objectContaining({ importId, retryable: true }),
     );
     expect(harness.limits.rollbackReservation).toHaveBeenCalledOnce();
   });
@@ -368,11 +368,9 @@ function createHarness(
   };
   const logRecords: unknown[] = [];
   const logger: StartImportPrivacyLogger & {
-    info: ReturnType<typeof vi.fn>;
-    warn: ReturnType<typeof vi.fn>;
+    emit: ReturnType<typeof vi.fn>;
   } = {
-    info: vi.fn((event, metadata) => logRecords.push({ event, metadata })),
-    warn: vi.fn((event, metadata) => logRecords.push({ event, metadata })),
+    emit: vi.fn((event, metadata) => logRecords.push({ event, metadata })),
   };
   const service = new StartImportService(
     repository,

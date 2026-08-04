@@ -17,7 +17,10 @@ import {
 import {
   generateSemanticWarnings,
   mapSemanticCandidates,
+  serializeSemanticValidationDiagnostic,
   validateSemanticResponse,
+  type ImportEventEmitter,
+  type ImportEventMetadataFor,
   type ResumeSemanticParserProvider,
 } from "@nuvitae/import-application";
 import type {
@@ -38,8 +41,7 @@ export interface SemanticImportProcessorPorts {
 }
 
 export interface SemanticImportLogger {
-  info(event: string, metadata?: Readonly<Record<string, unknown>>): void;
-  warn(event: string, metadata?: Readonly<Record<string, unknown>>): void;
+  emit: ImportEventEmitter["emit"];
 }
 
 export class SemanticImportProcessor {
@@ -49,8 +51,7 @@ export class SemanticImportProcessor {
   constructor(private readonly ports: SemanticImportProcessorPorts) {
     this.clock = ports.clock ?? { now: () => new Date() };
     this.logger = ports.logger ?? {
-      info: () => undefined,
-      warn: () => undefined,
+      emit: () => undefined,
     };
   }
 
@@ -75,7 +76,15 @@ export class SemanticImportProcessor {
     await this.transition(document, "semantic_parsing_running");
     if (!this.ports.provider) {
       await this.transition(document, "provider_unavailable");
-      this.log("provider_unavailable", document, started, 0, 0, true);
+      this.emitSemanticOutcome(
+        document,
+        started,
+        "provider_unavailable",
+        true,
+        0,
+        0,
+        input.correlationId,
+      );
       return;
     }
 
@@ -89,13 +98,14 @@ export class SemanticImportProcessor {
           document,
           extracted.cancelled ? "cancelled" : "failed",
         );
-        this.log(
-          extracted.cancelled ? "cancelled" : "extraction_failed",
+        this.emitSemanticOutcome(
           document,
           started,
-          0,
-          0,
+          extracted.cancelled ? "cancelled" : "extraction_failed",
           extracted.cancelled,
+          0,
+          0,
+          input.correlationId,
         );
         return;
       }
@@ -108,9 +118,25 @@ export class SemanticImportProcessor {
       );
       if (!requestResult.success) {
         await this.transition(document, "semantic_response_invalid");
-        this.log("request_invalid", document, started, 0, 0, false);
+        this.emitSemanticOutcome(
+          document,
+          started,
+          "request_invalid",
+          false,
+          0,
+          0,
+          input.correlationId,
+        );
         return;
       }
+      this.logger.emit("semantic.provider_invocation_started", {
+        importId: document.id,
+        contractVersion: resumeSemanticParserContractVersion,
+        ...(requestResult.data.correlationId === null ||
+        requestResult.data.correlationId === undefined
+          ? {}
+          : { correlationId: requestResult.data.correlationId }),
+      });
       const providerResult = await this.ports.provider.parse(
         requestResult.data,
         {
@@ -129,13 +155,14 @@ export class SemanticImportProcessor {
               ? "provider_unavailable"
               : "semantic_response_invalid",
         );
-        this.log(
-          providerResult.error.code,
+        this.emitSemanticOutcome(
           document,
           started,
-          0,
-          0,
+          providerResult.error.code,
           providerResult.error.retryable,
+          0,
+          0,
+          input.correlationId,
         );
         return;
       }
@@ -143,14 +170,27 @@ export class SemanticImportProcessor {
         request: requestResult.data,
         response: providerResult.response,
       });
-      this.log(
-        "validated",
+      const accepted = validation.accepted && validation.response !== null;
+      this.emitSemanticOutcome(
         document,
         started,
+        accepted ? "accepted" : "invalid_provider_response",
+        false,
         validation.response ? countValues(validation.response) : 0,
         validation.diagnostics.length,
-        false,
+        input.correlationId,
       );
+      for (const diagnostic of validation.diagnostics.slice(0, 20)) {
+        this.logger.emit(
+          "semantic.validation_diagnostics",
+          serializeSemanticValidationDiagnostic(diagnostic, {
+            importId: document.id,
+            ...(input.correlationId === undefined
+              ? {}
+              : { correlationId: input.correlationId }),
+          }),
+        );
+      }
       if (!validation.accepted || !validation.response) {
         await this.transition(document, "semantic_validation_failed");
         return;
@@ -205,14 +245,27 @@ export class SemanticImportProcessor {
           { ...current.document, processingStatus: "ready_for_review" },
           manager,
         );
+        this.logger.emit("review.draft_created", {
+          importId: document.id,
+          draftId: draftResult.draft!.id,
+          status:
+            draftResult.draft!.status === "ready_to_confirm"
+              ? "ready_to_confirm"
+              : "review_required",
+          fieldCountBucket: bucket(draftResult.draft!.fields.length),
+          warningCountBucket: bucket(draftResult.draft!.warnings.length),
+        });
       });
     } catch (error) {
       const cancelled = input.abortSignal?.aborted === true;
       await this.transition(document, cancelled ? "cancelled" : "failed");
-      this.logger.warn("semantic_import_failed", {
+      this.logger.emit("import.unexpected_failure", {
         importId: document.id,
-        outcome: cancelled ? "cancelled" : "unexpected_failure",
+        errorCategory: "unexpected_failure",
         retryable: !cancelled,
+        ...(input.correlationId === undefined
+          ? {}
+          : { correlationId: input.correlationId }),
       });
       void error;
     }
@@ -239,6 +292,7 @@ export class SemanticImportProcessor {
           cancelled: result.error.category === "cancelled",
         };
       fragments = fragmentsFromPdf(result.value as readonly PdfPageText[]);
+      this.emitTranscriptNormalized(document, fragments);
     } else {
       const result = await this.ports.docxTextExtractor.extractText({
         importId: document.id,
@@ -253,8 +307,23 @@ export class SemanticImportProcessor {
           cancelled: result.error.category === "cancelled",
         };
       fragments = fragmentsFromDocx(result.value);
+      this.emitTranscriptNormalized(document, fragments);
     }
     return { ok: true as const, fragments };
+  }
+
+  private emitTranscriptNormalized(
+    document: ImportedDocument,
+    fragments: readonly ResumeSourceFragment[],
+  ): void {
+    this.logger.emit("extraction.transcript_normalized", {
+      importId: document.id,
+      documentFormat: document.fileExtension === "docx" ? "docx" : "pdf",
+      fragmentCountBucket: bucket(fragments.length),
+      lineCountBucket: bucket(
+        fragments.filter((fragment) => fragment.text.trim().length > 0).length,
+      ),
+    });
   }
 
   private async transition(
@@ -275,28 +344,29 @@ export class SemanticImportProcessor {
     });
   }
 
-  private log(
-    outcome: string,
+  private emitSemanticOutcome(
     document: ImportedDocument,
     started: Date,
+    outcome: ImportEventMetadataFor<"semantic.outcome">["outcome"],
+    retryable: boolean,
     values: number,
     diagnostics: number,
-    retryable: boolean,
+    correlationId?: string,
   ): void {
-    this.logger.info("semantic_import_outcome", {
+    this.logger.emit("semantic.outcome", {
       importId: document.id,
-      contractVersion: resumeSemanticParserContractVersion,
       outcome,
       retryable,
       valueCountBucket: bucket(values),
       diagnosticCountBucket: bucket(diagnostics),
-      durationBucket: bucket(
+      durationBucket: durationBucket(
         Math.max(0, this.clock.now().getTime() - started.getTime()),
       ),
+      ...(correlationId === undefined ? {} : { correlationId }),
     });
   }
 }
-function bucket(value: number): string {
+function bucket(value: number): "0-4" | "5-19" | "20-99" | "100+" {
   return value < 5
     ? "0-4"
     : value < 20
@@ -304,6 +374,14 @@ function bucket(value: number): string {
       : value < 100
         ? "20-99"
         : "100+";
+}
+function durationBucket(
+  milliseconds: number,
+): "under_100ms" | "under_1s" | "under_10s" | "10s_or_more" {
+  if (milliseconds < 100) return "under_100ms";
+  if (milliseconds < 1_000) return "under_1s";
+  if (milliseconds < 10_000) return "under_10s";
+  return "10s_or_more";
 }
 function countValues(response: NuvitaeSemanticExtractionResponse): number {
   return JSON.stringify(response.sections).match(/"value"/gu)?.length ?? 0;

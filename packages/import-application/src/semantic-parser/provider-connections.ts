@@ -8,6 +8,10 @@ import type {
   ProviderRuntimeConnectionStatus,
 } from "@nuvitae/domain";
 import type { AIProviderRuntimeConnectionsRepository } from "@nuvitae/persistence";
+import type {
+  ImportEventEmitter,
+  ImportEventMetadataFor,
+} from "../observability/import-events.js";
 
 /**
  * Provider-neutral session store port consumed by provider adapters and by the
@@ -165,7 +169,13 @@ export interface ProviderConnectionServicePorts {
   readonly repository: AIProviderRuntimeConnectionsRepository;
   readonly sessionStore: ProviderSessionStore;
   readonly adapter: ProviderRuntimeConnectionAdapter;
+  readonly logger?: ImportEventEmitter;
 }
+
+type ProviderConnectionLookupOperation =
+  ImportEventMetadataFor<"provider_connection.lookup_failed">["operation"];
+type ProviderConnectionLookupCategory =
+  ImportEventMetadataFor<"provider_connection.lookup_failed">["errorCategory"];
 
 const activeSessionStatuses: readonly ProviderRuntimeConnectionStatus[] = [
   "connected",
@@ -207,6 +217,7 @@ export class ProviderConnectionService {
     const connection = await this.requireActiveByOwner(
       ownerUserId,
       connectionId,
+      "status",
     );
     let inspection: ProviderAdapterInspection;
     try {
@@ -257,11 +268,12 @@ export class ProviderConnectionService {
         if (raced !== null) {
           connection = raced;
         } else {
+          this.emitLookupFailure(connectionId, "connect", "not_found", false);
           throw new ProviderConnectionError("provider_connection_not_found");
         }
       }
     }
-    this.assertNotDeleted(connection);
+    this.assertNotDeleted(connection, "connect");
     if (connection.connectionStatus === "connected") {
       return toStatusView(connection, null);
     }
@@ -306,6 +318,7 @@ export class ProviderConnectionService {
     const connection = await this.requireActiveByOwner(
       ownerUserId,
       connectionId,
+      "complete_login",
     );
     if (connection.connectionStatus !== "login_pending") {
       throw new ProviderConnectionError("provider_connection_state_conflict");
@@ -359,6 +372,7 @@ export class ProviderConnectionService {
     const connection = await this.requireActiveByOwner(
       ownerUserId,
       connectionId,
+      "cancel_login",
     );
     if (connection.connectionStatus === "login_cancelled") {
       return toStatusView(connection, null);
@@ -392,6 +406,7 @@ export class ProviderConnectionService {
     const connection = await this.requireActiveByOwner(
       ownerUserId,
       connectionId,
+      "reconnect",
     );
     if (connection.connectionStatus === "connected") {
       return toStatusView(connection, null);
@@ -451,6 +466,7 @@ export class ProviderConnectionService {
   ): Promise<ProviderConnectionStatusView> {
     const connection = await this.findByOwner(ownerUserId, connectionId);
     if (connection === null || connection.deletedAt !== null) {
+      this.emitLookupFailure(connectionId, "disconnect", "not_found", false);
       throw new ProviderConnectionError("provider_connection_not_found");
     }
     if (
@@ -498,6 +514,7 @@ export class ProviderConnectionService {
   ): Promise<ProviderConnectionStatusView> {
     const connection = await this.findByOwner(ownerUserId, connectionId);
     if (connection === null || connection.deletedAt !== null) {
+      this.emitLookupFailure(connectionId, "revoke", "not_found", false);
       throw new ProviderConnectionError("provider_connection_not_found");
     }
     if (connection.connectionStatus === "authentication_revoked") {
@@ -542,6 +559,7 @@ export class ProviderConnectionService {
   ): Promise<ProviderConnectionStatusView> {
     const connection = await this.findByOwner(ownerUserId, connectionId);
     if (connection === null) {
+      this.emitLookupFailure(connectionId, "delete", "not_found", false);
       return {
         connectionId,
         providerKind: "unknown",
@@ -634,6 +652,7 @@ export class ProviderConnectionService {
     const connection = await this.requireActiveByOwner(
       ownerUserId,
       connectionId,
+      "refresh_capabilities",
     );
     let capabilities: ProviderRuntimeCapabilities;
     try {
@@ -663,6 +682,7 @@ export class ProviderConnectionService {
     const connection = await this.requireActiveByOwner(
       ownerUserId,
       connectionId,
+      "refresh_quota",
     );
     let quota: ProviderAdapterQuotaResult;
     try {
@@ -701,19 +721,39 @@ export class ProviderConnectionService {
   private async requireActiveByOwner(
     ownerUserId: string,
     connectionId: string,
+    operation: ProviderConnectionLookupOperation,
   ): Promise<AIProviderRuntimeConnection> {
     const connection = await this.findByOwner(ownerUserId, connectionId);
     if (connection === null) {
+      this.emitLookupFailure(connectionId, operation, "not_found", false);
       throw new ProviderConnectionError("provider_connection_not_found");
     }
-    this.assertNotDeleted(connection);
+    this.assertNotDeleted(connection, operation);
     return connection;
   }
 
-  private assertNotDeleted(connection: AIProviderRuntimeConnection): void {
+  private assertNotDeleted(
+    connection: AIProviderRuntimeConnection,
+    operation: ProviderConnectionLookupOperation,
+  ): void {
     if (connection.deletedAt !== null) {
+      this.emitLookupFailure(connection.id, operation, "deleted", false);
       throw new ProviderConnectionError("provider_connection_deleted");
     }
+  }
+
+  private emitLookupFailure(
+    connectionId: string,
+    operation: ProviderConnectionLookupOperation,
+    errorCategory: ProviderConnectionLookupCategory,
+    retryable: boolean,
+  ): void {
+    this.ports.logger?.emit("provider_connection.lookup_failed", {
+      connectionId,
+      operation,
+      errorCategory,
+      retryable,
+    });
   }
 
   private async createConnection(

@@ -7,6 +7,7 @@ import {
 import type { ImportDraft, ImportedDocument } from "@nuvitae/domain";
 import type { ImportResumeRepository } from "@nuvitae/persistence";
 import { z } from "zod";
+import type { ImportEventEmitter } from "../observability/import-events.js";
 import { API_IMPORT_RESUME_REPOSITORY } from "../persistence/api-persistence.module.js";
 import type {
   ImportStatusQueueReader,
@@ -15,6 +16,7 @@ import type {
 import {
   IMPORT_STATUS_QUEUE_READER,
   IMPORT_STATUS_REQUEST_ID_GENERATOR,
+  START_IMPORT_PRIVACY_LOGGER,
 } from "./start-import.tokens.js";
 
 const stepOrder = [
@@ -43,6 +45,8 @@ export class ImportStatusService {
     private readonly repository: ImportResumeRepository,
     @Inject(IMPORT_STATUS_REQUEST_ID_GENERATOR)
     private readonly requestIds: ImportStatusRequestIdGenerator,
+    @Inject(START_IMPORT_PRIVACY_LOGGER)
+    private readonly logger: ImportEventEmitter,
     @Optional()
     @Inject(IMPORT_STATUS_QUEUE_READER)
     private readonly queueReader: ImportStatusQueueReader | undefined,
@@ -60,6 +64,10 @@ export class ImportStatusService {
     );
 
     if (aggregate === null) {
+      this.logger.emit("import.resource_not_found", {
+        importId: input.importId,
+        operation: "status",
+      });
       return parseStatus({
         requestId,
         importId: input.importId,

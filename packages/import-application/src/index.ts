@@ -1,4 +1,5 @@
 export type { ImportProcessingLimits } from "./import-processing-limits.js";
+export * from "./observability/import-events.js";
 export * from "./process-extraction.js";
 export * from "./semantic-parser/provider-errors.js";
 export * from "./semantic-parser/provider-connections.js";

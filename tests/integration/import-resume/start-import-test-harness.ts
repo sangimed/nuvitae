@@ -157,9 +157,7 @@ export async function createHttpHarness(options: HarnessOptions = {}): Promise<{
     {
       provide: START_IMPORT_PRIVACY_LOGGER,
       useValue: {
-        info: (event: string, metadata: unknown) =>
-          logs.push({ event, metadata }),
-        warn: (event: string, metadata: unknown) =>
+        emit: (event: string, metadata: unknown) =>
           logs.push({ event, metadata }),
       },
     },

@@ -84,6 +84,9 @@ export class StartImportService {
       createdAt,
     );
     if (!reservation.allowed) {
+      this.logger.emit("import.rate_limited", {
+        retryAfterSeconds: reservation.retryAfterSeconds,
+      });
       throw mapLimitDenial(reservation);
     }
 
@@ -101,6 +104,9 @@ export class StartImportService {
         reservation.reservation.id,
         createdAt,
       );
+      this.logger.emit("import.upload_rejected", {
+        errorCategory: uploadRejectionCategory(error),
+      });
       throw error;
     }
 
@@ -133,6 +139,10 @@ export class StartImportService {
     try {
       await this.storage.writeObject(storageKey, input.content);
     } catch {
+      this.logger.emit("import.storage_write_failed", {
+        importId,
+        retryable: true,
+      });
       await this.rollbackFailedCreation(
         input.ownerUserId,
         reservation.reservation.id,
@@ -158,9 +168,9 @@ export class StartImportService {
         await this.storage.deleteObject(storageKey);
       } catch {
         compensationFailed = true;
-        this.logger.warn("import.storage_compensation_failed", {
+        this.logger.emit("import.storage_delete_failed", {
           importId,
-          errorCategory: "storage_compensation_failed",
+          retryable: true,
         });
       }
       await this.rollbackFailedCreation(
@@ -261,7 +271,7 @@ export class StartImportService {
         createdAt,
       );
     } catch {
-      this.logger.warn("import.limit_release_failed", {
+      this.logger.emit("import.limit_release_failed", {
         importId,
         errorCategory: "limit_release_failed",
       });
@@ -285,14 +295,14 @@ export class StartImportService {
     };
     const parsed = importInitializationResponseSchema.safeParse(candidate);
     if (!parsed.success) {
-      this.logger.warn("import.response_contract_failed", {
+      this.logger.emit("import.response_contract_failed", {
         importId,
         errorCategory: "response_contract_failed",
       });
       throw new StartImportResponseContractError();
     }
 
-    this.logger.info("import.created", {
+    this.logger.emit("import.created", {
       importId,
       statusCode: 201,
       fileSizeBucket: sizeBucket(upload.sizeBytes),
@@ -319,9 +329,9 @@ export class StartImportService {
         }
       });
     } catch {
-      this.logger.warn("import.queue_publication_state_failed", {
+      this.logger.emit("import.queue_publication_failed", {
         importId,
-        errorCategory: "queue_publication_state_failed",
+        errorCategory: "queue_publication_failed",
       });
     }
   }
@@ -350,7 +360,7 @@ export class StartImportService {
     try {
       await this.limits.rollbackReservation(ownerUserId, reservationId, now);
     } catch {
-      this.logger.warn("import.limit_rollback_failed", {
+      this.logger.emit("import.limit_rollback_failed", {
         errorCategory: "limit_rollback_failed",
       });
       throw new StartImportHttpError(
@@ -500,8 +510,30 @@ function mapLimitDenial(denial: {
       );
 }
 
-function sizeBucket(sizeBytes: number): string {
+function sizeBucket(
+  sizeBytes: number,
+): "under_1_mib" | "1_to_5_mib" | "5_to_10_mib" {
   if (sizeBytes < 1024 * 1024) return "under_1_mib";
   if (sizeBytes < 5 * 1024 * 1024) return "1_to_5_mib";
   return "5_to_10_mib";
+}
+
+function uploadRejectionCategory(
+  error: unknown,
+):
+  | "unsupported_format"
+  | "empty_file"
+  | "oversized_file"
+  | "unsafe_upload_metadata" {
+  if (error instanceof StartImportHttpError) {
+    switch (error.code) {
+      case "unsupported_format":
+        return "unsupported_format";
+      case "empty_file":
+        return "empty_file";
+      case "oversized_file":
+        return "oversized_file";
+    }
+  }
+  return "unsafe_upload_metadata";
 }
