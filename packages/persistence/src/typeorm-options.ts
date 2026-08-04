@@ -1,10 +1,12 @@
 import type { TypeOrmModuleOptions } from "@nestjs/typeorm";
 import type { DataSourceOptions } from "typeorm";
 import { persistenceEntities } from "./entities/import-resume.entities.js";
+import { semanticParserPersistenceEntities } from "./entities/semantic-parser.entities.js";
 import { InitialImportResumePersistence1722168000000 } from "./migrations/1722168000000-InitialImportResumePersistence.js";
 import { ManualStructuredResumeDrafts1722254400000 } from "./migrations/1722254400000-ManualStructuredResumeDrafts.js";
 import { ImportDraftReviewRevision1722340800000 } from "./migrations/1722340800000-ImportDraftReviewRevision.js";
 import { SemanticImportProcessingStates1722427200000 } from "./migrations/1722427200000-SemanticImportProcessingStates.js";
+import { SemanticParserPersistence1722513600000 } from "./migrations/1722513600000-SemanticParserPersistence.js";
 
 export interface PersistenceConfig {
   readonly host: string;
@@ -136,12 +138,13 @@ export function createTypeOrmOptions(
     database: config.database,
     ssl: config.ssl,
     logging: config.logging,
-    entities: [...persistenceEntities],
+    entities: [...persistenceEntities, ...semanticParserPersistenceEntities],
     migrations: [
       InitialImportResumePersistence1722168000000,
       ManualStructuredResumeDrafts1722254400000,
       ImportDraftReviewRevision1722340800000,
       SemanticImportProcessingStates1722427200000,
+      SemanticParserPersistence1722513600000,
     ],
     migrationsTableName: "typeorm_migrations",
     migrationsRun: false,
