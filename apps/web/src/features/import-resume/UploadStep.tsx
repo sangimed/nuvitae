@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useEffect,
   useId,
   useRef,
   useState,
@@ -8,6 +9,8 @@ import {
   type FormEvent,
 } from "react";
 import { ProviderDisclosure } from "./ProviderDisclosure";
+import { ErrorSummary } from "./ErrorSummary";
+import { focusErrorSummary } from "./focus-management";
 
 const maximumFileSizeBytes = 10 * 1024 * 1024;
 const allowedExtensions = [".pdf", ".docx"] as const;
@@ -26,8 +29,17 @@ export function UploadStep(props: {
   const inputId = useId();
   const guidanceId = useId();
   const errorId = useId();
-  const errorRef = useRef<HTMLParagraphElement>(null);
+  const summaryRef = useRef<HTMLDivElement>(null);
   const [localError, setLocalError] = useState<string | undefined>();
+  const previousErrorRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    const nextError = localError ?? props.serverError;
+    if (nextError !== undefined && nextError !== previousErrorRef.current) {
+      focusErrorSummary(summaryRef.current);
+    }
+    previousErrorRef.current = nextError;
+  }, [localError, props.serverError]);
 
   function updateFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
@@ -35,7 +47,6 @@ export function UploadStep(props: {
     if (error !== undefined) {
       props.onFileSelected(undefined);
       setLocalError(messageForUploadError(error));
-      window.setTimeout(() => errorRef.current?.focus(), 0);
       return;
     }
     setLocalError(undefined);
@@ -49,7 +60,6 @@ export function UploadStep(props: {
     const error = validateLocalFile(file);
     if (error !== undefined || file === undefined) {
       setLocalError(messageForUploadError(error ?? "upload_failed"));
-      window.setTimeout(() => errorRef.current?.focus(), 0);
       return;
     }
     props.onSubmit(file);
@@ -86,17 +96,23 @@ export function UploadStep(props: {
       <ProviderDisclosure />
 
       <form className="upload-form" onSubmit={submit} noValidate>
-        {error === undefined ? null : (
-          <p
-            id={errorId}
-            ref={errorRef}
-            className="message message-error"
-            tabIndex={-1}
-            role="alert"
-          >
-            {error}
-          </p>
-        )}
+        <ErrorSummary
+          ref={summaryRef}
+          id={errorId}
+          heading="The file could not be uploaded"
+          errors={
+            error === undefined
+              ? []
+              : [
+                  {
+                    id: "upload-error",
+                    message: error,
+                    targetId: inputId,
+                    fieldLabel: "Resume file",
+                  },
+                ]
+          }
+        />
         <label className="file-label" htmlFor={inputId}>
           Resume file
         </label>
@@ -107,6 +123,7 @@ export function UploadStep(props: {
           aria-describedby={
             error === undefined ? guidanceId : `${guidanceId} ${errorId}`
           }
+          aria-invalid={error === undefined ? undefined : "true"}
           onChange={updateFile}
           disabled={props.busy}
         />

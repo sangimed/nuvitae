@@ -36,6 +36,7 @@
     "@vitest/coverage-v8": "4.1.10",
     "eslint": "10.0.1",
     "globals": "17.8.0",
+    "jsdom": "^30.0.1",
     "prettier": "3.9.6",
     "reflect-metadata": "0.2.2",
     "turbo": "2.10.7",

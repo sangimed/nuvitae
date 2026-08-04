@@ -169,9 +169,14 @@ test.describe("import resume upload and progress accessibility", () => {
     await page.goto("/import-resume");
     await page.getByRole("button", { name: "Import my resume" }).click();
     await page.getByRole("button", { name: "Upload and start import" }).click();
-    const error = page.getByText("Choose a resume file before");
-    await expect(error).toBeVisible();
-    await expect(error).toBeFocused();
+    const summary = page.getByRole("alert", {
+      name: "The file could not be uploaded",
+    });
+    await expect(summary).toBeVisible();
+    await expect(
+      summary.getByText("Choose a resume file before"),
+    ).toBeVisible();
+    await expect(summary).toBeFocused();
   });
 
   test("preserves recovery actions on upload failure and supports manual navigation", async ({

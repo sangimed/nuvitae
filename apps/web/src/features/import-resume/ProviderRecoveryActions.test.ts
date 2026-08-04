@@ -421,7 +421,7 @@ describe("ProviderRecoveryActions (T176)", () => {
     expect(markup).toContain("Enter manually");
   });
 
-  it("renders keyboard-operable controls with accessible names and status semantics", () => {
+  it("renders keyboard-operable controls with accessible names and a focusable recovery section", () => {
     const markup = renderRecovery({
       state: "rate_limited",
       actions: [
@@ -438,9 +438,10 @@ describe("ProviderRecoveryActions (T176)", () => {
     const labelledBy = markup.match(/aria-labelledby="([^"]+)"/)?.[1];
     expect(labelledBy).toBeDefined();
     expect(markup).toContain(`<h2 id="${labelledBy}">`);
-    expect(markup).toContain('role="status"');
-    expect(markup).toContain('aria-live="polite"');
-    expect(markup).toContain('aria-atomic="true"');
+    expect(markup).toContain('tabindex="-1"');
+    expect(markup).toContain(
+      "The AI provider is receiving too many requests right now.",
+    );
   });
 
   it("wires actions to the existing callbacks and manual-entry route", async () => {

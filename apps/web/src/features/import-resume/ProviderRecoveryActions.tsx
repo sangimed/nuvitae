@@ -1,7 +1,9 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import type { LimitedDeterministicFallbackDisclosure } from "@nuvitae/contracts";
+import { ErrorSummary } from "./ErrorSummary";
+import { focusErrorSummary, focusRecoverySection } from "./focus-management";
 
 /**
  * T176 - provider recovery UI.
@@ -48,6 +50,7 @@ export interface ProviderRecoveryActionsProps {
   readonly alternativeProviderAvailable: boolean;
   readonly fallbackDisclosure?: LimitedDeterministicFallbackDisclosure;
   readonly busy?: boolean;
+  readonly error?: string | undefined;
   readonly onRetry?: () => void;
   readonly onReconnect?: () => void;
   readonly onChooseAnotherProvider?: () => void;
@@ -256,6 +259,10 @@ const actionLabels: Readonly<Record<ProviderRecoveryAction, string>> = {
 export function ProviderRecoveryActions(props: ProviderRecoveryActionsProps) {
   const titleId = useId();
   const fallbackTitleId = useId();
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const summaryRef = useRef<HTMLDivElement | null>(null);
+  const previousStateRef = useRef<ProviderRecoveryState | undefined>(undefined);
+  const previousErrorRef = useRef<string | undefined>(undefined);
   const content = recoveryStateContent[props.state];
   const offered = offeredActions(props);
 
@@ -265,6 +272,22 @@ export function ProviderRecoveryActions(props: ProviderRecoveryActionsProps) {
       ? content.primaryAction
       : offered[0];
 
+  useEffect(() => {
+    // Newly rendered recovery panels receive focus only when the recovery
+    // state appears or transitions, so repeated renders never steal focus.
+    if (previousStateRef.current !== props.state) {
+      previousStateRef.current = props.state;
+      focusRecoverySection(sectionRef.current);
+    }
+  }, [props.state]);
+
+  useEffect(() => {
+    if (props.error !== undefined && props.error !== previousErrorRef.current) {
+      focusErrorSummary(summaryRef.current);
+    }
+    previousErrorRef.current = props.error;
+  }, [props.error]);
+
   return (
     <section
       className="import-card"
@@ -272,17 +295,27 @@ export function ProviderRecoveryActions(props: ProviderRecoveryActionsProps) {
       aria-describedby={
         props.fallbackDisclosure === undefined ? undefined : fallbackTitleId
       }
+      ref={sectionRef}
+      tabIndex={-1}
     >
       <p className="eyebrow">Resume import</p>
       <h2 id={titleId}>{content.title}</h2>
-      <div
-        className="status-live"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        <p>{content.explanation}</p>
-      </div>
+      <p>{content.explanation}</p>
+
+      <ErrorSummary
+        ref={summaryRef}
+        heading="The recovery action could not be completed"
+        errors={
+          props.error === undefined
+            ? []
+            : [
+                {
+                  id: "provider-recovery-error",
+                  message: props.error,
+                },
+              ]
+        }
+      />
 
       {props.fallbackDisclosure === undefined ? null : (
         <div className="message" aria-labelledby={fallbackTitleId}>

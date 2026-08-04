@@ -14,7 +14,13 @@ import {
   sendReviewMutation,
 } from "../../services/import-resume/review-client";
 import { ConfirmationStep } from "./ConfirmationStep";
+import { ErrorSummary } from "./ErrorSummary";
 import { FieldProvenance } from "./FieldProvenance";
+import {
+  focusErrorSummary,
+  focusNextLogicalHeading,
+  focusTarget,
+} from "./focus-management";
 import { ReviewWarning } from "./ReviewWarning";
 
 export function ReviewStep(props: { readonly importId: string }) {
@@ -32,8 +38,24 @@ export function ReviewStep(props: { readonly importId: string }) {
   >();
   const [message, setMessage] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
-  const errorRef = useRef<HTMLDivElement | null>(null);
+  const summaryRef = useRef<HTMLDivElement | null>(null);
   const liveRef = useRef<HTMLDivElement | null>(null);
+  const shellRef = useRef<HTMLElement | null>(null);
+  const finalizedRef = useRef<HTMLDivElement | null>(null);
+  const previousErrorRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (finalized !== undefined) {
+      focusTarget(finalizedRef.current);
+    }
+  }, [finalized]);
+
+  useEffect(() => {
+    if (error !== undefined && error !== previousErrorRef.current) {
+      focusErrorSummary(summaryRef.current);
+    }
+    previousErrorRef.current = error;
+  }, [error]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -49,7 +71,6 @@ export function ReviewStep(props: { readonly importId: string }) {
         setError(undefined);
       } else if (outcome.category !== "cancelled") {
         setError(outcome.message);
-        window.setTimeout(() => errorRef.current?.focus(), 0);
       }
     });
     return () => controller.abort();
@@ -80,7 +101,7 @@ export function ReviewStep(props: { readonly importId: string }) {
     if (outcome.ok) {
       setDraft(outcome.response.draft);
       setMessage(outcome.response.userMessage);
-      window.setTimeout(() => liveRef.current?.focus(), 0);
+      focusNextLogicalHeading(shellRef.current);
       return;
     }
     setDraft(snapshot);
@@ -91,7 +112,6 @@ export function ReviewStep(props: { readonly importId: string }) {
     } else {
       setError(outcome.message);
     }
-    window.setTimeout(() => errorRef.current?.focus(), 0);
   }
 
   if (loading) {
@@ -107,15 +127,25 @@ export function ReviewStep(props: { readonly importId: string }) {
     return (
       <section className="import-card" aria-labelledby="review-error-title">
         <h1 id="review-error-title">Review unavailable</h1>
-        <div tabIndex={-1} ref={errorRef} role="alert">
-          {error ?? "This import is not ready for review yet."}
-        </div>
+        <ErrorSummary
+          ref={summaryRef}
+          errors={[
+            {
+              id: "review-load-error",
+              message: error ?? "This import is not ready for review yet.",
+            },
+          ]}
+        />
       </section>
     );
   }
 
   return (
-    <section className="review-shell" aria-labelledby="review-title">
+    <section
+      className="review-shell"
+      aria-labelledby="review-title"
+      ref={shellRef}
+    >
       <p className="eyebrow">Import review</p>
       <h1 id="review-title">Review imported resume</h1>
       <div
@@ -129,12 +159,22 @@ export function ReviewStep(props: { readonly importId: string }) {
         {pending ? "Saving review change." : message}
       </div>
       {finalized === undefined ? null : finalized.kind === "confirmed" ? (
-        <div className="message message-success" role="status">
+        <div
+          ref={finalizedRef}
+          className="message message-success"
+          role="status"
+          tabIndex={-1}
+        >
           {finalized.message}{" "}
           <a href={finalized.resumeUrl}>Open structured resume</a>
         </div>
       ) : (
-        <div className="message message-success" role="status">
+        <div
+          ref={finalizedRef}
+          className="message message-success"
+          role="status"
+          tabIndex={-1}
+        >
           <p>{finalized.message}</p>
           <div className="action-row">
             <a href="/import-resume">Start a new import</a>
@@ -143,14 +183,16 @@ export function ReviewStep(props: { readonly importId: string }) {
         </div>
       )}
       {error === undefined ? null : (
-        <div
-          className="message message-error"
-          ref={errorRef}
-          tabIndex={-1}
-          role="alert"
-        >
-          {error}
-        </div>
+        <ErrorSummary
+          ref={summaryRef}
+          heading="The review change could not be saved"
+          errors={[
+            {
+              id: "review-error",
+              message: error,
+            },
+          ]}
+        />
       )}
 
       <dl className="status-list compact">

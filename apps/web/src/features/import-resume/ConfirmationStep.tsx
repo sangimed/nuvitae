@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ReviewDraftReadResponse } from "@nuvitae/contracts";
+import { AccessibleDialog } from "../../components/AccessibleDialog";
 import {
   confirmStructuredResume,
   createConfirmationOperationId,
@@ -12,6 +13,8 @@ import {
   createDiscardRequest,
   discardImportDraft,
 } from "../../services/import-resume/draft-lifecycle-client";
+import { ErrorSummary } from "./ErrorSummary";
+import { focusErrorSummary } from "./focus-management";
 
 export function ConfirmationStep(props: {
   readonly importId: string;
@@ -26,18 +29,17 @@ export function ConfirmationStep(props: {
   const [message, setMessage] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
   const actionRef = useRef<HTMLButtonElement | null>(null);
+  const confirmPrimaryRef = useRef<HTMLButtonElement | null>(null);
+  const discardPrimaryRef = useRef<HTMLButtonElement | null>(null);
   const errorRef = useRef<HTMLDivElement | null>(null);
+  const previousErrorRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    if (dialog === undefined || pending) return;
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      setDialog(undefined);
-      actionRef.current?.focus();
-    };
-    document.addEventListener("keydown", closeOnEscape);
-    return () => document.removeEventListener("keydown", closeOnEscape);
-  }, [dialog, pending]);
+    if (error !== undefined && error !== previousErrorRef.current) {
+      focusErrorSummary(errorRef.current);
+    }
+    previousErrorRef.current = error;
+  }, [error]);
 
   const unresolvedSections = props.draft.sections.filter((section) =>
     section.warnings.some((warning) => warning.reviewStatus === "needs_review"),
@@ -71,7 +73,6 @@ export function ConfirmationStep(props: {
     } else {
       setError(outcome.message);
     }
-    window.setTimeout(() => errorRef.current?.focus(), 0);
   }
 
   async function runDiscard() {
@@ -93,7 +94,11 @@ export function ConfirmationStep(props: {
       return;
     }
     setError(outcome.message);
-    window.setTimeout(() => errorRef.current?.focus(), 0);
+  }
+
+  function closeDialog() {
+    setDialog(undefined);
+    setError(undefined);
   }
 
   return (
@@ -156,24 +161,22 @@ export function ConfirmationStep(props: {
           Discard import
         </button>
       </div>
-      {dialog === undefined ? null : (
-        <div
-          className="dialog-backdrop"
-          role="presentation"
-          onKeyDown={(event) => {
-            if (event.key === "Escape" && !pending) {
-              setDialog(undefined);
-              actionRef.current?.focus();
-            }
-          }}
-        >
-          <div
-            className="dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`${dialog}-dialog-title`}
-            aria-describedby={`${dialog}-dialog-description`}
-          >
+      <AccessibleDialog
+        open={dialog !== undefined}
+        label={
+          dialog === "confirm" ? "Confirm resume creation" : "Discard import"
+        }
+        describedBy={`${dialog ?? "dialog"}-dialog-description`}
+        closeOnEscape
+        closeOnBackdropClick={false}
+        destructive={dialog === "discard"}
+        initialFocus={
+          dialog === "confirm" ? confirmPrimaryRef : discardPrimaryRef
+        }
+        onClose={closeDialog}
+      >
+        {dialog === undefined ? null : (
+          <>
             <h3 id={`${dialog}-dialog-title`}>
               {dialog === "confirm"
                 ? "Confirm resume creation"
@@ -184,18 +187,25 @@ export function ConfirmationStep(props: {
                 ? "Nuvitae will create a new structured resume. The uploaded source and temporary artifacts are not modified and keep their original retention deadline."
                 : "Nuvitae will discard this unconfirmed draft and schedule source cleanup. Deletion is not complete immediately, and an already confirmed resume would not be deleted by this action."}
             </p>
-            {error === undefined ? null : (
-              <div
-                className="message message-error"
-                role="alert"
-                tabIndex={-1}
-                ref={errorRef}
-              >
-                {error}
-              </div>
-            )}
+            <ErrorSummary
+              ref={errorRef}
+              heading="The action could not be completed"
+              errors={
+                error === undefined
+                  ? []
+                  : [
+                      {
+                        id: "confirmation-error",
+                        message: error,
+                      },
+                    ]
+              }
+            />
             <div className="action-row">
               <button
+                ref={
+                  dialog === "confirm" ? confirmPrimaryRef : discardPrimaryRef
+                }
                 type="button"
                 className={
                   dialog === "confirm"
@@ -215,18 +225,14 @@ export function ConfirmationStep(props: {
                 type="button"
                 className="secondary-button"
                 disabled={pending}
-                onClick={() => {
-                  setDialog(undefined);
-                  setError(undefined);
-                  actionRef.current?.focus();
-                }}
+                onClick={closeDialog}
               >
                 Cancel
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </AccessibleDialog>
     </section>
   );
 }

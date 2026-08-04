@@ -297,10 +297,10 @@
 
 ### Implementation for User Story 5
 
-- [ ] T060 [P] [US5] Implement shared accessible dialog wrapper for confirmation, retry, cancellation, discard, and deletion flows in `apps/web/src/components/AccessibleDialog.tsx`
-- [ ] T061 [P] [US5] Implement reusable import status live region component in `apps/web/src/features/import-resume/ImportStatusLiveRegion.tsx`
-- [ ] T062 [P] [US5] Implement import error summary and focus management utilities in `apps/web/src/features/import-resume/ErrorSummary.tsx` and `apps/web/src/features/import-resume/focus-management.ts`
-- [ ] T063 [US5] Apply accessible names, keyboard handlers, visible focus states, non-colour warning treatment, and focus restoration across import components in `apps/web/src/features/import-resume/ImportFlow.tsx`
+- [x] T060 [P] [US5] Implement shared accessible dialog wrapper for confirmation, retry, cancellation, discard, and deletion flows in `apps/web/src/components/AccessibleDialog.tsx`
+- [x] T061 [P] [US5] Implement reusable import status live region component in `apps/web/src/features/import-resume/ImportStatusLiveRegion.tsx`
+- [x] T062 [P] [US5] Implement import error summary and focus management utilities in `apps/web/src/features/import-resume/ErrorSummary.tsx` and `apps/web/src/features/import-resume/focus-management.ts`
+- [x] T063 [US5] Apply accessible names, keyboard handlers, visible focus states, non-colour warning treatment, and focus restoration across import components in `apps/web/src/features/import-resume/ImportFlow.tsx`
 
 **Checkpoint**: User Story 5 is independently testable as an accessibility and recovery layer over the import flow.
 
