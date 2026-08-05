@@ -337,6 +337,11 @@ function evaluateSelectedModelText(modelText, artifacts) {
         : 0,
       null_for_absent_fields_count: absentCount,
       source_grounding_pass: matrix.metrics.grounding_pass,
+      provenance_enrichment_applicable: matrix.enrichment.applicable,
+      provenance_enrichment_mapped_count: matrix.enrichment.mapped_evidence_count,
+      provenance_enrichment_failure_count: matrix.enrichment.failure_count,
+      provenance_enrichment_consistency_pass:
+        matrix.enrichment.consistency_pass,
     },
     error_categories: matrix.errors,
   };

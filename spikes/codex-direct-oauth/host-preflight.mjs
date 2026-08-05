@@ -60,7 +60,16 @@ function compose(args, { env = {} } = {}) {
   return new Promise((resolve) => {
     const child = spawn("docker", ["compose", "-p", projectName, "-f", "compose.yml", ...args], {
       cwd: root,
-      env: { ...process.env, ...env },
+      env: {
+        ...process.env,
+        // The compose file interpolates every service, including the
+        // Campaign-B t201-semantic service that requires an immutable image
+        // reference. Preflight never builds or uses that image, so a fixed
+        // non-empty placeholder keeps interpolation from failing the loopback
+        // readiness check.
+        NUVITAE_T201_IMMUTABLE_IMAGE: "unused-preflight",
+        ...env,
+      },
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "";

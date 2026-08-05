@@ -182,6 +182,58 @@
       "evidence": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b01-semantic-parsing.json",
       "fixture_sha256": "d195a3f0c2597ba29ae1127a10d049f9a2a557de25e5c9cf5c5d91648c9464e3",
       "manifest_sha256": "1c7f21deb799fa278e324142054d882c3f8ff70a2f741e1fa91ba87851f61c43"
+    },
+    {
+      "campaign": "T201-C04-B",
+      "attempt": "B02",
+      "semantic_case": "T201-C04",
+      "maximum_live_broker_runs": 1,
+      "maximum_semantic_backend_requests": 1,
+      "automatic_retries": 0,
+      "fixture": "spikes/codex-direct-oauth/fixtures/t201-matrix/t201-c04.txt",
+      "manifest": "spikes/codex-direct-oauth/fixtures/t201-matrix/t201-c04.manifest.json",
+      "evidence": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b02-semantic-parsing.json",
+      "fixture_sha256": "d195a3f0c2597ba29ae1127a10d049f9a2a557de25e5c9cf5c5d91648c9464e3",
+      "manifest_sha256": "1c7f21deb799fa278e324142054d882c3f8ff70a2f741e1fa91ba87851f61c43"
+    },
+    {
+      "campaign": "T201-C04-B",
+      "attempt": "B03",
+      "semantic_case": "T201-C04",
+      "maximum_live_broker_runs": 1,
+      "maximum_semantic_backend_requests": 1,
+      "automatic_retries": 0,
+      "fixture": "spikes/codex-direct-oauth/fixtures/t201-matrix/t201-c04.txt",
+      "manifest": "spikes/codex-direct-oauth/fixtures/t201-matrix/t201-c04.manifest.json",
+      "evidence": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+      "fixture_sha256": "d195a3f0c2597ba29ae1127a10d049f9a2a557de25e5c9cf5c5d91648c9464e3",
+      "manifest_sha256": "1c7f21deb799fa278e324142054d882c3f8ff70a2f741e1fa91ba87851f61c43"
+    },
+    {
+      "campaign": "T201-C05-B",
+      "attempt": "B01",
+      "semantic_case": "T201-C05",
+      "maximum_live_broker_runs": 1,
+      "maximum_semantic_backend_requests": 1,
+      "automatic_retries": 0,
+      "fixture": "spikes/codex-direct-oauth/fixtures/t201-matrix/t201-c05.txt",
+      "manifest": "spikes/codex-direct-oauth/fixtures/t201-matrix/t201-c05.manifest.json",
+      "evidence": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+      "fixture_sha256": "bf6621dba7f00ab47a79830543d604f3777c9ee3590e404bcb7259411e3f13e6",
+      "manifest_sha256": "06f04a66a3b91a8e8de8ff44882d68a9c852c099f9ba3fce6db9fca32c3f61ed"
+    },
+    {
+      "campaign": "T201-C06-B",
+      "attempt": "B01",
+      "semantic_case": "T201-C06",
+      "maximum_live_broker_runs": 1,
+      "maximum_semantic_backend_requests": 1,
+      "automatic_retries": 0,
+      "fixture": "spikes/codex-direct-oauth/fixtures/t201-matrix/t201-c06.txt",
+      "manifest": "spikes/codex-direct-oauth/fixtures/t201-matrix/t201-c06.manifest.json",
+      "evidence": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+      "fixture_sha256": "62a042e6d550742810c60ace8feb9eb477245d30251bc5516c6955ac2d373ebd",
+      "manifest_sha256": "f69069c3f89bdf5bdca7a8ebb0b91e7c7d7dcab4f2f5faa010a550e882209928"
     }
   ]
 }

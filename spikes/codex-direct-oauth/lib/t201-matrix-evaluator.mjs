@@ -10,11 +10,7 @@ import {
   evaluateT201DocumentLanguage,
   sourceGroundedManifestFacts,
 } from "./t201-semantic-evaluator.mjs";
-import {
-  buildT201PdfCoordinateMapping,
-  physicalCoordinatesForEvidence,
-  validateT201PdfEvidenceMapping,
-} from "./t201-pdf-coordinate-mapping.mjs";
+import { evaluateT201ProvenanceEnrichment } from "./t201-document-provenance-enrichment.mjs";
 
 const CASE_ROOT = path.resolve(
   path.dirname(new URL(import.meta.url).pathname),
@@ -263,14 +259,8 @@ export function buildValidT201MatrixResult(fixture, manifest) {
     ambiguities: [],
     warnings: [],
   };
-  const pdfMapping =
-    manifest.extraction_format?.kind === "deterministic_pdf_text"
-      ? buildT201PdfCoordinateMapping(fixture)
-      : null;
   const wrap = (fact) => {
     const evidence = evidenceForManifestFact(lines, fact);
-    if (pdfMapping)
-      evidence.physical = physicalCoordinatesForEvidence(pdfMapping, evidence);
     return { value: fact.value, evidence: [evidence] };
   };
   for (const fact of manifest.exact_facts) {
@@ -347,18 +337,6 @@ export function evaluateT201MatrixCase({ caseId, fixture, manifest, output }) {
       ) {
         invalidEvidence += 1;
         errors.add("provenance_category_mismatch");
-        return false;
-      }
-      if (manifest.extraction_format?.kind === "deterministic_pdf_text") {
-        const mapping = buildT201PdfCoordinateMapping(fixture);
-        if (!validateT201PdfEvidenceMapping(mapping, evidence)) {
-          invalidEvidence += 1;
-          errors.add("evidence_coordinate_mismatch");
-          return false;
-        }
-      } else if (Object.hasOwn(evidence, "physical")) {
-        invalidEvidence += 1;
-        errors.add("evidence_coordinate_mismatch");
         return false;
       }
       const fragment = evidenceFragment(lines, evidence);
@@ -509,9 +487,15 @@ export function evaluateT201MatrixCase({ caseId, fixture, manifest, output }) {
       ambiguityHandling.pass &&
       absentPass,
   };
+  const enrichment = evaluateT201ProvenanceEnrichment({
+    fixture,
+    manifest,
+    output,
+  }).status;
   return {
     case_id: caseId,
     metrics,
+    enrichment,
     fixture_hash: fixtureHash(fixture),
     language_category: manifest.language_category,
     source_format_category: manifest.source_format_category,

@@ -16,9 +16,11 @@ import {
   validateT201Schema,
 } from "../lib/t201-semantic-evaluator.mjs";
 import {
-  buildT201PdfCoordinateMapping,
-  validateT201PdfEvidenceMapping,
-} from "../lib/t201-pdf-coordinate-mapping.mjs";
+  enrichT201Output,
+  enrichSingleEvidence,
+  evaluateT201ProvenanceEnrichment,
+} from "../lib/t201-document-provenance-enrichment.mjs";
+import { buildT201PdfCoordinateMapping } from "../lib/t201-pdf-coordinate-mapping.mjs";
 
 async function c02() {
   return loadT201MatrixCase("T201-C02");
@@ -197,47 +199,155 @@ test("T201 v2 requires every declared absent scalar to be explicit null and reje
   assert.equal(invented.metrics.parsing_pass, false);
 });
 
-test("T201 v2 validates PDF physical coordinates against flattened evidence and fails closed", async () => {
+test("T201 v2 model output is flattened-only and physical coordinates are deterministic post-enrichment", async () => {
   const item = await loadT201MatrixCase("T201-C04");
   const output = buildValidT201MatrixResult(item.fixture, item.manifest);
   const evidence = output.work_experiences[0].employer.evidence[0];
-  const mapping = buildT201PdfCoordinateMapping(item.fixture);
-  assert.equal(validateT201PdfEvidenceMapping(mapping, evidence), true);
-  assert.equal(evidence.physical.mapping_version, 1);
-  assert.equal(evidence.physical.page, 1);
-  assert.equal(evidence.physical.item, 8);
+  // Golden model output carries no physical provenance at all.
+  assert.equal(Object.hasOwn(evidence, "physical"), false);
+  assert.deepEqual(
+    Object.keys(evidence).sort(),
+    ["category", "end", "fragment_hash", "line", "start"],
+  );
+  const baseline = evaluateT201MatrixCase({ ...item, output });
+  assert.equal(baseline.metrics.schema_valid, true);
+  assert.equal(baseline.metrics.parsing_pass, true);
+  assert.equal(baseline.metrics.invalid_evidence_count, 0);
 
-  evidence.physical.item = 999;
-  const invalidItem = evaluateT201MatrixCase({ ...item, output });
-  assert.equal(invalidItem.metrics.parsing_pass, false);
-  assert.ok(invalidItem.errors.includes("evidence_coordinate_mismatch"));
+  // Model output containing physical coordinates is rejected by the schema.
+  const withPhysical = structuredClone(output);
+  withPhysical.work_experiences[0].employer.evidence[0].physical = {
+    mapping_version: 1,
+    page: 1,
+    item: 8,
+    start: 0,
+    end: 5,
+  };
+  const schemaResult = validateT201Schema(withPhysical);
+  assert.equal(schemaResult.ok, false);
+  const rejected = evaluateT201MatrixCase({ ...item, output: withPhysical });
+  assert.equal(rejected.metrics.schema_valid, false);
+  assert.equal(rejected.metrics.parsing_pass, false);
+
+  // Deterministic post-enrichment maps the flattened evidence to PDF
+  // page/item/offset without changing semantic results.
+  const { enrichedOutput, status } = enrichT201Output(output, {
+    fixture: item.fixture,
+    manifest: item.manifest,
+  });
+  assert.equal(status.applicable, "pdf");
+  assert.equal(status.mapped_evidence_count > 0, true);
+  assert.equal(status.failure_count, 0);
+  const enrichedEvidence =
+    enrichedOutput.work_experiences[0].employer.evidence[0];
+  assert.equal(enrichedEvidence.physical.mapping_version, 1);
+  assert.equal(enrichedEvidence.physical.page, 1);
+  assert.equal(enrichedEvidence.physical.item, 8);
+  assert.equal(enrichedEvidence.physical.end > enrichedEvidence.physical.start, true);
 
   const c05 = await loadT201MatrixCase("T201-C05");
   const c05Output = buildValidT201MatrixResult(c05.fixture, c05.manifest);
-  assert.equal(
-    evaluateT201MatrixCase({ ...c05, output: c05Output }).metrics.parsing_pass,
-    true,
-  );
+  const c05Result = evaluateT201MatrixCase({ ...c05, output: c05Output });
+  assert.equal(c05Result.metrics.parsing_pass, true);
+  const c05Enrichment = evaluateT201ProvenanceEnrichment({
+    fixture: c05.fixture,
+    manifest: c05.manifest,
+    output: c05Output,
+  });
+  assert.equal(c05Enrichment.status.applicable, "pdf");
+  assert.equal(c05Enrichment.status.consistency_pass, true);
+
   const c06 = await loadT201MatrixCase("T201-C06");
   const c06Output = buildValidT201MatrixResult(c06.fixture, c06.manifest);
-  assert.equal(
-    Object.hasOwn(c06Output.basics.full_name.evidence[0], "physical"),
-    false,
-  );
+  const c06Enrichment = evaluateT201ProvenanceEnrichment({
+    fixture: c06.fixture,
+    manifest: c06.manifest,
+    output: c06Output,
+  });
+  assert.equal(c06Enrichment.status.applicable, "docx");
+  assert.equal(c06Enrichment.status.consistency_pass, true);
+  const docxEvidence =
+    c06Enrichment.enrichedOutput.basics.full_name.evidence[0];
+  assert.equal(docxEvidence.ooxml.part, "word/document.xml");
+  assert.equal(docxEvidence.ooxml.paragraph, 1);
+  assert.equal(docxEvidence.ooxml.style, "Title");
+});
 
-  const multiPage = buildT201PdfCoordinateMapping(
-    "[page=1 item=001] first item\n[page=2 item=001] second item\n",
-  );
-  const secondPageEvidence = {
-    line: 2,
-    start: 18,
-    end: 24,
-    physical: { mapping_version: 1, page: 2, item: 1, start: 0, end: 6 },
+test("T201 provenance enrichment handles multi-page, multi-item, and multi-column ordering deterministically", async () => {
+  const fixture =
+    "[page=1 column=left item=001] alpha\n" +
+    "[page=1 column=right item=002] beta\n" +
+    "[page=2 column=left item=001] gamma\n" +
+    "[page=2 column=right item=002] delta\n";
+  const manifest = {
+    extraction_format: { kind: "deterministic_pdf_text" },
   };
-  assert.equal(
-    validateT201PdfEvidenceMapping(multiPage, secondPageEvidence),
-    true,
+  const mapping = buildT201PdfCoordinateMapping(fixture);
+  const secondPageEntry = mapping.get(3);
+  const secondPageEvidence = {
+    line: 3,
+    start: secondPageEntry.content_start,
+    end: secondPageEntry.content_start + 5,
+  };
+  const enriched = enrichSingleEvidence(secondPageEvidence, {
+    fixture,
+    manifest,
+  });
+  assert.equal(enriched.mapped, true);
+  assert.equal(enriched.provenance.physical.page, 2);
+  assert.equal(enriched.provenance.physical.item, 1);
+  assert.equal(enriched.provenance.physical.start, 0);
+  assert.equal(enriched.provenance.physical.end, 5);
+  assert.equal(mapping.get(1).item, 1);
+  assert.equal(mapping.get(2).item, 2);
+  assert.equal(mapping.get(3).item, 1);
+  assert.equal(mapping.get(4).item, 2);
+});
+
+test("T201 invalid deterministic mapping is an enrichment failure, not a semantic hallucination", async () => {
+  const item = await loadT201MatrixCase("T201-C04");
+  const output = buildValidT201MatrixResult(item.fixture, item.manifest);
+  const semantic = evaluateT201MatrixCase({ ...item, output });
+  assert.equal(semantic.metrics.parsing_pass, true);
+  assert.equal(semantic.metrics.invalid_evidence_count, 0);
+
+  // An evidence line outside the deterministic mapping cannot be enriched,
+  // but that never changes the semantic result.
+  const outOfRange = structuredClone(output);
+  outOfRange.basics.full_name.evidence[0].line = 999;
+  const enrichment = evaluateT201ProvenanceEnrichment({
+    fixture: item.fixture,
+    manifest: item.manifest,
+    output: outOfRange,
+  });
+  assert.equal(enrichment.status.consistency_pass, false);
+  assert.ok(enrichment.status.failures.includes("pdf_line_not_in_mapping"));
+
+  // A deterministic mapping producing an invalid physical range is reported
+  // as an enrichment failure rather than semantic hallucination.
+  const badFixture =
+    "[page=0 item=000] x\n" + item.fixture.split("\n").slice(1).join("\n");
+  const single = enrichSingleEvidence(
+    { line: 1, start: 18, end: 19 },
+    { fixture: badFixture, manifest: item.manifest },
   );
+  assert.equal(single.mapped, false);
+  assert.equal(single.failure, "invalid_physical_mapping");
+});
+
+test("T201 plain-text cases require no physical provenance", async () => {
+  const item = await loadT201MatrixCase("T201-C02");
+  const output = buildValidT201MatrixResult(item.fixture, item.manifest);
+  const semantic = evaluateT201MatrixCase({ ...item, output });
+  assert.equal(semantic.metrics.parsing_pass, true);
+  const enrichment = evaluateT201ProvenanceEnrichment({
+    fixture: item.fixture,
+    manifest: item.manifest,
+    output,
+  });
+  assert.equal(enrichment.status.applicable, "none");
+  assert.equal(enrichment.status.mapped_evidence_count, 0);
+  assert.equal(enrichment.status.consistency_pass, true);
 });
 
 test("T201 C04 deterministic offline golden output preserves its required quality gates", async () => {

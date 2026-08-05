@@ -513,7 +513,7 @@ function validateEvidence(value, errors, at) {
   if (
     !assertKeys(
       value,
-      ["line", "start", "end", "fragment_hash", "category", "physical"],
+      ["line", "start", "end", "fragment_hash", "category"],
       ["line", "start", "end", "fragment_hash", "category"],
       errors,
       at,
