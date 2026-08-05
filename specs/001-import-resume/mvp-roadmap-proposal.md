@@ -5,6 +5,17 @@
 **Date**: 2026-08-05
 **Nature**: Analysis and documentation only. No production code modified, no task checkbox changed.
 
+> **SUPERSEDED (2026-08-05, same day)**: The hosted-first recommendation in this
+> proposal (managed-AI import as the first MVP shape; pausing direct-Codex OAuth)
+> was superseded by the approved Community-first strategic direction recorded in
+> `spec.md`, `plan.md`, `research.md`, `tasks.md`, and
+> `contracts/import-resume.md`. Nuvitae Community (self-hosted, Docker-first,
+> powered by the user's own Codex access through direct OAuth) is the first MVP
+> release; direct Codex OAuth is the production primary AI path; hosted managed
+> AI is deferred to a later commercial edition. This proposal is retained
+> verbatim as historical analysis and MUST NOT override the official Spec Kit
+> artifacts.
+
 ---
 
 ## 1. Executive recommendation
