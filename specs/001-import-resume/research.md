@@ -167,3 +167,62 @@ The development workspace image contains pinned Node.js, Corepack, pnpm, and sha
 **Rationale**: The riskiest behavior is not only extraction accuracy; it includes provider authentication, non-interactive invocation, strict output shape, evidence quality, invented-field rate, authorization, parser safety, source deletion, expiry, logging, rate limits, quota/subscription failures, timeout recovery, warning resolution, and accessible review. Fixtures must cover English, French, bilingual, one-column, multi-column, unsupported, hostile, partial, mixed-content, no-supported-field, and malformed documents.
 
 **Alternatives considered**: Happy-path-only upload tests were rejected because they would miss release-blocking privacy, safety, failure, and accessibility requirements.
+
+---
+
+# Community MVP Research Update (2026-08-05)
+
+The approved strategic direction is product-first: Nuvitae Community is the first MVP. The decisions below supersede the earlier architecture-first/hardening-first assumptions in this research file only where noted; earlier decisions remain valid except as amended.
+
+## Decision: Ship Nuvitae Community as the first MVP (product-first, not architecture-first)
+
+**Rationale**: The import→review→confirm journey is implemented and tested, but no real user can complete it today: production wiring registers no AI provider, so uploads terminate at `provider_unavailable`. The highest-value next move is one decisive vertical slice that makes the product promise real for a real user — not continued hardening. Community (self-hosted, Docker-first, free, user's own Codex access) proves the complete AI-powered resume experience with minimal business risk before a hosted commercial edition is built.
+
+**Alternatives considered**: A private hosted alpha with managed AI was rejected as the first release because it builds hosted infrastructure before the product promise is proven, and a hardening-first continuation was rejected because it does not produce a usable product. The hosted commercial edition remains the later product, not the MVP.
+
+## Decision: Make direct Codex OAuth the production primary AI path for the Community MVP
+
+**Rationale**: Community is powered by the user's own Codex access. Direct Codex OAuth (browser Authorization Code with PKCE through a dedicated broker) is the only path that lets a self-hoster use their existing ChatGPT subscription without pasting API keys, and the T196-T200 spike proved the essential mechanics in a bounded local mode. Codex OAuth is therefore MVP-critical and part of onboarding, not paused or optional.
+
+**Alternatives considered**: Managed hosted AI as the first provider path was rejected because it is the deferred commercial product. API-key onboarding as the primary journey was rejected because it is not viable for non-technical users and contradicts the Community promise. A provider marketplace before the Codex journey works was rejected as over-generalization.
+
+## Decision: Do not make API-key onboarding the primary Community journey
+
+**Rationale**: The Community promise is that a non-technical user can install Nuvitae, connect their own Codex, and create a resume. Requiring users to locate and paste API keys, subscriptions, or provider credentials is a developer-oriented onboarding that fails the target user.
+
+**Alternatives considered**: API-key provider onboarding remains a possible advanced/self-host option later but is not on the Community critical path.
+
+## Decision: Reuse the validated direct-OAuth spike evidence where it qualifies, preserving its honest limits
+
+**Rationale**: The T196-T200 spike is substantial reusable evidence for the Community path: T196 pinned upstream audit, T197 security design and broker topology, T198 browser OAuth login proof, T199 encrypted credential lifecycle (persistence, refresh, single-flight, logout, deletion), and T200 minimal direct invocation (HTTP 200 with valid SSE and the `NUVITAE_T200_OK` marker). These prove the OAuth mechanics and broker credential boundary in the supported local Docker Desktop, same-host-browser mode.
+
+**Gaps that remain before production Community use (preserved honestly)**:
+- T201 is incomplete: C01-C03 passed canonical live validation, C04 B01 failed under its original physical-coordinate contract (corrected offline by T205/T208 deterministic enrichment), C04 B02 and further C04 live attempts remain unauthorized, and C05 (multi-column PDF) and C06 (DOCX) remain unexecuted. Real PDF/DOCX semantic quality through Codex is therefore not yet proven.
+- T202 (evaluation) and T203 (GO/CONDITIONAL GO/NO-GO) remain blocked by T201; no production GO exists.
+- The loopback OAuth callback is proven only for a local Docker host with a same-host browser. Remote, VPS, NAS, and headless self-hosting onboarding is unproven and is a significant open product question for the Docker-first Community distribution.
+- The direct `chatgpt.com/backend-api/codex` transport is undocumented or compatibility-sensitive for third-party use; upstream changes may break compatibility.
+- No task is marked complete merely because Community depends on it, and the Community product decision does not authorize production adapter code (T164/T165 remain blocked).
+
+## Decision: Keep one authoritative semantic parsing path; do not over-generalize providers before the Codex Community journey works
+
+**Rationale**: The Community MVP must have exactly one production semantic path — the validated Codex direct-OAuth adapter behind `ResumeSemanticParserProvider` — plus a bounded deterministic fallback. Adding local models, OpenAI-compatible endpoints, a marketplace, or multiple production providers before the Codex journey works multiplies risk without Community value.
+
+**Alternatives considered**: A provider abstraction remains (the import domain depends only on the Nuvitae-owned boundary), but it is a boundary, not a mandate to ship many adapters in the MVP.
+
+## Decision: Defer hosted managed AI to a later commercial edition
+
+**Rationale**: Hosted managed AI is the commercial product's differentiator and a large infrastructure investment. Building it into the Community MVP makes the free self-hosted product depend on commercial infrastructure and delays the product promise. It is explicitly deferred and must not be added to the Community critical path.
+
+**Alternatives considered**: Running Community on hosted managed AI was rejected as a dependency inversion.
+
+## Decision: Treat visual maturity as necessary for valid product testing
+
+**Rationale**: A developer-looking prototype (bare status cards, raw enum text, 92-button review screens, no shell, no preview) cannot validate the Community product promise with non-technical users. The MVP must meet a FlowCV-calibre UI/UX standard (coherent shell, modern typography and spacing, clear navigation, designed states, preview/export fidelity, responsive behavior) before usability testing is meaningful. The T093/T097 non-technical-UX regressions and usability protocol depend on this.
+
+**Alternatives considered**: Shipping the functional prototype and polishing later was rejected because the usability evidence would be invalid and the product would fail the non-technical promise.
+
+## Decision: Use vertical slices instead of hardening-first sequencing
+
+**Rationale**: The previous task graph front-loaded deep US4/US6 hardening and a provider spike before any usable product existed. Community replaces that sequencing with five demoable vertical tranches (setup + real Codex import → credible resume + PDF → visual editor → reversible Codex editing → alpha readiness), each with backend, UI, recovery, responsive, Docker, and end-to-end demonstration criteria. Hardening tasks remain preserved but are deferred or scheduled after the visible product works.
+
+**Alternatives considered**: A hardening-first sequence was rejected because it produces no testable product for a non-technical user and delays the exact moment when the product promise becomes real.
