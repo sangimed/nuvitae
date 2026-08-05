@@ -316,13 +316,13 @@
 
 - [x] T064 [P] [US6] Add authorization isolation tests for imported documents, drafts, fields, warnings, artifacts, deletion jobs, and structured resumes in `tests/security/import-resume/authorization-isolation.security.test.ts`
 - [ ] T065 [P] [US6] Add rate-limit and concurrent-work tests for upload and extraction attempts in `tests/security/import-resume/rate-limits.security.test.ts`
-- [ ] T066 [P] [US6] Add hostile document safety tests for macros, scripts, active objects, links, hidden text, prompt injection, malformed files, and parser isolation in `tests/security/import-resume/hostile-documents.security.test.ts`
+- [x] T066 [P] [US6] Add hostile document safety tests for macros, scripts, active objects, links, hidden text, prompt injection, malformed files, and parser isolation in `tests/security/import-resume/hostile-documents.security.test.ts`
 - [ ] T067 [P] [US6] Add deletion and retention verification tests for source files, raw text, snippets, page references, thumbnails, cached parsing output, embeddings, and minimal provenance in `tests/security/import-resume/deletion-retention.security.test.ts`
 - [x] T068 [P] [US6] Add privacy logging test proving full resumes, source snippets, uploaded files, credentials, prompts, tokens, and unnecessary personal data are excluded from logs in `tests/security/import-resume/privacy-logging.security.test.ts`
 - [ ] T109 [P] [US6] Add hard parser memory enforcement tests proving 512 MiB excess terminates the isolated parser process and creates no review draft from abrupt partial output in `tests/security/import-resume/parser-memory-limit.security.test.ts`
 - [ ] T110 [P] [US6] Add timeout enforcement tests proving the 3-minute foreground limit returns only threshold-qualified partial results with retry, replacement-upload, and manual-entry options in `tests/security/import-resume/parser-timeout.security.test.ts`
 - [ ] T111 [P] [US6] Add per-user active-job, queued-job, upload-attempt, processing-start, HTTP 429, and Retry-After behavior tests in `tests/security/import-resume/rate-limit-retry-after.security.test.ts`
-- [ ] T112 [P] [US6] Add parser isolation tests proving one terminated memory-limit or timeout job does not affect another user's or same user's independent job in `tests/security/import-resume/parser-job-isolation.security.test.ts`
+- [x] T112 [P] [US6] Add parser isolation tests proving one terminated memory-limit or timeout job does not affect another user's or same user's independent job in `tests/security/import-resume/parser-job-isolation.security.test.ts`
 - [ ] T113 [P] [US6] Add cleanup tests proving files, converted DOCX PDFs, raw text, snippets, page references, cached parser output, and temporary contact data are deleted after resource-limit failure in `tests/security/import-resume/resource-failure-cleanup.security.test.ts`
 - [ ] T138 [P] [US6] Add duplicate-upload tests proving same-file and materially identical uploads create independent imports, count against rolling limits, do not merge drafts, do not share source-reconstructing artifacts, and keep independent retention deadlines in `tests/security/import-resume/duplicate-uploads.security.test.ts`
 - [ ] T135 [P] [US6] Add deletion race and idempotency tests for processing-active deletion, already-deleted source, confirmed structured resume, scheduled retention job, repeated cancel/discard/delete requests, and no retention extension in `tests/security/import-resume/deletion-races.security.test.ts`
@@ -331,7 +331,7 @@
 
 - [x] T069 [US6] Enforce ownership checks on all import REST controllers and services in `apps/api/src/import-resume/import-resume.module.ts`
 - [ ] T070 [US6] Implement rate-limit and concurrent-work enforcement with 5 attempts per rolling 10 minutes, 1 active job, 2 queued jobs, HTTP 429, Retry-After where applicable, and plain-language recovery messages in `apps/api/src/services/import-resume/import-limits.ts`
-- [ ] T071 [US6] Implement parser-container isolation, no-execution safeguards, prompt-injection ignoring, 512 MiB hard memory enforcement, timeout termination, and no abrupt partial-output commit behavior in `packages/extraction/src/safety.ts`
+- [x] T071 [US6] Implement parser-container isolation, no-execution safeguards, prompt-injection ignoring, 512 MiB hard memory enforcement, timeout termination, and no abrupt partial-output commit behavior in `packages/extraction/src/safety.ts`
 - [ ] T072 [US6] Implement source deletion service for source documents and all source-reconstructing artifacts in `apps/api/src/services/import-resume/delete-source.ts`
 - [ ] T073 [US6] Implement NestJS standalone retention worker processor for 7-day expiry and deletion verification in `apps/worker/src/import-resume/import-retention.processor.ts`
 - [ ] T074 [P] [US6] Implement delete source UI and privacy-safe confirmation copy in `apps/web/src/features/import-resume/DeleteSourceControl.tsx`

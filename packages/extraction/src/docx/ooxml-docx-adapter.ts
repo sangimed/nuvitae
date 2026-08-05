@@ -19,6 +19,17 @@ import {
   succeeded,
   throwIfAborted,
 } from "../extraction-failures.js";
+import { scanTextForHostileContent } from "../safety.js";
+
+const structuralDangerCategories = new Set([
+  "script",
+  "macro",
+  "ole_object",
+  "entity_expansion",
+  "path_traversal",
+  "launch_action",
+  "embedded_file",
+]);
 
 const contentTypesPart = "[Content_Types].xml";
 const rootRelationshipsPart = "_rels/.rels";
@@ -88,6 +99,13 @@ export class OoxmlDocxAdapter implements DocxDeterministicTextExtractor {
         throw new ExtractionOperationError("corrupted");
       }
       const result = parseDocumentXml(documentXml, this.limits);
+      const allText = result
+        .flatMap((paragraph) => paragraph.runs.map((run) => run.text))
+        .join(" ");
+      const hostile = scanTextForHostileContent(allText);
+      if (hostile.some((cat) => structuralDangerCategories.has(cat))) {
+        throw new ExtractionOperationError("unsupported");
+      }
       return succeeded(Object.freeze(result));
     } catch (error) {
       return failed(mapDocxFailure(error, request.abortSignal));
