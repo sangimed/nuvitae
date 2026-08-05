@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { UnrecoverableError } from "bullmq";
 import type { ImportedDocument } from "@nuvitae/domain";
 import { IMPORT_RESUME_JOB_NAMES } from "@nuvitae/contracts";
+import { ProcessingStartDeniedError } from "@nuvitae/import-application";
 import { ImportProcessingProcessor } from "./import-processing.processor.js";
 
 const ownerUserId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -23,7 +24,7 @@ function document(overrides: Partial<ImportedDocument> = {}): ImportedDocument {
     processingStatus: "queued",
     deletionStatus: "not_scheduled",
     createdAt: now,
-    retentionExpiresAt: new Date("2026-08-05T09:30:00.000Z"),
+    retentionExpiresAt: new Date("2030-01-01T00:00:00.000Z"),
     ...overrides,
   };
 }
@@ -171,6 +172,54 @@ describe("ImportProcessingProcessor", () => {
     ]);
     expect(JSON.stringify(value.updateProgress.mock.calls)).not.toContain(
       "resume.pdf",
+    );
+  });
+
+  it("emits closed limit events and retries when processing start is denied", async () => {
+    const events = { emit: vi.fn() };
+    const capacity = {
+      admitToProcessing: vi.fn(async () => ({ kind: "denied" as const })),
+      releaseCapacity: vi.fn(async () => undefined),
+    };
+    const repository = {
+      findImportByOwner: vi.fn(async () => ({
+        document: document({ validationStatus: "accepted" }),
+        artifacts: [],
+      })),
+      findDraftByImportAndOwner: vi.fn(async () => null),
+      saveImportLifecycle: vi.fn(async (value: ImportedDocument) => value),
+    };
+    const transactionRunner = {
+      transaction: vi.fn(async (work: (manager: object) => Promise<unknown>) =>
+        work({}),
+      ),
+    };
+    const extraction = {
+      process: vi.fn(async () => {
+        throw new ProcessingStartDeniedError();
+      }),
+    };
+    const processor = new ImportProcessingProcessor(
+      repository as never,
+      transactionRunner as never,
+      { validate: vi.fn() } as never,
+      extraction as never,
+      { add: vi.fn() } as never,
+      events as never,
+      capacity as never,
+    );
+    await expect(
+      processor.process(
+        job(
+          IMPORT_RESUME_JOB_NAMES.extraction,
+          payload("deterministic_extraction"),
+        ),
+      ),
+    ).rejects.toBeInstanceOf(ProcessingStartDeniedError);
+    expect(events.emit).toHaveBeenCalledWith("import.active_limit_reached", {});
+    expect(events.emit).toHaveBeenCalledWith(
+      "import.processing_start_denied",
+      {},
     );
   });
 

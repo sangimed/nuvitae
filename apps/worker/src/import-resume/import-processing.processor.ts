@@ -10,7 +10,11 @@ import {
   type DeterministicExtractionJobPayload,
 } from "@nuvitae/contracts";
 import type { ImportedDocument } from "@nuvitae/domain";
-import type { ImportEventEmitter } from "@nuvitae/import-application";
+import {
+  ProcessingStartDeniedError,
+  type ImportEventEmitter,
+  type ImportProcessingCapacityPort,
+} from "@nuvitae/import-application";
 import type {
   ImportResumeRepository,
   PersistenceTransactionRunner,
@@ -70,6 +74,9 @@ export const WORKER_IMPORT_EXTRACTION_USE_CASE = Symbol(
 export const WORKER_IMPORT_EVENT_EMITTER = Symbol(
   "WORKER_IMPORT_EVENT_EMITTER",
 );
+export const WORKER_IMPORT_CAPACITY_PORT = Symbol(
+  "WORKER_IMPORT_CAPACITY_PORT",
+);
 
 @Injectable()
 @Processor(IMPORT_RESUME_PROCESSING_QUEUE, {
@@ -92,6 +99,10 @@ export class ImportProcessingProcessor extends WorkerHost {
     @Optional()
     @Inject(WORKER_IMPORT_EVENT_EMITTER)
     private readonly events: ImportEventEmitter | undefined = undefined,
+    @Optional()
+    @Inject(WORKER_IMPORT_CAPACITY_PORT)
+    private readonly capacity:
+      ImportProcessingCapacityPort | undefined = undefined,
   ) {
     super();
   }
@@ -204,6 +215,11 @@ export class ImportProcessingProcessor extends WorkerHost {
         abortSignal: signal,
       });
     } catch (error) {
+      if (error instanceof ProcessingStartDeniedError) {
+        this.events?.emit("import.active_limit_reached", {});
+        this.events?.emit("import.processing_start_denied", {});
+        throw error;
+      }
       this.emitWorkerFailure(document.id, "extraction", error);
       throw error;
     } finally {
@@ -245,6 +261,11 @@ export class ImportProcessingProcessor extends WorkerHost {
           manager,
         );
       });
+      await this.capacity?.releaseCapacity(
+        payload.owner.ownerUserId,
+        payload.importId,
+        new Date(),
+      );
     } catch (error) {
       this.emitWorkerFailure(payload.importId, "foreground_timeout", error);
       throw error;

@@ -8,6 +8,7 @@ import type {
 } from "@nuvitae/persistence";
 import { vi } from "vitest";
 import { attachVerifiedPrincipal } from "../../../apps/api/src/auth/user-context.js";
+import type { DeniedImportLimitOutcome } from "../../../apps/api/src/services/import-resume/import-limits.js";
 import { documentedImportProcessingDefaults } from "../../../apps/api/src/config/import-processing-limits.js";
 import { ImportResumeModule } from "../../../apps/api/src/import-resume/import-resume.module.js";
 import {
@@ -31,15 +32,17 @@ export const syntheticRequestId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 
 export interface HarnessOptions {
   readonly principal?: "none" | "valid" | "malformed";
+  readonly principalUserId?: string;
   readonly maxUploadSizeBytes?: number;
-  readonly limitDenial?: {
-    readonly code:
-      | "IMPORT_ATTEMPT_LIMIT_REACHED"
-      | "ACTIVE_IMPORT_JOB_LIMIT_REACHED"
-      | "QUEUED_IMPORT_JOB_LIMIT_REACHED"
-      | "IMPORT_LIMIT_STATE_UNAVAILABLE";
-    readonly retryAfterSeconds: number;
-  };
+  readonly limitDenial?:
+    | {
+        readonly outcome: DeniedImportLimitOutcome;
+      }
+    | {
+        readonly denialForPrincipal: (
+          ownerUserId: string,
+        ) => DeniedImportLimitOutcome | undefined;
+      };
   readonly storageFailure?: string;
   readonly persistenceFailure?: string;
   readonly queuePublisher?: {
@@ -63,6 +66,7 @@ export async function createHttpHarness(options: HarnessOptions = {}): Promise<{
   };
   readonly limits: {
     readonly reserveAttempt: ReturnType<typeof vi.fn>;
+    readonly admitToQueue: ReturnType<typeof vi.fn>;
     readonly releaseReservation: ReturnType<typeof vi.fn>;
     readonly rollbackReservation: ReturnType<typeof vi.fn>;
   };
@@ -98,22 +102,38 @@ export async function createHttpHarness(options: HarnessOptions = {}): Promise<{
     })),
   };
   const limits = {
-    reserveAttempt: vi.fn(async () =>
-      options.limitDenial === undefined
-        ? {
-            allowed: true as const,
-            reservation: {
-              id: "reservation-1",
-              ownerUserId: verifiedUserId,
-              attemptedAt: new Date("2026-07-29T09:30:00.000Z"),
-              state: "reserved" as const,
-            },
-          }
-        : {
-            allowed: false as const,
-            ...options.limitDenial,
+    reserveAttempt: vi.fn(async (ownerUserId: string) => {
+      if (options.limitDenial === undefined) {
+        return {
+          allowed: true as const,
+          reservation: {
+            id: "reservation-1",
+            ownerUserId,
+            attemptedAt: new Date("2026-07-29T09:30:00.000Z"),
+            importId: null,
+            state: "reserved" as const,
           },
-    ),
+        };
+      }
+      const outcome =
+        "outcome" in options.limitDenial
+          ? options.limitDenial.outcome
+          : options.limitDenial.denialForPrincipal(ownerUserId);
+      if (outcome === undefined) {
+        return {
+          allowed: true as const,
+          reservation: {
+            id: "reservation-1",
+            ownerUserId,
+            attemptedAt: new Date("2026-07-29T09:30:00.000Z"),
+            importId: null,
+            state: "reserved" as const,
+          },
+        };
+      }
+      return { allowed: false as const, outcome };
+    }),
+    admitToQueue: vi.fn(async () => ({ kind: "allowed" as const })),
     releaseReservation: vi.fn(async () => undefined),
     rollbackReservation: vi.fn(async () => undefined),
   };
@@ -169,8 +189,14 @@ export async function createHttpHarness(options: HarnessOptions = {}): Promise<{
   const app = moduleRef.createNestApplication();
   if (options.principal === "valid" || options.principal === "malformed") {
     app.use(
-      new SyntheticVerifiedPrincipalMiddleware(options.principal).use.bind(
-        new SyntheticVerifiedPrincipalMiddleware(options.principal),
+      new SyntheticVerifiedPrincipalMiddleware(
+        options.principal,
+        options.principalUserId,
+      ).use.bind(
+        new SyntheticVerifiedPrincipalMiddleware(
+          options.principal,
+          options.principalUserId,
+        ),
       ),
     );
   }
@@ -192,13 +218,16 @@ export async function createHttpHarness(options: HarnessOptions = {}): Promise<{
 }
 
 class SyntheticVerifiedPrincipalMiddleware {
-  constructor(private readonly mode: "valid" | "malformed") {}
+  constructor(
+    private readonly mode: "valid" | "malformed",
+    private readonly principalUserId?: string,
+  ) {}
 
   use(request: object, _response: unknown, next: () => void): void {
     if (this.mode === "valid") {
       attachVerifiedPrincipal(request, {
         verification: "verified",
-        userId: verifiedUserId,
+        userId: this.principalUserId ?? verifiedUserId,
       });
     } else {
       attachVerifiedPrincipal(request, {

@@ -239,8 +239,13 @@ describe("privacy-safe import logging (T068)", () => {
             denyNextAttempt
               ? {
                   allowed: false as const,
-                  code: "IMPORT_ATTEMPT_LIMIT_REACHED",
-                  retryAfterSeconds: 47,
+                  outcome: {
+                    kind: "denied" as const,
+                    code: "upload_attempt_limit" as const,
+                    messageCategory: "upload_attempts" as const,
+                    retryable: true,
+                    retryAfterSeconds: 47,
+                  },
                 }
               : {
                   allowed: true as const,
@@ -248,10 +253,12 @@ describe("privacy-safe import logging (T068)", () => {
                     id: "reservation-1",
                     ownerUserId,
                     attemptedAt: now,
+                    importId: null,
                     state: "reserved" as const,
                   },
                 },
           ),
+          admitToQueue: vi.fn(async () => ({ kind: "allowed" as const })),
           releaseReservation: vi.fn(async () => undefined),
           rollbackReservation: vi.fn(async () => undefined),
         },

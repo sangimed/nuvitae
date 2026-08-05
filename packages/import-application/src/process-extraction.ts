@@ -30,6 +30,8 @@ import type {
   PersistenceTransactionRunner,
 } from "@nuvitae/persistence";
 import type { ImportEventEmitter } from "./observability/import-events.js";
+import type { ImportProcessingCapacityPort } from "./import-capacity.js";
+import { ProcessingStartDeniedError } from "./import-capacity.js";
 
 export interface ProcessExtractionInput {
   readonly ownerUserId: string;
@@ -63,12 +65,18 @@ export interface ProcessExtractionPorts {
   readonly clock: ProcessExtractionClock;
   readonly ids: ProcessExtractionIds;
   readonly logger: ProcessExtractionLogger;
+  /**
+   * Optional processing-start admission and capacity release boundary.
+   * Production wiring provides it; tests without it keep legacy behavior.
+   */
+  readonly capacity?: ImportProcessingCapacityPort;
 }
 
 type Begin =
   | { readonly kind: "started"; readonly document: ImportedDocument }
   | { readonly kind: "not_found" }
   | { readonly kind: "invalid" }
+  | { readonly kind: "capacity_denied" }
   | {
       readonly kind: "existing";
       readonly draft: NonNullable<
@@ -91,6 +99,9 @@ export class ProcessExtractionService {
         "terminal_failure",
         false,
       );
+    if (beginning.kind === "capacity_denied") {
+      throw new ProcessingStartDeniedError();
+    }
     if (beginning.kind === "infrastructure")
       return this.failure(
         requestId,
@@ -163,6 +174,7 @@ export class ProcessExtractionService {
         return this.responseForDraft(requestId, finalized.draft);
       if (finalized.kind !== "saved")
         return this.failure(requestId, document.id, "terminal_failure", true);
+      await this.releaseCapacity(document.id, document.ownerUserId);
       this.log(
         document,
         started,
@@ -219,6 +231,16 @@ export class ProcessExtractionService {
         }
         if (!isProcessable(document, this.ports.clock.now()))
           return { kind: "invalid" as const };
+        if (this.ports.capacity !== undefined) {
+          const admission = await this.ports.capacity.admitToProcessing(
+            input.ownerUserId,
+            input.importedDocumentId,
+            this.ports.clock.now(),
+          );
+          if (admission.kind !== "allowed") {
+            return { kind: "capacity_denied" as const };
+          }
+        }
         const processing = {
           ...document,
           processingStatus: "processing" as const,
@@ -368,8 +390,28 @@ export class ProcessExtractionService {
             manager,
           );
       });
+      await this.releaseCapacity(document.id, document.ownerUserId);
     } catch {
       /* response remains privacy-safe and retryable */
+    }
+  }
+
+  private async releaseCapacity(
+    importId: string,
+    ownerUserId: string,
+  ): Promise<void> {
+    if (this.ports.capacity === undefined) return;
+    try {
+      await this.ports.capacity.releaseCapacity(
+        ownerUserId,
+        importId,
+        this.ports.clock.now(),
+      );
+    } catch {
+      this.ports.logger.emit("import.limit_release_failed", {
+        importId,
+        errorCategory: "limit_release_failed",
+      });
     }
   }
   private responseForDraft(

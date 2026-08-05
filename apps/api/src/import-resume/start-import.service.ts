@@ -23,8 +23,11 @@ import {
 } from "../persistence/api-persistence.module.js";
 import {
   StartImportHttpError,
+  type StartImportPublicErrorCode,
   StartImportResponseContractError,
 } from "./start-import.errors.js";
+import type { ImportLimitOutcome } from "../services/import-resume/import-limits.js";
+import { mapLimitOutcomeToHttpResponse } from "./limit-responses.js";
 import type {
   StartImportClock,
   StartImportIdGenerator,
@@ -84,10 +87,14 @@ export class StartImportService {
       createdAt,
     );
     if (!reservation.allowed) {
-      this.logger.emit("import.rate_limited", {
-        retryAfterSeconds: reservation.retryAfterSeconds,
-      });
-      throw mapLimitDenial(reservation);
+      if (reservation.outcome.code === "limit_service_unavailable") {
+        this.logger.emit("import.limit_service_failed", {});
+      } else {
+        this.logger.emit("import.rate_limited", {
+          retryAfterSeconds: reservation.outcome.retryAfterSeconds ?? 1,
+        });
+      }
+      throw mapLimitDenial(reservation.outcome);
     }
 
     let upload: {
@@ -111,6 +118,22 @@ export class StartImportService {
     }
 
     const importId = this.idGenerator.nextId();
+    const queueAdmission = await this.limits.admitToQueue(
+      input.ownerUserId,
+      reservation.reservation.id,
+      importId,
+      createdAt,
+    );
+    if (queueAdmission.kind !== "allowed") {
+      this.logger.emit(
+        queueAdmission.code === "queued_job_limit"
+          ? "import.queued_limit_reached"
+          : "import.limit_service_failed",
+        {},
+      );
+      throw mapLimitDenial(queueAdmission);
+    }
+
     const storageKey = generatePrivateImportStorageKey({
       ownerUserId: input.ownerUserId,
       importId,
@@ -262,24 +285,26 @@ export class StartImportService {
           "Resume processing is temporarily unavailable. Try again later.",
         );
       }
-    }
-
-    try {
-      await this.limits.releaseReservation(
-        input.ownerUserId,
-        reservation.reservation.id,
-        createdAt,
-      );
-    } catch {
-      this.logger.emit("import.limit_release_failed", {
-        importId,
-        errorCategory: "limit_release_failed",
-      });
-      throw new StartImportHttpError(
-        500,
-        "internal_failure",
-        "The resume import could not be started.",
-      );
+    } else {
+      // No processing queue is configured, so no job will ever claim this
+      // import. Release the queued slot while retaining the attempt history.
+      try {
+        await this.limits.releaseReservation(
+          input.ownerUserId,
+          reservation.reservation.id,
+          createdAt,
+        );
+      } catch {
+        this.logger.emit("import.limit_release_failed", {
+          importId,
+          errorCategory: "limit_release_failed",
+        });
+        throw new StartImportHttpError(
+          500,
+          "internal_failure",
+          "The resume import could not be started.",
+        );
+      }
     }
 
     const candidate = {
@@ -491,23 +516,14 @@ function capVisibleFilename(filename: string): string {
   ].join("");
 }
 
-function mapLimitDenial(denial: {
-  readonly allowed: false;
-  readonly code: string;
-  readonly retryAfterSeconds: number;
-}): StartImportHttpError {
-  return denial.code === "IMPORT_LIMIT_STATE_UNAVAILABLE"
-    ? new StartImportHttpError(
-        503,
-        "import_limit_unavailable",
-        "Import capacity cannot be checked right now. Try again later.",
-      )
-    : new StartImportHttpError(
-        429,
-        "rate_limited",
-        "Too many resume imports were started. Try again later.",
-        denial.retryAfterSeconds,
-      );
+function mapLimitDenial(outcome: ImportLimitOutcome): StartImportHttpError {
+  const mapped = mapLimitOutcomeToHttpResponse(outcome);
+  return new StartImportHttpError(
+    mapped.statusCode,
+    mapped.code as StartImportPublicErrorCode,
+    mapped.message,
+    mapped.retryAfterSeconds,
+  );
 }
 
 function sizeBucket(

@@ -8,14 +8,19 @@ import {
 import { BullModule } from "@nestjs/bullmq";
 import { randomUUID } from "node:crypto";
 import { IMPORT_RESUME_PROCESSING_QUEUE } from "@nuvitae/contracts";
+import { TypeOrmImportLimitAttemptsRepository } from "@nuvitae/persistence";
 import { LocalPrivateImportStorage } from "@nuvitae/storage";
+import { DataSource } from "typeorm";
 import { createImportEventEmitter } from "../observability/import-events.js";
 import { ApiPersistenceModule } from "../persistence/api-persistence.module.js";
 import { ImportResumeModule } from "../import-resume/import-resume.module.js";
 import { StartImportQueue } from "../import-resume/start-import.queue.js";
 import { ImportStatusQueue } from "../import-resume/import-status.queue.js";
 import { parseImportProcessingLimitsEnv } from "../config/import-processing-limits.js";
-import { ImportLimitService } from "../services/import-resume/import-limits.js";
+import {
+  ImportLimitService,
+  TypeOrmImportLimitStore,
+} from "../services/import-resume/import-limits.js";
 import {
   IMPORT_STATUS_QUEUE_READER,
   START_IMPORT_CLOCK,
@@ -27,7 +32,6 @@ import {
   START_IMPORT_QUEUE_PUBLISHER,
   START_IMPORT_REQUEST_ID_GENERATOR,
 } from "../import-resume/start-import.tokens.js";
-import { LocalAtomicImportLimitStore } from "./local-atomic-import-limit-store.js";
 import { readLocalPlayConfig } from "./local-play.config.js";
 import { LocalPlayPrincipalMiddleware } from "./local-play-principal.middleware.js";
 
@@ -49,9 +53,17 @@ const localPlayProviders: Provider[] = [
   },
   {
     provide: START_IMPORT_LIMIT_SERVICE,
-    useFactory: (limits: ReturnType<typeof parseImportProcessingLimitsEnv>) =>
-      new ImportLimitService(new LocalAtomicImportLimitStore(), limits),
-    inject: [START_IMPORT_PROCESSING_LIMITS],
+    useFactory: (
+      dataSource: DataSource,
+      limits: ReturnType<typeof parseImportProcessingLimitsEnv>,
+    ) =>
+      new ImportLimitService(
+        new TypeOrmImportLimitStore(
+          new TypeOrmImportLimitAttemptsRepository(dataSource),
+        ),
+        limits,
+      ),
+    inject: [DataSource, START_IMPORT_PROCESSING_LIMITS],
   },
   { provide: START_IMPORT_CLOCK, useValue: { now: () => new Date() } },
   {

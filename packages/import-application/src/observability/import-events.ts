@@ -329,6 +329,22 @@ export const importEventSchemas = {
       ...commonIdentifierFields,
     },
   },
+  "import.active_limit_reached": {
+    level: "warn",
+    fields: {},
+  },
+  "import.queued_limit_reached": {
+    level: "warn",
+    fields: {},
+  },
+  "import.processing_start_denied": {
+    level: "warn",
+    fields: {},
+  },
+  "import.limit_service_failed": {
+    level: "warn",
+    fields: {},
+  },
   "import.storage_write_failed": {
     level: "warn",
     fields: {
@@ -590,6 +606,10 @@ export interface ImportEventMetadataMap {
     readonly importId?: string;
     readonly correlationId?: string;
   };
+  "import.active_limit_reached": Record<string, never>;
+  "import.queued_limit_reached": Record<string, never>;
+  "import.processing_start_denied": Record<string, never>;
+  "import.limit_service_failed": Record<string, never>;
   "import.storage_write_failed": {
     readonly importId: string;
     readonly retryable: boolean;

@@ -14,10 +14,11 @@ const limits = {
 };
 
 describe("LocalAtomicImportLimitStore", () => {
-  it("reserves, transitions, releases, and rolls back deterministically", async () => {
+  it("reserves, transitions, claims, releases, and rolls back deterministically", async () => {
     let id = 0;
     const store = new LocalAtomicImportLimitStore(() => `reservation-${++id}`);
     const ownerUserId = "00000000-0000-4000-8000-000000000101";
+    const importId = "a0000000-0000-4000-8000-000000000001";
     const now = new Date("2026-07-29T10:00:00.000Z");
 
     const first = await store.executeAtomically({
@@ -36,14 +37,14 @@ describe("LocalAtomicImportLimitStore", () => {
       store.executeAtomically({
         kind: "transition",
         ownerUserId,
-        reservationId: first.reservation.id,
-        to: "queued",
+        attemptId: first.reservation.id,
+        importId,
         now,
         limits,
       }),
     ).resolves.toMatchObject({
       kind: "reserved",
-      reservation: { state: "queued" },
+      reservation: { state: "queued", importId },
     });
 
     const second = await store.executeAtomically({
@@ -62,21 +63,42 @@ describe("LocalAtomicImportLimitStore", () => {
       store.executeAtomically({
         kind: "transition",
         ownerUserId,
-        reservationId: second.reservation.id,
-        to: "queued",
+        attemptId: second.reservation.id,
+        importId,
         now,
         limits,
       }),
     ).resolves.toMatchObject({
       kind: "denied",
-      decision: { code: "QUEUED_IMPORT_JOB_LIMIT_REACHED" },
+      outcome: { code: "queued_job_limit" },
+    });
+
+    await expect(
+      store.executeAtomically({
+        kind: "claim",
+        ownerUserId,
+        importId,
+        now,
+        limits,
+      }),
+    ).resolves.toMatchObject({
+      kind: "reserved",
+      reservation: { state: "active" },
     });
 
     await expect(
       store.executeAtomically({
         kind: "rollback",
         ownerUserId,
-        reservationId: second.reservation.id,
+        attemptId: second.reservation.id,
+        now,
+      }),
+    ).resolves.toEqual({ kind: "released" });
+    await expect(
+      store.executeAtomically({
+        kind: "release_import",
+        ownerUserId,
+        importId,
         now,
       }),
     ).resolves.toEqual({ kind: "released" });
@@ -84,7 +106,7 @@ describe("LocalAtomicImportLimitStore", () => {
       store.executeAtomically({
         kind: "release",
         ownerUserId,
-        reservationId: first.reservation.id,
+        attemptId: first.reservation.id,
         now,
       }),
     ).resolves.toEqual({ kind: "released" });

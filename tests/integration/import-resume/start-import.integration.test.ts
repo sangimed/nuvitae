@@ -78,8 +78,13 @@ describe("POST /import-resume", () => {
     const harness = await createTrackedHarness({
       principal: "valid",
       limitDenial: {
-        code: "IMPORT_ATTEMPT_LIMIT_REACHED",
-        retryAfterSeconds: 37,
+        outcome: {
+          kind: "denied",
+          code: "upload_attempt_limit",
+          messageCategory: "upload_attempts",
+          retryable: true,
+          retryAfterSeconds: 37,
+        },
       },
     });
     const response = await postFile(harness.baseUrl);
@@ -97,8 +102,12 @@ describe("POST /import-resume", () => {
         options: {
           principal: "valid" as const,
           limitDenial: {
-            code: "IMPORT_LIMIT_STATE_UNAVAILABLE" as const,
-            retryAfterSeconds: 60,
+            outcome: {
+              kind: "denied" as const,
+              code: "limit_service_unavailable" as const,
+              messageCategory: "service_unavailable" as const,
+              retryable: true,
+            },
           },
         },
         expectedCode: "import_limit_unavailable",

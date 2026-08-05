@@ -1,5 +1,6 @@
 import type { TypeOrmModuleOptions } from "@nestjs/typeorm";
 import type { DataSourceOptions } from "typeorm";
+import { importLimitAttemptPersistenceEntities } from "./entities/import-limit-attempt.entity.js";
 import { persistenceEntities } from "./entities/import-resume.entities.js";
 import { semanticParserPersistenceEntities } from "./entities/semantic-parser.entities.js";
 import { InitialImportResumePersistence1722168000000 } from "./migrations/1722168000000-InitialImportResumePersistence.js";
@@ -8,6 +9,7 @@ import { ImportDraftReviewRevision1722340800000 } from "./migrations/17223408000
 import { SemanticImportProcessingStates1722427200000 } from "./migrations/1722427200000-SemanticImportProcessingStates.js";
 import { SemanticParserPersistence1722513600000 } from "./migrations/1722513600000-SemanticParserPersistence.js";
 import { ProviderRuntimeConnections1722600000000 } from "./migrations/1722600000000-ProviderRuntimeConnections.js";
+import { ImportLimitAttempts1785801600000 } from "./migrations/1785801600000-ImportLimitAttempts.js";
 
 export interface PersistenceConfig {
   readonly host: string;
@@ -139,7 +141,11 @@ export function createTypeOrmOptions(
     database: config.database,
     ssl: config.ssl,
     logging: config.logging,
-    entities: [...persistenceEntities, ...semanticParserPersistenceEntities],
+    entities: [
+      ...persistenceEntities,
+      ...semanticParserPersistenceEntities,
+      ...importLimitAttemptPersistenceEntities,
+    ],
     migrations: [
       InitialImportResumePersistence1722168000000,
       ManualStructuredResumeDrafts1722254400000,
@@ -147,6 +153,7 @@ export function createTypeOrmOptions(
       SemanticImportProcessingStates1722427200000,
       SemanticParserPersistence1722513600000,
       ProviderRuntimeConnections1722600000000,
+      ImportLimitAttempts1785801600000,
     ],
     migrationsTableName: "typeorm_migrations",
     migrationsRun: false,

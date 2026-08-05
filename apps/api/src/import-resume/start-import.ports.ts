@@ -5,6 +5,7 @@ import type {
   DeterministicExtractionJobPayload,
 } from "@nuvitae/contracts";
 import type {
+  ImportLimitOutcome,
   ImportLimitReservation,
   ImportReservationResult,
 } from "../services/import-resume/import-limits.js";
@@ -46,6 +47,12 @@ export interface StartImportLimitPort {
     ownerUserId: string,
     now: Date,
   ): Promise<ImportReservationResult>;
+  admitToQueue(
+    ownerUserId: string,
+    attemptId: string,
+    importId: string,
+    now: Date,
+  ): Promise<ImportLimitOutcome>;
   releaseReservation(
     ownerUserId: string,
     reservationId: string,

@@ -15,12 +15,15 @@ import {
   type ResumeSourceFragment,
 } from "@nuvitae/extraction";
 import {
+  ProcessingStartDeniedError,
+  consumesProcessingCapacity,
   generateSemanticWarnings,
   mapSemanticCandidates,
   serializeSemanticValidationDiagnostic,
   validateSemanticResponse,
   type ImportEventEmitter,
   type ImportEventMetadataFor,
+  type ImportProcessingCapacityPort,
   type ResumeSemanticParserProvider,
 } from "@nuvitae/import-application";
 import type {
@@ -38,6 +41,7 @@ export interface SemanticImportProcessorPorts {
   readonly provider: ResumeSemanticParserProvider | undefined;
   readonly clock?: { now(): Date };
   readonly logger?: SemanticImportLogger;
+  readonly capacity?: ImportProcessingCapacityPort;
 }
 
 export interface SemanticImportLogger {
@@ -71,6 +75,16 @@ export class SemanticImportProcessor {
     const document = aggregate.document;
     if (document.processingStatus === "ready_for_review") return;
     if (!isProcessable(document, this.clock.now())) return;
+    if (this.ports.capacity !== undefined) {
+      const admission = await this.ports.capacity.admitToProcessing(
+        input.ownerUserId,
+        input.importedDocumentId,
+        this.clock.now(),
+      );
+      if (admission.kind !== "allowed") {
+        throw new ProcessingStartDeniedError();
+      }
+    }
 
     await this.transition(document, "semantic_parsing_pending");
     await this.transition(document, "semantic_parsing_running");
@@ -342,6 +356,28 @@ export class SemanticImportProcessor {
           manager,
         );
     });
+    if (!consumesProcessingCapacity(processingStatus)) {
+      await this.releaseCapacity(document.id, document.ownerUserId);
+    }
+  }
+
+  private async releaseCapacity(
+    importId: string,
+    ownerUserId: string,
+  ): Promise<void> {
+    if (this.ports.capacity === undefined) return;
+    try {
+      await this.ports.capacity.releaseCapacity(
+        ownerUserId,
+        importId,
+        this.clock.now(),
+      );
+    } catch {
+      this.logger.emit("import.limit_release_failed", {
+        importId,
+        errorCategory: "limit_release_failed",
+      });
+    }
   }
 
   private emitSemanticOutcome(

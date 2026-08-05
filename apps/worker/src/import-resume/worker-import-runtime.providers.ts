@@ -9,8 +9,11 @@ import {
   type ExtractionSourceReader,
 } from "@nuvitae/extraction";
 import {
+  ImportLimitService,
+  TypeOrmImportLimitStore,
   ValidateDocumentService,
   createImportEventEmitter,
+  type ImportProcessingCapacityPort,
   type ImportProcessingLimits,
 } from "@nuvitae/import-application";
 import type { ResumeSemanticParserProvider } from "@nuvitae/import-application";
@@ -18,9 +21,12 @@ import type {
   ImportResumeRepository,
   PersistenceTransactionRunner,
 } from "@nuvitae/persistence";
+import { TypeOrmImportLimitAttemptsRepository } from "@nuvitae/persistence";
+import { DataSource } from "typeorm";
 import { LocalPrivateImportStorage } from "@nuvitae/storage";
 import {
   WORKER_IMPORT_EVENT_EMITTER,
+  WORKER_IMPORT_CAPACITY_PORT,
   WORKER_IMPORT_EXTRACTION_USE_CASE,
   WORKER_IMPORT_VALIDATION_USE_CASE,
 } from "./import-processing.processor.js";
@@ -92,6 +98,27 @@ export const workerImportRuntimeProviders: Provider[] = [
     useFactory: () => parseWorkerImportProcessingLimits(),
   },
   {
+    provide: WORKER_IMPORT_CAPACITY_PORT,
+    useFactory: (
+      dataSource: DataSource,
+      limits: ImportProcessingLimits,
+    ): ImportProcessingCapacityPort => {
+      const service = new ImportLimitService(
+        new TypeOrmImportLimitStore(
+          new TypeOrmImportLimitAttemptsRepository(dataSource),
+        ),
+        limits,
+      );
+      return {
+        admitToProcessing: (ownerUserId, importId, now) =>
+          service.admitToProcessing(ownerUserId, importId, now),
+        releaseCapacity: (ownerUserId, importId, now) =>
+          service.releaseCapacityForImport(ownerUserId, importId, now),
+      };
+    },
+    inject: [DataSource, WORKER_IMPORT_PROCESSING_LIMITS],
+  },
+  {
     provide: WORKER_PRIVATE_IMPORT_STORAGE,
     useFactory: async () =>
       await LocalPrivateImportStorage.create({
@@ -116,6 +143,7 @@ export const workerImportRuntimeProviders: Provider[] = [
       transactionRunner: PersistenceTransactionRunner,
       sourceReader: ExtractionSourceReader,
       limits: ImportProcessingLimits,
+      capacity: ImportProcessingCapacityPort,
     ) => {
       const pdf = new PdfJsPdfAdapter(sourceReader, {
         maximumFileSizeBytes: limits.maxUploadSizeBytes + 1,
@@ -155,6 +183,7 @@ export const workerImportRuntimeProviders: Provider[] = [
         requestIdGenerator: { nextRequestId: () => randomUUID() },
         clock: { now: () => new Date() },
         logger,
+        capacity,
       });
     },
     inject: [
@@ -162,6 +191,7 @@ export const workerImportRuntimeProviders: Provider[] = [
       WORKER_PERSISTENCE_TRANSACTION_RUNNER,
       WORKER_PRIVATE_SOURCE_READER,
       WORKER_IMPORT_PROCESSING_LIMITS,
+      WORKER_IMPORT_CAPACITY_PORT,
     ],
   },
   {
@@ -176,6 +206,7 @@ export const workerImportRuntimeProviders: Provider[] = [
       sourceReader: ExtractionSourceReader,
       limits: ImportProcessingLimits,
       provider: ResumeSemanticParserProvider | undefined,
+      capacity: ImportProcessingCapacityPort,
     ) => {
       const pdf = new PdfJsPdfAdapter(sourceReader, {
         maximumFileSizeBytes: limits.maxUploadSizeBytes + 1,
@@ -194,6 +225,7 @@ export const workerImportRuntimeProviders: Provider[] = [
         provider,
         clock: { now: () => new Date() },
         logger,
+        capacity,
       });
     },
     inject: [
@@ -202,6 +234,7 @@ export const workerImportRuntimeProviders: Provider[] = [
       WORKER_PRIVATE_SOURCE_READER,
       WORKER_IMPORT_PROCESSING_LIMITS,
       WORKER_SEMANTIC_PARSER_PROVIDER,
+      WORKER_IMPORT_CAPACITY_PORT,
     ],
   },
 ];

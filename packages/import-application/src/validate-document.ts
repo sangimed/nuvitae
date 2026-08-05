@@ -26,6 +26,7 @@ import type {
 } from "@nuvitae/persistence";
 import type { EntityManager } from "typeorm";
 import type { ImportProcessingLimits } from "./import-processing-limits.js";
+import type { ImportProcessingCapacityPort } from "./import-capacity.js";
 import type {
   ImportEventEmitter,
   ImportEventMetadataFor,
@@ -80,6 +81,7 @@ export interface ValidateDocumentPorts {
   readonly requestIdGenerator: ValidateDocumentRequestIdGenerator;
   readonly clock: ValidateDocumentClock;
   readonly logger: ValidateDocumentPrivacyLogger;
+  readonly capacity?: ImportProcessingCapacityPort;
 }
 
 interface SuccessfulValidation {
@@ -170,6 +172,7 @@ export class ValidateDocumentService {
     if ("kind" in outcome && outcome.kind === "document_rejection") {
       const persisted = await this.persistFinalState(document, {
         validationStatus: "rejected",
+        processingStatus: "failed",
         ...(outcome.renderedPageCount === undefined
           ? {}
           : { renderedPageCount: outcome.renderedPageCount }),
@@ -180,6 +183,7 @@ export class ValidateDocumentService {
       if (!persisted) {
         return this.retryableInfrastructureResponse(requestId, document.id);
       }
+      await this.releaseCapacity(document.id, document.ownerUserId);
       this.logCompletion(document.id, outcome.code, startedAt, {
         ...(outcome.renderedPageCount === undefined
           ? {}
@@ -393,6 +397,7 @@ export class ValidateDocumentService {
   private async persistFinalState(
     original: ImportedDocument,
     changes: Pick<ImportedDocument, "validationStatus"> &
+      Partial<Pick<ImportedDocument, "processingStatus">> &
       Partial<Pick<ImportedDocument, "renderedPageCount" | "detectedLanguage">>,
   ): Promise<boolean> {
     try {
@@ -407,6 +412,25 @@ export class ValidateDocumentService {
     } catch {
       await this.restoreRetryableState(original);
       return false;
+    }
+  }
+
+  private async releaseCapacity(
+    importId: string,
+    ownerUserId: string,
+  ): Promise<void> {
+    if (this.ports.capacity === undefined) return;
+    try {
+      await this.ports.capacity.releaseCapacity(
+        ownerUserId,
+        importId,
+        this.ports.clock.now(),
+      );
+    } catch {
+      this.ports.logger.emit("import.limit_release_failed", {
+        importId,
+        errorCategory: "limit_release_failed",
+      });
     }
   }
 

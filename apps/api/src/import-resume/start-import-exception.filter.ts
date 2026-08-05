@@ -5,6 +5,7 @@ import {
   type ExceptionFilter,
 } from "@nestjs/common";
 import { StartImportHttpError } from "./start-import.errors.js";
+import { LimitHttpError } from "./limit-responses.js";
 
 interface HttpResponse {
   status(code: number): HttpResponse;
@@ -42,6 +43,17 @@ function mapException(exception: unknown): {
       ...(exception.retryAfterSeconds === undefined
         ? {}
         : { retryAfterSeconds: exception.retryAfterSeconds }),
+    };
+  }
+
+  if (exception instanceof LimitHttpError) {
+    return {
+      statusCode: exception.response.statusCode,
+      code: exception.response.code,
+      message: exception.response.message,
+      ...(exception.response.retryAfterSeconds === undefined
+        ? {}
+        : { retryAfterSeconds: exception.response.retryAfterSeconds }),
     };
   }
 
