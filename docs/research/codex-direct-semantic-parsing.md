@@ -68,6 +68,39 @@ authorize or execute C04.
 Any future Campaign B attempt remains separately authorized and limited to one
 broker run, one maximum semantic backend request, and zero automatic retries.
 
+## 2026-08-05 qualification run (T203 mission)
+
+The T203 mission authorized a bounded qualification attempt on this branch.
+Result of that run:
+
+- The T208 deterministic-enrichment contract was implemented in the spike
+  (schema/evaluator/prompt alignment plus deterministic post-model provenance
+  enrichment). Under the corrected contract, the full six-case fixture matrix
+  passes deterministically offline (`parsing_pass: true` for C01-C06;
+  enrichment `pdf` for C04/C05, `docx` for C06, `none` for C01-C03;
+  `consistency_pass: true`). Historical evidence files remain byte-identical.
+- Campaign-B authorization entries were registered for C04-B02 (reproduction
+  under the original contract), C04-B03 (corrected contract), C05-B01, and
+  C06-B01. **None of these live attempts executed**: no valid ChatGPT/Codex
+  session existed on the host (Codex CLI not logged in; stored sessions expired
+  or refresh-rejected with 401; no browser session; fresh login blocked by
+  missing interactive credentials and Cloudflare bot verification for
+  headless browsers).
+- The loopback callback topology was verified live on this host
+  (`127.0.0.1:1455` and `[::1]:1455`, preflight HTTP 204).
+- Credential lifecycle local proofs: encrypted persistence (no plaintext),
+  restart recovery, safe failure mapping of an invalid refresh
+  (`authentication_required`), logout/deletion, and disconnected restart all
+  passed; `secret_scan_result=passed`.
+- T202 evaluation recorded as BLOCKED; the T203 gate decision is recorded as
+  **NO-GO** for production adapter implementation at this time, with defined
+  re-evaluation triggers (see `docs/research/codex-direct-oauth-go-no-go.md`).
+
+The canonical live-status record above is unchanged: C04-C06 remain unexecuted,
+T201 remains incomplete, T202 remains blocked, and T164/T165 remain blocked.
+T203 now has a recorded NO-GO decision artifact; it is not re-run or
+re-interpreted as a pass.
+
 ## Execution boundary
 
 The remaining bounded sequence, only after an explicitly authorized live run, is:

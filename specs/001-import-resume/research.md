@@ -198,7 +198,7 @@ The approved strategic direction is product-first: Nuvitae Community is the firs
 
 **Gaps that remain before production Community use (preserved honestly)**:
 - T201 is incomplete: C01-C03 passed canonical live validation, C04 B01 failed under its original physical-coordinate contract (corrected offline by T205/T208 deterministic enrichment), C04 B02 and further C04 live attempts remain unauthorized, and C05 (multi-column PDF) and C06 (DOCX) remain unexecuted. Real PDF/DOCX semantic quality through Codex is therefore not yet proven.
-- T202 (evaluation) and T203 (GO/CONDITIONAL GO/NO-GO) remain blocked by T201; no production GO exists.
+- T202 (evaluation) remains blocked by T201 and is recorded as BLOCKED in `docs/research/codex-direct-oauth-evaluation.md`. The 2026-08-05 qualification run recorded the T203 gate decision as NO-GO for production adapter implementation at this time (evidence-availability decision: no valid ChatGPT/Codex session on the host; C04-C06 live cases not executable; fresh browser login blocked). Re-evaluation triggers are defined in `docs/research/codex-direct-oauth-go-no-go.md`. No production GO exists.
 - The loopback OAuth callback is proven only for a local Docker host with a same-host browser. Remote, VPS, NAS, and headless self-hosting onboarding is unproven and is a significant open product question for the Docker-first Community distribution.
 - The direct `chatgpt.com/backend-api/codex` transport is undocumented or compatibility-sensitive for third-party use; upstream changes may break compatibility.
 - No task is marked complete merely because Community depends on it, and the Community product decision does not authorize production adapter code (T164/T165 remain blocked).
