@@ -196,9 +196,22 @@ The approved strategic direction is product-first: Nuvitae Community is the firs
 
 **Rationale**: The T196-T200 spike is substantial reusable evidence for the Community path: T196 pinned upstream audit, T197 security design and broker topology, T198 browser OAuth login proof, T199 encrypted credential lifecycle (persistence, refresh, single-flight, logout, deletion), and T200 minimal direct invocation (HTTP 200 with valid SSE and the `NUVITAE_T200_OK` marker). These prove the OAuth mechanics and broker credential boundary in the supported local Docker Desktop, same-host-browser mode.
 
+The accepted direct-OAuth evidence set now also includes the T245 lifecycle
+proof (accepted 2026-08-07; aggregate
+`spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`):
+fresh browser OAuth login, callback completion,
+`connection_status_after_callback: connected`, encrypted persistence without
+plaintext, restart recovery, successful invocation after restart (T200, exact
+HTTP 200), live refresh with rotation, explicit reconnect, disconnect and
+credential removal, and deterministic invalid-grant recovery (9/9 mandatory
+criteria; 8 live-observed, 1 deterministic-only; provider-side revocation not
+exercised and not required). T245 satisfies T203 re-evaluation trigger 1 and
+unblocks T213-T215 Community connection-UI qualification, which remain
+incomplete.
+
 **Gaps that remain before production Community use (preserved honestly)**:
 - T201 is complete: C01-C03 passed canonical live validation; C04-B03 (corrected T208 deterministic-enrichment contract), C05-B01, and C06-B01 passed canonical live validation; C03 B01/B02 and C04 B01/B02 remain immutable failed historical attempts (C04 B01 failed under its original physical-coordinate contract; C04 B02 failed at credential recovery). Real PDF/DOCX semantic quality through live Codex is still not proven because the six T201 cases use synthetic fixtures (T246 is pending).
-- T202 (evaluation) was re-measured offline from the accepted evidence on 2026-08-06 (T244) and is recorded as MEASURED in `docs/research/codex-direct-oauth-evaluation.md` with a sanitized aggregate (`codex-direct-oauth-t202-metrics.json`): every evidence-supported metric passes; latency, cancellation, quota behavior, and non-technical onboarding feasibility remain explicitly unmeasured. The T203 gate was re-evaluated on 2026-08-06 and remains NO-GO for production adapter implementation (live real-document semantic quality T246 not run; bounded-fallback wiring T217 partial; non-technical onboarding unmeasured). Re-evaluation triggers are defined in `docs/research/codex-direct-oauth-go-no-go.md`. No production GO exists.
+- T202 (evaluation) was re-measured offline from the accepted evidence on 2026-08-06 (T244) and is recorded as MEASURED in `docs/research/codex-direct-oauth-evaluation.md` with a sanitized aggregate (`codex-direct-oauth-t202-metrics.json`): every evidence-supported metric passes; latency, cancellation, quota behavior, and non-technical onboarding feasibility remain explicitly unmeasured. The T203 gate was re-evaluated on 2026-08-06 and re-confirmed on 2026-08-07 after the accepted T245 lifecycle proof; it remains NO-GO for production adapter implementation (T245 trigger 1 satisfied; live real-document semantic quality T246 not run and is the next live gate; bounded-fallback wiring T217 partial; non-technical onboarding feasibility unmeasured). Re-evaluation triggers are defined in `docs/research/codex-direct-oauth-go-no-go.md`. No production GO exists.
 - The loopback OAuth callback is proven only for a local Docker host with a same-host browser. Remote, VPS, NAS, and headless self-hosting onboarding is unproven and is a significant open product question for the Docker-first Community distribution.
 - The direct `chatgpt.com/backend-api/codex` transport is undocumented or compatibility-sensitive for third-party use; upstream changes may break compatibility.
 - No task is marked complete merely because Community depends on it, and the Community product decision does not authorize production adapter code (T164/T165 remain blocked).

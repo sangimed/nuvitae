@@ -38,6 +38,28 @@ single-user. No remote, VPS, or headless claim is made.
   - C06: `codex-direct-oauth-t201-c06-b01-semantic-parsing.json`
 - T199 credential lifecycle: `codex-direct-oauth-t199-live.json`.
 - T200 minimal invocation: `codex-direct-oauth-t200-invocation.json`.
+- T245 lifecycle aggregate (accepted 2026-08-07):
+  `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`
+  (9/9 mandatory criteria passing; 8 live-observed; 1 deterministic-only
+  invalid-grant classification; provider-side revocation not exercised and not
+  required).
+
+## T245 completion (2026-08-07)
+
+T245 (credential lifecycle proof in the supported local same-host Docker
+deployment shape) was completed and accepted on 2026-08-07. The accepted
+aggregate `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`
+records fresh browser OAuth login, callback completion,
+`connection_status_after_callback: connected`, encrypted persistence without
+plaintext, restart recovery, successful invocation after restart (T200, exact
+HTTP 200), live refresh with rotation, explicit reconnect after disconnect,
+disconnect/credential removal, and deterministic invalid-grant recovery:
+9/9 mandatory criteria passing, 8 live-observed and 1 deterministic-only
+invalid-grant classification. Provider-side remote revocation was not
+exercised and is not claimed; canonical T245 does not require it. T245 is
+therefore no longer a pending dependency for the remaining unmeasured metrics;
+T246 (real-document live semantic evaluation) and T213-T215 (Community
+connection-UI qualification) remain the pending dependencies.
 
 ## Re-measurement method
 
@@ -100,7 +122,7 @@ Supporting lifecycle facts:
 | Turn latency | No sanitized timing fields exist in the accepted live evidence; the 1.88 ms deterministic baseline is provider-neutral, not Codex. |
 | Cancellation latency | Cancellation was not exercised in any accepted live run. |
 | Quota behavior | No quota/rate-limit exercise exists in accepted live evidence; only safe failure mapping is proven. |
-| Non-technical onboarding feasibility | Requires live browser OAuth plus a real import flow in the supported deployment shape (T245/T246/T213-T215 pending). |
+| Non-technical onboarding feasibility | Requires the real import flow in the supported deployment shape (T245 completed 2026-08-07; T246 and T213-T215 remain pending). |
 
 ## Historical failed attempts (preserved, excluded from authoritative denominators)
 

@@ -105,29 +105,22 @@ async function withFixturePair(t199, t200, fn) {
   }
 }
 
-test("current checked-in T199/T200 evidence fails for the precise missing T245 criteria", async () => {
+test("current checked-in T199/T200 evidence satisfies the precise T245 criteria", async () => {
   const report = await assessT245({ repoRoot: REPO_ROOT });
-  assert.equal(report.summary.t245_live_proof_complete, false);
-  const failures = report.summary.failures;
-  assert.ok(
-    failures.includes("t199_observation_timestamp_missing_or_invalid"),
-    failures.join("\n"),
+  assert.equal(report.summary.t245_live_proof_complete, true);
+  assert.equal(report.summary.passing_mandatory_criteria_count, 9);
+  assert.equal(report.summary.live_observed_count, 8);
+  assert.equal(report.summary.deterministic_only_count, 1);
+  assert.equal(report.summary.not_exercised_count, 1);
+  const criteria = new Map(report.criteria.map((item) => [item.key, item]));
+  assert.equal(
+    criteria.get("callback_completion_and_connection_status_after_callback")
+      .pass,
+    true,
   );
-  assert.ok(
-    failures.includes(
-      "missing_or_malformed_t199_field:connection_status_after_callback",
-    ),
-    failures.join("\n"),
-  );
-  assert.ok(
-    failures.includes(
-      "missing_or_malformed_t199_field:expired_invalid_credential_recovery_category",
-    ),
-    failures.join("\n"),
-  );
-  assert.ok(
-    failures.includes("missing_or_malformed_t199_field:callback_completion"),
-    failures.join("\n"),
+  assert.equal(
+    report.recovery_observations.expired_invalid_credential_recovery_category,
+    RECOVERY_CATEGORY_DETERMINISTIC_INVALID_GRANT,
   );
 });
 

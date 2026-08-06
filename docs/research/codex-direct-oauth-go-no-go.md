@@ -2,18 +2,19 @@
 
 **Task**: T203 — record the explicit direct-OAuth decision for the Codex
 production adapter path.
-**Latest re-evaluation**: 2026-08-06 (T244) — decision remains **NO-GO** for
+**Latest re-evaluation**: 2026-08-07 (after the accepted T245 lifecycle proof) — decision remains **NO-GO** for
 production adapter implementation at this time.
 **Original decision**: 2026-08-05 — **NO-GO** (evidence-availability; preserved
 as a historical record below).
 
-## 0. Current decision (2026-08-06 re-evaluation)
+## 0. Current decision (2026-08-07 re-evaluation)
 
 The direct Codex OAuth and invocation path is **not cleared** as the production
 primary AI path for Nuvitae Community on the currently accepted evidence. The
-2026-08-06 re-evaluation applies the same documented decision rules to the now
-accepted live evidence (T199 credential lifecycle, T200 minimal invocation, and
-the completed T201 six-case matrix with `matrix_state: all_cases_live_passed`).
+2026-08-07 re-evaluation applies the same documented decision rules to the now
+accepted live evidence (T199 credential lifecycle, T200 minimal invocation, the
+completed T201 six-case matrix with `matrix_state: all_cases_live_passed`, and
+the accepted T245 lifecycle aggregate).
 
 This NO-GO is **not** an evidence-availability decision about the T201 matrix:
 C01-C06 are executed and passing, and every T202 metric supported by the
@@ -27,9 +28,10 @@ unanswered:
    has not been executed.
 2. **Bounded fallback** — PARTIAL. The fallback contract passes deterministic
    tests, but the production worker/UI wiring (T217) is still pending.
-3. **Non-technical onboarding feasibility** — unmeasured (requires the live
-   browser OAuth and real import flow in the supported deployment shape;
-   T245/T213-T215 pending).
+3. **Non-technical onboarding feasibility** — unmeasured (requires the real
+   import flow in the supported deployment shape; T213-T215 are unblocked by
+   the accepted T245 proof but remain incomplete, and onboarding validation is
+   still pending).
 
 GO requires every mandatory gate to pass. The framework permits GO or
 CONDITIONAL GO only when all of the re-evaluation conditions below are true;
@@ -37,15 +39,16 @@ the decisive product question (real-document live Codex semantic quality) is
 not satisfied. The decision therefore follows the repository thresholds and
 remains **NO-GO**, not a judgment about Codex output quality.
 
-### Criteria table (re-evaluated 2026-08-06)
+### Criteria table (re-evaluated 2026-08-07 after T245)
 
 | Mandatory gate | Required evidence | Current state | Result |
 | --- | --- | --- | --- |
-| Direct OAuth login (fresh) | Live browser login + callback completion | T199 live proof: initial live OAuth succeeded and final reauthentication succeeded; encrypted record created | PASS |
-| Encrypted credential persistence | Live encrypted store, no plaintext | T199: `real_encrypted_record_created: true`; lifecycle report: serialized contents contain no plaintext | PASS |
-| Restart recovery | Credential usable after container restart | T199: `real_restart_recovery_succeeded`, `real_disconnected_restart_succeeded`, `final_real_encrypted_recovery_succeeded` | PASS |
-| Token refresh | Live refresh with rotation | T199: refresh succeeded, token rotated, `live_network_refresh_count=1` for two concurrent requests (single-flight) | PASS |
+| Direct OAuth login (fresh) | Live browser login + callback completion | T199 live proof: initial live OAuth succeeded and final reauthentication succeeded; T245 accepted 2026-08-07 (`callback_completion: completed`, `connection_status_after_callback: connected`) | PASS |
+| Encrypted credential persistence | Live encrypted store, no plaintext | T199: `real_encrypted_record_created: true`; lifecycle report: serialized contents contain no plaintext; confirmed by the accepted T245 aggregate | PASS |
+| Restart recovery | Credential usable after container restart | T199: `real_restart_recovery_succeeded`, `real_disconnected_restart_succeeded`, `final_real_encrypted_recovery_succeeded`; confirmed by the accepted T245 aggregate | PASS |
+| Token refresh | Live refresh with rotation | T199: refresh succeeded, token rotated, `live_network_refresh_count=1` for two concurrent requests (single-flight); confirmed by the accepted T245 aggregate | PASS |
 | Live invocation after restart | HTTP 200 + valid SSE with authenticated session | T200: HTTP 200, valid SSE, `NUVITAE_T200_OK` verified; all six T201 cases HTTP 200 + valid protocol | PASS |
+| T245 lifecycle proof | Live lifecycle aggregate in the supported deployment shape | Accepted 2026-08-07: `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`; 9/9 mandatory criteria passing (8 live-observed, 1 deterministic-only invalid-grant classification); provider-side revocation not exercised and not required | PASS |
 | T201 mandatory live cases | C01-C06 all executed and independently passing | Matrix `all_cases_live_passed`; C01-C06 pass | PASS |
 | Semantic quality (real PDF/DOCX) | Real documents through live Codex | Not executed: T201 cases are synthetic fixtures; T246 pending | NOT RUN |
 | Prompt-injection resistance | Deterministic security tests | 92 security/evaluation tests pass | PASS (deterministic) |
@@ -61,6 +64,8 @@ remains **NO-GO**, not a judgment about Codex output quality.
 - T202 re-measured metrics:
   `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t202-metrics.json` and
   `docs/research/codex-direct-oauth-evaluation.md`.
+- T245 lifecycle aggregate (accepted 2026-08-07):
+  `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`.
 - Per-case sanitized evidence (C01 legacy, C02-B13, C03-B03, C04-B03, C05-B01,
   C06-B01) under `spikes/codex-direct-oauth/evidence/`; T199 `codex-direct-oauth-t199-live.json`;
   T200 `codex-direct-oauth-t200-invocation.json`.
@@ -81,26 +86,39 @@ remains **NO-GO**, not a judgment about Codex output quality.
   qualifying T203 outcome is unsatisfied.
 - **T217** (bounded fallback wiring): independent of the Codex decision and
   remains pending.
-- **T212-T215** (Community setup/connection UI): remain pending; T213-T215
-  require the live OAuth path to be qualified.
-- **T245/T246**: the next unblocking sequence (live lifecycle proof in the
-  supported deployment shape; live Codex semantic evaluation over the
-  real-document corpus).
+- **T212-T215** (Community setup/connection UI): remain incomplete; T213-T215
+  are now unblocked by the accepted T245 lifecycle proof (2026-08-07).
+- **T245**: complete (accepted 2026-08-07; aggregate
+  `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`).
+  **T246**: the next remaining live gate (live Codex semantic evaluation over
+  the real-document corpus). **T248**: complete (2026-08-07; deterministic
+  offline proof and sanitized aggregate
+  `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t248-french-pdf.json`
+  for the canonical French PDF fixture); the real-French-PDF prerequisite for
+  T246 is satisfied.
 
 ### Remaining re-evaluation triggers (current)
 
 T203 may be revisited as GO or CONDITIONAL GO only when **all** of the
 following are true:
 
-1. T245 completes the fresh browser OAuth login, callback completion,
-   connection status, encrypted persistence, restart, post-restart invocation,
-   refresh rotation, expired/revoked recovery, reconnect, and
-   disconnect/credential-removal proof in the supported local same-host Docker
-   deployment shape; and
+1. **SATISFIED (2026-08-07)** — T245 completed the fresh browser OAuth login,
+   callback completion, connection status, encrypted persistence, restart,
+   post-restart invocation, refresh rotation, expired/revoked recovery,
+   reconnect, and disconnect/credential-removal proof in the supported local
+   same-host Docker deployment shape; the accepted aggregate is
+   `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`
+   (9/9 mandatory criteria passing). Caveat: invalid-grant recovery is
+   deterministic-only (1 of 9 criteria), provider-side remote revocation was
+   not exercised, and provider-side revocation is not required by canonical
+   T245; it is not claimed as a live result. And
 2. T246 executes live Codex semantic evaluation over the real-document corpus
    (real French PDF, English PDF, DOCX, bilingual, partial/sparse, structurally
    ambiguous, prompt-instruction-like, and malformed/unsupported recovery)
-   under the T208 enrichment contract; and
+   under the T208 enrichment contract; T246 is the next remaining live gate,
+   whose prerequisites T248 (real French PDF proof) and T247 (T208 bookkeeping
+   closure) are satisfied, and which still requires explicit live execution
+   authorization; and
 3. T202 metrics are re-measured from those live runs, including schema-valid
    rate, precision, recall, grouping, evidence validity, invention rate,
    latency, cancellation, quota behavior, refresh rotation, restart recovery,

@@ -42,6 +42,7 @@ export type SemanticParserFixtureId =
   | "pdf-english-anonymous"
   | "docx-english-anonymous"
   | "pdf-french-anonymous"
+  | "pdf-french-canonical-anonymous"
   | "docx-french-anonymous"
   | "pdf-bilingual-anonymous"
   | "docx-bilingual-anonymous"
@@ -206,6 +207,7 @@ export const semanticParserFixtureIds: readonly SemanticParserFixtureId[] = [
   "pdf-english-anonymous",
   "docx-english-anonymous",
   "pdf-french-anonymous",
+  "pdf-french-canonical-anonymous",
   "docx-french-anonymous",
   "pdf-bilingual-anonymous",
   "docx-bilingual-anonymous",
@@ -258,6 +260,44 @@ export const semanticParserFixtureInputs: Readonly<
       "https://portfolio.example.test",
       "Projets",
       "Outil open source de génération de rapports",
+    ],
+  }),
+  /**
+   * Canonical real-document French PDF fixture (T248). The transcript below is
+   * pinned to the deterministic selectable-text extraction of
+   * `tests/fixtures/resumes/anonymous-french-resume.pdf` produced by
+   * `PdfJsPdfAdapter` (see
+   * `tests/integration/import-resume/french-pdf-fixture-evaluation.integration.test.ts`).
+   * The integration verifier proves the live extraction reproduces these lines
+   * byte-for-byte, so the corpus never drifts from the binary fixture.
+   */
+  "pdf-french-canonical-anonymous": fromLines({
+    id: "pdf-french-canonical-anonymous",
+    format: "pdf",
+    language: "french",
+    layout: "single_column",
+    lines: [
+      "Léa Dupont-Exemple",
+      "Ingénieure Systèmes",
+      "lea.exemple@example.invalid",
+      "Nantes, France",
+      "RÉSUMÉ",
+      "Ingénieure systèmes qui simplifie des processus d'approbation fictifs.",
+      "EXPÉRIENCE",
+      "Atelier Fictif Lumière (employeur fictif)",
+      "Ingénieure Systèmes",
+      "avril 2022 – décembre 2024",
+      "- A cartographié 18 parcours d'approbation fictifs.",
+      "- A écrit des vérifications JSON pour 300 enregistrements fictifs.",
+      "- « Résilience opérationnelle » apparaît sans périmètre défini.",
+      "FORMATION",
+      "Institut de Design Fictif",
+      "Diplôme en Design de Systèmes",
+      "2019–2022",
+      "COMPÉTENCES : JSON ; Cartographie ; Tests",
+      "LANGUES : Français — courant ; Anglais — professionnel",
+      "CERTIFICATION : Médaille fictive de sécurité, 2024",
+      "ABSENT : téléphone, lieu de l'employeur, mention, émetteur, type d'emploi.",
     ],
   }),
   "docx-french-anonymous": fromLines({

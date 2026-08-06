@@ -51,18 +51,22 @@ Evaluate T245 offline from the accepted sanitized T199/T200 evidence (fully
 offline; no OAuth, Codex, Docker, credential access, or live lifecycle
 attempt). The evaluator fails closed on missing, malformed, or contradictory
 evidence, distinguishes `not_exercised`, `deterministic_only`, and
-`live_observed` observations, and writes
-`evidence/codex-direct-oauth-t245-lifecycle.json` only after a future accepted
-live run satisfies every canonical criterion:
+`live_observed` observations, and writes the sanitized aggregate
+`evidence/codex-direct-oauth-t245-lifecycle.json`:
 
 ```sh
 node spikes/codex-direct-oauth/re-evaluate-t245.mjs
 ```
 
-Current checked-in evidence does not yet record
-`observation_timestamp`, `connection_status_after_callback`, or the
-expired/invalid-credential recovery category, so the command exits non-zero
-and writes no aggregate until the updated T199 runner records those fields.
+The accepted T245 aggregate `evidence/codex-direct-oauth-t245-lifecycle.json`
+exists (accepted live run 2026-08-07), and `re-evaluate-t245.mjs` now passes
+against the accepted evidence. The aggregate is generated fail-closed and
+offline: it is written only when every canonical criterion is satisfied by the
+accepted sanitized evidence, and the command exits non-zero without writing
+when evidence is missing, malformed, or contradictory. The evidence records
+`observation_timestamp`, `connection_status_after_callback`, and the
+expired/invalid-credential recovery category. Provider-side remote revocation
+remains not exercised and is not claimed; canonical T245 does not require it.
 
 Regression tests for the T245 evaluator and the sanitized T199 lifecycle
 evidence builder:

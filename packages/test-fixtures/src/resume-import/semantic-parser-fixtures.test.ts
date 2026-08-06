@@ -164,6 +164,7 @@ describe("T169 semantic parser fixtures", () => {
       "pdf-english-anonymous",
       "docx-english-anonymous",
       "pdf-french-anonymous",
+      "pdf-french-canonical-anonymous",
       "docx-french-anonymous",
       "pdf-bilingual-anonymous",
       "docx-bilingual-anonymous",

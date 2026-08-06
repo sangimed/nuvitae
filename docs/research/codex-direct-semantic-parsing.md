@@ -27,9 +27,10 @@ and pass; the authoritative aggregate is
 (`matrix_state: all_cases_live_passed`, `matrix_pass: true`). C01-C06 are
 executed and passing. T202 has been re-measured from this matrix
 (`docs/research/codex-direct-oauth-evaluation.md`) and the T203 gate has been
-re-evaluated (`docs/research/codex-direct-oauth-go-no-go.md`); the decision
-remains NO-GO because live Codex semantic quality over real PDF/DOCX documents
-(T246) and bounded-fallback wiring (T217) remain unexecuted.
+re-evaluated (`docs/research/codex-direct-oauth-go-no-go.md`) and re-confirmed
+on 2026-08-07 after the accepted T245 lifecycle proof; the decision remains
+NO-GO because live Codex semantic quality over real PDF/DOCX documents (T246)
+and bounded-fallback wiring (T217) remain unexecuted.
 
 ## Artifacts
 
@@ -77,7 +78,8 @@ deterministic-enrichment contract) with sanitized evidence; the six-case matrix
 is complete and all-passing (see `codex-direct-oauth-t201-matrix.json`).
 T201 is therefore complete. T202 has been re-measured from the accepted
 evidence and is no longer blocked; the T203 gate was re-evaluated on 2026-08-06
-and remains NO-GO for production adapter implementation because the live
+and re-confirmed on 2026-08-07 after the accepted T245 lifecycle proof, and
+remains NO-GO for production adapter implementation because the live
 real-document semantic gate (T246) and bounded-fallback wiring (T217) remain
 unexecuted. T164/T165 remain blocked.
 T205 completed the current-version offline contract reconciliation; it did not
@@ -148,6 +150,42 @@ because live Codex semantic quality over real PDF/DOCX documents (T246) and
 bounded-fallback wiring (T217) remain unexecuted, and non-technical onboarding
 feasibility remains unmeasured. Historical evidence files remain byte-identical.
 
+## 2026-08-07 update (T245 completion)
+
+T245 (credential lifecycle proof in the supported local same-host Docker
+deployment shape) was completed and accepted on 2026-08-07. The accepted
+aggregate is
+`spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`:
+9/9 mandatory criteria passing, 8 live-observed and 1 deterministic-only
+invalid-grant classification; provider-side remote revocation was not
+exercised and is not claimed (canonical T245 does not require it). T245
+satisfies T203 re-evaluation trigger 1 and unblocks T213-T215 Community
+connection-UI qualification, which remain incomplete. T246 (live Codex
+semantic evaluation over the real-document corpus) is now the next live
+semantic task; its remaining prerequisites are T248 (real French PDF proof),
+T247 (T208 bookkeeping closure), and explicit live execution authorization.
+The T203 decision remains **NO-GO** after the 2026-08-07 re-confirmation.
+
+## 2026-08-07 update (T248 completion)
+
+T248 (real French PDF fixture and evaluation coverage) was completed on
+2026-08-07. The canonical fixture
+`tests/fixtures/resumes/anonymous-french-resume.pdf` is proven offline as a
+valid one-page PDF with selectable text (41 text items, 21 non-empty
+normalized lines) extracted deterministically by `PdfJsPdfAdapter` with no
+OCR and no network access; `DeterministicLanguageDetector` classifies it as
+French. The extraction transcript is pinned byte-for-byte to the
+`pdf-french-canonical-anonymous` entry of the T096 semantic-evaluation corpus
+in `packages/test-fixtures/src/resume-import/semantic-parser-fixtures.ts`.
+The sanitized proof aggregate is
+`spikes/codex-direct-oauth/evidence/codex-direct-oauth-t248-french-pdf.json`
+(verifier `spikes/codex-direct-oauth/verify-t248-french-pdf.mjs`; regression
+coverage in `tests/integration/import-resume/french-pdf-fixture-evaluation.integration.test.ts`
+and `spikes/codex-direct-oauth/test/t248-french-pdf-verifier.test.mjs`). The
+real-French-PDF prerequisite for T246 is satisfied; T246 remains incomplete
+and still requires explicit live execution authorization. The T203 decision
+remains **NO-GO**.
+
 ## Execution boundary
 
 The bounded sequence has been executed and the matrix is complete. No further
@@ -163,9 +201,10 @@ followed, was:
 6. Aggregate only the independently inspected results.
 
 No step runs OAuth login or credential refresh implicitly. The next live work
-is the separately authorized T245/T246 sequence (lifecycle proof in the
-supported deployment shape and real-document live Codex evaluation); no live
-request is authorized by this document.
+is the separately authorized T246 real-document live Codex evaluation (the
+T245 lifecycle proof was completed and accepted on 2026-08-07; aggregate
+`spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`);
+no live request is authorized by this document.
 
 ## Preserved historical material
 
@@ -177,6 +216,8 @@ this file is the canonical path for the T201 matrix going forward.
 T201 is complete: every mandatory case has an independently passing bounded
 evaluation, and the consolidated matrix records `all_cases_live_passed`. T202 is
 measured (see `docs/research/codex-direct-oauth-evaluation.md`). T203 was
-re-evaluated on 2026-08-06 and remains **NO-GO** for production adapter
+re-evaluated on 2026-08-06 and re-confirmed on 2026-08-07 after the accepted
+T245 lifecycle proof; it remains **NO-GO** for production adapter
 implementation because the live real-document semantic gate (T246) and
-bounded-fallback wiring (T217) remain unexecuted; T164/T165 remain blocked.
+bounded-fallback wiring (T217) remain unexecuted. T246 is now the next live
+semantic task; T164/T165 remain blocked.

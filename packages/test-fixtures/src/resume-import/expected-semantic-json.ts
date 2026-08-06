@@ -247,6 +247,183 @@ function buildPdfFrenchResponse(
   };
 }
 
+/**
+ * Expected semantic JSON for the canonical real-document French PDF fixture
+ * (`pdf-french-canonical-anonymous`, T248). Every non-null value is an exact
+ * evidenced substring of the deterministic extraction transcript pinned to
+ * `tests/fixtures/resumes/anonymous-french-resume.pdf`. The document-level
+ * language confidence mirrors the repository's deterministic classifier
+ * result for that fixture ("medium"), and the quoted "Résilience
+ * opérationnelle" claim is surfaced as an ambiguity diagnostic because the
+ * fixture explicitly states it appears without a defined scope.
+ */
+function buildPdfFrenchCanonicalResponse(
+  fragments: readonly SemanticParserSourceFragment[],
+): NuvitaeSemanticExtractionResponse {
+  const name = fixtureFragmentAt(fragments, 0);
+  const headline = fixtureFragmentAt(fragments, 1);
+  const email = fixtureFragmentAt(fragments, 2);
+  const location = fixtureFragmentAt(fragments, 3);
+  const summary = fixtureFragmentAt(fragments, 5);
+  const employer = fixtureFragmentAt(fragments, 7);
+  const role = fixtureFragmentAt(fragments, 8);
+  const dates = fixtureFragmentAt(fragments, 9);
+  const firstResponsibility = fixtureFragmentAt(fragments, 10);
+  const secondResponsibility = fixtureFragmentAt(fragments, 11);
+  const ambiguousClaim = fixtureFragmentAt(fragments, 12);
+  const institution = fixtureFragmentAt(fragments, 14);
+  const degree = fixtureFragmentAt(fragments, 15);
+  const educationDates = fixtureFragmentAt(fragments, 16);
+  const skillsLine = fixtureFragmentAt(fragments, 17);
+  const languagesLine = fixtureFragmentAt(fragments, 18);
+  const certificationLine = fixtureFragmentAt(fragments, 19);
+
+  return {
+    schemaVersion: nuvitaeSemanticExtractionResponseVersion,
+    documentLanguage: {
+      value: "french",
+      confidence: "medium",
+      evidence: [fixtureEvidenceOf(languagesLine, "Français")],
+    },
+    sections: {
+      contact: {
+        fullName: fixtureSemanticValueOf(name, "Léa Dupont-Exemple"),
+        email: fixtureSemanticValueOf(email, "lea.exemple@example.invalid"),
+        phone: null,
+        location: fixtureSemanticValueOf(location, "Nantes, France"),
+        website: null,
+      },
+      headline: fixtureSemanticValueOf(headline, "Ingénieure Systèmes"),
+      summary: fixtureSemanticValueOf(
+        summary,
+        "Ingénieure systèmes qui simplifie des processus d'approbation fictifs.",
+      ),
+      workExperience: [
+        {
+          candidateId: "work-1",
+          employerName: fixtureSemanticValueOf(
+            employer,
+            "Atelier Fictif Lumière (employeur fictif)",
+          ),
+          employerLocation: null,
+          roles: [
+            {
+              candidateId: "role-1",
+              title: fixtureSemanticValueOf(role, "Ingénieure Systèmes"),
+              location: null,
+              startDate: fixtureSemanticValueOf(dates, "avril 2022"),
+              endDate: fixtureSemanticValueOf(dates, "décembre 2024"),
+              isOngoing: false,
+              responsibilities: [
+                fixtureSemanticValueOf(
+                  firstResponsibility,
+                  "A cartographié 18 parcours d'approbation fictifs.",
+                ),
+                fixtureSemanticValueOf(
+                  secondResponsibility,
+                  "A écrit des vérifications JSON pour 300 enregistrements fictifs.",
+                ),
+              ],
+              achievements: [],
+            },
+          ],
+        },
+      ],
+      education: [
+        {
+          candidateId: "education-1",
+          institution: fixtureSemanticValueOf(
+            institution,
+            "Institut de Design Fictif",
+          ),
+          degree: fixtureSemanticValueOf(
+            degree,
+            "Diplôme en Design de Systèmes",
+          ),
+          fieldOfStudy: null,
+          startDate: fixtureSemanticValueOf(educationDates, "2019"),
+          endDate: fixtureSemanticValueOf(educationDates, "2022"),
+          location: null,
+          details: [],
+        },
+      ],
+      skills: [
+        {
+          candidateId: "skill-1",
+          name: fixtureSemanticValueOf(skillsLine, "JSON"),
+          category: null,
+        },
+        {
+          candidateId: "skill-2",
+          name: fixtureSemanticValueOf(skillsLine, "Cartographie"),
+          category: null,
+        },
+        {
+          candidateId: "skill-3",
+          name: fixtureSemanticValueOf(skillsLine, "Tests"),
+          category: null,
+        },
+      ],
+      languages: [
+        {
+          candidateId: "language-1",
+          name: fixtureSemanticValueOf(languagesLine, "Français"),
+          proficiency: fixtureSemanticValueOf(languagesLine, "courant"),
+        },
+        {
+          candidateId: "language-2",
+          name: fixtureSemanticValueOf(languagesLine, "Anglais"),
+          proficiency: fixtureSemanticValueOf(languagesLine, "professionnel"),
+        },
+      ],
+      projects: [],
+      certifications: [
+        {
+          candidateId: "certification-1",
+          name: fixtureSemanticValueOf(
+            certificationLine,
+            "Médaille fictive de sécurité",
+          ),
+          issuer: null,
+          date: fixtureSemanticValueOf(certificationLine, "2024"),
+        },
+      ],
+      professionalLinks: [],
+    },
+    relationships: [
+      {
+        candidateId: "relationship-1",
+        relationshipType: "role_belongs_to_employer",
+        fromCandidateId: "role-1",
+        toCandidateId: "work-1",
+        evidence: [
+          fixtureEvidenceOf(
+            employer,
+            "Atelier Fictif Lumière (employeur fictif)",
+          ),
+          fixtureEvidenceOf(role, "Ingénieure Systèmes"),
+        ],
+        confidence: "high",
+      },
+    ],
+    ambiguityDiagnostics: [
+      {
+        code: "ambiguous_grouping",
+        message:
+          "A quoted claim appears without a defined scope and requires review.",
+        severity: "warning",
+        evidence: [
+          fixtureEvidenceOf(ambiguousClaim, "Résilience opérationnelle"),
+        ],
+        safeDetail:
+          "The quoted claim is listed in the experience section without a defined scope.",
+      },
+    ],
+    conflictDiagnostics: [],
+    privacyWarnings: [],
+  };
+}
+
 function buildDocxFrenchResponse(
   fragments: readonly SemanticParserSourceFragment[],
 ): NuvitaeSemanticExtractionResponse {
@@ -1344,6 +1521,9 @@ export const expectedSemanticJsonById: Readonly<
   "docx-english-anonymous": t210ProfileResponse("docx-english-anonymous"),
   "pdf-french-anonymous": buildPdfFrenchResponse(
     fragmentsOf("pdf-french-anonymous"),
+  ),
+  "pdf-french-canonical-anonymous": buildPdfFrenchCanonicalResponse(
+    fragmentsOf("pdf-french-canonical-anonymous"),
   ),
   "docx-french-anonymous": buildDocxFrenchResponse(
     fragmentsOf("docx-french-anonymous"),
