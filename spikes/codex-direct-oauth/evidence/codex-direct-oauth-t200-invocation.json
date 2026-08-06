@@ -1,6 +1,6 @@
 {
   "evidence_classification": "live_t200_direct_invocation",
-  "observation_timestamp": "2026-08-06T20:04:08.221Z",
+  "observation_timestamp": "2026-08-06T22:36:35.514Z",
   "audited_upstream_revisions": {
     "compatibilityImplementation": "4c331166c40cccb6e4d2da1136c921faed1cc8c1",
     "hermesAgent": "5d6aae02bffa7714c4a94f3a0900b37774442dea",
@@ -8,10 +8,10 @@
   },
   "deployment_mode": "local_macos_docker_desktop_single_user_spike",
   "encrypted_state_recovered": true,
-  "credential_generation_before": 2,
-  "refresh_required": false,
-  "refresh_attempted": false,
-  "refresh_succeeded": false,
+  "credential_generation_before": 1,
+  "refresh_required": true,
+  "refresh_attempted": true,
+  "refresh_succeeded": true,
   "credential_generation_after": 2,
   "audited_backend_host_applied": true,
   "audited_backend_path_applied": true,

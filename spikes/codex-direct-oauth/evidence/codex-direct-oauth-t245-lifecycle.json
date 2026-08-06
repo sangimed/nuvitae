@@ -1,0 +1,138 @@
+{
+  "evidence_classification": "sanitized_t245_lifecycle_proof",
+  "evaluator": "spikes/codex-direct-oauth/lib/t245-evaluator.mjs",
+  "inputs": {
+    "t199_evidence": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t199-live.json",
+    "t200_evidence": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t200-invocation.json"
+  },
+  "provider_side_revocation_required": false,
+  "criteria": [
+    {
+      "key": "fresh_browser_oauth_login",
+      "label": "Fresh browser OAuth login in the supported local same-host Docker deployment shape",
+      "required": true,
+      "pass": true,
+      "observation_kind": "live_observed",
+      "evidence": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t199-live.json"
+      ]
+    },
+    {
+      "key": "callback_completion_and_connection_status_after_callback",
+      "label": "Callback completion and verified post-callback connected state",
+      "required": true,
+      "pass": true,
+      "observation_kind": "live_observed",
+      "evidence": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t199-live.json"
+      ]
+    },
+    {
+      "key": "encrypted_credential_persistence",
+      "label": "Encrypted credential persistence without plaintext",
+      "required": true,
+      "pass": true,
+      "observation_kind": "live_observed",
+      "evidence": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t199-live.json"
+      ]
+    },
+    {
+      "key": "restart_recovery",
+      "label": "Encrypted credential recovery after application/container restart",
+      "required": true,
+      "pass": true,
+      "observation_kind": "live_observed",
+      "evidence": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t199-live.json"
+      ]
+    },
+    {
+      "key": "token_refresh_with_rotation",
+      "label": "Live token refresh with rotation",
+      "required": true,
+      "pass": true,
+      "observation_kind": "live_observed",
+      "evidence": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t199-live.json"
+      ],
+      "note": "live_network_refresh_count=1"
+    },
+    {
+      "key": "expired_invalid_credential_recovery",
+      "label": "Expired/invalid-credential recovery category observed",
+      "required": true,
+      "pass": true,
+      "observation_kind": "deterministic_only",
+      "evidence": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t199-live.json"
+      ],
+      "note": "recovery_category=deterministic_invalid_grant_classification; live invalid_grant=false; deterministic invalid_grant=true"
+    },
+    {
+      "key": "explicit_reconnect",
+      "label": "Explicit reconnect to connected state with recovered encrypted credentials",
+      "required": true,
+      "pass": true,
+      "observation_kind": "live_observed",
+      "evidence": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t199-live.json"
+      ]
+    },
+    {
+      "key": "disconnect_and_credential_removal",
+      "label": "Disconnect, local credential removal, and disconnected restart",
+      "required": true,
+      "pass": true,
+      "observation_kind": "live_observed",
+      "evidence": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t199-live.json"
+      ]
+    },
+    {
+      "key": "successful_invocation_after_restart",
+      "label": "Successful minimal invocation after restart using recovered encrypted state",
+      "required": true,
+      "pass": true,
+      "observation_kind": "live_observed",
+      "evidence": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t200-invocation.json"
+      ],
+      "note": "exact_http_status=200"
+    },
+    {
+      "key": "provider_side_remote_revocation",
+      "label": "Provider-side remote token revocation (not required by canonical T245)",
+      "required": false,
+      "pass": true,
+      "observation_kind": "not_exercised",
+      "evidence": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t199-live.json"
+      ],
+      "note": "not_exercised_without_supported_revocation_mechanism"
+    }
+  ],
+  "recovery_observations": {
+    "expired_invalid_credential_recovery_category": "deterministic_invalid_grant_classification",
+    "expired_invalid_credential_recovery_observation": "deterministic_only",
+    "invalid_grant_observed_live": false,
+    "deterministic_invalid_grant_detected": true,
+    "provider_side_revocation_behavior": "not_exercised_without_supported_revocation_mechanism"
+  },
+  "summary": {
+    "t245_live_proof_complete": true,
+    "mandatory_criteria_count": 9,
+    "passing_mandatory_criteria_count": 9,
+    "live_observed_count": 8,
+    "deterministic_only_count": 1,
+    "not_exercised_count": 1,
+    "failures": []
+  },
+  "residual_risks": [
+    {
+      "key": "provider_side_remote_revocation_not_exercised",
+      "detail": "A live provider-side revocation was not exercised and is not claimed. Canonical T245 requires expired/invalid-credential recovery and explicit reconnect; the repository's accepted T199 interpretation treats deterministic invalid-grant classification as the safe reconnect classification for expired or revoked credentials, and no supported remote revocation endpoint is established in the upstream audit."
+    }
+  ],
+  "evidence_atomic_replace_succeeded": true
+}
