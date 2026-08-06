@@ -1,7 +1,7 @@
 {
-  "observation_timestamp": "2026-07-31T09:32:59.059Z",
+  "observation_timestamp": "2026-08-05T21:10:36.065Z",
   "audited_upstream_revision_identifiers": {
-    "openclaw": "4c331166c40cccb6e4d2da1136c921faed1cc8c1",
+    "compatibilityImplementation": "4c331166c40cccb6e4d2da1136c921faed1cc8c1",
     "hermesAgent": "5d6aae02bffa7714c4a94f3a0900b37774442dea",
     "officialCodex": "3016671bb077c43448b8fa88f3edfa9772e17058"
   },
@@ -14,7 +14,7 @@
     "path": "/auth/callback",
     "hostname_classification": "localhost"
   },
-  "localhost_address_families": "both",
+  "localhost_address_families": "ipv4_only",
   "ipv4_preflight_result": "success",
   "ipv6_preflight_result": "success",
   "docker_ipv6_loopback_publication": "accepted",

@@ -29,6 +29,7 @@ services:
       context: .
     init: true
     read_only: true
+    user: "${CODEX_DIRECT_OAUTH_HOST_UID:-1000}:${CODEX_DIRECT_OAUTH_HOST_GID:-1000}"
     volumes:
       - ./evidence:/spike/evidence
     tmpfs:
@@ -56,6 +57,7 @@ services:
       context: .
     init: true
     read_only: true
+    user: "${CODEX_DIRECT_OAUTH_HOST_UID:-1000}:${CODEX_DIRECT_OAUTH_HOST_GID:-1000}"
     volumes:
       - ./evidence:/spike/evidence
     tmpfs:
@@ -122,6 +124,7 @@ services:
     init: true
     command: ["node", "t201-semantic-broker.mjs"]
     read_only: true
+    user: "1000:1000"
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=16m,mode=0700
     cap_drop:

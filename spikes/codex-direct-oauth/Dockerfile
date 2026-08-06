@@ -1,6 +1,14 @@
 FROM node:24.15.0-alpine
 
-RUN addgroup -S spike && adduser -S -G spike spike
+# The stock node image pre-creates `node` at UID/GID 1000. Replace that
+# account with the spike identity pinned to UID/GID 1000 to match the T201
+# Compose contract (`user: "1000:1000"` on t201-semantic and the
+# identity-unmodified t201-result-reader). Fresh disposable result volumes are
+# seeded from /spike/result, so the broker's runtime identity must own that
+# directory.
+RUN deluser node \
+  && addgroup -S -g 1000 spike \
+  && adduser -S -u 1000 -G spike spike
 
 WORKDIR /spike
 COPY --chown=spike:spike . /spike

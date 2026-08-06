@@ -2,6 +2,8 @@
 set -eu
 
 cd "$(dirname "$0")"
+export CODEX_DIRECT_OAUTH_HOST_UID="$(id -u)"
+export CODEX_DIRECT_OAUTH_HOST_GID="$(id -g)"
 if [ -f evidence/codex-direct-oauth-login.json ] && [ ! -f evidence/codex-direct-oauth-login-first-attempt.json ]; then
   cp evidence/codex-direct-oauth-login.json evidence/codex-direct-oauth-login-first-attempt.json
 fi

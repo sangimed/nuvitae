@@ -44,7 +44,7 @@ test(
         "-c",
         'id && stat -c "%A %a %u:%g %n" /spike /spike/lib /spike/lib/t201-matrix-evaluator.mjs /spike/t201-semantic-broker.mjs && test -z "$(find /spike -type f -name \'*.mjs\' \\( ! -user spike -o ! -perm -004 \\) -print -quit)"',
       ]);
-      assert.match(stat.stdout, /uid=100\(spike\) gid=101\(spike\)/);
+      assert.match(stat.stdout, /uid=1000\(spike\) gid=1000\(spike\)/);
       assert.doesNotMatch(stat.stdout, /600 root:root/);
 
       const imported = await execFileAsync("docker", [

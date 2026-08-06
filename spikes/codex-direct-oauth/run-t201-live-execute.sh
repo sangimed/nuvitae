@@ -152,10 +152,10 @@ runner_status=$?
 set -e
 
 set +e
-node --input-type=module - "$evidence" "evidence/codex-direct-oauth-t201-matrix.json" <<'NODE'
-import { updateC02MatrixEvidence } from "./lib/t201-live-runner-evidence.mjs";
-const [, , evidencePath, matrixPath] = process.argv;
-await updateC02MatrixEvidence({ evidencePath, matrixPath });
+node --input-type=module - "$evidence" "evidence/codex-direct-oauth-t201-matrix.json" "$case_id" <<'NODE'
+import { updateMatrixEvidenceForCase } from "./lib/t201-live-runner-evidence.mjs";
+const [, , evidencePath, matrixPath, caseId] = process.argv;
+await updateMatrixEvidenceForCase({ evidencePath, matrixPath, caseId });
 NODE
 matrix_status=$?
 set -e

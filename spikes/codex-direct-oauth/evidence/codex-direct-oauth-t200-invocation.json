@@ -1,6 +1,6 @@
 {
   "evidence_classification": "live_t200_direct_invocation",
-  "observation_timestamp": "2026-07-31T20:50:58.191Z",
+  "observation_timestamp": "2026-08-06T20:04:08.221Z",
   "audited_upstream_revisions": {
     "compatibilityImplementation": "4c331166c40cccb6e4d2da1136c921faed1cc8c1",
     "hermesAgent": "5d6aae02bffa7714c4a94f3a0900b37774442dea",
@@ -8,11 +8,11 @@
   },
   "deployment_mode": "local_macos_docker_desktop_single_user_spike",
   "encrypted_state_recovered": true,
-  "credential_generation_before": 6,
+  "credential_generation_before": 2,
   "refresh_required": false,
   "refresh_attempted": false,
   "refresh_succeeded": false,
-  "credential_generation_after": 6,
+  "credential_generation_after": 2,
   "audited_backend_host_applied": true,
   "audited_backend_path_applied": true,
   "authorization_header_applied": true,
@@ -46,11 +46,39 @@
   "unknown_event_assistant_output_phase": null,
   "unknown_event_terminal_phase": null,
   "unknown_event_top_level_fields": [],
-  "unknown_event_field_presence": {},
-  "unknown_event_field_categories": {},
+  "unknown_event_field_presence": {
+    "response_present": false,
+    "item_present": false,
+    "delta_present": false,
+    "error_present": false,
+    "sequence_number_present": false
+  },
+  "unknown_event_field_categories": {
+    "response": "absent",
+    "item": "absent",
+    "delta": "absent",
+    "error": "absent",
+    "sequence_number": "absent"
+  },
   "unknown_event_contains_text_looking_field": false,
   "unknown_event_followed_by_more_events": false,
-  "known_event_types_before_failure": [],
+  "known_event_types_before_failure": [
+    "response.created",
+    "response.in_progress",
+    "response.output_item.added",
+    "response.content_part.added",
+    "response.output_text.delta",
+    "response.output_text.delta",
+    "response.output_text.delta",
+    "response.output_text.delta",
+    "response.output_text.delta",
+    "response.output_text.delta",
+    "response.output_text.delta",
+    "response.output_text.done",
+    "response.content_part.done",
+    "response.output_item.done",
+    "response.completed"
+  ],
   "terminal_event_observed_before_failure": false,
   "expected_synthetic_marker_present": true,
   "response_length_category": "fixed_marker_only",
@@ -125,6 +153,12 @@
       "include": 1,
       "input": 1
     },
+    "reasoning_effort_category": "low",
+    "reasoning_summary_present": true,
+    "include_category": "non_empty",
+    "text_verbosity_category": "low",
+    "tools_present": false,
+    "store_false": true,
     "model_identifier_category": "audited_codex_text_model",
     "input_item_categories": [
       {
@@ -201,6 +235,12 @@
       "include": 1,
       "input": 3
     },
+    "reasoning_effort_category": "low",
+    "reasoning_summary_present": false,
+    "include_category": "non_empty",
+    "text_verbosity_category": "low",
+    "tools_present": false,
+    "store_false": true,
     "model_identifier_category": "audited_codex_text_model",
     "input_item_categories": [
       {
@@ -287,6 +327,12 @@
       "include": 1,
       "input": 1
     },
+    "reasoning_effort_category": "low",
+    "reasoning_summary_present": true,
+    "include_category": "non_empty",
+    "text_verbosity_category": "low",
+    "tools_present": false,
+    "store_false": true,
     "model_identifier_category": "audited_codex_text_model",
     "input_item_categories": [
       {
@@ -299,7 +345,8 @@
     ],
     "stream_boolean": true,
     "serialized_body_byte_length": 813,
-    "harmless_marker_present": true
+    "harmless_marker_present": true,
+    "serialized_body_byte_category": "small"
   },
   "corrected_request_mismatches": [],
   "previous_request_mismatches": [

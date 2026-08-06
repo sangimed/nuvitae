@@ -701,6 +701,18 @@ export async function updateC02MatrixEvidence({ evidencePath, matrixPath }) {
   return matrix;
 }
 
+// The C02 matrix updater is the only matrix mutator and must never run for
+// non-C02 cases. Dispatch is centralized here so every runner path (shell or
+// library) shares the same case gate.
+export async function updateMatrixEvidenceForCase({
+  evidencePath,
+  matrixPath,
+  caseId,
+}) {
+  if (caseId !== "T201-C02") return null;
+  return updateC02MatrixEvidence({ evidencePath, matrixPath });
+}
+
 export async function processT201RunnerEvidence({
   evidencePath,
   logsPath,

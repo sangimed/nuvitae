@@ -598,7 +598,7 @@ test("T200 and T201 Docker networking and proxy policy match", async () => {
     false,
   );
   assert.equal(t200Runner.includes("--user 1000:1000"), true);
-  assert.equal(t201Service.includes('user: "1000:1000"'), false);
+  assert.equal(t201Service.includes('user: "1000:1000"'), true);
   assert.equal(t201Service.includes("uid=1000"), false);
   assert.equal(t201Service.includes("gid=1000"), false);
   assert.equal(t200Runner.includes("--read-only"), true);
