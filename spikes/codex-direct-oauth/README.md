@@ -21,6 +21,16 @@ node --test spikes/codex-direct-oauth/test/*.test.mjs
 node spikes/codex-direct-oauth/secret-scan.mjs
 ```
 
+Consolidate sanitized T201 live evidence into the checked-in aggregate matrix
+(fully offline; no OAuth, Codex, Docker, or live Campaign-B attempt). The
+authoritative evidence for each case is the single passing attempt recorded in
+`campaign-b-authorizations.json`; C01's legacy canonical evidence is preserved
+unchanged. The command fails closed on ambiguous successful attempts:
+
+```sh
+node spikes/codex-direct-oauth/consolidate-t201-matrix.mjs
+```
+
 Run the non-OAuth loopback preflight:
 
 ```sh

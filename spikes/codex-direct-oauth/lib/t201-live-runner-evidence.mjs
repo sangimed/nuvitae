@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { containsSecretLikeValue } from "./sanitize.mjs";
 import { inspectBrokerResultChannel } from "./t201-broker-result-channel.mjs";
+import { T201_MATRIX_CASE_IDS } from "./t201-matrix-evaluator.mjs";
 
 const DEFAULT_PHASE = "safe_unknown_phase";
 const DEFAULT_FAILURE = "safe_unknown_failure";
@@ -651,38 +652,35 @@ export async function writeEvidenceAtomic(evidencePath, evidence) {
   return nextEvidence;
 }
 
-export async function updateC02MatrixEvidence({ evidencePath, matrixPath }) {
-  const evidence = JSON.parse(await fs.readFile(evidencePath, "utf8"));
-  if (
-    evidence.fixture_identifier !== "T201-C02" ||
-    evidence.t201_complete !== false
-  ) {
-    throw new Error("invalid_c02_evidence_for_matrix_update");
-  }
-  const matrix = JSON.parse(await fs.readFile(matrixPath, "utf8"));
-  if (!Array.isArray(matrix.cases) || matrix.cases.length !== 6)
-    throw new Error("invalid_t201_matrix");
-  const target = matrix.cases.find((item) => item.case_id === "T201-C02");
-  if (!target) throw new Error("missing_t201_c02_matrix_entry");
-  const metricKeys = [
-    "schema_valid",
-    "expected_section_recall",
-    "expected_item_recall",
-    "exact_fact_recall",
-    "high_priority_fact_recall",
-    "unsupported_fact_count",
-    "forbidden_inference_count",
-    "missing_evidence_count",
-    "invalid_evidence_count",
-    "grounding_pass",
-    "no_invention_pass",
-    "parsing_pass",
-  ];
+const MATRIX_SAFE_METRIC_KEYS = Object.freeze([
+  "schema_valid",
+  "expected_section_recall",
+  "expected_item_recall",
+  "exact_fact_recall",
+  "high_priority_fact_recall",
+  "unsupported_fact_count",
+  "forbidden_inference_count",
+  "missing_evidence_count",
+  "invalid_evidence_count",
+  "grounding_pass",
+  "no_invention_pass",
+  "parsing_pass",
+]);
+const MATRIX_STATE_PARTIAL = "partially_live_evaluated";
+const MATRIX_STATE_ALL_CASES_LIVE_PASSED = "all_cases_live_passed";
+
+function applyT201MatrixCaseEvidence(target, evidence) {
+  const groundingPass =
+    evidence.grounding_pass ??
+    evidence.evaluation_metrics?.grounding_pass ??
+    null;
   target.safe_metrics = {
     ...Object.fromEntries(
-      metricKeys.map((key) => [
+      MATRIX_SAFE_METRIC_KEYS.map((key) => [
         key,
-        evidence.evaluation_metrics?.[key] ?? null,
+        key === "grounding_pass"
+          ? groundingPass
+          : (evidence.evaluation_metrics?.[key] ?? null),
       ]),
     ),
     ambiguity_handling_pass: evidence.ambiguity_handling_pass === true,
@@ -695,22 +693,170 @@ export async function updateC02MatrixEvidence({ evidencePath, matrixPath }) {
   target.credential_isolation =
     evidence.encrypted_state_preserved === true &&
     evidence.broker_removed === true;
-  matrix.matrix_state = "partially_live_evaluated";
-  matrix.matrix_pass = false;
-  await writeEvidenceAtomic(matrixPath, matrix);
-  return matrix;
 }
 
-// The C02 matrix updater is the only matrix mutator and must never run for
-// non-C02 cases. Dispatch is centralized here so every runner path (shell or
-// library) shares the same case gate.
+function recomputeT201MatrixPass(matrix) {
+  matrix.matrix_pass =
+    matrix.cases.length === T201_MATRIX_CASE_IDS.length &&
+    matrix.cases.every((item) => item.pass === true);
+  matrix.matrix_state = matrix.matrix_pass
+    ? MATRIX_STATE_ALL_CASES_LIVE_PASSED
+    : MATRIX_STATE_PARTIAL;
+}
+
+async function evidenceForMatrixCase(evidencePath, caseId) {
+  const evidence = JSON.parse(await fs.readFile(evidencePath, "utf8"));
+  if (
+    evidence.fixture_identifier !== caseId ||
+    evidence.evidence_classification !== EVIDENCE_CLASSIFICATION
+  ) {
+    throw new Error(
+      caseId === "T201-C02"
+        ? "invalid_c02_evidence_for_matrix_update"
+        : "invalid_t201_evidence_for_matrix_update",
+    );
+  }
+  if (caseId === "T201-C02" && evidence.t201_complete !== false) {
+    throw new Error("invalid_c02_evidence_for_matrix_update");
+  }
+  return evidence;
+}
+
+export async function updateC02MatrixEvidence({ evidencePath, matrixPath }) {
+  return updateT201MatrixCaseEvidence({
+    evidencePath,
+    matrixPath,
+    caseId: "T201-C02",
+  });
+}
+
+// Every runner path (shell or library) dispatches sanitized live evidence
+// through this centralized case gate. Any T201 matrix case may be updated;
+// unknown case identifiers are a no-op so the bounded runner tail never
+// mutates unrelated evidence.
 export async function updateMatrixEvidenceForCase({
   evidencePath,
   matrixPath,
   caseId,
 }) {
-  if (caseId !== "T201-C02") return null;
-  return updateC02MatrixEvidence({ evidencePath, matrixPath });
+  if (!T201_MATRIX_CASE_IDS.includes(caseId)) return null;
+  return updateT201MatrixCaseEvidence({ evidencePath, matrixPath, caseId });
+}
+
+export async function updateT201MatrixCaseEvidence({
+  evidencePath,
+  matrixPath,
+  caseId,
+}) {
+  if (!T201_MATRIX_CASE_IDS.includes(caseId)) return null;
+  const evidence = await evidenceForMatrixCase(evidencePath, caseId);
+  const matrix = JSON.parse(await fs.readFile(matrixPath, "utf8"));
+  if (
+    !Array.isArray(matrix.cases) ||
+    matrix.cases.length !== T201_MATRIX_CASE_IDS.length
+  )
+    throw new Error("invalid_t201_matrix");
+  const target = matrix.cases.find((item) => item.case_id === caseId);
+  if (!target) throw new Error(`missing_t201_matrix_entry:${caseId}`);
+  applyT201MatrixCaseEvidence(target, evidence);
+  recomputeT201MatrixPass(matrix);
+  await writeEvidenceAtomic(matrixPath, matrix);
+  return matrix;
+}
+
+function evidencePassesMatrixGate(caseId, evidence) {
+  return (
+    evidence.fixture_identifier === caseId &&
+    evidence.evidence_classification === EVIDENCE_CLASSIFICATION &&
+    evidence.case_pass === true &&
+    evidence.safe_final_state === "complete" &&
+    evidence.evaluation_metrics?.parsing_pass === true
+  );
+}
+
+// Deterministic offline selection of the authoritative sanitized evidence for
+// every T201 matrix case. Only attempts recorded in the Campaign-B
+// authorization registry are considered. Zero passing attempts leaves the case
+// unmatched (recorded as not passed); more than one passing attempt fails
+// closed instead of guessing.
+export async function selectT201AuthoritativeEvidenceFiles({
+  registry,
+  repoRoot,
+}) {
+  const selected = new Map();
+  for (const entry of registry.authorized_attempts ?? []) {
+    const caseId = entry.semantic_case;
+    if (!T201_MATRIX_CASE_IDS.includes(caseId)) continue;
+    const evidencePath = path.resolve(repoRoot, entry.evidence);
+    let evidence;
+    try {
+      evidence = JSON.parse(await fs.readFile(evidencePath, "utf8"));
+    } catch (error) {
+      if (error.code === "ENOENT") continue;
+      throw error;
+    }
+    if (!evidencePassesMatrixGate(caseId, evidence)) continue;
+    if (selected.has(caseId))
+      throw new Error("t201_matrix_authoritative_attempt_ambiguous");
+    selected.set(caseId, {
+      campaign: entry.campaign,
+      attempt: entry.attempt,
+      evidence_path: evidencePath,
+      evidence,
+    });
+  }
+  return selected;
+}
+
+// Fully offline consolidation of the checked-in T201 matrix from sanitized
+// evidence. C01 predates Campaign B and its canonical live evidence is
+// preserved unchanged; the legacy matrix entry is the authoritative record.
+// All other cases are re-projected from the single passing authorized attempt.
+export async function consolidateT201MatrixEvidence({
+  matrixPath,
+  registryPath,
+  repoRoot,
+}) {
+  const matrix = JSON.parse(await fs.readFile(matrixPath, "utf8"));
+  if (
+    !Array.isArray(matrix.cases) ||
+    matrix.cases.length !== T201_MATRIX_CASE_IDS.length
+  )
+    throw new Error("invalid_t201_matrix");
+  let registry;
+  try {
+    registry = JSON.parse(await fs.readFile(registryPath, "utf8"));
+  } catch {
+    throw new Error("campaign_b_authorization_registry_invalid");
+  }
+  if (
+    registry?.schema_version !== 1 ||
+    !Array.isArray(registry.authorized_attempts)
+  )
+    throw new Error("campaign_b_authorization_registry_invalid");
+  const authoritative = await selectT201AuthoritativeEvidenceFiles({
+    registry,
+    repoRoot,
+  });
+  for (const caseId of T201_MATRIX_CASE_IDS) {
+    const target = matrix.cases.find((item) => item.case_id === caseId);
+    if (!target) throw new Error(`missing_t201_matrix_entry:${caseId}`);
+    if (caseId === "T201-C01") {
+      if (target.pass !== true || !target.safe_metrics)
+        throw new Error("t201_c01_legacy_matrix_entry_invalid");
+      continue;
+    }
+    const selected = authoritative.get(caseId);
+    if (!selected) {
+      target.pass = false;
+      target.safe_metrics = null;
+      continue;
+    }
+    applyT201MatrixCaseEvidence(target, selected.evidence);
+  }
+  recomputeT201MatrixPass(matrix);
+  await writeEvidenceAtomic(matrixPath, matrix);
+  return matrix;
 }
 
 export async function processT201RunnerEvidence({

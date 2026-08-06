@@ -709,7 +709,7 @@ test("T201 matrix evidence is source-local and aggregate evidence has no fixture
   );
 });
 
-test("persisted T201 aggregate evidence contains only the approved safe fields", async () => {
+test("persisted T201 aggregate evidence contains only the approved safe fields and records the consolidated complete state", async () => {
   const evidence = JSON.parse(
     await fs.readFile(
       new URL(
@@ -719,14 +719,15 @@ test("persisted T201 aggregate evidence contains only the approved safe fields",
       "utf8",
     ),
   );
-  assert.equal(evidence.matrix_pass, false);
+  assert.equal(evidence.matrix_pass, true);
+  assert.equal(evidence.matrix_state, "all_cases_live_passed");
   for (const item of evidence.cases) {
     assert.ok(item.case_id);
     assert.ok(item.language_category);
     assert.ok(item.source_format_category);
     assert.ok(item.layout_category);
     assert.match(item.fixture_hash, /^[a-f0-9-]+$/);
-    assert.equal(typeof item.pass, "boolean");
+    assert.equal(item.pass, true);
     assert.equal(typeof item.privacy_safe, "boolean");
     assert.equal(typeof item.credential_isolation, "boolean");
     assert.equal(Object.hasOwn(item, "raw_model_output"), false);
