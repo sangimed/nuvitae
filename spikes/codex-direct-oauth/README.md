@@ -47,6 +47,31 @@ Regression tests for the T202 evaluator:
 node --test spikes/codex-direct-oauth/test/t202-evaluator.test.mjs
 ```
 
+Evaluate T245 offline from the accepted sanitized T199/T200 evidence (fully
+offline; no OAuth, Codex, Docker, credential access, or live lifecycle
+attempt). The evaluator fails closed on missing, malformed, or contradictory
+evidence, distinguishes `not_exercised`, `deterministic_only`, and
+`live_observed` observations, and writes
+`evidence/codex-direct-oauth-t245-lifecycle.json` only after a future accepted
+live run satisfies every canonical criterion:
+
+```sh
+node spikes/codex-direct-oauth/re-evaluate-t245.mjs
+```
+
+Current checked-in evidence does not yet record
+`observation_timestamp`, `connection_status_after_callback`, or the
+expired/invalid-credential recovery category, so the command exits non-zero
+and writes no aggregate until the updated T199 runner records those fields.
+
+Regression tests for the T245 evaluator and the sanitized T199 lifecycle
+evidence builder:
+
+```sh
+node --test spikes/codex-direct-oauth/test/t245-evaluator.test.mjs
+node --test spikes/codex-direct-oauth/test/t199-lifecycle-evidence.test.mjs
+```
+
 Run the non-OAuth loopback preflight:
 
 ```sh
@@ -79,6 +104,13 @@ bind mount. The broker runs as UID 1000 with a read-only root filesystem,
 read-only key volume, read/write credential volume, dropped capabilities, and
 no-new-privileges. Only safe result JSON is consumed by the host; the full
 authorization URL is printed live and is not persisted.
+
+The T199 runner now records `observation_timestamp` at evidence assembly,
+`connection_status_after_callback` from the broker's verified post-callback
+state, `callback_completion`/`callback_state_validated`/`token_exchange_succeeded`,
+the expired/invalid-credential recovery category, and the live explicit
+reconnect result (`reconnect` broker command). No token, account identifier,
+authorization code, or raw provider response is included.
 
 The broker prints the full authorization URL only to the live terminal. The
 parent lifecycle runner receives only booleans, sanitized redirect metadata, and
