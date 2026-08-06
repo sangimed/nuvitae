@@ -11,15 +11,25 @@ OAuth login, credential refresh, T202, T203, or T164-T165.
 | T201-C01 | English        | plain text                  | single-column            | Passed canonical live validation; preserved unchanged                                                                                                                                         |
 | T201-C02 | French         | plain text                  | single-column            | Passed canonical live validation in Campaign B13 with sanitized evidence                                                                                                                      |
 | T201-C03 | French/English | bilingual plain text        | single-column            | B01 and B02 remain immutable failed historical attempts; B03 passed canonical live validation with sanitized evidence |
-| T201-C04 | English        | PDF-derived extracted text  | single-column            | Unexecuted; fixture and manifest prepared; no binary extraction                                                                                                                               |
-| T201-C05 | English        | PDF-derived extracted text  | multi-column interleaved | Unexecuted; fixture and manifest prepared; regrouping test only                                                                                                                               |
-| T201-C06 | English        | DOCX-derived extracted text | structural artifacts     | Unexecuted; fixture and manifest prepared; no binary extraction                                                                                                                               |
+| T201-C04 | English        | PDF-derived extracted text  | single-column            | B01 and B02 remain immutable failed historical attempts (original physical-coordinate contract / credential-recovery transport failure); B03 passed canonical live validation under the corrected T208 contract |
+| T201-C05 | English        | PDF-derived extracted text  | multi-column interleaved | Passed canonical live validation (B01) with sanitized evidence                                                                                                                                 |
+| T201-C06 | English        | DOCX-derived extracted text | structural artifacts     | Passed canonical live validation (B01) with sanitized evidence                                                                                                                                 |
 
 All six cases are fictional, anonymous, and independently manifested. C02-C06
 contain absent optional fields, an ambiguity, forbidden-inference rules,
 section/item counts, high-priority facts, language metadata, and source-local
 evidence coordinates. PDF/DOCX cases contain text already produced by a
 deterministic extraction layer and explicitly do not implement binary parsing.
+
+**Matrix status (2026-08-06)**: complete. All six mandatory cases are present
+and pass; the authoritative aggregate is
+`spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-matrix.json`
+(`matrix_state: all_cases_live_passed`, `matrix_pass: true`). C01-C06 are
+executed and passing. T202 has been re-measured from this matrix
+(`docs/research/codex-direct-oauth-evaluation.md`) and the T203 gate has been
+re-evaluated (`docs/research/codex-direct-oauth-go-no-go.md`); the decision
+remains NO-GO because live Codex semantic quality over real PDF/DOCX documents
+(T246) and bounded-fallback wiring (T217) remain unexecuted.
 
 ## Artifacts
 
@@ -61,10 +71,17 @@ or B02 into a live pass. `T201-C03-B03` then passed its separately authorized
 single canonical live validation. Its sanitized evidence is
 `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json`.
 
-C01, C02, and C03 have passed canonical live validation. C04-C06 remain
-unexecuted. T201 remains incomplete; T202, T203, T164, and T165 remain blocked.
-T205 completed the current-version offline contract reconciliation; it does not
-authorize or execute C04.
+C01, C02, and C03 have passed canonical live validation. C04, C05, and C06 have
+since passed canonical live validation (C04 under the corrected T208
+deterministic-enrichment contract) with sanitized evidence; the six-case matrix
+is complete and all-passing (see `codex-direct-oauth-t201-matrix.json`).
+T201 is therefore complete. T202 has been re-measured from the accepted
+evidence and is no longer blocked; the T203 gate was re-evaluated on 2026-08-06
+and remains NO-GO for production adapter implementation because the live
+real-document semantic gate (T246) and bounded-fallback wiring (T217) remain
+unexecuted. T164/T165 remain blocked.
+T205 completed the current-version offline contract reconciliation; it did not
+authorize or execute C04 at that time.
 Any future Campaign B attempt remains separately authorized and limited to one
 broker run, one maximum semantic backend request, and zero automatic retries.
 
@@ -96,14 +113,46 @@ Result of that run:
   **NO-GO** for production adapter implementation at this time, with defined
   re-evaluation triggers (see `docs/research/codex-direct-oauth-go-no-go.md`).
 
-The canonical live-status record above is unchanged: C04-C06 remain unexecuted,
-T201 remains incomplete, T202 remains blocked, and T164/T165 remain blocked.
-T203 now has a recorded NO-GO decision artifact; it is not re-run or
-re-interpreted as a pass.
+The canonical live-status record above is unchanged for that date: C04-C06 were
+unexecuted, T201 was incomplete, T202 was blocked, and T164/T165 remained
+blocked. T203 had a recorded NO-GO decision artifact at that time.
+
+## 2026-08-06 update (T243 execution and T244 re-measurement)
+
+The registered Campaign-B attempts were subsequently executed with an
+authorized live session and the matrix was consolidated offline:
+
+- C04-B02 (reproduction under the original physical-coordinate contract) ran
+  and failed immutably at credential recovery
+  (`primary_failure_category: transport_failure`, `invocation_attempted:
+  false`); its evidence file is preserved unchanged.
+- C04-B03 (corrected T208 deterministic-enrichment contract) passed canonical
+  live validation (HTTP 200, schema valid, 23/23 exact facts, 17/17
+  high-priority facts, `parsing_pass: true`).
+- C05-B01 (multi-column PDF) passed canonical live validation (HTTP 200,
+  schema valid, 23/23 exact facts, 17/17 high-priority facts,
+  `parsing_pass: true`).
+- C06-B01 (DOCX structural artifacts) passed canonical live validation
+  (HTTP 200, schema valid, 23/23 exact facts, 17/17 high-priority facts,
+  `parsing_pass: true`).
+- The sanitized aggregate matrix
+  `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-matrix.json` was
+  rebuilt offline by `consolidate-t201-matrix.mjs` and records
+  `matrix_state: all_cases_live_passed` with `matrix_pass: true`.
+
+T201 is now complete. T244 re-measured T202 offline from the accepted evidence
+(all evidence-supported metrics pass; see
+`docs/research/codex-direct-oauth-evaluation.md`) and re-evaluated the T203
+triggers: the decision remains **NO-GO** for production adapter implementation
+because live Codex semantic quality over real PDF/DOCX documents (T246) and
+bounded-fallback wiring (T217) remain unexecuted, and non-technical onboarding
+feasibility remains unmeasured. Historical evidence files remain byte-identical.
 
 ## Execution boundary
 
-The remaining bounded sequence, only after an explicitly authorized live run, is:
+The bounded sequence has been executed and the matrix is complete. No further
+Campaign-B attempt is required to close T201. The recorded sequence, which was
+followed, was:
 
 1. Preserve C01 and C02's independently passing source-local evidence.
 2. Do not rerun C03 B01 or B02; only a separately authorized future C03 attempt
@@ -113,8 +162,10 @@ The remaining bounded sequence, only after an explicitly authorized live run, is
 5. Run C06 alone and inspect DOCX structural-artifact handling.
 6. Aggregate only the independently inspected results.
 
-No step runs OAuth login or credential refresh implicitly. No step runs a live
-request in the current fixture-preparation work.
+No step runs OAuth login or credential refresh implicitly. The next live work
+is the separately authorized T245/T246 sequence (lifecycle proof in the
+supported deployment shape and real-document live Codex evaluation); no live
+request is authorized by this document.
 
 ## Preserved historical material
 
@@ -123,5 +174,9 @@ compatibility redirect/archive pointer. Its useful historical C01 transport,
 limit, privacy, failure, and evidence details remain preserved there while
 this file is the canonical path for the T201 matrix going forward.
 
-T201 remains incomplete until every mandatory case has an independently passing
-bounded evaluation. T202, T203, T164, and T165 remain blocked.
+T201 is complete: every mandatory case has an independently passing bounded
+evaluation, and the consolidated matrix records `all_cases_live_passed`. T202 is
+measured (see `docs/research/codex-direct-oauth-evaluation.md`). T203 was
+re-evaluated on 2026-08-06 and remains **NO-GO** for production adapter
+implementation because the live real-document semantic gate (T246) and
+bounded-fallback wiring (T217) remain unexecuted; T164/T165 remain blocked.

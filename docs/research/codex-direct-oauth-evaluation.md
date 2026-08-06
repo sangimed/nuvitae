@@ -2,13 +2,11 @@
 
 **Task**: T202 — measure the direct Codex OAuth semantic path for Nuvitae
 Community.
-**Date**: 2026-08-05
-**Status**: BLOCKED — the official T202 evaluation requires a complete T201
-matrix (every mandatory live case executed and independently evaluated). Live
-C04/C05/C06 execution could not be performed in this qualification run because
-no valid ChatGPT/Codex session was available on the host. This document records
-every metric that was measured, every metric that remains unmeasured, and the
-exact blocker, so the evaluation can resume without redoing completed work.
+**Date**: 2026-08-06 (T244 offline re-measurement from accepted live evidence)
+**Status**: **MEASURED** — every metric supported by accepted, checked-in
+evidence has been re-computed; metrics without supporting evidence are
+explicitly recorded as unmeasured. The earlier 2026-08-05 BLOCKED record is
+preserved below as historical context.
 
 ## Scope
 
@@ -22,64 +20,140 @@ Supported (and only) deployment shape claimed by this spike: local Docker
 Desktop / Docker Compose, browser on the same host, loopback OAuth callback,
 single-user. No remote, VPS, or headless claim is made.
 
-## Metric table
+## Authoritative evidence inputs
 
-| Metric | Status | Value / evidence |
-| --- | --- | --- |
-| Authentication success (browser OAuth login) | NOT RUN this run; prior live proof exists | Fresh login blocked in this environment: no interactive ChatGPT credentials, no browser session on host, headless browser blocked by Cloudflare (HTTP 403), broker produced a valid authorization URL and verified callback topology (preflight HTTP 204), then timed out (`callback_timeout`). Historical T198 evidence (2026-07-31) recorded a successful live browser OAuth login on the prior spike host. |
-| Schema-valid rate | PARTIAL | Deterministic offline: 6/6 T201 golden outputs schema-valid under the corrected v2 contract. Live: measured for C01-C03 (all schema-valid) and C04 B01 (schema-valid) in prior canonical runs. C04-C06 live not re-executed. |
-| Precision / exact-fact recall | PARTIAL | Live canonical evidence: C01/C02/C03 exact-fact recall 1.0; C04 B01 exact-fact recall 1.0 (23/23) with 17/17 high-priority. C05/C06 not run live. |
-| Work-experience grouping | PARTIAL | Expected section/item recall passed in prior live C01-C03 and C04 B01 (1.0). C05 multi-column regrouping not run live. |
-| Evidence validity | PARTIAL | C01-C03 valid evidence; C04 B01 failed 23/23 `evidence_coordinate_mismatch` under the original physical-coordinate contract — corrected by the T208 deterministic-enrichment contract (model output flattened-only; physical provenance derived deterministically). Under the corrected contract the deterministic offline matrix passes 6/6 with enrichment mapped 25/25 evidence entries for C04/C05 and 25/25 for C06. |
-| Invention rate | PARTIAL | No-invention passed in all prior live canonical cases and all deterministic matrix cases. C05/C06 live not run. |
-| Latency | PARTIAL | Prior live runs recorded bounded event streams; deterministic baseline latency recorded by the provider-neutral evaluation suite (mean 1.88ms for the deterministic test provider — baseline only, not Codex). Codex live latency for C04-C06 not measured this run. |
-| Cancellation | NOT RUN | Not exercised this run; harness supports bounded cancellation limits. |
-| Quota behavior | NOT RUN | Not exercised (no valid session). |
-| Refresh | FAILED (safe) | Live refresh attempted against the stored session: rejected with `authentication_required` (401) — the stored refresh token is invalid/expired. Safe failure mapping proven. Successful refresh rotation not observed this run (prior T199 evidence recorded successful refresh). |
-| Restart recovery | PASS (local) | Encrypted credential envelope survives container restart (`real_restart_recovery_succeeded: true`); disconnected restart after logout (`real_disconnected_restart_succeeded: true`). |
-| Provider/backend compatibility risk | DOCUMENTED | Transport manifest matched T200 audited shape (host/path/headers) in prior live runs; direct Codex transport remains an undocumented-backend risk (see upstream audit T196 and T203 limitations). |
-| Operational burden | PARTIAL | Loopback callback requires a same-host browser and per-user OAuth; this host proved the callback topology works but fresh login requires interactive credentials. |
-| Non-technical onboarding feasibility | NOT MEASURED | Requires the browser OAuth flow to complete for a non-technical user; cannot be measured without a valid session. |
+- T201 aggregate matrix (consolidated, accepted):
+  `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-matrix.json`
+  (`matrix_state: all_cases_live_passed`, `matrix_pass: true`).
+- Campaign-B authorization registry (authoritative attempt selection):
+  `spikes/codex-direct-oauth/campaign-b-authorizations.json`.
+- Per-case sanitized live evidence, selected by the same rules as the T201
+  consolidator (single passing attempt per case; C01 keeps its legacy canonical
+  evidence):
+  - C01: `codex-direct-oauth-t201-semantic-parsing.json`
+  - C02: `codex-direct-oauth-t201-c02-b13-semantic-parsing.json`
+  - C03: `codex-direct-oauth-t201-c03-b03-semantic-parsing.json`
+  - C04: `codex-direct-oauth-t201-c04-b03-semantic-parsing.json`
+  - C05: `codex-direct-oauth-t201-c05-b01-semantic-parsing.json`
+  - C06: `codex-direct-oauth-t201-c06-b01-semantic-parsing.json`
+- T199 credential lifecycle: `codex-direct-oauth-t199-live.json`.
+- T200 minimal invocation: `codex-direct-oauth-t200-invocation.json`.
 
-## Measured deterministic evidence (this run)
+## Re-measurement method
 
-- T201 fixture matrix, corrected v2 contract with deterministic provenance
-  enrichment: all six cases pass offline (`parsing_pass: true`); enrichment
-  applicable as `pdf` (C04/C05), `docx` (C06), `none` (C01-C03), with
-  `consistency_pass: true` for all cases.
-- 200/201 spike tests pass (1 intentional skip); 1064 default-suite tests pass;
-  47 persistence integration tests pass; typecheck, build, format, changed-file
-  lint pass.
-- Real-document deterministic extraction proven for a French PDF, English PDF,
-  and DOCX through the repository's pdf.js / OOXML adapters.
+T202 is re-measured by the deterministic offline evaluator
+`spikes/codex-direct-oauth/lib/t202-evaluator.mjs` (CLI:
+`spikes/codex-direct-oauth/re-evaluate-t202.mjs`). It consumes only sanitized
+checked-in evidence, selects authoritative attempts per the Campaign-B
+registry, fails closed on missing/malformed/conflicting/ambiguous evidence, and
+writes the sanitized aggregate
+`spikes/codex-direct-oauth/evidence/codex-direct-oauth-t202-metrics.json`.
+Regression tests live in `spikes/codex-direct-oauth/test/t202-evaluator.test.mjs`.
+No OAuth, Codex, Docker, or live request is made by the evaluator.
 
-## Remaining unmeasured metrics (blocked)
+## Metric table (re-measured 2026-08-06)
 
-All Codex-specific live metrics for C04 (PDF single-column), C05 (PDF
-multi-column), and C06 (DOCX structural artifacts): schema-valid rate, precision,
-recall, grouping, evidence validity, invention rate, latency, cancellation,
-quota behavior, refresh rotation, restart+invocation, and the resulting
-product-level usability judgment.
+All evidence-supported metrics pass. Metrics without accepted evidence are
+listed in the next section as unmeasured; none is silently dropped.
 
-## Blocker
+| Metric | Numerator | Denominator | Value | Required threshold | Result | Evidence source |
+| --- | ---: | ---: | ---: | --- | --- | --- |
+| Authentication success (browser OAuth login + callback) | 2 (initial live OAuth + final reauthentication) | 2 | 1.0 | T203 gate: fresh live browser login with callback completion | PASS | T199 live evidence |
+| Encrypted credential persistence | 1 (live encrypted record created) | 1 | 1.0 | T203 gate: live encrypted store, no plaintext | PASS | T199 live evidence + credential-lifecycle report |
+| Restart recovery | 3 (restart recovery, disconnected restart, final encrypted recovery) | 3 | 1.0 | T203 gate: credential usable after container restart | PASS | T199 live evidence |
+| Token refresh with rotation | 1 (refresh succeeded and rotated) | 1 | 1.0 | T203 gate: live refresh with rotation | PASS | T199 live evidence (`live_network_refresh_count=1` for two concurrent requests; single-flight) |
+| Invocation success rate | 7 (T200: 1, T201: 6) | 7 | 1.0 | T203 gate: live invocation with HTTP 200 and valid SSE (no numeric rate threshold documented) | PASS | T200 + all six T201 per-case evidence |
+| Protocol validity (valid SSE / typed event framing) | 7 | 7 | 1.0 | T203 gate: valid SSE framing on every live invocation | PASS | T200 + all six T201 per-case evidence |
+| Schema-valid response rate | 6 | 6 | 1.0 | T201 mandatory: strict schema valid in every case (aggregate 1.0) | PASS | Matrix + per-case evidence |
+| Structured-output validity | 6 (model output received and evaluated) | 6 | 1.0 | T201 mandatory: structured output evaluated for every case | PASS | Per-case evidence |
+| Semantic parsing pass rate | 6 | 6 | 1.0 | T201 mandatory: `parsing_pass` per case; aggregate passes only when all six pass | PASS | Matrix + per-case evidence |
+| Exact fact recall | 92 (C03-C06, 23 each; C01/C02 recall 1.0 without exposed counts) | 92 | 1.0 | T201 mandatory: exact fact recall >= 0.9 per case | PASS | Matrix + per-case evidence |
+| High-priority fact recall | 68 (C03-C06, 17 each; C01/C02 recall 1.0 without exposed counts) | 68 | 1.0 | T201 mandatory: high-priority fact recall = 1.0 per case | PASS | Matrix + per-case evidence |
+| Work-experience grouping | 6 (section recall) / 6 (item recall) | 6 | 1.0 | T201 mandatory: expected section and item recall = 1.0 per case | PASS | Matrix + per-case evidence |
+| Valid-evidence rate | 6 (cases with zero missing/invalid evidence) | 6 | 1.0 | T201 mandatory: missing evidence count = 0 and invalid evidence count = 0 per case | PASS | Matrix + per-case evidence (totals 0 / 0) |
+| Invented-field rate | 0 unsupported facts | 92 countable returned values (v2) | 0.0 | T201 mandatory: unsupported fact count = 0 per case | PASS | Matrix + per-case evidence |
+| Unsupported fact count | 0 | 6 cases | 0 | T201 mandatory: unsupported fact count = 0 per case | PASS | Matrix + per-case evidence |
+| Unsupported-evidence count | 0 missing references | 92 countable evidence references (v2) | 0.0 | T201 mandatory: zero evidence references missing from the source representation | PASS | Matrix + per-case evidence |
+| Forbidden inference count | 0 | 6 cases | 0 | T201 mandatory: forbidden inference count = 0 per case | PASS | Matrix + per-case evidence |
+| Grounding success | 6 | 6 | 1.0 | T201 mandatory: grounding pass per case | PASS | Matrix + per-case evidence |
+| No-invention success | 6 | 6 | 1.0 | T201 mandatory: no-invention pass per case | PASS | Matrix + per-case evidence |
+| Provider transport-manifest match vs T200 | 6 | 6 | 1.0 | T201 evidence gate: T201 request shape matches the T200 audited transport | PASS (risk remains documented) | Per-case evidence (`t201_transport_mismatches` total 0) |
+| Deterministic completeness across the matrix | 6 | 6 | 1.0 | T201 aggregate passes only when all six mandatory cases are present and pass | PASS | Matrix |
 
-No valid ChatGPT/Codex session existed on this host during the qualification
-run:
+Supporting lifecycle facts:
 
-- Codex CLI (`0.146.0`) not logged in; no `auth.json`.
-- Hermes Agent session expired 2026-05-05; refresh rejected (401).
-- OpenCode OpenAI session refresh already-consumed (401).
-- No OpenAI/ChatGPT cookies in any host browser profile (Edge, Firefox).
-- Fresh browser login requires interactive ChatGPT credentials and is blocked
-  for headless automation by Cloudflare bot verification.
+- Secret scan passed on T199, T200, and every T201 per-case evidence
+  (`secret_scan_result: passed`).
+- No raw credentials or account identifiers were exposed to the parent in any
+  accepted evidence (`raw_credentials_exposed_to_parent: false`,
+  `account_identifier_exposed_to_parent: false`,
+  `raw_credentials_exposed_to_host: false`).
+- T200 completed with exact HTTP 200, valid SSE framing, 15 processed events,
+  and the verified `NUVITAE_T200_OK` marker.
+- All six T201 cases completed with exact HTTP 200 and `response_protocol_valid:
+  true`.
 
-The bounded path to unblock is: a fresh valid ChatGPT session (interactive
-browser login), then run the registered Campaign-B attempts
-(C04-B02 reproduction under the original contract, C04-B03 under the corrected
-contract, C05-B01, C06-B01), then re-run this evaluation.
+## Unmeasured metrics (recorded, not dropped)
+
+| Metric | Why unmeasured |
+| --- | --- |
+| Turn latency | No sanitized timing fields exist in the accepted live evidence; the 1.88 ms deterministic baseline is provider-neutral, not Codex. |
+| Cancellation latency | Cancellation was not exercised in any accepted live run. |
+| Quota behavior | No quota/rate-limit exercise exists in accepted live evidence; only safe failure mapping is proven. |
+| Non-technical onboarding feasibility | Requires live browser OAuth plus a real import flow in the supported deployment shape (T245/T246/T213-T215 pending). |
+
+## Historical failed attempts (preserved, excluded from authoritative denominators)
+
+Per the repository's authoritative-case selection rules, only the single
+passing attempt per matrix case counts in the metric denominators above. All
+failed attempts remain immutable checked-in evidence and are reported
+deterministically in the T202 aggregate (`historical_failed_attempts`, 21
+on-disk failed evidence files). Notable categories:
+
+- C02 attempts 1-6 and B01-B11: pre-live/infrastructure failures
+  (`infrastructure_result_channel_failure`, `broker_crash`, `runner_failure`,
+  `transport_failure`, `safe_unknown_failure`, and pre-live validation
+  failures). The T201 matrix `attempt_history`/`campaigns` records remain the
+  canonical historical classification for C02's A/B campaigns where per-attempt
+  files were later replaced by runner output.
+- C03-B01: semantic recall failure (exact-fact recall 0.875).
+- C03-B02: failure under the former `document_language` contract
+  (exact-fact recall 0.9583).
+- C04-B01: 23/23 `evidence_coordinate_mismatch` failures under the original
+  physical-coordinate contract (invalid evidence 23, unsupported facts 23);
+  superseded by the corrected T208 deterministic-enrichment contract.
+- C04-B02: `transport_failure` during credential recovery (invocation not
+  attempted); superseded by C04-B03.
+
+None of these failures is excluded from the metric table silently; they are
+excluded from the authoritative numerators/denominators by the registry-based
+selection rule, and each remains visible in the aggregate and evidence
+directory.
+
+## Historical context — 2026-08-05 BLOCKED record
+
+**Status (2026-08-05)**: BLOCKED — the official T202 evaluation required a
+complete T201 matrix (every mandatory live case executed and independently
+evaluated). Live C04/C05/C06 execution could not be performed in that
+qualification run because no valid ChatGPT/Codex session was available on the
+host (Codex CLI not logged in; stored sessions expired or refresh-rejected with
+401; no browser session; fresh browser login blocked by missing interactive
+credentials and Cloudflare bot verification for headless browsers). The T203
+gate decision was recorded as NO-GO (evidence-availability decision) in
+`docs/research/codex-direct-oauth-go-no-go.md`, with defined re-evaluation
+triggers. T202 was recorded as BLOCKED at that time.
+
+The 2026-08-06 re-measurement supersedes that BLOCKED status because the
+registered Campaign-B attempts were subsequently executed (T243), the six-case
+T201 matrix was consolidated as all-passing, and T199/T200 live evidence is
+accepted. The historical 2026-08-05 record remains valid as a statement of what
+was known then and is not rewritten.
 
 ## Verdict
 
-**BLOCKED** — T202 cannot pass because its mandatory live semantic measurements
-could not be produced. This is a failure of evidence availability in this
-environment, not a pass/fail judgment about Codex output quality.
+T202 is **MEASURED**. Every metric supported by accepted checked-in evidence
+passes (see table above); four metrics remain explicitly unmeasured (latency,
+cancellation, quota behavior, non-technical onboarding feasibility). T202
+records measurements; it does not by itself authorize production adapter
+implementation — that is the T203 decision gate, re-evaluated in
+`docs/research/codex-direct-oauth-go-no-go.md`.

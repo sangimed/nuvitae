@@ -31,6 +31,22 @@ unchanged. The command fails closed on ambiguous successful attempts:
 node spikes/codex-direct-oauth/consolidate-t201-matrix.mjs
 ```
 
+Re-measure T202 offline from the accepted sanitized evidence (fully offline; no
+OAuth, Codex, Docker, or live Campaign-B attempt). The evaluator selects the
+same authoritative attempts as the T201 consolidator, fails closed on missing,
+malformed, conflicting, or ambiguous evidence, and writes the sanitized
+aggregate `evidence/codex-direct-oauth-t202-metrics.json`:
+
+```sh
+node spikes/codex-direct-oauth/re-evaluate-t202.mjs
+```
+
+Regression tests for the T202 evaluator:
+
+```sh
+node --test spikes/codex-direct-oauth/test/t202-evaluator.test.mjs
+```
+
 Run the non-OAuth loopback preflight:
 
 ```sh
