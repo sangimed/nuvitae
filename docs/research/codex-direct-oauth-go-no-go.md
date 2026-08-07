@@ -22,10 +22,12 @@ accepted evidence passes. The decision remains NO-GO because two mandatory
 gates are still not satisfied and the decisive product question is still
 unanswered:
 
-1. **Semantic quality over real PDF/DOCX through live Codex** — NOT RUN. All six
-   T201 cases used synthetic fixtures (`fixture_classified_as_synthetic:
-   true`). Live Codex evaluation over real binary PDF/DOCX documents (T246)
-   has not been executed.
+1. **Semantic quality over real PDF/DOCX through live Codex** — NOT ACCEPTED.
+   All six T201 cases used synthetic fixtures (`fixture_classified_as_synthetic:
+   true`). T246-C01-A01 was executed once on 2026-08-07: the backend invocation
+   succeeded (HTTP 200) and every mandatory semantic metric passed, but the
+   runner failed during post-processing/finalization (implementation defects),
+   so T246 remains INCOMPLETE and no T246 evidence is accepted.
 2. **Bounded fallback** — PARTIAL. The fallback contract passes deterministic
    tests, but the production worker/UI wiring (T217) is still pending.
 3. **Non-technical onboarding feasibility** — unmeasured (requires the real
@@ -50,7 +52,7 @@ remains **NO-GO**, not a judgment about Codex output quality.
 | Live invocation after restart | HTTP 200 + valid SSE with authenticated session | T200: HTTP 200, valid SSE, `NUVITAE_T200_OK` verified; all six T201 cases HTTP 200 + valid protocol | PASS |
 | T245 lifecycle proof | Live lifecycle aggregate in the supported deployment shape | Accepted 2026-08-07: `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`; 9/9 mandatory criteria passing (8 live-observed, 1 deterministic-only invalid-grant classification); provider-side revocation not exercised and not required | PASS |
 | T201 mandatory live cases | C01-C06 all executed and independently passing | Matrix `all_cases_live_passed`; C01-C06 pass | PASS |
-| Semantic quality (real PDF/DOCX) | Real documents through live Codex | Not executed: T201 cases are synthetic fixtures; T246 pending | NOT RUN |
+| Semantic quality (real PDF/DOCX) | Real documents through live Codex | T246-C01-A01 executed once (2026-08-07): invocation HTTP 200, semantic metrics all passed, runner finalization failed; T246 incomplete/not accepted; C02-C08 NOT_AUTHORIZED | NOT ACCEPTED |
 | Prompt-injection resistance | Deterministic security tests | 92 security/evaluation tests pass | PASS (deterministic) |
 | Bounded fallback | No-provider/failure → bounded outcome | Fallback contract tests pass; production wiring (T217) still pending | PASS (contract) / PARTIAL (wiring) |
 | Credential security / no token leakage | Secret scan, token-blind evidence | `secret_scan_result=passed` on T199/T200/all T201 evidence; no raw credential or account identifier exposure | PASS |
@@ -91,7 +93,10 @@ remains **NO-GO**, not a judgment about Codex output quality.
 - **T245**: complete (accepted 2026-08-07; aggregate
   `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`).
   **T246**: the next remaining live gate (live Codex semantic evaluation over
-  the real-document corpus). **T248**: complete (2026-08-07; deterministic
+  the real-document corpus). T246-C01-A01 was executed once (2026-08-07): the
+  backend invocation and every semantic metric passed, but the runner failed
+  during finalization (implementation defect) and A01 is CONSUMED; T246 stays
+  INCOMPLETE and C02-C08 remain NOT_AUTHORIZED. **T248**: complete (2026-08-07; deterministic
   offline proof and sanitized aggregate
   `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t248-french-pdf.json`
   for the canonical French PDF fixture); the real-French-PDF prerequisite for
@@ -117,8 +122,10 @@ following are true:
    ambiguous, prompt-instruction-like, and malformed/unsupported recovery)
    under the T208 enrichment contract; T246 is the next remaining live gate,
    whose prerequisites T248 (real French PDF proof) and T247 (T208 bookkeeping
-   closure) are satisfied, and which still requires explicit live execution
-   authorization; and
+   closure) are satisfied. T246-C01-A01 was executed once on 2026-08-07 and is
+   CONSUMED (invocation and semantic metrics passed; runner finalization
+   failed), C02-C08 remain NOT_AUTHORIZED, and the corpus remains not accepted;
+   and
 3. T202 metrics are re-measured from those live runs, including schema-valid
    rate, precision, recall, grouping, evidence validity, invention rate,
    latency, cancellation, quota behavior, refresh rotation, restart recovery,

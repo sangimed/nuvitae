@@ -3,39 +3,63 @@
   "status": "INCOMPLETE",
   "all_cases_passed": false,
   "accepted_live_evidence_count": 0,
+  "consumed_attempts": [
+    {
+      "campaign": "T246-C01",
+      "attempt": "A01",
+      "semantic_case": "T246-C01",
+      "consumed": true,
+      "accepted": false,
+      "invocation_attempted": true,
+      "invocation_succeeded": true,
+      "semantic_metrics_passed": true,
+      "runner_finalization": "failed",
+      "evidence_actual_path": "spikes/codex-direct-oauth/spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json",
+      "evidence_sha256": "dc96b2a42936d58e757c37bfb9b83708438dde603a1a8756ce420ca0afb903b9"
+    }
+  ],
   "semantic_cases": [
     {
       "case_id": "T246-C01",
-      "accepted": false
+      "accepted": false,
+      "consumed": true
     },
     {
       "case_id": "T246-C02",
-      "accepted": false
+      "accepted": false,
+      "consumed": false
     },
     {
       "case_id": "T246-C03",
-      "accepted": false
+      "accepted": false,
+      "consumed": false
     },
     {
       "case_id": "T246-C04",
-      "accepted": false
+      "accepted": false,
+      "consumed": false
     },
     {
       "case_id": "T246-C05",
-      "accepted": false
+      "accepted": false,
+      "consumed": false
     },
     {
       "case_id": "T246-C06",
-      "accepted": false
+      "accepted": false,
+      "consumed": false
     },
     {
       "case_id": "T246-C07",
-      "accepted": false
+      "accepted": false,
+      "consumed": false
     }
   ],
   "recovery_case": {
     "case_id": "T246-C08",
-    "accepted": false
+    "accepted": false,
+    "consumed": false
   },
-  "note": "Offline T246 corpus is prepared; live execution remains NOT AUTHORIZED. This aggregator stays incomplete until accepted live evidence exists."
+  "note": "Offline T246 corpus is prepared; C01-A01 was executed once and is CONSUMED (semantic metrics passed, runner finalization failed) but is not accepted; C02-C08 remain NOT_AUTHORIZED. This aggregator stays incomplete until accepted live evidence exists."
 }

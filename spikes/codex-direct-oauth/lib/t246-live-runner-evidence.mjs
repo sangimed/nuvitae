@@ -221,25 +221,66 @@ export function parseCurrentT246BrokerResult(
   };
 }
 
-function t246CompleteGate(evidence, exitCategory) {
+// Canonical metrics view for the T246 evidence gate.
+//
+// The broker emits the canonical evaluator metrics nested under
+// `evaluation_metrics` (the sanitized projection of the real-document
+// evaluation). The parent gate must read from that projection; top-level
+// values are accepted only when present (they are not emitted by the broker).
+// Reading the nested projection is what the T201 matrix updater already does;
+// reading only top-level fields made the gate fail even when every semantic
+// metric passed (the T246-C01-A01 post-live defect).
+function t246MetricsView(evidence) {
+  const metrics = isPlainObject(evidence?.evaluation_metrics)
+    ? evidence.evaluation_metrics
+    : {};
+  const read = (key, metricKey = key) =>
+    evidence?.[key] !== undefined && evidence?.[key] !== null
+      ? evidence[key]
+      : metrics[metricKey];
+  return {
+    schema_valid: read("schema_valid"),
+    grounding_pass: read("grounding_pass", "source_grounding_pass"),
+    no_invention_pass: read("no_invention_pass"),
+    parsing_pass: read("parsing_pass"),
+    unsupported_fact_count: read("unsupported_fact_count"),
+    forbidden_inference_count: read("forbidden_inference_count"),
+    missing_evidence_count: read("missing_evidence_count"),
+    invalid_evidence_count: read("invalid_evidence_count"),
+    exact_fact_recall: read("exact_fact_recall"),
+    high_priority_fact_recall: read("high_priority_fact_recall"),
+    document_language_classification_pass: read(
+      "document_language_classification_pass",
+    ),
+    ambiguity_handling_pass: read("ambiguity_handling_pass"),
+    absent_optional_fields_pass: read("absent_optional_fields_pass"),
+    primary_failure_category: read("primary_failure_category"),
+    primary_failure_phase: read("primary_failure_phase"),
+    metrics_measurement_state: read("metrics_measurement_state"),
+    semantic_quality_evaluated: read("semantic_quality_evaluated"),
+  };
+}
+
+export function t246CompleteGate(evidence, exitCategory) {
+  const metrics = t246MetricsView(evidence);
   return (
     exitCategory === "success" &&
     evidence.encrypted_state_recovered === true &&
     evidence.invocation_succeeded === true &&
     evidence.response_protocol_valid === true &&
-    evidence.schema_valid === true &&
-    evidence.grounding_pass === true &&
-    evidence.no_invention_pass === true &&
-    evidence.parsing_pass === true &&
-    evidence.unsupported_fact_count === 0 &&
-    evidence.forbidden_inference_count === 0 &&
-    evidence.missing_evidence_count === 0 &&
-    evidence.invalid_evidence_count === 0 &&
-    evidence.exact_fact_recall >= 0.9 &&
-    evidence.high_priority_fact_recall >= 1 &&
-    evidence.document_language_classification_pass === true &&
-    evidence.ambiguity_handling_pass === true &&
-    evidence.absent_optional_fields_pass === true &&
+    metrics.schema_valid === true &&
+    metrics.grounding_pass === true &&
+    metrics.no_invention_pass === true &&
+    metrics.parsing_pass === true &&
+    metrics.unsupported_fact_count === 0 &&
+    metrics.forbidden_inference_count === 0 &&
+    metrics.missing_evidence_count === 0 &&
+    metrics.invalid_evidence_count === 0 &&
+    metrics.exact_fact_recall >= 0.9 &&
+    metrics.high_priority_fact_recall >= 1 &&
+    metrics.document_language_classification_pass === true &&
+    metrics.ambiguity_handling_pass === true &&
+    metrics.absent_optional_fields_pass === true &&
     evidence.credential_exposure_boolean === false &&
     evidence.account_identifier_exposure_boolean === false &&
     evidence.raw_credentials_exposed_to_parent === false &&
@@ -255,6 +296,80 @@ function t246CompleteGate(evidence, exitCategory) {
     evidence.t246_manifest_binding_valid === true &&
     evidence.provenance_contract_validated === true
   );
+}
+
+// Explicit semantic failure classification derived from the canonical metrics
+// projection. Returns null when every semantic gate passes.
+export function t246SemanticFailureCategory(evidence) {
+  const metrics = t246MetricsView(evidence);
+  if (
+    metrics.primary_failure_category &&
+    metrics.primary_failure_category !== "none"
+  ) {
+    return metrics.primary_failure_category;
+  }
+  if (metrics.parsing_pass === false) return "semantic_gate_failure";
+  if (metrics.schema_valid !== true) return "schema_validation_failed";
+  if (metrics.grounding_pass !== true) return "grounding_failure";
+  if (metrics.no_invention_pass !== true) return "no_invention_failure";
+  if (metrics.document_language_classification_pass !== true)
+    return "document_language_classification_failure";
+  if (!(metrics.exact_fact_recall >= 0.9))
+    return "exact_fact_recall_below_threshold";
+  if (!(metrics.high_priority_fact_recall >= 1))
+    return "high_priority_fact_recall_below_threshold";
+  if (metrics.unsupported_fact_count > 0) return "unsupported_facts_present";
+  if (metrics.forbidden_inference_count > 0)
+    return "forbidden_inference_present";
+  if (metrics.missing_evidence_count > 0) return "missing_evidence";
+  if (metrics.invalid_evidence_count > 0) return "invalid_evidence";
+  if (metrics.ambiguity_handling_pass !== true)
+    return "ambiguity_handling_failure";
+  if (metrics.absent_optional_fields_pass !== true)
+    return "absent_optional_fields_failure";
+  return null;
+}
+
+// Explicit runner/finalization failure classification. Returns null when no
+// runner-level gate failed; called only after semantic gates already passed.
+export function t246FinalizationFailureCategory(evidence, exitCategory) {
+  if (evidence.encrypted_state_recovered !== true)
+    return "credential_state_recovery_failure";
+  if (evidence.invocation_succeeded !== true) return "invocation_failure";
+  if (evidence.response_protocol_valid !== true)
+    return "response_protocol_failure";
+  if (evidence.broker_removed !== true) return "broker_cleanup_failure";
+  if (evidence.callback_port_absent !== true)
+    return "callback_port_still_listening";
+  if (evidence.secret_scan_result !== "passed") return "secret_scan_failure";
+  if (evidence.log_secret_scan_result !== "passed")
+    return "log_secret_scan_failure";
+  if (evidence.t246_artifact_hashes_validated !== true)
+    return "artifact_hash_validation_failure";
+  if (evidence.t246_transcript_regeneration_matched !== true)
+    return "transcript_regeneration_failure";
+  if (evidence.t246_manifest_binding_valid !== true)
+    return "manifest_binding_failure";
+  if (evidence.provenance_contract_validated !== true)
+    return "provenance_contract_failure";
+  if (
+    evidence.credential_exposure_boolean === true ||
+    evidence.account_identifier_exposure_boolean === true ||
+    evidence.raw_credentials_exposed_to_parent === true ||
+    evidence.account_identifier_exposed_to_parent === true
+  ) {
+    return "credential_exposure_failure";
+  }
+  if (
+    evidence.raw_model_response_persisted === true ||
+    evidence.raw_response_persisted === true
+  ) {
+    return "raw_model_persistence_failure";
+  }
+  if (evidence.encrypted_state_preserved !== true)
+    return "credential_state_preservation_failure";
+  if (exitCategory !== "success") return "broker_exit_failure";
+  return null;
 }
 
 export function buildFinalT246Evidence({
@@ -358,11 +473,27 @@ export function buildFinalT246Evidence({
     attempt_id: brokerResult.attempt_id ?? attemptId,
   };
   const complete = t246CompleteGate(evidence, exitCategory);
-  evidence.safe_final_state = complete
-    ? "complete"
-    : evidence.safe_final_state === "complete"
-      ? DEFAULT_FAILURE
-      : evidence.safe_final_state;
+  const semanticFailureCategory = complete
+    ? null
+    : t246SemanticFailureCategory(evidence);
+  const finalizationFailureCategory =
+    complete || semanticFailureCategory
+      ? null
+      : t246FinalizationFailureCategory(evidence, exitCategory);
+  const failureCategory =
+    semanticFailureCategory ?? finalizationFailureCategory ?? DEFAULT_FAILURE;
+  const failurePhase = semanticFailureCategory
+    ? (evidence.primary_failure_phase ?? "response_evaluation")
+    : finalizationFailureCategory
+      ? "runner_finalization"
+      : "safe_unknown_phase";
+  evidence.safe_final_state = complete ? "complete" : failureCategory;
+  evidence.primary_failure_category = complete
+    ? "none"
+    : (evidence.primary_failure_category ?? failureCategory);
+  evidence.primary_failure_phase = complete
+    ? "none"
+    : (evidence.primary_failure_phase ?? failurePhase);
   evidence.case_pass = complete;
   evidence.t246_complete = false;
   return evidence;

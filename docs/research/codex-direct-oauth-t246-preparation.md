@@ -290,3 +290,88 @@ The reachable live execution path is now implemented and validated offline
 
 No OAuth, Codex/OpenAI/provider request, credential-volume access, or live
 T246 attempt has occurred during implementation or preflight.
+
+## 12. Post-live finalization record (2026-08-07, C01-A01 consumed)
+
+This addendum records the single live T246 execution that occurred after the
+operator-authorized step and the offline diagnosis/fix of the resulting
+post-live finalization failure. Sections 1-11 remain historical records.
+
+### 12.1 Truthful execution record
+
+- **T246-C01-A01 was executed exactly once** on 2026-08-07.
+- **Backend invocation succeeded**: `invocation_attempted=true`,
+  `invocation_succeeded=true`, `exact_http_status=200`,
+  `response_protocol_valid=true`.
+- **Every mandatory semantic metric passed**: `schema_valid=true`,
+  `semantic_quality_evaluated=true`, `exact_fact_recall=1`,
+  `high_priority_fact_recall=1`, `unsupported_fact_count=0`,
+  `forbidden_inference_count=0`, `missing_evidence_count=0`,
+  `invalid_evidence_count=0`, `grounding_pass=true`,
+  `no_invention_pass=true`, `parsing_pass=true`,
+  `document_language_classification_pass=true` (nested canonical
+  `evaluation_metrics` projection), `secret_scan_result=passed`.
+- **Runner finalization failed** due to implementation defects: the parent
+  evidence gate read recall/language metrics only from top-level fields that
+  the broker never emits, so it recorded `case_pass=false`,
+  `safe_final_state=safe_unknown_failure`,
+  `primary_failure_phase=null`, `primary_failure_category=null`, and exited
+  `1` despite the fully passing semantic result.
+- **Evidence was written to an incorrect nested path**:
+  `spikes/codex-direct-oauth/spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json`
+  instead of the authorized canonical path
+  `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json`.
+  The bridge passed the repository-relative evidence path to an execution
+  body whose cwd is the spike directory, so the writer re-resolved it against
+  the spike directory and double-prefixed it.
+- **A01 is CONSUMED and must not be rerun** (`invocation_attempted=true`).
+  The authorization registry now records it in `consumed_attempts`, marks its
+  registry entry `CONSUMED`, and the validator rejects any A01 attempt before
+  credentials, even though the canonical evidence path is empty and the only
+  artifact exists at the historical misplaced path (a whole-spike evidence
+  scan backs the ledger).
+- **C02-C08 remain NOT_AUTHORIZED. T246 remains INCOMPLETE. T203 remains
+  NO-GO.** No new live execution is authorized by this record.
+
+### 12.2 Immutable historical evidence preservation
+
+The actual consumed A01 artifact was treated as immutable historical live
+evidence. It was **not deleted, overwritten, mutated, normalized, relocated,
+or rewritten**. A recoverable pre-edit snapshot of the repository was created
+before any edit:
+`/tmp/nuvitae-snapshots/nuvitae-20260807-174952-pre-t246-fix.tar.gz`.
+
+| Field | Value |
+| --- | --- |
+| Actual path | `spikes/codex-direct-oauth/spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json` |
+| Canonical authorized path | `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json` |
+| SHA-256 | `dc96b2a42936d58e757c37bfb9b83708438dde603a1a8756ce420ca0afb903b9` |
+| File size | 10530 bytes |
+| Sanitized classification | `live_t246_semantic_parsing` |
+| `invocation_attempted` | `true` (consumed) |
+| Runner exit | 1 (post-finalization failure; not a semantic failure) |
+
+The preservation metadata is also recorded machine-readably in
+`spikes/codex-direct-oauth/t246-authorizations.json` under
+`consumed_attempts[0]`, including the evidence SHA-256 and size.
+
+### 12.3 Offline canonical re-evaluation (no provider request)
+
+The retained sanitized A01 evidence contains the canonical evaluator's
+`evaluation_metrics` projection, artifact hash pins, transport-manifest match,
+secret-scan results, and exposure booleans, but no raw model output or
+transcript (by design). The offline verifier
+`spikes/codex-direct-oauth/re-evaluate-t246-a01.mjs` recomputes the canonical
+T246 complete gate from that retained material and writes a derived acceptance
+artifact
+`spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-derived-acceptance.json`
+reporting:
+
+- `semantic_result = PASS`;
+- `runner_finalization = FAIL`;
+- `derived_case_pass = true`;
+- `official_status = semantic_pass_runner_finalization_failed_not_accepted`.
+
+The historical A01 evidence and the T246 aggregate are not rewritten. The
+aggregate remains INCOMPLETE; T246 stays incomplete and T203 stays NO-GO until
+the repository-defined acceptance process says otherwise.

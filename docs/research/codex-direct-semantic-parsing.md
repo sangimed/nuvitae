@@ -30,7 +30,10 @@ executed and passing. T202 has been re-measured from this matrix
 re-evaluated (`docs/research/codex-direct-oauth-go-no-go.md`) and re-confirmed
 on 2026-08-07 after the accepted T245 lifecycle proof; the decision remains
 NO-GO because live Codex semantic quality over real PDF/DOCX documents (T246)
-and bounded-fallback wiring (T217) remain unexecuted.
+is not accepted (T246-C01-A01 was executed once on 2026-08-07: invocation and
+every semantic metric passed, runner finalization failed, and A01 is
+CONSUMED; C02-C08 remain NOT_AUTHORIZED) and bounded-fallback wiring (T217)
+remains unexecuted.
 
 ## Artifacts
 
@@ -80,8 +83,9 @@ T201 is therefore complete. T202 has been re-measured from the accepted
 evidence and is no longer blocked; the T203 gate was re-evaluated on 2026-08-06
 and re-confirmed on 2026-08-07 after the accepted T245 lifecycle proof, and
 remains NO-GO for production adapter implementation because the live
-real-document semantic gate (T246) and bounded-fallback wiring (T217) remain
-unexecuted. T164/T165 remain blocked.
+real-document semantic gate (T246) is not accepted (T246-C01-A01 executed once
+on 2026-08-07, consumed after runner finalization failed) and bounded-fallback
+wiring (T217) remains unexecuted. T164/T165 remain blocked.
 T205 completed the current-version offline contract reconciliation; it did not
 authorize or execute C04 at that time.
 Any future Campaign B attempt remains separately authorized and limited to one
@@ -147,7 +151,9 @@ T201 is now complete. T244 re-measured T202 offline from the accepted evidence
 `docs/research/codex-direct-oauth-evaluation.md`) and re-evaluated the T203
 triggers: the decision remains **NO-GO** for production adapter implementation
 because live Codex semantic quality over real PDF/DOCX documents (T246) and
-bounded-fallback wiring (T217) remain unexecuted, and non-technical onboarding
+bounded-fallback wiring (T217) are not accepted/unexecuted (T246-C01-A01 was
+executed once on 2026-08-07 with all semantic metrics passing but runner
+finalization failing; A01 is consumed), and non-technical onboarding
 feasibility remains unmeasured. Historical evidence files remain byte-identical.
 
 ## 2026-08-07 update (T245 completion)
@@ -162,9 +168,14 @@ exercised and is not claimed (canonical T245 does not require it). T245
 satisfies T203 re-evaluation trigger 1 and unblocks T213-T215 Community
 connection-UI qualification, which remain incomplete. T246 (live Codex
 semantic evaluation over the real-document corpus) is now the next live
-semantic task; its remaining prerequisites are T248 (real French PDF proof),
-T247 (T208 bookkeeping closure), and explicit live execution authorization.
-The T203 decision remains **NO-GO** after the 2026-08-07 re-confirmation.
+semantic task; T248 (real French PDF proof), T247 (T208 bookkeeping closure),
+and T249 (complete offline corpus) are satisfied. T246-C01-A01 was executed
+once on 2026-08-07: the backend invocation succeeded (HTTP 200), every
+mandatory semantic metric passed, and the runner failed during finalization
+(implementation defects; A01 is CONSUMED and must not be rerun). C02-C08
+remain NOT_AUTHORIZED, the real-document corpus is not accepted, and T246
+remains INCOMPLETE. The T203 decision remains **NO-GO** after the
+2026-08-07 re-confirmation.
 
 ## 2026-08-07 update (T248 completion)
 
@@ -183,7 +194,8 @@ The sanitized proof aggregate is
 coverage in `tests/integration/import-resume/french-pdf-fixture-evaluation.integration.test.ts`
 and `spikes/codex-direct-oauth/test/t248-french-pdf-verifier.test.mjs`). The
 real-French-PDF prerequisite for T246 is satisfied; T246 remains incomplete
-and still requires explicit live execution authorization. The T203 decision
+and C01-A01 is CONSUMED (executed once 2026-08-07; semantic metrics passed,
+runner finalization failed; C02-C08 remain NOT_AUTHORIZED). The T203 decision
 remains **NO-GO**.
 
 ## Execution boundary
@@ -218,6 +230,7 @@ evaluation, and the consolidated matrix records `all_cases_live_passed`. T202 is
 measured (see `docs/research/codex-direct-oauth-evaluation.md`). T203 was
 re-evaluated on 2026-08-06 and re-confirmed on 2026-08-07 after the accepted
 T245 lifecycle proof; it remains **NO-GO** for production adapter
-implementation because the live real-document semantic gate (T246) and
-bounded-fallback wiring (T217) remain unexecuted. T246 is now the next live
-semantic task; T164/T165 remain blocked.
+implementation because the live real-document semantic gate (T246) is not
+accepted (T246-C01-A01 executed once on 2026-08-07, consumed after runner
+finalization failed) and bounded-fallback wiring (T217) remains unexecuted.
+T246 is now the next live semantic task; T164/T165 remain blocked.

@@ -56,6 +56,33 @@ test("T246 live mode stops before any live step because the registry is NOT_AUTH
   assert.doesNotMatch(result.stderr, /credential/);
 });
 
+test("T246 live mode refuses the consumed C01-A01 attempt before any live step", async () => {
+  const c01Args = [
+    "--campaign",
+    "T246-C01",
+    "--attempt",
+    "A01",
+    "--semantic-case",
+    "T246-C01",
+    "--fixture",
+    "tests/fixtures/resumes/anonymous-french-resume.pdf",
+    "--manifest",
+    "spikes/codex-direct-oauth/fixtures/t246-matrix/t246-c01.manifest.json",
+    "--evidence",
+    "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json",
+    "--max-broker-runs",
+    "1",
+    "--max-semantic-backend-requests",
+    "1",
+    "--automatic-retries",
+    "0",
+  ];
+  const result = await runRunner(["--mode", "live", ...c01Args]);
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /t246_attempt_consumed/);
+  assert.doesNotMatch(result.stderr, /credential/);
+});
+
 test("T246 preflight mode stops before any live step for a NOT_AUTHORIZED case", async () => {
   const result = await runRunner(["--mode", "preflight", ...baseArgs]);
   assert.equal(result.code, 1);

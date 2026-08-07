@@ -71,11 +71,11 @@ function stubRegistry(entry) {
 
 const tracked = async () => "tracked";
 
-test("T246 registry pins C01-A01 AUTHORIZED and C02-C08 NOT_AUTHORIZED with per-case limits", () => {
+test("T246 registry pins C01-A01 CONSUMED and C02-C08 NOT_AUTHORIZED with per-case limits", () => {
   assert.equal(registry.schema_version, 1);
   assert.equal(registry.authorized_attempts.length, 8);
   const expectedStates = new Map([
-    ["T246-C01", "AUTHORIZED"],
+    ["T246-C01", "CONSUMED"],
     ["T246-C02", "NOT_AUTHORIZED"],
     ["T246-C03", "NOT_AUTHORIZED"],
     ["T246-C04", "NOT_AUTHORIZED"],
@@ -95,6 +95,13 @@ test("T246 registry pins C01-A01 AUTHORIZED and C02-C08 NOT_AUTHORIZED with per-
     assert.match(entry.manifest_sha256, /^[a-f0-9]{64}$/);
     assert.equal(entry.automatic_retries, 0);
   }
+  const consumed = registry.consumed_attempts ?? [];
+  assert.equal(consumed.length, 1);
+  assert.equal(consumed[0].campaign, "T246-C01");
+  assert.equal(consumed[0].attempt, "A01");
+  assert.equal(consumed[0].invocation_attempted, true);
+  assert.equal(consumed[0].do_not_rerun, true);
+  assert.match(consumed[0].evidence_sha256, /^[a-f0-9]{64}$/);
   for (const caseId of [
     "T246-C01",
     "T246-C02",
@@ -117,6 +124,52 @@ test("T246 registry pins C01-A01 AUTHORIZED and C02-C08 NOT_AUTHORIZED with per-
   assert.equal(c08.maximum_live_broker_runs, 0);
   assert.equal(c08.maximum_semantic_backend_requests, 0);
   assert.equal(c08.transcript_sha256, null);
+});
+
+test("T246 consumed C01-A01 is rejected even though its artifact exists only at the historical misplaced path", async () => {
+  const entry = registry.authorized_attempts.find(
+    (candidate) => candidate.semantic_case === "T246-C01",
+  );
+  assert.equal(entry.authorization_state, "CONSUMED");
+  const invocation = parseT246AttemptArguments(argvOf(entry));
+  await assert.rejects(
+    validateT246Authorization({ root, invocation, isTracked: tracked }),
+    (error) => error.code === "t246_attempt_consumed",
+  );
+});
+
+test("T246 consumption does not rely solely on the canonical evidence pathname", async () => {
+  const base = registry.authorized_attempts.find(
+    (candidate) => candidate.semantic_case === "T246-C01",
+  );
+  const entry = {
+    ...base,
+    authorization_state: "AUTHORIZED",
+  };
+  const invocation = parseT246AttemptArguments(argvOf(entry));
+  await assert.rejects(
+    validateT246Authorization({
+      root,
+      invocation,
+      registry: stubRegistry(entry),
+      isTracked: tracked,
+      findConsumedArtifacts: async () => [
+        {
+          path: path.join(
+            root,
+            "spikes",
+            "codex-direct-oauth",
+            "evidence",
+            "codex-direct-oauth-t246-c01-a01-semantic-parsing.json",
+          ),
+          campaign: "T246-C01",
+          attempt: "A01",
+          kind: "semantic-parsing",
+        },
+      ],
+    }),
+    (error) => error.code === "t246_attempt_consumed",
+  );
 });
 
 test("T246 attempts fail closed before any credential or live step while NOT_AUTHORIZED", async () => {
@@ -274,4 +327,13 @@ test("T246 aggregate stays INCOMPLETE with zero accepted evidence", async () => 
   assert.equal(aggregate.accepted_live_evidence_count, 0);
   assert.equal(aggregate.semantic_cases.length, 7);
   assert.equal(aggregate.recovery_case.case_id, "T246-C08");
+  assert.equal(aggregate.consumed_attempts.length, 1);
+  assert.equal(aggregate.consumed_attempts[0].campaign, "T246-C01");
+  assert.equal(aggregate.consumed_attempts[0].attempt, "A01");
+  assert.equal(aggregate.consumed_attempts[0].accepted, false);
+  const c01 = aggregate.semantic_cases.find(
+    (entry) => entry.case_id === "T246-C01",
+  );
+  assert.equal(c01.accepted, false);
+  assert.equal(c01.consumed, true);
 });

@@ -114,6 +114,83 @@ function finalEvidence(result, overrides = {}) {
   });
 }
 
+// Realistic broker-result shape: the broker emits the canonical metrics only
+// nested under `evaluation_metrics` (it never emits top-level recall or
+// language-classification fields). This mirrors the actual T246-C01-A01 live
+// result that the pre-fix gate misread.
+function realisticBrokerResult(metricsOverrides = {}, topLevelOverrides = {}) {
+  return {
+    evidence_classification: "live_t246_semantic_parsing",
+    observation_timestamp: "2026-08-07T12:00:05.000Z",
+    runner_run_id_hash: RUN_ID,
+    case_id: "T246-C01",
+    attempt_id: "A01",
+    fixture_sha256: proof.row.fixture_sha256,
+    transcript_sha256: proof.row.transcript_sha256,
+    manifest_sha256: proof.manifestSha256,
+    invocation_attempted: true,
+    invocation_succeeded: true,
+    exact_http_status: 200,
+    safe_http_status_category: "2xx",
+    response_protocol_valid: true,
+    encrypted_state_recovered: true,
+    encrypted_state_preserved: true,
+    callback_port_absent: true,
+    t246_artifact_hashes_validated: true,
+    t246_transcript_regeneration_matched: true,
+    t246_manifest_binding_valid: true,
+    provenance_contract_validated: true,
+    schema_valid: true,
+    grounding_pass: true,
+    no_invention_pass: true,
+    parsing_pass: true,
+    unsupported_fact_count: 0,
+    forbidden_inference_count: 0,
+    missing_evidence_count: 0,
+    invalid_evidence_count: 0,
+    ambiguity_handling_pass: true,
+    absent_optional_fields_pass: true,
+    credential_exposure_boolean: false,
+    account_identifier_exposure_boolean: false,
+    raw_credentials_exposed_to_parent: false,
+    account_identifier_exposed_to_parent: false,
+    raw_model_response_persisted: false,
+    raw_response_persisted: false,
+    model_output_received: true,
+    structured_output_evaluated: true,
+    semantic_quality_evaluated: true,
+    metrics_measurement_state: "measured",
+    primary_failure_category: null,
+    primary_failure_phase: null,
+    secondary_failure_categories: [],
+    safe_error_categories: [],
+    safe_final_state: "complete",
+    evaluation_metrics: {
+      schema_valid: true,
+      JSON_only_valid: true,
+      expected_section_recall: 1,
+      expected_item_recall: 1,
+      exact_fact_recall: 1,
+      high_priority_fact_recall: 1,
+      unsupported_fact_count: 0,
+      forbidden_inference_count: 0,
+      missing_evidence_count: 0,
+      invalid_evidence_count: 0,
+      ambiguous_fact_handling_count: 1,
+      null_for_absent_fields_count: 9,
+      source_grounding_pass: true,
+      no_invention_pass: true,
+      document_language_classification_pass: true,
+      absent_optional_fields_pass: true,
+      parsing_pass: true,
+      primary_failure_category: null,
+      primary_failure_phase: null,
+      ...metricsOverrides,
+    },
+    ...topLevelOverrides,
+  };
+}
+
 test("T246 evidence gate passes only when every mandatory semantic and security condition holds", () => {
   const evidence = finalEvidence(successfulBrokerResult());
   assert.equal(evidence.case_pass, true);
@@ -121,6 +198,75 @@ test("T246 evidence gate passes only when every mandatory semantic and security 
   assert.equal(evidence.safe_final_state, "complete");
   assert.equal(evidence.secret_scan_result, "passed");
   assert.equal(evidence.evidence_atomic_replace_succeeded, false);
+});
+
+test("T246 evidence gate passes when the canonical metrics are nested under evaluation_metrics only", () => {
+  const evidence = finalEvidence(realisticBrokerResult());
+  assert.equal(evidence.case_pass, true);
+  assert.equal(evidence.safe_final_state, "complete");
+  assert.equal(evidence.primary_failure_phase, "none");
+  assert.equal(evidence.primary_failure_category, "none");
+  assert.equal(t246RunnerExitCode(evidence), 0);
+});
+
+test("T246 semantic failure produces an explicit failure classification from nested metrics", () => {
+  const evidence = finalEvidence(
+    realisticBrokerResult(
+      {
+        exact_fact_recall: 0.8,
+        parsing_pass: false,
+        primary_failure_category: "expected_fact_missing",
+        primary_failure_phase: "response_semantic_evaluation",
+      },
+      {
+        parsing_pass: false,
+        primary_failure_category: "expected_fact_missing",
+        primary_failure_phase: "response_semantic_evaluation",
+      },
+    ),
+  );
+  assert.equal(evidence.case_pass, false);
+  assert.equal(evidence.safe_final_state, "expected_fact_missing");
+  assert.equal(evidence.primary_failure_category, "expected_fact_missing");
+  assert.equal(evidence.primary_failure_phase, "response_semantic_evaluation");
+  assert.equal(t246RunnerExitCode(evidence), 1);
+});
+
+test("T246 transport failure produces an explicit failure classification", () => {
+  const evidence = finalEvidence(
+    realisticBrokerResult(
+      {},
+      {
+        invocation_succeeded: false,
+        response_protocol_valid: false,
+        model_output_received: false,
+        semantic_quality_evaluated: false,
+        metrics_measurement_state: "not_measured",
+        safe_final_state: "transport_failure",
+        primary_failure_category: "transport_failure",
+        primary_failure_phase: "transport_invocation",
+      },
+    ),
+  );
+  assert.equal(evidence.case_pass, false);
+  assert.equal(evidence.primary_failure_category, "transport_failure");
+  assert.equal(evidence.primary_failure_phase, "transport_invocation");
+  assert.equal(t246RunnerExitCode(evidence), 1);
+});
+
+test("T246 case_pass is never null after a completed successful semantic evaluation", () => {
+  for (const result of [
+    realisticBrokerResult(),
+    realisticBrokerResult({ exact_fact_recall: 0.8, parsing_pass: false }),
+    successfulBrokerResult(),
+    successfulBrokerResult({ exact_fact_recall: 0.8 }),
+  ]) {
+    const evidence = finalEvidence(result);
+    assert.equal(typeof evidence.case_pass, "boolean");
+    assert.equal(typeof evidence.safe_final_state, "string");
+    assert.equal(typeof evidence.primary_failure_phase, "string");
+    assert.equal(typeof evidence.primary_failure_category, "string");
+  }
 });
 
 test("T246 evidence gate fails when exact fact recall is below threshold", () => {

@@ -12,6 +12,7 @@ set -eu
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$root"
+repo_root=$(CDPATH= cd -- "$root/../.." && pwd)
 
 image=${NUVITAE_T246_IMMUTABLE_IMAGE:-}
 case "$image" in
@@ -42,6 +43,16 @@ max_backend_requests=${NUVITAE_T246_MAX_SEMANTIC_BACKEND_REQUESTS:-}
 automatic_retries=${NUVITAE_T246_AUTOMATIC_RETRIES:-}
 result_root="$root/.tmp"
 
+# Resolve the evidence path exactly once. The bridge passes the canonical
+# absolute host path; a repository-relative operator path is resolved against
+# the repository root (never against this script's cwd), so the evidence can
+# never be written to a double-prefixed nested path such as
+# `spikes/codex-direct-oauth/spikes/codex-direct-oauth/evidence/...`.
+case "$evidence" in
+  /*) ;;
+  *) evidence=$(CDPATH= cd -- "$repo_root" && printf '%s' "$PWD/$evidence") ;;
+esac
+
 if [ -z "$campaign" ] || [ -z "$attempt" ] || [ -z "$case_id" ] || [ -z "$fixture" ] || [ -z "$manifest" ] || [ -z "$transcript" ] || [ -z "$evidence" ]; then
   echo "validated T246 contract is required" >&2
   exit 1
@@ -59,7 +70,7 @@ done
 key_volume=${CODEX_DIRECT_OAUTH_T199_KEY_VOLUME:-nuvitae-codex-direct-oauth-t199-key-live}
 credential_volume=${CODEX_DIRECT_OAUTH_T199_CREDENTIAL_VOLUME:-nuvitae-codex-direct-oauth-t199-credentials-live}
 
-mkdir -p evidence "$result_root"
+mkdir -p "$(dirname -- "$evidence")" "$result_root"
 umask 077
 result_dir=$(mktemp -d "$result_root/t246-result.XXXXXX")
 stdout_file="$result_dir/broker.stdout"

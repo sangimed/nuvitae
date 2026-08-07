@@ -76,6 +76,30 @@ node --test spikes/codex-direct-oauth/test/t245-evaluator.test.mjs
 node --test spikes/codex-direct-oauth/test/t199-lifecycle-evidence.test.mjs
 ```
 
+Re-evaluate the consumed T246-C01-A01 live attempt offline (fully offline; no
+OAuth, Codex/OpenAI/provider request, network, credential access, or live
+runner). The verifier reads only the immutable historical sanitized evidence,
+the checked-in artifact pins, and the authorization registry; it never rewrites
+the historical evidence. It recomputes the canonical T246 complete gate from
+the retained `evaluation_metrics` projection and writes a derived acceptance
+artifact reporting `semantic_result=PASS`, `runner_finalization=FAIL`, while
+T246 stays INCOMPLETE and T203 stays NO-GO:
+
+```sh
+node spikes/codex-direct-oauth/re-evaluate-t246-a01.mjs
+```
+
+Regression tests for the T246 path handling, finalization gate, consumed
+attempt semantics, and the offline re-evaluation:
+
+```sh
+node --test spikes/codex-direct-oauth/test/t246-path-resolution.test.mjs
+node --test spikes/codex-direct-oauth/test/t246-live-runner-evidence.test.mjs
+node --test spikes/codex-direct-oauth/test/t246-authorization.test.mjs
+node --test spikes/codex-direct-oauth/test/t246-live-bridge.test.mjs
+node --test spikes/codex-direct-oauth/test/t246-re-evaluate-a01.test.mjs
+```
+
 Run the non-OAuth loopback preflight:
 
 ```sh

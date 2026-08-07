@@ -27,11 +27,22 @@ import {
 
 export const T246_EXECUTION_ENTRYPOINT = "run-t246-live-execute.sh";
 
-export function t246ContainerManifestPath(authorization) {
-  return String(authorization.manifest).replace(
-    /^spikes\/codex-direct-oauth\//,
-    "",
+// Derives the container-relative manifest path exactly once from the
+// canonical absolute host manifest path. Never re-resolves a
+// repository-relative string against the spike directory, so the path cannot
+// be double-prefixed with `spikes/codex-direct-oauth`.
+export function t246ContainerManifestPath(authorization, spikeRoot) {
+  const absoluteManifest =
+    authorization.manifest_path ??
+    path.join(spikeRoot, "..", "..", authorization.manifest);
+  const relative = path.relative(
+    path.resolve(spikeRoot),
+    path.resolve(absoluteManifest),
   );
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("t246_manifest_outside_spike");
+  }
+  return relative;
 }
 
 async function writeTranscriptFile({ lines }) {
@@ -101,10 +112,17 @@ export async function runT246LiveBridge({
       NUVITAE_T246_CAMPAIGN_ID: authorization.campaign,
       NUVITAE_T246_ATTEMPT_ID: authorization.attempt,
       NUVITAE_T246_CASE_ID: authorization.semantic_case,
-      NUVITAE_T246_FIXTURE_PATH: path.resolve(authorization.fixture_path),
-      NUVITAE_T246_MANIFEST_PATH: t246ContainerManifestPath(authorization),
+      // Canonical absolute host paths resolved exactly once against the
+      // repository root by the authorization validator. Passing them onward
+      // unchanged guarantees the execution body (cwd = spike root) can never
+      // re-resolve a repository-relative path against the spike directory.
+      NUVITAE_T246_FIXTURE_PATH: authorization.fixture_path,
+      NUVITAE_T246_MANIFEST_PATH: t246ContainerManifestPath(
+        authorization,
+        root,
+      ),
       NUVITAE_T246_TRANSCRIPT_PATH: transcript.transcriptPath,
-      NUVITAE_T246_EVIDENCE_PATH: authorization.evidence,
+      NUVITAE_T246_EVIDENCE_PATH: authorization.evidence_path,
       NUVITAE_T246_FIXTURE_SHA256: authorization.fixture_sha256,
       NUVITAE_T246_TRANSCRIPT_SHA256: authorization.transcript_sha256,
       NUVITAE_T246_MANIFEST_SHA256: authorization.manifest_sha256,

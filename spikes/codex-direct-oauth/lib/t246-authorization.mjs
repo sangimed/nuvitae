@@ -40,6 +40,8 @@ const SEMANTIC_EVIDENCE_PATTERN =
   /^spikes\/codex-direct-oauth\/evidence\/codex-direct-oauth-t246-c0[1-7]-a[0-9]{2}-semantic-parsing\.json$/;
 const RECOVERY_EVIDENCE_PATTERN =
   /^spikes\/codex-direct-oauth\/evidence\/codex-direct-oauth-t246-c08-a[0-9]{2}-recovery\.json$/;
+const T246_EVIDENCE_FILE_PATTERN =
+  /^codex-direct-oauth-t246-(c0[1-8])-(a[0-9]{2})-(semantic-parsing|recovery)\.json$/i;
 
 function authorizationError(code) {
   const error = new Error(code);
@@ -106,7 +108,66 @@ export async function loadT246AuthorizationRegistry({ root, registry } = {}) {
   ) {
     throw authorizationError("t246_authorization_registry_invalid");
   }
+  if (
+    parsed.consumed_attempts !== undefined &&
+    !Array.isArray(parsed.consumed_attempts)
+  ) {
+    throw authorizationError("t246_authorization_registry_invalid");
+  }
   return parsed;
+}
+
+// Consumed-attempt discovery across the whole spike tree.
+//
+// A consumed live attempt must never depend on one expected pathname: a
+// runner defect can write the sanitized evidence elsewhere (T246-C01-A01 was
+// written to a double-prefixed nested path). The authorization gate therefore
+// walks the spike directory and treats any T246 evidence artifact whose
+// case/attempt matches the invocation as consumed, in addition to the
+// explicit `consumed_attempts` ledger in the registry.
+export async function findT246EvidenceArtifacts({
+  root,
+  campaign,
+  attempt,
+  walk = walkSpikeEvidenceArtifacts,
+} = {}) {
+  const artifacts = await walk(root);
+  return artifacts.filter(
+    (artifact) =>
+      artifact.campaign === campaign && artifact.attempt === attempt,
+  );
+}
+
+async function walkSpikeEvidenceArtifacts(spikeRoot) {
+  const results = [];
+  const stack = [spikeRoot];
+  while (stack.length > 0) {
+    const directory = stack.pop();
+    const entries = await fs
+      .readdir(directory, { withFileTypes: true })
+      .catch((error) => {
+        if (error?.code === "ENOENT") return [];
+        throw error;
+      });
+    for (const entry of entries) {
+      const fullPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === ".tmp" || entry.name === "node_modules") continue;
+        stack.push(fullPath);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      const match = T246_EVIDENCE_FILE_PATTERN.exec(entry.name);
+      if (!match) continue;
+      results.push({
+        path: fullPath,
+        campaign: `T246-${match[1].toUpperCase()}`,
+        attempt: match[2].toUpperCase(),
+        kind: match[3],
+      });
+    }
+  }
+  return results;
 }
 
 async function defaultIsTracked(root, target, gitCommand = "git") {
@@ -136,9 +197,26 @@ export async function validateT246Authorization({
   exists = fs.access,
   isTracked,
   gitCommand = "git",
+  findConsumedArtifacts = findT246EvidenceArtifacts,
 } = {}) {
   const selectedRegistry =
     registry ?? (await loadT246AuthorizationRegistry({ root }));
+  const consumedLedgerMatch = (selectedRegistry.consumed_attempts ?? []).filter(
+    (entry) =>
+      entry.campaign === invocation.campaign &&
+      entry.attempt === invocation.attempt,
+  );
+  if (consumedLedgerMatch.length > 0) {
+    throw authorizationError("t246_attempt_consumed");
+  }
+  const misplacedArtifacts = await findConsumedArtifacts({
+    root,
+    campaign: invocation.campaign,
+    attempt: invocation.attempt,
+  });
+  if (misplacedArtifacts.length > 0) {
+    throw authorizationError("t246_attempt_consumed");
+  }
   const matches = selectedRegistry.authorized_attempts.filter(
     (entry) =>
       entry.campaign === invocation.campaign &&
@@ -148,6 +226,9 @@ export async function validateT246Authorization({
     throw authorizationError("t246_attempt_not_authorized");
   }
   const authorization = matches[0];
+  if (authorization.authorization_state === "CONSUMED") {
+    throw authorizationError("t246_attempt_consumed");
+  }
   if (authorization.authorization_state !== "AUTHORIZED") {
     throw authorizationError("t246_not_authorized");
   }
