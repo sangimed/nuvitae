@@ -38,6 +38,21 @@
       "manifest_sha256": "8a3838e0b1397b6a817b828b62a6a6e960e925890bdcfe81be6c1043d2c5754d"
     },
     {
+      "campaign": "T246-C01",
+      "attempt": "A02",
+      "semantic_case": "T246-C01",
+      "authorization_state": "AUTHORIZED",
+      "maximum_live_broker_runs": 1,
+      "maximum_semantic_backend_requests": 1,
+      "automatic_retries": 0,
+      "fixture": "tests/fixtures/resumes/anonymous-french-resume.pdf",
+      "manifest": "spikes/codex-direct-oauth/fixtures/t246-matrix/t246-c01.manifest.json",
+      "evidence": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a02-semantic-parsing.json",
+      "fixture_sha256": "51593da159285371b05919700ced3e8ed2be666f1b24482b504c48c579e0cf3e",
+      "transcript_sha256": "496bb2335d6ef5b65038aa227a1cd908eb02535413ccec408b5a499f16e5ee77",
+      "manifest_sha256": "8a3838e0b1397b6a817b828b62a6a6e960e925890bdcfe81be6c1043d2c5754d"
+    },
+    {
       "campaign": "T246-C02",
       "attempt": "A01",
       "semantic_case": "T246-C02",

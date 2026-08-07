@@ -71,30 +71,55 @@ function stubRegistry(entry) {
 
 const tracked = async () => "tracked";
 
-test("T246 registry pins C01-A01 CONSUMED and C02-C08 NOT_AUTHORIZED with per-case limits", () => {
+test("T246 registry pins consumed A01, authorized A02, and isolates C02-C08", () => {
   assert.equal(registry.schema_version, 1);
-  assert.equal(registry.authorized_attempts.length, 8);
-  const expectedStates = new Map([
-    ["T246-C01", "CONSUMED"],
-    ["T246-C02", "NOT_AUTHORIZED"],
-    ["T246-C03", "NOT_AUTHORIZED"],
-    ["T246-C04", "NOT_AUTHORIZED"],
-    ["T246-C05", "NOT_AUTHORIZED"],
-    ["T246-C06", "NOT_AUTHORIZED"],
-    ["T246-C07", "NOT_AUTHORIZED"],
-    ["T246-C08", "NOT_AUTHORIZED"],
-  ]);
+  assert.equal(registry.authorized_attempts.length, 9);
+  const a01 = registry.authorized_attempts.find(
+    (entry) => entry.campaign === "T246-C01" && entry.attempt === "A01",
+  );
+  const a02 = registry.authorized_attempts.find(
+    (entry) => entry.campaign === "T246-C01" && entry.attempt === "A02",
+  );
+  assert.equal(a01.authorization_state, "CONSUMED");
+  assert.equal(a02.authorization_state, "AUTHORIZED");
+  assert.equal(
+    a02.evidence,
+    "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a02-semantic-parsing.json",
+  );
+  assert.equal(
+    a02.fixture_sha256,
+    "51593da159285371b05919700ced3e8ed2be666f1b24482b504c48c579e0cf3e",
+  );
+  assert.equal(
+    a02.transcript_sha256,
+    "496bb2335d6ef5b65038aa227a1cd908eb02535413ccec408b5a499f16e5ee77",
+  );
+  assert.equal(
+    a02.manifest_sha256,
+    "8a3838e0b1397b6a817b828b62a6a6e960e925890bdcfe81be6c1043d2c5754d",
+  );
+  const unauthorized = registry.authorized_attempts.filter((entry) =>
+    /^T246-C0[2-8]$/.test(entry.semantic_case),
+  );
+  assert.equal(unauthorized.length, 7);
   for (const entry of registry.authorized_attempts) {
-    assert.equal(
-      entry.authorization_state,
-      expectedStates.get(entry.semantic_case),
-    );
     assert.match(entry.semantic_case, /^T246-C0[1-8]$/);
     assert.match(entry.attempt, /^A[0-9]{2,}$/);
     assert.match(entry.fixture_sha256, /^[a-f0-9]{64}$/);
     assert.match(entry.manifest_sha256, /^[a-f0-9]{64}$/);
     assert.equal(entry.automatic_retries, 0);
   }
+  assert.ok(
+    unauthorized.every(
+      (entry) => entry.authorization_state === "NOT_AUTHORIZED",
+    ),
+  );
+  assert.equal(
+    registry.authorized_attempts.some(
+      (entry) => entry.campaign === "T246-C01" && entry.attempt === "A03",
+    ),
+    false,
+  );
   const consumed = registry.consumed_attempts ?? [];
   assert.equal(consumed.length, 1);
   assert.equal(consumed[0].campaign, "T246-C01");
@@ -124,6 +149,38 @@ test("T246 registry pins C01-A01 CONSUMED and C02-C08 NOT_AUTHORIZED with per-ca
   assert.equal(c08.maximum_live_broker_runs, 0);
   assert.equal(c08.maximum_semantic_backend_requests, 0);
   assert.equal(c08.transcript_sha256, null);
+});
+
+test("T246 authorizes exactly one fresh replacement attempt and no generic multi-attempt entry", async () => {
+  const authorized = registry.authorized_attempts.filter(
+    (entry) => entry.authorization_state === "AUTHORIZED",
+  );
+  assert.deepEqual(
+    authorized.map(({ campaign, attempt, semantic_case }) => ({
+      campaign,
+      attempt,
+      semantic_case,
+    })),
+    [{ campaign: "T246-C01", attempt: "A02", semantic_case: "T246-C01" }],
+  );
+  const entry = authorized[0];
+  const invocation = parseT246AttemptArguments(argvOf(entry));
+  const validated = await validateT246Authorization({
+    root,
+    invocation,
+    isTracked: tracked,
+  });
+  assert.equal(validated.attempt, "A02");
+  assert.equal(validated.authorization_state, "AUTHORIZED");
+  assert.equal(validated.evidence_path, path.join(repo, entry.evidence));
+  assert.equal(validated.fixture_path, path.join(repo, entry.fixture));
+  assert.equal(validated.manifest_path, path.join(repo, entry.manifest));
+  assert.equal(
+    validated.evidence_path.includes(
+      "codex-direct-oauth/spikes/codex-direct-oauth",
+    ),
+    false,
+  );
 });
 
 test("T246 consumed C01-A01 is rejected even though its artifact exists only at the historical misplaced path", async () => {

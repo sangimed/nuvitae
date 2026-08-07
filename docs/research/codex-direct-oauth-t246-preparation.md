@@ -375,3 +375,22 @@ reporting:
 The historical A01 evidence and the T246 aggregate are not rewritten. The
 aggregate remains INCOMPLETE; T246 stays incomplete and T203 stays NO-GO until
 the repository-defined acceptance process says otherwise.
+
+## 13. Replacement authorization record (2026-08-07, A02 prepared offline)
+
+This addendum authorizes exactly one replacement live attempt for the consumed
+T246-C01-A01 attempt. It does not execute the attempt and does not authorize
+any other case or attempt.
+
+- **T246-C01-A01** remains **CONSUMED**, permanently non-rerunnable, and
+  historically immutable.
+- **T246-C01-A02** is the only newly **AUTHORIZED** entry. It reuses the
+  accepted C01 fixture, transcript, manifest, one-broker/one-request budget,
+  and zero-retry contract, with fresh evidence at
+  `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a02-semantic-parsing.json`.
+- **T246-C02 through T246-C08** remain **NOT_AUTHORIZED**; no A03 entry exists.
+- The fixed path-resolution and nested `evaluation_metrics` finalization gates
+  are covered by offline regression tests. T246 remains **INCOMPLETE** and
+  T203 remains **NO-GO** until canonical accepted A02 evidence exists.
+- No OAuth, Codex/OpenAI/provider request, credential-volume access, live
+  runner, commit, or push occurred while preparing this authorization.
