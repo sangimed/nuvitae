@@ -288,6 +288,7 @@ function verifySemanticCase({
     transcriptSha256,
     expectedSemanticJsonSha256: expectedHash,
     lineCount: lines.length,
+    transcriptLines: lines,
     language: extraction.language.language,
     languageConfidence: extraction.language.confidence,
     pageCount: extraction.pageCount ?? null,
@@ -478,6 +479,109 @@ export async function collectT246CorpusProof() {
   }
   const evidence = buildSanitizedT246CorpusEvidence({ rows });
   return { evidence, rows };
+}
+
+// Single-case offline proof for a T246 live attempt. Recomputes the accepted
+// deterministic extraction transcript from the canonical binary fixture and
+// fails closed on any fixture/transcript/manifest hash or expectation
+// mismatch against the registry and manifest. `fixtureBytes` is injectable
+// for offline mismatch tests; the live path always reads the canonical file.
+export async function collectT246CaseProof({ caseId, fixtureBytes } = {}) {
+  const registry = await loadAuthorizationRegistry();
+  const registryByCase = new Map(
+    (registry.authorized_attempts ?? []).map((entry) => [
+      entry.semantic_case,
+      entry,
+    ]),
+  );
+  const corpus = await loadCorpus();
+  const caseDefinition = T246_CASES.find(
+    (candidate) => candidate.caseId === caseId,
+  );
+  if (caseDefinition === undefined) {
+    throw new Error(`t246_case_not_in_corpus:${caseId}`);
+  }
+  const fixtureAbsPath = path.join(REPO_ROOT, caseDefinition.fixturePath);
+  const bytes = fixtureBytes ?? (await fs.readFile(fixtureAbsPath));
+  if (bytes.byteLength <= 0) {
+    throw new Error(`t246_fixture_empty:${caseDefinition.caseId}`);
+  }
+  const manifest = await readJson(caseDefinition.manifestPath);
+  const manifestBytes = await fs.readFile(
+    path.join(REPO_ROOT, caseDefinition.manifestPath),
+  );
+  const manifestSha256 = sha256(manifestBytes);
+  const registryEntry = registryByCase.get(caseDefinition.caseId);
+  if (registryEntry === undefined) {
+    throw new Error(`t246_missing_registry_entry:${caseDefinition.caseId}`);
+  }
+  if (registryEntry.manifest_sha256 !== manifestSha256) {
+    throw new Error(`t246_registry_manifest_mismatch:${caseDefinition.caseId}`);
+  }
+  const request = {
+    importId: `00000000-0000-4000-8000-00000000${caseDefinition.caseId.slice(-2)}`,
+    ownerUserId: "00000000-0000-4000-8000-000000000702",
+    sourceStorageKey: caseDefinition.fixturePath,
+    format: caseDefinition.format,
+  };
+  const extraction = await extractCase(caseDefinition, fixtureAbsPath, request);
+  let proof;
+  let lines = null;
+  if (caseDefinition.corpusFixtureId === null) {
+    proof = verifyRecoveryCase({
+      fixtureBytes: bytes,
+      extraction,
+      manifest,
+      registryEntry,
+      corpus,
+    });
+  } else {
+    proof = verifySemanticCase({
+      caseDefinition,
+      fixtureBytes: bytes,
+      extraction,
+      manifest,
+      corpus,
+      registryEntry,
+    });
+    lines = proof.transcriptLines;
+  }
+  const row = {
+    case_id: caseDefinition.caseId,
+    scenario: caseDefinition.scenario,
+    fixture_path: caseDefinition.fixturePath,
+    format: caseDefinition.format,
+    language: proof.language ?? "not_applicable",
+    language_confidence: proof.languageConfidence ?? "not_applicable",
+    fixture_sha256: proof.fixtureSha256,
+    transcript_sha256: proof.transcriptSha256 ?? null,
+    recovery_input_sha256: proof.recoveryInputSha256 ?? null,
+    expected_semantic_json_sha256: proof.expectedSemanticJsonSha256 ?? null,
+    manifest_path: caseDefinition.manifestPath,
+    manifest_sha256: manifestSha256,
+    extraction_status:
+      caseDefinition.corpusFixtureId === null
+        ? "recovery_verified"
+        : "transcript_verified",
+    provenance_status:
+      caseDefinition.corpusFixtureId === null
+        ? "not_applicable"
+        : "deterministic_enrichment_ready",
+    semantic_expectation_status:
+      caseDefinition.corpusFixtureId === null
+        ? "not_applicable"
+        : "expected_json_pinned",
+    live_request_required: caseDefinition.liveRequestRequired,
+    live_ready: true,
+  };
+  return {
+    row,
+    lines,
+    transcript: lines === null ? null : lines.join("\n"),
+    fixtureBytes: bytes,
+    manifest,
+    manifestSha256,
+  };
 }
 
 export function buildSanitizedT246CorpusEvidence({ rows }) {

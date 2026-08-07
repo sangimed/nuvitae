@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { test } from "node:test";
@@ -53,6 +54,28 @@ test("T246 live mode stops before any live step because the registry is NOT_AUTH
   assert.equal(result.code, 1);
   assert.match(result.stderr, /t246_not_authorized/);
   assert.doesNotMatch(result.stderr, /credential/);
+});
+
+test("T246 preflight mode stops before any live step for a NOT_AUTHORIZED case", async () => {
+  const result = await runRunner(["--mode", "preflight", ...baseArgs]);
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /t246_not_authorized/);
+  assert.doesNotMatch(result.stderr, /credential/);
+});
+
+test("T246 runner rejects an unknown mode", async () => {
+  const result = await runRunner(["--mode", "bogus", ...baseArgs]);
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /t246_mode_required/);
+});
+
+test("T246 runner no longer contains the inert live-path terminal branch", async () => {
+  const source = await fs.readFile(
+    new URL("../t246-live-runner.mjs", import.meta.url),
+    "utf8",
+  );
+  assert.equal(source.includes("t246_live_path_not_reachable"), false);
+  assert.match(source, /runT246LiveBridge/);
 });
 
 test("T246 offline mode verifies the prepared case deterministically", async () => {

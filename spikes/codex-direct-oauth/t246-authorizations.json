@@ -5,7 +5,7 @@
       "campaign": "T246-C01",
       "attempt": "A01",
       "semantic_case": "T246-C01",
-      "authorization_state": "NOT_AUTHORIZED",
+      "authorization_state": "AUTHORIZED",
       "maximum_live_broker_runs": 1,
       "maximum_semantic_backend_requests": 1,
       "automatic_retries": 0,

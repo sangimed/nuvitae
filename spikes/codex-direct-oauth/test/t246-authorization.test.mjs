@@ -71,11 +71,24 @@ function stubRegistry(entry) {
 
 const tracked = async () => "tracked";
 
-test("T246 registry pins eight NOT_AUTHORIZED attempts with per-case limits", () => {
+test("T246 registry pins C01-A01 AUTHORIZED and C02-C08 NOT_AUTHORIZED with per-case limits", () => {
   assert.equal(registry.schema_version, 1);
   assert.equal(registry.authorized_attempts.length, 8);
+  const expectedStates = new Map([
+    ["T246-C01", "AUTHORIZED"],
+    ["T246-C02", "NOT_AUTHORIZED"],
+    ["T246-C03", "NOT_AUTHORIZED"],
+    ["T246-C04", "NOT_AUTHORIZED"],
+    ["T246-C05", "NOT_AUTHORIZED"],
+    ["T246-C06", "NOT_AUTHORIZED"],
+    ["T246-C07", "NOT_AUTHORIZED"],
+    ["T246-C08", "NOT_AUTHORIZED"],
+  ]);
   for (const entry of registry.authorized_attempts) {
-    assert.equal(entry.authorization_state, "NOT_AUTHORIZED");
+    assert.equal(
+      entry.authorization_state,
+      expectedStates.get(entry.semantic_case),
+    );
     assert.match(entry.semantic_case, /^T246-C0[1-8]$/);
     assert.match(entry.attempt, /^A[0-9]{2,}$/);
     assert.match(entry.fixture_sha256, /^[a-f0-9]{64}$/);

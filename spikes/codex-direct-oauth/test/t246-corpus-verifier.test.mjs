@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   collectT246CorpusProof,
+  collectT246CaseProof,
   T246_CASES,
 } from "../lib/t246-corpus-verification.mjs";
 
@@ -113,4 +114,35 @@ test("T246 sanitized evidence contains no raw fixture text", async () => {
       `evidence must not contain ${sentinel}`,
     );
   }
+});
+
+test("T246 single-case proof recomputes and pins the accepted C01 transcript", async () => {
+  const proof = await collectT246CaseProof({ caseId: "T246-C01" });
+  assert.equal(proof.row.case_id, "T246-C01");
+  assert.equal(proof.row.live_request_required, true);
+  assert.equal(proof.row.live_ready, true);
+  assert.equal(proof.row.fixture_sha256, proof.manifest.fixture_sha256);
+  assert.equal(proof.row.transcript_sha256, proof.manifest.transcript_sha256);
+  assert.match(proof.manifestSha256, /^[a-f0-9]{64}$/);
+  assert.equal(proof.lines.length, 21);
+  assert.match(proof.transcript, /Léa Dupont-Exemple/);
+});
+
+test("T246 single-case proof fails closed on a tampered fixture", async () => {
+  const original = await collectT246CaseProof({ caseId: "T246-C01" });
+  const tampered = Buffer.concat([
+    original.fixtureBytes.subarray(0, original.fixtureBytes.length - 4),
+    Buffer.from("TAMPERED"),
+  ]);
+  await assert.rejects(
+    collectT246CaseProof({ caseId: "T246-C01", fixtureBytes: tampered }),
+    (error) => error.message === "t246_fixture_mismatch:T246-C01",
+  );
+});
+
+test("T246 single-case proof rejects unknown case ids", async () => {
+  await assert.rejects(
+    collectT246CaseProof({ caseId: "T246-C99" }),
+    (error) => error.message === "t246_case_not_in_corpus:T246-C99",
+  );
 });

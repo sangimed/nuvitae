@@ -253,3 +253,40 @@ the manifests, and this record, then flip each intended entry from
 `NOT_AUTHORIZED` to `AUTHORIZED` in a separate, explicitly reviewed step
 before any live T246 command may run. T246 remains INCOMPLETE / NOT RUN and
 T203 remains NO-GO. No live command is authorized by this record.
+
+## 11. Post-preparation status addendum (2026-08-07, reachable live path)
+
+This addendum does not rewrite the preparation snapshot above. Sections 1-10
+remain the historical offline-preparation record; their statements that
+"every entry is NOT_AUTHORIZED" and that "no live command is authorized"
+describe the state at preparation time and remain accurate as historical
+facts.
+
+Current authorization state (authoritative registry:
+`spikes/codex-direct-oauth/t246-authorizations.json`):
+
+- **T246-C01-A01 is AUTHORIZED** (flipped 2026-08-07), **unconsumed**, and
+  **NOT RUN**.
+- **T246-C02 through T246-C08 remain NOT_AUTHORIZED.**
+- **T246 remains INCOMPLETE / NOT RUN; T203 remains NO-GO.**
+
+The reachable live execution path is now implemented and validated offline
+(2026-08-07):
+
+- Host runner: `spikes/codex-direct-oauth/t246-live-runner.mjs --mode
+  <offline|preflight|live>`; `--mode live` is reachable and gated by the same
+  authorization/hash/evidence/limit contract as the registry.
+- Credential-free preflight (`--mode preflight`) passed on 2026-08-07: it
+  validates authorization, regenerates and pins the deterministic transcript,
+  builds and verifies the immutable spike image, runs the qualified T201
+  credential-free topology preflight, and runs a broker credential-free
+  rehearsal. It mounts no credential volume, makes no provider request, and
+  writes no evidence.
+- Live mode reuses the qualified T201 credential recovery, refresh, provider
+  transport, result channel, image, and preflight infrastructure unchanged;
+  T246 adds only its own authorization, transcript/request construction,
+  real-document evaluator, sanitized evidence vocabulary, and execution
+  entrypoint.
+
+No OAuth, Codex/OpenAI/provider request, credential-volume access, or live
+T246 attempt has occurred during implementation or preflight.
