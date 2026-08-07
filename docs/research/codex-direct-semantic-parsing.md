@@ -6,14 +6,14 @@ OAuth login, credential refresh, T202, T203, or T164-T165.
 
 ## Coverage matrix
 
-| Case     | Language       | Source format               | Layout                   | Status                                                                                                                                                                                        |
-| -------- | -------------- | --------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| T201-C01 | English        | plain text                  | single-column            | Passed canonical live validation; preserved unchanged                                                                                                                                         |
-| T201-C02 | French         | plain text                  | single-column            | Passed canonical live validation in Campaign B13 with sanitized evidence                                                                                                                      |
-| T201-C03 | French/English | bilingual plain text        | single-column            | B01 and B02 remain immutable failed historical attempts; B03 passed canonical live validation with sanitized evidence |
+| Case     | Language       | Source format               | Layout                   | Status                                                                                                                                                                                                          |
+| -------- | -------------- | --------------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T201-C01 | English        | plain text                  | single-column            | Passed canonical live validation; preserved unchanged                                                                                                                                                           |
+| T201-C02 | French         | plain text                  | single-column            | Passed canonical live validation in Campaign B13 with sanitized evidence                                                                                                                                        |
+| T201-C03 | French/English | bilingual plain text        | single-column            | B01 and B02 remain immutable failed historical attempts; B03 passed canonical live validation with sanitized evidence                                                                                           |
 | T201-C04 | English        | PDF-derived extracted text  | single-column            | B01 and B02 remain immutable failed historical attempts (original physical-coordinate contract / credential-recovery transport failure); B03 passed canonical live validation under the corrected T208 contract |
-| T201-C05 | English        | PDF-derived extracted text  | multi-column interleaved | Passed canonical live validation (B01) with sanitized evidence                                                                                                                                 |
-| T201-C06 | English        | DOCX-derived extracted text | structural artifacts     | Passed canonical live validation (B01) with sanitized evidence                                                                                                                                 |
+| T201-C05 | English        | PDF-derived extracted text  | multi-column interleaved | Passed canonical live validation (B01) with sanitized evidence                                                                                                                                                  |
+| T201-C06 | English        | DOCX-derived extracted text | structural artifacts     | Passed canonical live validation (B01) with sanitized evidence                                                                                                                                                  |
 
 All six cases are fictional, anonymous, and independently manifested. C02-C06
 contain absent optional fields, an ambiguity, forbidden-inference rules,
@@ -131,7 +131,7 @@ authorized live session and the matrix was consolidated offline:
 - C04-B02 (reproduction under the original physical-coordinate contract) ran
   and failed immutably at credential recovery
   (`primary_failure_category: transport_failure`, `invocation_attempted:
-  false`); its evidence file is preserved unchanged.
+false`); its evidence file is preserved unchanged.
 - C04-B03 (corrected T208 deterministic-enrichment contract) passed canonical
   live validation (HTTP 200, schema valid, 23/23 exact facts, 17/17
   high-priority facts, `parsing_pass: true`).
@@ -234,3 +234,13 @@ implementation because the live real-document semantic gate (T246) is not
 accepted (T246-C01-A01 executed once on 2026-08-07, consumed after runner
 finalization failed) and bounded-fallback wiring (T217) remains unexecuted.
 T246 is now the next live semantic task; T164/T165 remain blocked.
+
+Current T246 qualification status (2026-08-07): C01-A01 remains a consumed,
+harness-invalid observation whose semantic projection passed. C01-A02 is the
+first harness-valid C01 semantic attempt and is consumed after a valid
+semantic failure (23/24 exact facts, 17/18 high-priority facts;
+`expected_fact_missing`; root cause INDETERMINATE). The existing qualification
+contract does not resolve whether a fresh attempt after a valid semantic
+failure is a replacement or an additional sample, so the required policy
+clarification is recorded as
+`CONTRACT_AMBIGUOUS_REQUIRES_POLICY_CHANGE`; no A03 or C02-C08 is authorized.

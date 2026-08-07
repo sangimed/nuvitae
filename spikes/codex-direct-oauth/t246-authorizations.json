@@ -1,5 +1,14 @@
 {
   "schema_version": 1,
+  "qualification_policy": {
+    "scope": "T246-C01 current campaign",
+    "one_valid_semantic_attempt_per_case": true,
+    "automatic_retries": 0,
+    "invalid_attempt_replacement": "separately_reviewed_and_explicitly_authorized_only",
+    "valid_semantic_failure": "terminal_for_case_and_campaign",
+    "additional_samples": "requires_explicit_policy_amendment_before_authorization",
+    "a03_eligibility": "CONTRACT_AMBIGUOUS_REQUIRES_POLICY_CHANGE"
+  },
   "consumed_attempts": [
     {
       "campaign": "T246-C01",
@@ -17,6 +26,33 @@
       "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json",
       "evidence_sha256": "dc96b2a42936d58e757c37bfb9b83708438dde603a1a8756ce420ca0afb903b9",
       "evidence_size_bytes": 10530,
+      "evidence_classification": "live_t246_semantic_parsing",
+      "do_not_rerun": true
+    },
+    {
+      "campaign": "T246-C01",
+      "attempt": "A02",
+      "semantic_case": "T246-C01",
+      "consumed_at": "2026-08-07T16:39:45.552Z",
+      "invocation_attempted": true,
+      "invocation_succeeded": true,
+      "semantic_quality_evaluated": true,
+      "semantic_metrics_passed": false,
+      "runner_finalization": "passed",
+      "primary_failure_phase": "response_semantic_evaluation",
+      "primary_failure_category": "expected_fact_missing",
+      "safe_final_state": "expected_fact_missing",
+      "case_pass": false,
+      "exact_fact_recall": 0.9583,
+      "high_priority_fact_recall": 0.9444,
+      "unsupported_fact_count": 0,
+      "forbidden_inference_count": 0,
+      "missing_evidence_count": 0,
+      "invalid_evidence_count": 0,
+      "evidence_actual_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a02-semantic-parsing.json",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a02-semantic-parsing.json",
+      "evidence_sha256": "1164187ab0bb9a2d333482b54f12333cb7bce1c38e1464e8a9069cda7e21fe6d",
+      "evidence_size_bytes": 10679,
       "evidence_classification": "live_t246_semantic_parsing",
       "do_not_rerun": true
     }
@@ -41,7 +77,7 @@
       "campaign": "T246-C01",
       "attempt": "A02",
       "semantic_case": "T246-C01",
-      "authorization_state": "AUTHORIZED",
+      "authorization_state": "CONSUMED",
       "maximum_live_broker_runs": 1,
       "maximum_semantic_backend_requests": 1,
       "automatic_retries": 0,

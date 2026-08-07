@@ -16,7 +16,31 @@
       "runner_finalization": "failed",
       "evidence_actual_path": "spikes/codex-direct-oauth/spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json",
       "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json",
-      "evidence_sha256": "dc96b2a42936d58e757c37bfb9b83708438dde603a1a8756ce420ca0afb903b9"
+      "evidence_sha256": "dc96b2a42936d58e757c37bfb9b83708438dde603a1a8756ce420ca0afb903b9",
+      "evidence_size_bytes": 10530,
+      "primary_failure_phase": null,
+      "primary_failure_category": null,
+      "safe_final_state": "safe_unknown_failure",
+      "case_pass": null
+    },
+    {
+      "campaign": "T246-C01",
+      "attempt": "A02",
+      "semantic_case": "T246-C01",
+      "consumed": true,
+      "accepted": false,
+      "invocation_attempted": true,
+      "invocation_succeeded": true,
+      "semantic_metrics_passed": false,
+      "runner_finalization": "passed",
+      "evidence_actual_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a02-semantic-parsing.json",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a02-semantic-parsing.json",
+      "evidence_sha256": "1164187ab0bb9a2d333482b54f12333cb7bce1c38e1464e8a9069cda7e21fe6d",
+      "evidence_size_bytes": 10679,
+      "primary_failure_phase": "response_semantic_evaluation",
+      "primary_failure_category": "expected_fact_missing",
+      "safe_final_state": "expected_fact_missing",
+      "case_pass": false
     }
   ],
   "semantic_cases": [
@@ -61,5 +85,5 @@
     "accepted": false,
     "consumed": false
   },
-  "note": "Offline T246 corpus is prepared; C01-A01 was executed once and is CONSUMED (semantic metrics passed, runner finalization failed) but is not accepted; C02-C08 remain NOT_AUTHORIZED. This aggregator stays incomplete until accepted live evidence exists."
+  "note": "Offline T246 corpus is prepared; C01-A01 and C01-A02 are CONSUMED and neither is accepted. A01 is harness-invalid despite semantic metrics passing; A02 is the first harness-valid C01 semantic attempt and failed semantically (23/24 exact facts, 17/18 high-priority facts). C02-C08 remain NOT_AUTHORIZED. This aggregator stays incomplete until the qualification policy permits and accepted live evidence exists."
 }

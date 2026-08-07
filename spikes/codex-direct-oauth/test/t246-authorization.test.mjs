@@ -71,7 +71,7 @@ function stubRegistry(entry) {
 
 const tracked = async () => "tracked";
 
-test("T246 registry pins consumed A01, authorized A02, and isolates C02-C08", () => {
+test("T246 registry pins consumed A01 and A02, and isolates C02-C08", () => {
   assert.equal(registry.schema_version, 1);
   assert.equal(registry.authorized_attempts.length, 9);
   const a01 = registry.authorized_attempts.find(
@@ -81,7 +81,7 @@ test("T246 registry pins consumed A01, authorized A02, and isolates C02-C08", ()
     (entry) => entry.campaign === "T246-C01" && entry.attempt === "A02",
   );
   assert.equal(a01.authorization_state, "CONSUMED");
-  assert.equal(a02.authorization_state, "AUTHORIZED");
+  assert.equal(a02.authorization_state, "CONSUMED");
   assert.equal(
     a02.evidence,
     "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a02-semantic-parsing.json",
@@ -121,12 +121,22 @@ test("T246 registry pins consumed A01, authorized A02, and isolates C02-C08", ()
     false,
   );
   const consumed = registry.consumed_attempts ?? [];
-  assert.equal(consumed.length, 1);
+  assert.equal(consumed.length, 2);
   assert.equal(consumed[0].campaign, "T246-C01");
   assert.equal(consumed[0].attempt, "A01");
   assert.equal(consumed[0].invocation_attempted, true);
   assert.equal(consumed[0].do_not_rerun, true);
   assert.match(consumed[0].evidence_sha256, /^[a-f0-9]{64}$/);
+  assert.equal(consumed[1].campaign, "T246-C01");
+  assert.equal(consumed[1].attempt, "A02");
+  assert.equal(consumed[1].invocation_attempted, true);
+  assert.equal(consumed[1].case_pass, false);
+  assert.equal(consumed[1].do_not_rerun, true);
+  assert.equal(consumed[1].evidence_size_bytes, 10679);
+  assert.equal(
+    consumed[1].evidence_canonical_path,
+    "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a02-semantic-parsing.json",
+  );
   for (const caseId of [
     "T246-C01",
     "T246-C02",
@@ -151,35 +161,20 @@ test("T246 registry pins consumed A01, authorized A02, and isolates C02-C08", ()
   assert.equal(c08.transcript_sha256, null);
 });
 
-test("T246 authorizes exactly one fresh replacement attempt and no generic multi-attempt entry", async () => {
-  const authorized = registry.authorized_attempts.filter(
-    (entry) => entry.authorization_state === "AUTHORIZED",
+test("T246 consumed A02 is rejected before any credential or live step", async () => {
+  const entry = registry.authorized_attempts.find(
+    (candidate) =>
+      candidate.campaign === "T246-C01" && candidate.attempt === "A02",
   );
-  assert.deepEqual(
-    authorized.map(({ campaign, attempt, semantic_case }) => ({
-      campaign,
-      attempt,
-      semantic_case,
-    })),
-    [{ campaign: "T246-C01", attempt: "A02", semantic_case: "T246-C01" }],
-  );
-  const entry = authorized[0];
+  assert.equal(entry.authorization_state, "CONSUMED");
   const invocation = parseT246AttemptArguments(argvOf(entry));
-  const validated = await validateT246Authorization({
-    root,
-    invocation,
-    isTracked: tracked,
-  });
-  assert.equal(validated.attempt, "A02");
-  assert.equal(validated.authorization_state, "AUTHORIZED");
-  assert.equal(validated.evidence_path, path.join(repo, entry.evidence));
-  assert.equal(validated.fixture_path, path.join(repo, entry.fixture));
-  assert.equal(validated.manifest_path, path.join(repo, entry.manifest));
-  assert.equal(
-    validated.evidence_path.includes(
-      "codex-direct-oauth/spikes/codex-direct-oauth",
-    ),
-    false,
+  await assert.rejects(
+    validateT246Authorization({
+      root,
+      invocation,
+      isTracked: tracked,
+    }),
+    (error) => error.code === "t246_attempt_consumed",
   );
 });
 
@@ -384,10 +379,17 @@ test("T246 aggregate stays INCOMPLETE with zero accepted evidence", async () => 
   assert.equal(aggregate.accepted_live_evidence_count, 0);
   assert.equal(aggregate.semantic_cases.length, 7);
   assert.equal(aggregate.recovery_case.case_id, "T246-C08");
-  assert.equal(aggregate.consumed_attempts.length, 1);
+  assert.equal(aggregate.consumed_attempts.length, 2);
   assert.equal(aggregate.consumed_attempts[0].campaign, "T246-C01");
   assert.equal(aggregate.consumed_attempts[0].attempt, "A01");
   assert.equal(aggregate.consumed_attempts[0].accepted, false);
+  assert.equal(aggregate.consumed_attempts[1].attempt, "A02");
+  assert.equal(aggregate.consumed_attempts[1].accepted, false);
+  assert.equal(aggregate.consumed_attempts[1].case_pass, false);
+  assert.equal(
+    aggregate.consumed_attempts[1].primary_failure_category,
+    "expected_fact_missing",
+  );
   const c01 = aggregate.semantic_cases.find(
     (entry) => entry.case_id === "T246-C01",
   );

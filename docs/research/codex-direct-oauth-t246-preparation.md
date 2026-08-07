@@ -274,7 +274,7 @@ The reachable live execution path is now implemented and validated offline
 (2026-08-07):
 
 - Host runner: `spikes/codex-direct-oauth/t246-live-runner.mjs --mode
-  <offline|preflight|live>`; `--mode live` is reachable and gated by the same
+<offline|preflight|live>`; `--mode live` is reachable and gated by the same
   authorization/hash/evidence/limit contract as the registry.
 - Credential-free preflight (`--mode preflight`) passed on 2026-08-07: it
   validates authorization, regenerates and pins the deterministic transcript,
@@ -341,15 +341,15 @@ or rewritten**. A recoverable pre-edit snapshot of the repository was created
 before any edit:
 `/tmp/nuvitae-snapshots/nuvitae-20260807-174952-pre-t246-fix.tar.gz`.
 
-| Field | Value |
-| --- | --- |
-| Actual path | `spikes/codex-direct-oauth/spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json` |
-| Canonical authorized path | `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json` |
-| SHA-256 | `dc96b2a42936d58e757c37bfb9b83708438dde603a1a8756ce420ca0afb903b9` |
-| File size | 10530 bytes |
-| Sanitized classification | `live_t246_semantic_parsing` |
-| `invocation_attempted` | `true` (consumed) |
-| Runner exit | 1 (post-finalization failure; not a semantic failure) |
+| Field                     | Value                                                                                                                |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Actual path               | `spikes/codex-direct-oauth/spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json` |
+| Canonical authorized path | `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json`                           |
+| SHA-256                   | `dc96b2a42936d58e757c37bfb9b83708438dde603a1a8756ce420ca0afb903b9`                                                   |
+| File size                 | 10530 bytes                                                                                                          |
+| Sanitized classification  | `live_t246_semantic_parsing`                                                                                         |
+| `invocation_attempted`    | `true` (consumed)                                                                                                    |
+| Runner exit               | 1 (post-finalization failure; not a semantic failure)                                                                |
 
 The preservation metadata is also recorded machine-readably in
 `spikes/codex-direct-oauth/t246-authorizations.json` under
@@ -394,3 +394,64 @@ any other case or attempt.
   T203 remains **NO-GO** until canonical accepted A02 evidence exists.
 - No OAuth, Codex/OpenAI/provider request, credential-volume access, live
   runner, commit, or push occurred while preparing this authorization.
+
+## 14. Current T246-C01-A02 consumption and retry-policy determination (2026-08-07)
+
+T246-C01-A02 was executed exactly once and is now **CONSUMED** because
+`invocation_attempted=true`. It is the first harness-valid C01 semantic
+attempt. Its immutable sanitized evidence remains at
+`spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a02-semantic-parsing.json`
+with SHA-256
+`1164187ab0bb9a2d333482b54f12333cb7bce1c38e1464e8a9069cda7e21fe6d` and size
+10679 bytes. The result is authoritative for this campaign's semantic
+evaluation and is a failure: 23/24 exact facts, 17/18 high-priority facts,
+`unsupported_fact_count=0`, `forbidden_inference_count=0`,
+`missing_evidence_count=0`, `invalid_evidence_count=0`, grounding and
+no-invention passed, and `primary_failure_category=expected_fact_missing`.
+The missing fact's root cause is **INDETERMINATE**; the historical sanitized
+artifact did not preserve fact-level IDs.
+
+The canonical artifacts establish these rules:
+
+- A01's harness/finalization failure was an invalid acceptance attempt. A
+  separately reviewed replacement was permissible for that invalid attempt,
+  and A02 consumed that replacement slot. A01 cannot be rerun or promoted to
+  accepted evidence.
+- A provider, quota, transport, or harness failure that prevents a valid
+  authoritative semantic result may be replaced only by a separately reviewed
+  and explicitly authorized attempt. Automatic retries are always zero. The
+  replacement limit and reason must be fixed before authorization; a result
+  cannot be selected after observing whether it passes.
+- A valid harness-finalized semantic result, including a semantic failure, is
+  consumed and authoritative for the campaign. The T246 stop conditions say
+  to stop when `case_pass=false` and not continue automatically. Under the
+  required clarified policy, a valid semantic failure is terminal for that
+  case/campaign; it cannot be replaced or overridden by a green attempt.
+- An additional independent sample would be a different qualification
+  campaign, not a retry or replacement. It requires an explicit policy
+  amendment before authorization that fixes the sample count and acceptance
+  rule in advance (for example, all results must pass or a pre-declared
+  pass-rate rule). A later green result must never erase or supersede A02.
+
+The existing contract explicitly fixes one request per semantic case and zero
+automatic retries, and distinguishes invalid live outcomes from accepted
+evidence, but it does **not** explicitly resolve whether a fresh separately
+authorized attempt after a valid semantic failure is replacement-only,
+additional sampling, or forbidden. Therefore the current classification is
+**CONTRACT_AMBIGUOUS_REQUIRES_POLICY_CHANGE**. No A03 authorization is valid
+until the clarification above is adopted as the campaign's governing policy;
+the registry contains no A03 entry. Allowing A03 now and accepting it if green
+would create a retry-until-pass loophole.
+
+The A01/A02 observations show output variability was observed across two live
+invocations of the same C01 input/contract: A01's semantic projection passed
+but its harness was invalid, while A02 was harness-valid and missed one
+expected fact. They do not prove that C01 qualifies, do not prove the root
+cause of the missing fact, and do not make A01 accepted qualification
+evidence. A01 may be retained as non-authoritative observational evidence of
+possible model variability only.
+
+Future sanitized runs now preserve matched expected fact IDs, missing expected
+fact IDs, matched high-priority fact IDs, and missing high-priority fact IDs
+without retaining raw resume text or raw model output. T246 remains
+INCOMPLETE, T203 remains NO-GO, and C02-C08 remain NOT_AUTHORIZED.

@@ -232,6 +232,41 @@ test("T246 semantic failure produces an explicit failure classification from nes
   assert.equal(t246RunnerExitCode(evidence), 1);
 });
 
+test("T246 parent evidence preserves sanitized fact diagnostics from nested metrics", () => {
+  const missingFact = "pdf-french-canonical-anonymous:skills[2]";
+  const evidence = finalEvidence(
+    realisticBrokerResult({
+      exact_fact_recall: 0.9583,
+      high_priority_fact_recall: 0.9444,
+      parsing_pass: false,
+      primary_failure_category: "expected_fact_missing",
+      primary_failure_phase: "response_semantic_evaluation",
+      expected_fact_count: 24,
+      matched_expected_fact_count: 23,
+      high_priority_fact_count: 18,
+      matched_high_priority_fact_count: 17,
+      missing_expected_fact_ids: [missingFact],
+      missing_high_priority_fact_ids: [missingFact],
+      matched_expected_fact_ids: ["pdf-french-canonical-anonymous:basics:name"],
+      matched_high_priority_fact_ids: [
+        "pdf-french-canonical-anonymous:basics:name",
+      ],
+    }),
+  );
+  assert.deepEqual(evidence.evaluation_metrics.missing_expected_fact_ids, [
+    missingFact,
+  ]);
+  assert.deepEqual(evidence.evaluation_metrics.missing_high_priority_fact_ids, [
+    missingFact,
+  ]);
+  assert.deepEqual(evidence.evaluation_metrics.matched_expected_fact_ids, [
+    "pdf-french-canonical-anonymous:basics:name",
+  ]);
+  assert.deepEqual(evidence.evaluation_metrics.matched_high_priority_fact_ids, [
+    "pdf-french-canonical-anonymous:basics:name",
+  ]);
+});
+
 test("T246 transport failure produces an explicit failure classification", () => {
   const evidence = finalEvidence(
     realisticBrokerResult(

@@ -1,11 +1,12 @@
 // Offline T246 evidence aggregator.
 //
-// The aggregator is intentionally incomplete: no live T246 evidence exists
-// and no live execution is authorized. It writes a fail-closed aggregate
+// The aggregator is intentionally incomplete: no accepted live T246 evidence
+// exists and no new live execution is authorized. It writes a fail-closed aggregate
 // that reports INCOMPLETE and counts zero accepted cases. When accepted live
 // evidence exists (after a future explicit authorization step), the same
 // aggregator will be extended to validate and consolidate it fail-closed.
 import fs from "node:fs/promises";
+import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadT246AuthorizationRegistry } from "./lib/t246-authorization.mjs";
@@ -26,6 +27,35 @@ const SEMANTIC_CASES = [
   "T246-C07",
 ];
 
+const sha256 = (value) =>
+  crypto.createHash("sha256").update(value).digest("hex");
+
+function consumedEvidenceForPath(registry, evidencePath) {
+  return (registry.consumed_attempts ?? []).find(
+    (entry) => entry.evidence_canonical_path === evidencePath,
+  );
+}
+
+async function verifyConsumedCanonicalEvidence(registry, evidenceNames) {
+  for (const evidenceName of evidenceNames) {
+    const evidencePath = `${AGGREGATE_REL_PATH.replace(
+      "codex-direct-oauth-t246-aggregate.json",
+      evidenceName,
+    )}`;
+    const consumed = consumedEvidenceForPath(registry, evidencePath);
+    if (!consumed) {
+      throw new Error("t246_aggregate_live_evidence_requires_consumed_record");
+    }
+    const bytes = await fs.readFile(path.join(REPO_ROOT, evidencePath));
+    if (
+      consumed.evidence_sha256 !== sha256(bytes) ||
+      consumed.evidence_size_bytes !== bytes.byteLength
+    ) {
+      throw new Error("t246_consumed_evidence_pin_mismatch");
+    }
+  }
+}
+
 export async function consolidateT246Evidence({
   root = SPIKE_ROOT,
   registryLoader = loadT246AuthorizationRegistry,
@@ -39,12 +69,11 @@ export async function consolidateT246Evidence({
   const recoveryEvidence = entries.filter((entry) =>
     /^codex-direct-oauth-t246-c08-a[0-9]{2}-recovery\.json$/.test(entry),
   );
-  if (semanticEvidence.length > 0 || recoveryEvidence.length > 0) {
-    throw new Error(
-      "t246_aggregate_live_evidence_requires_accepted_validation",
-    );
-  }
   const registry = await registryLoader({ root });
+  await verifyConsumedCanonicalEvidence(registry, [
+    ...semanticEvidence,
+    ...recoveryEvidence,
+  ]);
   const consumedAttempts = (registry.consumed_attempts ?? []).map((entry) => ({
     campaign: entry.campaign,
     attempt: entry.attempt,
@@ -58,6 +87,11 @@ export async function consolidateT246Evidence({
     evidence_actual_path: entry.evidence_actual_path ?? null,
     evidence_canonical_path: entry.evidence_canonical_path ?? null,
     evidence_sha256: entry.evidence_sha256 ?? null,
+    evidence_size_bytes: entry.evidence_size_bytes ?? null,
+    primary_failure_phase: entry.primary_failure_phase ?? null,
+    primary_failure_category: entry.primary_failure_category ?? null,
+    safe_final_state: entry.safe_final_state ?? null,
+    case_pass: entry.case_pass ?? null,
   }));
   const consumedCases = new Set(
     consumedAttempts.map((entry) => entry.semantic_case),
@@ -78,7 +112,7 @@ export async function consolidateT246Evidence({
       accepted: false,
       consumed: consumedCases.has("T246-C08"),
     },
-    note: "Offline T246 corpus is prepared; C01-A01 was executed once and is CONSUMED (semantic metrics passed, runner finalization failed) but is not accepted; C02-C08 remain NOT_AUTHORIZED. This aggregator stays incomplete until accepted live evidence exists.",
+    note: "Offline T246 corpus is prepared; C01-A01 and C01-A02 are CONSUMED and neither is accepted. A01 is harness-invalid despite semantic metrics passing; A02 is the first harness-valid C01 semantic attempt and failed semantically (23/24 exact facts, 17/18 high-priority facts). C02-C08 remain NOT_AUTHORIZED. This aggregator stays incomplete until the qualification policy permits and accepted live evidence exists.",
   };
   const aggregatePath = path.join(REPO_ROOT, AGGREGATE_REL_PATH);
   await fs.mkdir(path.dirname(aggregatePath), { recursive: true });

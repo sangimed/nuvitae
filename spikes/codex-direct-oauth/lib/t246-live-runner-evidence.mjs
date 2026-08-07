@@ -38,6 +38,12 @@ const FORBIDDEN_EVIDENCE_KEYS = new Set([
   "credential",
   "credentials",
 ]);
+const SAFE_NESTED_STRING_ARRAY_KEYS = new Set([
+  "missing_expected_fact_ids",
+  "missing_high_priority_fact_ids",
+  "matched_expected_fact_ids",
+  "matched_high_priority_fact_ids",
+]);
 const isForbiddenKey = (key) => FORBIDDEN_EVIDENCE_KEYS.has(String(key));
 
 export function generateT246RunnerRunIdHash() {
@@ -97,7 +103,10 @@ function safeProjection(result) {
           ([itemKey, itemValue]) =>
             !isForbiddenKey(itemKey) &&
             (["string", "number", "boolean"].includes(typeof itemValue) ||
-              itemValue === null),
+              itemValue === null ||
+              (SAFE_NESTED_STRING_ARRAY_KEYS.has(itemKey) &&
+                Array.isArray(itemValue) &&
+                itemValue.every((entry) => typeof entry === "string"))),
         ),
       );
       continue;
