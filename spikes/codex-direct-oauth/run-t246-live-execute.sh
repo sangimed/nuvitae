@@ -97,7 +97,7 @@ reader_container="t246-result-reader-$runner_run_id_hash"
 result_path="/spike/result/$runner_run_id_hash/result.json"
 docker volume create "$result_volume" >/dev/null
 
-broker_env="-e NUVITAE_T246_RESULT_PATH=$result_path -e NUVITAE_T201_RESULT_PATH=$result_path -e NUVITAE_T246_RUN_ID_HASH=$runner_run_id_hash -e NUVITAE_T246_CASE_ID=$case_id -e NUVITAE_T246_ATTEMPT_ID=$attempt -e NUVITAE_T246_FIXTURE_PATH=/spike/t246-input/fixture.pdf -e NUVITAE_T246_TRANSCRIPT_PATH=/spike/t246-input/transcript.txt -e NUVITAE_T246_MANIFEST_PATH=/spike/$manifest -e NUVITAE_T246_FIXTURE_SHA256=$fixture_sha256 -e NUVITAE_T246_TRANSCRIPT_SHA256=$transcript_sha256 -e NUVITAE_T246_MANIFEST_SHA256=$manifest_sha256 -e NUVITAE_T246_MAX_BROKER_RUNS=$max_broker_runs -e NUVITAE_T246_MAX_SEMANTIC_BACKEND_REQUESTS=$max_backend_requests -e NUVITAE_T246_AUTOMATIC_RETRIES=$automatic_retries"
+broker_env="-e NUVITAE_T246_RESULT_PATH=$result_path -e NUVITAE_T201_RESULT_PATH=$result_path -e NUVITAE_T246_RUN_ID_HASH=$runner_run_id_hash -e NUVITAE_T246_CASE_ID=$case_id -e NUVITAE_T246_ATTEMPT_ID=$attempt -e NUVITAE_T246_FIXTURE_PATH=/spike/t246-input/fixture.pdf -e NUVITAE_T246_TRANSCRIPT_PATH=/spike/t246-input/transcript.txt -e NUVITAE_T246_MANIFEST_PATH=/spike/$manifest -e NUVITAE_T246_FIXTURE_SHA256=$fixture_sha256 -e NUVITAE_T246_TRANSCRIPT_SHA256=$transcript_sha256 -e NUVITAE_T246_MANIFEST_SHA256=$manifest_sha256 -e NUVITAE_T246_MAX_BROKER_RUNS=$max_broker_runs -e NUVITAE_T246_MAX_SEMANTIC_BACKEND_REQUESTS=$max_backend_requests -e NUVITAE_T246_AUTOMATIC_RETRIES=$automatic_retries -e NUVITAE_T246_OPERATOR_LIVE_OPT_IN=${NUVITAE_T246_OPERATOR_LIVE_OPT_IN:-}"
 
 if [ "${NUVITAE_T246_CREDENTIAL_FREE_REHEARSAL:-0}" = "1" ]; then
   # This public-entrypoint rehearsal deliberately exercises the exact
@@ -127,6 +127,18 @@ if [ "${NUVITAE_T246_CREDENTIAL_FREE_REHEARSAL:-0}" = "1" ]; then
   printf '%s\n' "{\"campaign\":\"$campaign\",\"attempt\":\"$attempt\",\"phase\":\"credential_free_rehearsal\",\"success\":true,\"semantic_backend_requests\":0,\"evidence_written\":false}"
   exit 0
 fi
+
+# Independent final boundary: registry authorization and `--mode live` are
+# necessary but not sufficient. This check runs before either credential
+# volume is inspected or mounted. Test runners cannot opt into real traffic.
+if [ "${NODE_ENV:-}" = "test" ] || [ -n "${NODE_TEST_CONTEXT:-}" ] || [ -n "${VITEST:-}" ] || [ -n "${JEST_WORKER_ID:-}" ] || [ "${NUVITAE_T246_TEST_MODE:-0}" = "1" ]; then
+  echo "T246 real live execution is forbidden in test environments" >&2
+  exit 1
+fi
+[ "${NUVITAE_T246_OPERATOR_LIVE_OPT_IN:-}" = "1" ] || {
+  echo "explicit T246 operator live opt-in is required" >&2
+  exit 1
+}
 
 docker volume inspect "$key_volume" >/dev/null
 docker volume inspect "$credential_volume" >/dev/null

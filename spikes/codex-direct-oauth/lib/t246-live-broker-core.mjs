@@ -50,11 +50,13 @@ import {
   evaluateT246ModelText,
   notEvaluatedT246Projection,
   safeT246EvaluationProjection,
+  promptIsolationDiagnostics,
   t246GoldenResultAudit,
   t246ManifestPathForCase,
   T246_SCHEMA_PATH,
   verifyT246LiveArtifacts,
 } from "./t246-live-evaluator.mjs";
+import { assertT246LiveOperatorGate } from "./t246-live-guard.mjs";
 
 export const T246_EVIDENCE_CLASSIFICATION = "live_t246_semantic_parsing";
 
@@ -213,6 +215,7 @@ export async function runT246Broker({
     ),
   bindings = T199_BROKER_BINDINGS,
   recordPath = T199_RECORD_PATH,
+  allowSimulatedLive = false,
 } = {}) {
   let resultArtifactPreflight = null;
   let currentPhase = T246_BROKER_PHASES.resultChannelPreparation;
@@ -231,6 +234,14 @@ export async function runT246Broker({
 
   try {
     validateEnvironment(env);
+    assertT246LiveOperatorGate({
+      mode:
+        env.NUVITAE_T246_CREDENTIAL_FREE_REHEARSAL === "1"
+          ? "preflight"
+          : "live",
+      env,
+      allowSimulatedLive,
+    });
     currentPhase = T246_BROKER_PHASES.resultChannelPreparation;
     resultArtifactPreflight = await prepareResultDirectory(
       env.NUVITAE_T246_RESULT_PATH,
@@ -418,6 +429,9 @@ export async function runT246Broker({
       provenance_enrichment_status: "deterministic_enrichment_ready",
       ...goldenStructuredJsonAudit,
       ...localInputDiagnostics,
+      prompt_isolation_diagnostics: promptIsolationDiagnostics(
+        artifacts.manifest,
+      ),
       ...brokerStateEvidence(executionState),
       safe_http_status_category:
         invocation.safe_http_status_category ?? "unknown_status",

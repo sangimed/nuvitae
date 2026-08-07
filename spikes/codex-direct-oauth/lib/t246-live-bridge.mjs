@@ -14,6 +14,7 @@ import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
 import { validateT246Authorization } from "./t246-authorization.mjs";
+import { assertT246LiveOperatorGate } from "./t246-live-guard.mjs";
 import { collectT246CaseProof } from "./t246-corpus-verification.mjs";
 import {
   prepareImmutableT201Image,
@@ -42,7 +43,7 @@ export function t246ContainerManifestPath(authorization, spikeRoot) {
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new Error("t246_manifest_outside_spike");
   }
-  return relative;
+  return relative.split(path.sep).join("/");
 }
 
 async function writeTranscriptFile({ lines }) {
@@ -75,11 +76,17 @@ export async function runT246LiveBridge({
   writeTranscript = writeTranscriptFile,
   entrypointExists = validateEntrypoint,
   environment = process.env,
+  allowSimulatedLive = false,
 } = {}) {
   if (mode !== "preflight" && mode !== "live") {
     throw new Error("t246_bridge_mode_required");
   }
   const authorization = await validateAuthorization({ root, invocation });
+  assertT246LiveOperatorGate({
+    mode,
+    env: environment,
+    allowSimulatedLive,
+  });
   await entrypointExists(root);
   const proof = await collectProof({ caseId: invocation.semantic_case });
   if (invocation.semantic_case === "T246-C08") {

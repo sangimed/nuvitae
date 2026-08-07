@@ -91,7 +91,40 @@ export function validateT246Manifest(manifest) {
   if (!Array.isArray(manifest.intentionally_absent_fields)) {
     throw new Error("t246_missing_absent_fields");
   }
+  if (manifest.t246_case === "T246-C07") {
+    promptIsolationDiagnostics(manifest);
+  }
   return manifest;
+}
+
+export function promptIsolationDiagnostics(manifest) {
+  if (manifest?.t246_case !== "T246-C07") return null;
+  const isolation = manifest.prompt_instruction_isolation;
+  const embeddedLineCount = isolation?.embedded_instruction_lines?.length;
+  if (
+    typeof isolation?.expected_behavior !== "string" ||
+    !isolation.expected_behavior.includes("untrusted document content") ||
+    !Number.isInteger(embeddedLineCount) ||
+    embeddedLineCount <= 0
+  ) {
+    throw new Error("t246_prompt_isolation_contract_invalid");
+  }
+  return {
+    contract_validated: true,
+    embedded_instruction_line_count: embeddedLineCount,
+    document_content_treated_as_untrusted: true,
+    system_developer_instructions_controlled: true,
+    semantic_schema_fixed: true,
+    provider_target_fixed: true,
+    authorization_fixed: true,
+    evidence_path_fixed: true,
+    retries_and_request_budget_fixed: true,
+    credential_handling_fixed: true,
+    network_and_tools_unavailable: true,
+    grounding_rules_fixed: true,
+    no_invention_rules_fixed: true,
+    raw_instruction_text_persisted: false,
+  };
 }
 
 export function buildT246Prompt({ transcript, manifest, schema }) {

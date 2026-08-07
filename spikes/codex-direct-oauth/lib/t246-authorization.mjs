@@ -5,13 +5,13 @@
 // backend request, zero automatic retries, no default evidence path, no
 // generic run-all) with a dedicated T246 registry. The registry owns the
 // authorization state: every entry is `NOT_AUTHORIZED` until an operator
-// explicitly flips it to `AUTHORIZED` in a later, separately reviewed step.
-// Until then this validator MUST fail before any credential recovery, broker
-// run, or Codex request. C08 is a recovery-only case: it requires zero
+// explicitly flips the single reviewed target to `AUTHORIZED`. All other
+// entries remain fail-closed before any credential recovery, broker run, or
+// Codex request. C08 is a recovery-only case: it requires zero
 // broker runs and zero semantic backend requests.
 import crypto from "node:crypto";
-import fs from "node:fs/promises";
 import path from "node:path";
+import fs from "node:fs/promises";
 import { spawn } from "node:child_process";
 
 export const T246_AUTHORIZATION_REGISTRY = "t246-authorizations.json";
@@ -21,6 +21,7 @@ export const T246_CANONICAL_TARGETS = Object.freeze([
   "t246-authorizations.json",
   "lib/t246-authorization.mjs",
   "lib/t246-corpus-verification.mjs",
+  "lib/t246-live-guard.mjs",
 ]);
 
 const OPTION_TO_FIELD = Object.freeze({
@@ -170,17 +171,57 @@ async function walkSpikeEvidenceArtifacts(spikeRoot) {
   return results;
 }
 
+function repositoryRootForSpike(root) {
+  return path.resolve(root, "../..");
+}
+
+function repositoryRelativeTarget(root, target) {
+  const repositoryRoot = repositoryRootForSpike(root);
+  const absoluteTarget = path.resolve(root, target);
+  const relativeTarget = path.relative(repositoryRoot, absoluteTarget);
+  if (relativeTarget.startsWith("..") || path.isAbsolute(relativeTarget)) {
+    return null;
+  }
+  return relativeTarget.split(path.sep).join("/");
+}
+
 async function defaultIsTracked(root, target, gitCommand = "git") {
+  const repositoryRoot = repositoryRootForSpike(root);
+  const relativeTarget = repositoryRelativeTarget(root, target);
+  if (relativeTarget === null) return "unavailable";
+
   return await new Promise((resolve) => {
     const child = spawn(
       gitCommand,
-      ["ls-files", "--error-unmatch", "--", target],
-      { cwd: root, shell: false, stdio: "ignore" },
+      [
+        // A Windows Git child spawned by WSL sees the repository through a
+        // //wsl.localhost/... UNC path and can reject it as dubious ownership.
+        // Grant this exact repository path for this invocation only; never use
+        // a wildcard safe.directory, and retain git's --error-unmatch check.
+        "-c",
+        `safe.directory=${repositoryRoot}`,
+        "-C",
+        repositoryRoot,
+        "ls-files",
+        "--error-unmatch",
+        "--",
+        relativeTarget,
+      ],
+      { cwd: repositoryRoot, shell: false, stdio: "ignore" },
     );
     child.once("error", () => resolve("unavailable"));
-    child.once("close", (code) =>
-      resolve(code === 0 ? "tracked" : "untracked"),
-    );
+    child.once("close", (code) => {
+      if (code === 0) {
+        resolve("tracked");
+      } else if (code === 1) {
+        // git ls-files --error-unmatch uses exit 1 for a real untracked
+        // target. Any other status is a tooling failure, not proof of
+        // untracked content.
+        resolve("untracked");
+      } else {
+        resolve("unavailable");
+      }
+    });
   });
 }
 
@@ -321,4 +362,83 @@ export async function validateT246Authorization({
     evidence_path: evidencePath,
     is_recovery_case: isRecoveryCase,
   });
+}
+
+export async function consumeT246Attempt({
+  root,
+  invocation,
+  evidence,
+  consumedAt = new Date().toISOString(),
+} = {}) {
+  const registryPath = path.join(root, T246_AUTHORIZATION_REGISTRY);
+  const selectedRegistry = await loadT246AuthorizationRegistry({ root });
+  const entry = selectedRegistry.authorized_attempts.find(
+    (candidate) =>
+      candidate.campaign === invocation.campaign &&
+      candidate.attempt === invocation.attempt &&
+      candidate.semantic_case === invocation.semantic_case,
+  );
+  if (!entry || entry.authorization_state !== "AUTHORIZED") {
+    throw authorizationError("t246_attempt_not_consumable");
+  }
+  if (
+    (selectedRegistry.consumed_attempts ?? []).some(
+      (candidate) =>
+        candidate.campaign === invocation.campaign &&
+        candidate.attempt === invocation.attempt,
+    )
+  ) {
+    throw authorizationError("t246_attempt_consumed");
+  }
+  const evidencePath = path.isAbsolute(invocation.evidence)
+    ? invocation.evidence
+    : path.join(root, "..", "..", invocation.evidence);
+  const evidenceBytes = await fs.readFile(evidencePath);
+  const evidenceSha256 = crypto
+    .createHash("sha256")
+    .update(evidenceBytes)
+    .digest("hex");
+  if (
+    evidence.evidence_path !== invocation.evidence ||
+    evidenceSha256 !== invocation.evidence_sha256 ||
+    evidenceBytes.byteLength !== invocation.evidence_size_bytes
+  ) {
+    throw authorizationError("t246_consumption_evidence_mismatch");
+  }
+  entry.authorization_state = "CONSUMED";
+  selectedRegistry.consumed_attempts ??= [];
+  selectedRegistry.consumed_attempts.push({
+    campaign: invocation.campaign,
+    attempt: invocation.attempt,
+    semantic_case: invocation.semantic_case,
+    consumed_at: consumedAt,
+    invocation_attempted: evidence.invocation_attempted,
+    invocation_succeeded: evidence.invocation_succeeded,
+    semantic_quality_evaluated: evidence.semantic_quality_evaluated,
+    semantic_metrics_passed: evidence.semantic_metrics_passed,
+    runner_finalization: evidence.runner_finalization,
+    primary_failure_phase: evidence.primary_failure_phase,
+    primary_failure_category: evidence.primary_failure_category,
+    safe_final_state: evidence.safe_final_state,
+    case_pass: evidence.case_pass,
+    evidence_actual_path: invocation.evidence,
+    evidence_canonical_path: invocation.evidence,
+    evidence_sha256: invocation.evidence_sha256,
+    evidence_size_bytes: invocation.evidence_size_bytes,
+    evidence_classification: evidence.evidence_classification,
+    do_not_rerun: true,
+    recovery_case: invocation.semantic_case === "T246-C08",
+    user_facing_recovery_category:
+      evidence.user_facing_recovery_category ?? null,
+    recovery_failure_category: evidence.recovery_failure_category ?? null,
+    credential_recovery_attempted: evidence.credential_recovery_attempted,
+    credential_volume_accessed: evidence.credential_volume_accessed,
+    broker_runs: evidence.broker_runs,
+    semantic_backend_requests: evidence.semantic_backend_requests,
+  });
+  await fs.writeFile(
+    registryPath,
+    `${JSON.stringify(selectedRegistry, null, 2)}\n`,
+  );
+  return selectedRegistry;
 }

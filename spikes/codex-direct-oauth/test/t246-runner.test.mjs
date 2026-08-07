@@ -30,17 +30,17 @@ function runRunner(args) {
 
 const baseArgs = [
   "--campaign",
-  "T246-C04",
+  "T246-C06",
   "--attempt",
   "A01",
   "--semantic-case",
-  "T246-C04",
+  "T246-C06",
   "--fixture",
-  "tests/fixtures/resumes/anonymous-bilingual-resume.pdf",
+  "tests/fixtures/resumes/anonymous-ambiguous-resume.pdf",
   "--manifest",
-  "spikes/codex-direct-oauth/fixtures/t246-matrix/t246-c04.manifest.json",
+  "spikes/codex-direct-oauth/fixtures/t246-matrix/t246-c06.manifest.json",
   "--evidence",
-  "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c04-a01-semantic-parsing.json",
+  "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c06-a01-semantic-parsing.json",
   "--max-broker-runs",
   "1",
   "--max-semantic-backend-requests",
@@ -49,44 +49,66 @@ const baseArgs = [
   "0",
 ];
 
-test("T246 live mode stops before any live step because the registry is NOT_AUTHORIZED", async () => {
-  const result = await runRunner(["--mode", "live", ...baseArgs]);
-  assert.equal(result.code, 1);
-  assert.match(result.stderr, /t246_not_authorized/);
-  assert.doesNotMatch(result.stderr, /credential/);
-});
+const c07Args = [
+  "--campaign",
+  "T246-C07",
+  "--attempt",
+  "A01",
+  "--semantic-case",
+  "T246-C07",
+  "--fixture",
+  "tests/fixtures/resumes/anonymous-prompt-instruction-resume.docx",
+  "--manifest",
+  "spikes/codex-direct-oauth/fixtures/t246-matrix/t246-c07.manifest.json",
+  "--evidence",
+  "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c07-a01-semantic-parsing.json",
+  "--max-broker-runs",
+  "1",
+  "--max-semantic-backend-requests",
+  "1",
+  "--automatic-retries",
+  "0",
+];
 
-test("T246 live mode refuses the consumed C01-A01 attempt before any live step", async () => {
-  const c01Args = [
-    "--campaign",
-    "T246-C01",
-    "--attempt",
-    "A01",
-    "--semantic-case",
-    "T246-C01",
-    "--fixture",
-    "tests/fixtures/resumes/anonymous-french-resume.pdf",
-    "--manifest",
-    "spikes/codex-direct-oauth/fixtures/t246-matrix/t246-c01.manifest.json",
-    "--evidence",
-    "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json",
-    "--max-broker-runs",
-    "1",
-    "--max-semantic-backend-requests",
-    "1",
-    "--automatic-retries",
-    "0",
-  ];
-  const result = await runRunner(["--mode", "live", ...c01Args]);
+const c08Args = [
+  "--campaign",
+  "T246-C08",
+  "--attempt",
+  "A01",
+  "--semantic-case",
+  "T246-C08",
+  "--fixture",
+  "tests/fixtures/resumes/anonymous-malformed-resume.pdf",
+  "--manifest",
+  "spikes/codex-direct-oauth/fixtures/t246-matrix/t246-c08.recovery-manifest.json",
+  "--evidence",
+  "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c08-a01-recovery.json",
+  "--max-broker-runs",
+  "0",
+  "--max-semantic-backend-requests",
+  "0",
+  "--automatic-retries",
+  "0",
+];
+
+test("T246 live mode refuses consumed C07 before any operator gate or live step", async () => {
+  const result = await runRunner(["--mode", "live", ...c07Args]);
   assert.equal(result.code, 1);
   assert.match(result.stderr, /t246_attempt_consumed/);
   assert.doesNotMatch(result.stderr, /credential/);
 });
 
-test("T246 preflight mode stops before any live step for a NOT_AUTHORIZED case", async () => {
-  const result = await runRunner(["--mode", "preflight", ...baseArgs]);
+test("T246 live mode refuses the consumed C06-A01 attempt before any live step", async () => {
+  const result = await runRunner(["--mode", "live", ...baseArgs]);
   assert.equal(result.code, 1);
-  assert.match(result.stderr, /t246_not_authorized/);
+  assert.match(result.stderr, /t246_attempt_consumed/);
+  assert.doesNotMatch(result.stderr, /credential/);
+});
+
+test("T246 preflight mode refuses consumed C08 before any live step", async () => {
+  const result = await runRunner(["--mode", "preflight", ...c08Args]);
+  assert.equal(result.code, 1);
+  assert.match(result.stderr, /t246_attempt_consumed/);
   assert.doesNotMatch(result.stderr, /credential/);
 });
 
@@ -108,7 +130,7 @@ test("T246 runner no longer contains the inert live-path terminal branch", async
 test("T246 offline mode verifies the prepared case deterministically", async () => {
   const result = await runRunner(["--mode", "offline", ...baseArgs]);
   assert.equal(result.code, 0);
-  assert.match(result.stdout, /T246 offline case check passed: T246-C04/);
+  assert.match(result.stdout, /T246 offline case check passed: T246-C06/);
   assert.match(result.stdout, /live_request_required=true/);
   assert.match(result.stdout, /authorized=false/);
 });

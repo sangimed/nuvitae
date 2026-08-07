@@ -1447,6 +1447,7 @@ function safeManifestFactDiagnostics(manifest, metrics) {
     ...counts,
     missing_expected_fact_ids: missing,
     missing_high_priority_fact_ids: missingHigh,
+    matched_high_priority_fact_ids: matchedHigh,
     matched_expected_fact_ids: matched,
   };
 }
@@ -1482,6 +1483,7 @@ export function safeEvaluationProjection(evaluation, { manifest } = {}) {
       missing_expected_fact_ids: [],
       high_priority_fact_count: null,
       matched_high_priority_fact_count: null,
+      matched_high_priority_fact_ids: [],
       missing_high_priority_fact_ids: [],
       matched_expected_fact_ids: [],
       safe_error_categories: [
@@ -1512,6 +1514,7 @@ export function safeEvaluationProjection(evaluation, { manifest } = {}) {
         missing_expected_fact_ids: [],
         high_priority_fact_count: null,
         matched_high_priority_fact_count: null,
+        matched_high_priority_fact_ids: [],
         missing_high_priority_fact_ids: [],
         matched_expected_fact_ids: [],
       };

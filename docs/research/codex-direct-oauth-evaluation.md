@@ -61,6 +61,26 @@ therefore no longer a pending dependency for the remaining unmeasured metrics;
 T246 (real-document live semantic evaluation) and T213-T215 (Community
 connection-UI qualification) remain the pending dependencies.
 
+## T246 post-consolidation status (2026-08-07)
+
+The canonical offline T246 aggregate is `FAILED` (qualification not passed)
+because semantic quality has two terminal failures, while the non-semantic
+recovery contract passes: C01 FAIL, C02 PASS, C03 PASS, C04 FAIL, C05 PASS,
+C06 PASS, C07 PASS, and C08 PASS. Six cases pass, two fail, and one
+harness-invalid attempt is retained (C01-A01). Semantic recall remains
+recorded per canonical attempt; C04 is 18/24 exact and 13/19 high-priority,
+C01-A02 is 23/24 exact and 17/18 high-priority, and accepted passing semantic
+cases are 1.0/1.0. Aggregate unsupported facts and forbidden inferences are
+both 0; grounding and no-invention remain passing; C07 prompt isolation
+passes.
+
+C08 is a malformed/unsupported recovery case, not a semantic provider sample.
+Its sanitized evidence records malformed detection, safe category
+`malformed_or_corrupted`, `invocation_attempted=false`, zero semantic backend
+requests, zero credential recovery, zero broker runs, no draft/artifact, and a
+passing secret scan. The all-case T246 qualification therefore remains failed
+because C01/C04 semantic quality is not accepted; T203 remains NO-GO.
+
 ## Re-measurement method
 
 T202 is re-measured by the deterministic offline evaluator
@@ -78,29 +98,29 @@ No OAuth, Codex, Docker, or live request is made by the evaluator.
 All evidence-supported metrics pass. Metrics without accepted evidence are
 listed in the next section as unmeasured; none is silently dropped.
 
-| Metric | Numerator | Denominator | Value | Required threshold | Result | Evidence source |
-| --- | ---: | ---: | ---: | --- | --- | --- |
-| Authentication success (browser OAuth login + callback) | 2 (initial live OAuth + final reauthentication) | 2 | 1.0 | T203 gate: fresh live browser login with callback completion | PASS | T199 live evidence |
-| Encrypted credential persistence | 1 (live encrypted record created) | 1 | 1.0 | T203 gate: live encrypted store, no plaintext | PASS | T199 live evidence + credential-lifecycle report |
-| Restart recovery | 3 (restart recovery, disconnected restart, final encrypted recovery) | 3 | 1.0 | T203 gate: credential usable after container restart | PASS | T199 live evidence |
-| Token refresh with rotation | 1 (refresh succeeded and rotated) | 1 | 1.0 | T203 gate: live refresh with rotation | PASS | T199 live evidence (`live_network_refresh_count=1` for two concurrent requests; single-flight) |
-| Invocation success rate | 7 (T200: 1, T201: 6) | 7 | 1.0 | T203 gate: live invocation with HTTP 200 and valid SSE (no numeric rate threshold documented) | PASS | T200 + all six T201 per-case evidence |
-| Protocol validity (valid SSE / typed event framing) | 7 | 7 | 1.0 | T203 gate: valid SSE framing on every live invocation | PASS | T200 + all six T201 per-case evidence |
-| Schema-valid response rate | 6 | 6 | 1.0 | T201 mandatory: strict schema valid in every case (aggregate 1.0) | PASS | Matrix + per-case evidence |
-| Structured-output validity | 6 (model output received and evaluated) | 6 | 1.0 | T201 mandatory: structured output evaluated for every case | PASS | Per-case evidence |
-| Semantic parsing pass rate | 6 | 6 | 1.0 | T201 mandatory: `parsing_pass` per case; aggregate passes only when all six pass | PASS | Matrix + per-case evidence |
-| Exact fact recall | 92 (C03-C06, 23 each; C01/C02 recall 1.0 without exposed counts) | 92 | 1.0 | T201 mandatory: exact fact recall >= 0.9 per case | PASS | Matrix + per-case evidence |
-| High-priority fact recall | 68 (C03-C06, 17 each; C01/C02 recall 1.0 without exposed counts) | 68 | 1.0 | T201 mandatory: high-priority fact recall = 1.0 per case | PASS | Matrix + per-case evidence |
-| Work-experience grouping | 6 (section recall) / 6 (item recall) | 6 | 1.0 | T201 mandatory: expected section and item recall = 1.0 per case | PASS | Matrix + per-case evidence |
-| Valid-evidence rate | 6 (cases with zero missing/invalid evidence) | 6 | 1.0 | T201 mandatory: missing evidence count = 0 and invalid evidence count = 0 per case | PASS | Matrix + per-case evidence (totals 0 / 0) |
-| Invented-field rate | 0 unsupported facts | 92 countable returned values (v2) | 0.0 | T201 mandatory: unsupported fact count = 0 per case | PASS | Matrix + per-case evidence |
-| Unsupported fact count | 0 | 6 cases | 0 | T201 mandatory: unsupported fact count = 0 per case | PASS | Matrix + per-case evidence |
-| Unsupported-evidence count | 0 missing references | 92 countable evidence references (v2) | 0.0 | T201 mandatory: zero evidence references missing from the source representation | PASS | Matrix + per-case evidence |
-| Forbidden inference count | 0 | 6 cases | 0 | T201 mandatory: forbidden inference count = 0 per case | PASS | Matrix + per-case evidence |
-| Grounding success | 6 | 6 | 1.0 | T201 mandatory: grounding pass per case | PASS | Matrix + per-case evidence |
-| No-invention success | 6 | 6 | 1.0 | T201 mandatory: no-invention pass per case | PASS | Matrix + per-case evidence |
-| Provider transport-manifest match vs T200 | 6 | 6 | 1.0 | T201 evidence gate: T201 request shape matches the T200 audited transport | PASS (risk remains documented) | Per-case evidence (`t201_transport_mismatches` total 0) |
-| Deterministic completeness across the matrix | 6 | 6 | 1.0 | T201 aggregate passes only when all six mandatory cases are present and pass | PASS | Matrix |
+| Metric                                                  |                                                            Numerator |                           Denominator | Value | Required threshold                                                                            | Result                         | Evidence source                                                                                |
+| ------------------------------------------------------- | -------------------------------------------------------------------: | ------------------------------------: | ----: | --------------------------------------------------------------------------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------- |
+| Authentication success (browser OAuth login + callback) |                      2 (initial live OAuth + final reauthentication) |                                     2 |   1.0 | T203 gate: fresh live browser login with callback completion                                  | PASS                           | T199 live evidence                                                                             |
+| Encrypted credential persistence                        |                                    1 (live encrypted record created) |                                     1 |   1.0 | T203 gate: live encrypted store, no plaintext                                                 | PASS                           | T199 live evidence + credential-lifecycle report                                               |
+| Restart recovery                                        | 3 (restart recovery, disconnected restart, final encrypted recovery) |                                     3 |   1.0 | T203 gate: credential usable after container restart                                          | PASS                           | T199 live evidence                                                                             |
+| Token refresh with rotation                             |                                    1 (refresh succeeded and rotated) |                                     1 |   1.0 | T203 gate: live refresh with rotation                                                         | PASS                           | T199 live evidence (`live_network_refresh_count=1` for two concurrent requests; single-flight) |
+| Invocation success rate                                 |                                                 7 (T200: 1, T201: 6) |                                     7 |   1.0 | T203 gate: live invocation with HTTP 200 and valid SSE (no numeric rate threshold documented) | PASS                           | T200 + all six T201 per-case evidence                                                          |
+| Protocol validity (valid SSE / typed event framing)     |                                                                    7 |                                     7 |   1.0 | T203 gate: valid SSE framing on every live invocation                                         | PASS                           | T200 + all six T201 per-case evidence                                                          |
+| Schema-valid response rate                              |                                                                    6 |                                     6 |   1.0 | T201 mandatory: strict schema valid in every case (aggregate 1.0)                             | PASS                           | Matrix + per-case evidence                                                                     |
+| Structured-output validity                              |                              6 (model output received and evaluated) |                                     6 |   1.0 | T201 mandatory: structured output evaluated for every case                                    | PASS                           | Per-case evidence                                                                              |
+| Semantic parsing pass rate                              |                                                                    6 |                                     6 |   1.0 | T201 mandatory: `parsing_pass` per case; aggregate passes only when all six pass              | PASS                           | Matrix + per-case evidence                                                                     |
+| Exact fact recall                                       |     92 (C03-C06, 23 each; C01/C02 recall 1.0 without exposed counts) |                                    92 |   1.0 | T201 mandatory: exact fact recall >= 0.9 per case                                             | PASS                           | Matrix + per-case evidence                                                                     |
+| High-priority fact recall                               |     68 (C03-C06, 17 each; C01/C02 recall 1.0 without exposed counts) |                                    68 |   1.0 | T201 mandatory: high-priority fact recall = 1.0 per case                                      | PASS                           | Matrix + per-case evidence                                                                     |
+| Work-experience grouping                                |                                 6 (section recall) / 6 (item recall) |                                     6 |   1.0 | T201 mandatory: expected section and item recall = 1.0 per case                               | PASS                           | Matrix + per-case evidence                                                                     |
+| Valid-evidence rate                                     |                         6 (cases with zero missing/invalid evidence) |                                     6 |   1.0 | T201 mandatory: missing evidence count = 0 and invalid evidence count = 0 per case            | PASS                           | Matrix + per-case evidence (totals 0 / 0)                                                      |
+| Invented-field rate                                     |                                                  0 unsupported facts |     92 countable returned values (v2) |   0.0 | T201 mandatory: unsupported fact count = 0 per case                                           | PASS                           | Matrix + per-case evidence                                                                     |
+| Unsupported fact count                                  |                                                                    0 |                               6 cases |     0 | T201 mandatory: unsupported fact count = 0 per case                                           | PASS                           | Matrix + per-case evidence                                                                     |
+| Unsupported-evidence count                              |                                                 0 missing references | 92 countable evidence references (v2) |   0.0 | T201 mandatory: zero evidence references missing from the source representation               | PASS                           | Matrix + per-case evidence                                                                     |
+| Forbidden inference count                               |                                                                    0 |                               6 cases |     0 | T201 mandatory: forbidden inference count = 0 per case                                        | PASS                           | Matrix + per-case evidence                                                                     |
+| Grounding success                                       |                                                                    6 |                                     6 |   1.0 | T201 mandatory: grounding pass per case                                                       | PASS                           | Matrix + per-case evidence                                                                     |
+| No-invention success                                    |                                                                    6 |                                     6 |   1.0 | T201 mandatory: no-invention pass per case                                                    | PASS                           | Matrix + per-case evidence                                                                     |
+| Provider transport-manifest match vs T200               |                                                                    6 |                                     6 |   1.0 | T201 evidence gate: T201 request shape matches the T200 audited transport                     | PASS (risk remains documented) | Per-case evidence (`t201_transport_mismatches` total 0)                                        |
+| Deterministic completeness across the matrix            |                                                                    6 |                                     6 |   1.0 | T201 aggregate passes only when all six mandatory cases are present and pass                  | PASS                           | Matrix                                                                                         |
 
 Supporting lifecycle facts:
 
@@ -113,16 +133,16 @@ Supporting lifecycle facts:
 - T200 completed with exact HTTP 200, valid SSE framing, 15 processed events,
   and the verified `NUVITAE_T200_OK` marker.
 - All six T201 cases completed with exact HTTP 200 and `response_protocol_valid:
-  true`.
+true`.
 
 ## Unmeasured metrics (recorded, not dropped)
 
-| Metric | Why unmeasured |
-| --- | --- |
-| Turn latency | No sanitized timing fields exist in the accepted live evidence; the 1.88 ms deterministic baseline is provider-neutral, not Codex. |
-| Cancellation latency | Cancellation was not exercised in any accepted live run. |
-| Quota behavior | No quota/rate-limit exercise exists in accepted live evidence; only safe failure mapping is proven. |
-| Non-technical onboarding feasibility | Requires the real import flow in the supported deployment shape (T245 completed 2026-08-07; T246 and T213-T215 remain pending). |
+| Metric                               | Why unmeasured                                                                                                                     |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Turn latency                         | No sanitized timing fields exist in the accepted live evidence; the 1.88 ms deterministic baseline is provider-neutral, not Codex. |
+| Cancellation latency                 | Cancellation was not exercised in any accepted live run.                                                                           |
+| Quota behavior                       | No quota/rate-limit exercise exists in accepted live evidence; only safe failure mapping is proven.                                |
+| Non-technical onboarding feasibility | Requires the real import flow in the supported deployment shape (T245 completed 2026-08-07; T246 and T213-T215 remain pending).    |
 
 ## Historical failed attempts (preserved, excluded from authoritative denominators)
 

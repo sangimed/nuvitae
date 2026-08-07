@@ -13,14 +13,15 @@ The direct Codex OAuth and invocation path is **not cleared** as the production
 primary AI path for Nuvitae Community on the currently accepted evidence. The
 2026-08-07 re-evaluation applies the same documented decision rules to the now
 accepted live evidence (T199 credential lifecycle, T200 minimal invocation, the
-completed T201 six-case matrix with `matrix_state: all_cases_live_passed`, and
-the accepted T245 lifecycle aggregate).
+completed T201 six-case matrix with `matrix_state: all_cases_live_passed`, the
+accepted T245 lifecycle aggregate, and the consolidated T246 aggregate).
 
 This NO-GO is **not** an evidence-availability decision about the T201 matrix:
 C01-C06 are executed and passing, and every T202 metric supported by the
-accepted evidence passes. The decision remains NO-GO because two mandatory
-gates are still not satisfied and the decisive product question is still
-unanswered:
+accepted evidence passes. T246 is now consolidated with a final `FAILED`
+qualification result: C01 and C04 are canonical semantic FAIL results, while
+C08 is a passing non-semantic recovery result. The decision remains NO-GO because the following
+mandatory gates remain unsatisfied:
 
 1. **Semantic quality over real PDF/DOCX through live Codex** — NOT ACCEPTED.
    All six T201 cases used synthetic fixtures (`fixture_classified_as_synthetic:
@@ -30,8 +31,11 @@ true`). T246-C01-A01 was executed once on 2026-08-07: the backend invocation
    T246-C01-A02 was then executed once after the defects were fixed and is the
    first harness-valid C01 semantic attempt; it failed semantically at 23/24
    exact facts and 17/18 high-priority facts (`expected_fact_missing`), with
-   root cause INDETERMINATE. A02 is consumed and authoritative as a semantic
-   failure, so T246 remains INCOMPLETE and no T246 evidence is accepted.
+   root cause INDETERMINATE. C04-A01 is also a canonical semantic failure at
+   18/24 exact facts and 13/19 high-priority facts (`expected_fact_missing`).
+   C02, C03, C05, C06, and C07 pass. C08 passes its separate malformed
+   recovery contract without a semantic request. C01/C04 remain terminal
+   failures, so the all-case T246 qualification is FAILED.
 2. **Bounded fallback** — PARTIAL. The fallback contract passes deterministic
    tests, but the production worker/UI wiring (T217) is still pending.
 3. **Non-technical onboarding feasibility** — unmeasured (requires the real
@@ -47,21 +51,21 @@ remains **NO-GO**, not a judgment about Codex output quality.
 
 ### Criteria table (re-evaluated 2026-08-07 after T245)
 
-| Mandatory gate                         | Required evidence                                            | Current state                                                                                                                                                                                                                                                                                                                    | Result                             |
-| -------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| Direct OAuth login (fresh)             | Live browser login + callback completion                     | T199 live proof: initial live OAuth succeeded and final reauthentication succeeded; T245 accepted 2026-08-07 (`callback_completion: completed`, `connection_status_after_callback: connected`)                                                                                                                                   | PASS                               |
-| Encrypted credential persistence       | Live encrypted store, no plaintext                           | T199: `real_encrypted_record_created: true`; lifecycle report: serialized contents contain no plaintext; confirmed by the accepted T245 aggregate                                                                                                                                                                                | PASS                               |
-| Restart recovery                       | Credential usable after container restart                    | T199: `real_restart_recovery_succeeded`, `real_disconnected_restart_succeeded`, `final_real_encrypted_recovery_succeeded`; confirmed by the accepted T245 aggregate                                                                                                                                                              | PASS                               |
-| Token refresh                          | Live refresh with rotation                                   | T199: refresh succeeded, token rotated, `live_network_refresh_count=1` for two concurrent requests (single-flight); confirmed by the accepted T245 aggregate                                                                                                                                                                     | PASS                               |
-| Live invocation after restart          | HTTP 200 + valid SSE with authenticated session              | T200: HTTP 200, valid SSE, `NUVITAE_T200_OK` verified; all six T201 cases HTTP 200 + valid protocol                                                                                                                                                                                                                              | PASS                               |
-| T245 lifecycle proof                   | Live lifecycle aggregate in the supported deployment shape   | Accepted 2026-08-07: `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`; 9/9 mandatory criteria passing (8 live-observed, 1 deterministic-only invalid-grant classification); provider-side revocation not exercised and not required                                                                   | PASS                               |
-| T201 mandatory live cases              | C01-C06 all executed and independently passing               | Matrix `all_cases_live_passed`; C01-C06 pass                                                                                                                                                                                                                                                                                     | PASS                               |
-| Semantic quality (real PDF/DOCX)       | Real documents through live Codex                            | T246-C01-A01 was harness-invalid after semantic metrics passed; T246-C01-A02 is the first harness-valid C01 attempt and failed semantically at 23/24 exact facts and 17/18 high-priority facts (`expected_fact_missing`), with root cause INDETERMINATE; both are consumed; T246 incomplete/not accepted; C02-C08 NOT_AUTHORIZED | NOT ACCEPTED                       |
-| Prompt-injection resistance            | Deterministic security tests                                 | 92 security/evaluation tests pass                                                                                                                                                                                                                                                                                                | PASS (deterministic)               |
-| Bounded fallback                       | No-provider/failure → bounded outcome                        | Fallback contract tests pass; production wiring (T217) still pending                                                                                                                                                                                                                                                             | PASS (contract) / PARTIAL (wiring) |
-| Credential security / no token leakage | Secret scan, token-blind evidence                            | `secret_scan_result=passed` on T199/T200/all T201 evidence; no raw credential or account identifier exposure                                                                                                                                                                                                                     | PASS                               |
-| Provider-neutral architecture          | Import domain depends only on `ResumeSemanticParserProvider` | 1064 default-suite tests pass incl. worker orchestration through the provider boundary                                                                                                                                                                                                                                           | PASS                               |
-| Factual preservation / no-invention    | Evidence rules enforced                                      | All six live cases: `no_invention_pass: true`, unsupported facts 0, forbidden inferences 0                                                                                                                                                                                                                                       | PASS                               |
+| Mandatory gate                         | Required evidence                                            | Current state                                                                                                                                                                                                                                                                                | Result                             |
+| -------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| Direct OAuth login (fresh)             | Live browser login + callback completion                     | T199 live proof: initial live OAuth succeeded and final reauthentication succeeded; T245 accepted 2026-08-07 (`callback_completion: completed`, `connection_status_after_callback: connected`)                                                                                               | PASS                               |
+| Encrypted credential persistence       | Live encrypted store, no plaintext                           | T199: `real_encrypted_record_created: true`; lifecycle report: serialized contents contain no plaintext; confirmed by the accepted T245 aggregate                                                                                                                                            | PASS                               |
+| Restart recovery                       | Credential usable after container restart                    | T199: `real_restart_recovery_succeeded`, `real_disconnected_restart_succeeded`, `final_real_encrypted_recovery_succeeded`; confirmed by the accepted T245 aggregate                                                                                                                          | PASS                               |
+| Token refresh                          | Live refresh with rotation                                   | T199: refresh succeeded, token rotated, `live_network_refresh_count=1` for two concurrent requests (single-flight); confirmed by the accepted T245 aggregate                                                                                                                                 | PASS                               |
+| Live invocation after restart          | HTTP 200 + valid SSE with authenticated session              | T200: HTTP 200, valid SSE, `NUVITAE_T200_OK` verified; all six T201 cases HTTP 200 + valid protocol                                                                                                                                                                                          | PASS                               |
+| T245 lifecycle proof                   | Live lifecycle aggregate in the supported deployment shape   | Accepted 2026-08-07: `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`; 9/9 mandatory criteria passing (8 live-observed, 1 deterministic-only invalid-grant classification); provider-side revocation not exercised and not required                               | PASS                               |
+| T201 mandatory live cases              | C01-C06 all executed and independently passing               | Matrix `all_cases_live_passed`; C01-C06 pass                                                                                                                                                                                                                                                 | PASS                               |
+| Semantic quality (real PDF/DOCX)       | Real documents through live Codex                            | T246 aggregate: C01 FAIL (A01 harness-invalid; A02 23/24 exact, 17/18 high-priority), C02 PASS, C03 PASS, C04 FAIL (18/24 exact, 13/19 high-priority), C05 PASS, C06 PASS, C07 PASS; C08 separately PASSes malformed recovery with zero provider activity; all attempts consumed, no retries | NOT ACCEPTED                       |
+| Prompt-injection resistance            | Deterministic security tests                                 | 92 security/evaluation tests pass                                                                                                                                                                                                                                                            | PASS (deterministic)               |
+| Bounded fallback                       | No-provider/failure → bounded outcome                        | Fallback contract tests pass; production wiring (T217) still pending                                                                                                                                                                                                                         | PASS (contract) / PARTIAL (wiring) |
+| Credential security / no token leakage | Secret scan, token-blind evidence                            | `secret_scan_result=passed` on T199/T200/all T201 evidence; no raw credential or account identifier exposure                                                                                                                                                                                 | PASS                               |
+| Provider-neutral architecture          | Import domain depends only on `ResumeSemanticParserProvider` | 1064 default-suite tests pass incl. worker orchestration through the provider boundary                                                                                                                                                                                                       | PASS                               |
+| Factual preservation / no-invention    | Evidence rules enforced                                      | All six live cases: `no_invention_pass: true`, unsupported facts 0, forbidden inferences 0                                                                                                                                                                                                   | PASS                               |
 
 ### Evidence for the re-evaluation
 
@@ -96,14 +100,15 @@ remains **NO-GO**, not a judgment about Codex output quality.
   are now unblocked by the accepted T245 lifecycle proof (2026-08-07).
 - **T245**: complete (accepted 2026-08-07; aggregate
   `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`).
-  **T246**: the next remaining live gate (live Codex semantic evaluation over
-  the real-document corpus). T246-C01-A01 was executed once (2026-08-07): the
+  **T246**: the remaining real-document semantic gate. T246-C01-A01 was executed once (2026-08-07): the
   backend invocation and every semantic metric passed, but the runner failed
   during finalization (implementation defect) and A01 is CONSUMED. T246-C01-A02
   was then executed once and is the first harness-valid C01 semantic attempt;
   it is CONSUMED after a valid semantic failure (23/24 exact facts, 17/18
-  high-priority facts; root cause INDETERMINATE). T246 stays INCOMPLETE and
-  C02-C08 remain NOT_AUTHORIZED. **T248**: complete (2026-08-07; deterministic
+  high-priority facts; root cause INDETERMINATE). C04-A01 is a canonical
+  semantic FAIL (18/24 exact, 13/19 high-priority); C02/C03/C05/C06/C07 pass,
+  and C08 passes the non-semantic malformed recovery contract. T246 is
+  finalized as FAILED / qualification not passed. **T248**: complete (2026-08-07; deterministic
   offline proof and sanitized aggregate
   `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t248-french-pdf.json`
   for the canonical French PDF fixture); the real-French-PDF prerequisite for
@@ -127,13 +132,17 @@ following are true:
 2. T246 executes live Codex semantic evaluation over the real-document corpus
    (real French PDF, English PDF, DOCX, bilingual, partial/sparse, structurally
    ambiguous, prompt-instruction-like, and malformed/unsupported recovery)
-   under the T208 enrichment contract; T246 is the next remaining live gate,
-   whose prerequisites T248 (real French PDF proof) and T247 (T208 bookkeeping
-   closure) are satisfied. T246-C01-A01 was executed once on 2026-08-07 and is
-   CONSUMED (invocation and semantic metrics passed; runner finalization
-   failed). T246-C01-A02 was executed once and is CONSUMED after a valid
-   semantic failure (23/24 exact facts, 17/18 high-priority facts; root cause
-   INDETERMINATE). C02-C08 remain NOT_AUTHORIZED, and the corpus remains not accepted;
+   under the T208 enrichment contract; T246 is the completed but FAILED
+   qualification gate, whose prerequisites T248 (real French PDF proof), T247
+   (T208 bookkeeping closure), and T249 (offline corpus preparation) are
+   satisfied. T246-C01-A01 was executed once on 2026-08-07 and is CONSUMED
+   (invocation and semantic metrics passed; runner finalization failed).
+   T246-C01-A02 was executed once and is CONSUMED after a valid semantic
+   failure (23/24 exact facts, 17/18 high-priority facts; root cause
+   INDETERMINATE). C04-A01 is also a consumed semantic FAIL; C02/C03/C05/C06/C07
+   pass and C08 passes the malformed recovery contract with zero broker runs,
+   zero semantic backend requests, and no credential access. All C01-C08
+   attempts are CONSUMED, and the qualification remains not accepted;
    and
 3. T202 metrics are re-measured from those live runs, including schema-valid
    rate, precision, recall, grouping, evidence validity, invention rate,

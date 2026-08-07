@@ -26,6 +26,9 @@ function freshAttemptArgs(overrides = {}) {
       "spikes/codex-direct-oauth/fixtures/t246-matrix/t246-c01.manifest.json",
     evidence:
       "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a77-semantic-parsing.json",
+    maxBrokerRuns: "1",
+    maxBackendRequests: "1",
+    automaticRetries: "0",
     ...overrides,
   };
   return [
@@ -42,11 +45,11 @@ function freshAttemptArgs(overrides = {}) {
     "--evidence",
     values.evidence,
     "--max-broker-runs",
-    "1",
+    values.maxBrokerRuns,
     "--max-semantic-backend-requests",
-    "1",
+    values.maxBackendRequests,
     "--automatic-retries",
-    "0",
+    values.automaticRetries,
   ];
 }
 
@@ -169,6 +172,7 @@ test("T246 live bridge reaches the execute entrypoint exactly once for C01 with 
     mode: "live",
     validateAuthorization,
     ...deps,
+    environment: { NUVITAE_T246_OPERATOR_LIVE_OPT_IN: "1" },
   });
   assert.equal(outcome.success, true);
   assert.equal(outcome.phase, "live_execution");
@@ -244,6 +248,61 @@ test("T246 preflight bridge runs the credential-free rehearsal and stops before 
   assert.equal(env().NUVITAE_T246_CREDENTIAL_FREE_REHEARSAL, "1");
 });
 
+test("T246 live bridge requires the operator gate before image preparation", async () => {
+  const invocation = parseT246AttemptArguments(freshAttemptArgs());
+  const { deps, calls } = fakes();
+  const stubRegistry = await stubAuthorizationRegistry();
+  const validateAuthorization = async ({ root, invocation: current }) =>
+    validateT246Authorization({
+      root,
+      invocation: current,
+      registry: stubRegistry,
+      isTracked: async () => "tracked",
+    });
+  await assert.rejects(
+    runT246LiveBridge({
+      root,
+      invocation,
+      mode: "live",
+      validateAuthorization,
+      ...deps,
+    }),
+    (error) => error.code === "t246_live_operator_opt_in_required",
+  );
+  assert.equal(calls.prepareImage, 0);
+  assert.equal(calls.preflight, 0);
+  assert.equal(calls.execute, 0);
+});
+
+test("T246 live bridge rejects the operator gate in a test environment", async () => {
+  const invocation = parseT246AttemptArguments(freshAttemptArgs());
+  const { deps, calls } = fakes();
+  const stubRegistry = await stubAuthorizationRegistry();
+  const validateAuthorization = async ({ root, invocation: current }) =>
+    validateT246Authorization({
+      root,
+      invocation: current,
+      registry: stubRegistry,
+      isTracked: async () => "tracked",
+    });
+  await assert.rejects(
+    runT246LiveBridge({
+      root,
+      invocation,
+      mode: "live",
+      validateAuthorization,
+      ...deps,
+      environment: {
+        NODE_ENV: "test",
+        NUVITAE_T246_OPERATOR_LIVE_OPT_IN: "1",
+      },
+    }),
+    (error) => error.code === "t246_live_operator_opt_in_forbidden_in_test",
+  );
+  assert.equal(calls.prepareImage, 0);
+  assert.equal(calls.execute, 0);
+});
+
 test("T246 bridge fails closed when the credential-free preflight fails", async () => {
   const invocation = parseT246AttemptArguments(freshAttemptArgs());
   const { deps, calls } = fakes();
@@ -261,6 +320,7 @@ test("T246 bridge fails closed when the credential-free preflight fails", async 
     mode: "live",
     validateAuthorization,
     ...deps,
+    allowSimulatedLive: true,
     runPreflight: async () => ({
       success: false,
       first_failure_operation: "x",
@@ -271,23 +331,25 @@ test("T246 bridge fails closed when the credential-free preflight fails", async 
   assert.equal(calls.execute, 0);
 });
 
-test("T246 bridge rejects a NOT_AUTHORIZED case before any image or execute step", async () => {
+test("T246 bridge rejects a consumed recovery case before any image or execute step", async () => {
   const invocation = parseT246AttemptArguments(
     freshAttemptArgs({
-      campaign: "T246-C04",
+      campaign: "T246-C08",
       attempt: "A01",
-      semanticCase: "T246-C04",
-      fixture: "tests/fixtures/resumes/anonymous-bilingual-resume.pdf",
+      semanticCase: "T246-C08",
+      fixture: "tests/fixtures/resumes/anonymous-malformed-resume.pdf",
       manifest:
-        "spikes/codex-direct-oauth/fixtures/t246-matrix/t246-c04.manifest.json",
+        "spikes/codex-direct-oauth/fixtures/t246-matrix/t246-c08.recovery-manifest.json",
       evidence:
-        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c04-a01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c08-a01-recovery.json",
+      maxBrokerRuns: "0",
+      maxBackendRequests: "0",
     }),
   );
   const { deps, calls } = fakes();
   await assert.rejects(
     runT246LiveBridge({ root, invocation, mode: "live", ...deps }),
-    (error) => error.code === "t246_not_authorized",
+    (error) => error.code === "t246_attempt_consumed",
   );
   assert.equal(calls.prepareImage, 0);
   assert.equal(calls.execute, 0);

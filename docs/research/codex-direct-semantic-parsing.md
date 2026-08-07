@@ -244,3 +244,14 @@ contract does not resolve whether a fresh attempt after a valid semantic
 failure is a replacement or an additional sample, so the required policy
 clarification is recorded as
 `CONTRACT_AMBIGUOUS_REQUIRES_POLICY_CHANGE`; no A03 or C02-C08 is authorized.
+
+## Final T246 qualification status (2026-08-07)
+
+The final offline aggregate is `FAILED` / qualification not passed. The
+canonical matrix is C01 FAIL, C02 PASS, C03 PASS, C04 FAIL, C05 PASS, C06
+PASS, C07 PASS, and C08 PASS. Six cases passed, two failed, and one
+harness-invalid attempt was retained. C01-A02 measured 23/24 exact facts and
+17/18 high-priority facts; C04-A01 measured 18/24 exact facts and 13/19
+high-priority facts. C08 passed the offline malformed-recovery contract with
+zero provider requests, credential recovery, broker runs, and retries. No
+replacement attempt was created, and T203 remains NO-GO.

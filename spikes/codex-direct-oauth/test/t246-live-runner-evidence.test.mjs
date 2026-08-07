@@ -10,8 +10,14 @@ import {
   t246RunnerExitCode,
   validateT246BrokerResult,
 } from "../lib/t246-live-runner-evidence.mjs";
+import {
+  buildValidT246Result,
+  evaluateT246Output,
+  safeT246EvaluationProjection,
+} from "../lib/t246-live-evaluator.mjs";
 
 const proof = await collectT246CaseProof({ caseId: "T246-C01" });
+const c02Proof = await collectT246CaseProof({ caseId: "T246-C02" });
 const RUN_ID = "c".repeat(64);
 const RUNNER_STARTED = "2026-08-07T12:00:00.000Z";
 
@@ -265,6 +271,106 @@ test("T246 parent evidence preserves sanitized fact diagnostics from nested metr
   assert.deepEqual(evidence.evaluation_metrics.matched_high_priority_fact_ids, [
     "pdf-french-canonical-anonymous:basics:name",
   ]);
+});
+
+test("T246 C02 evidence preserves sanitized fact IDs without resume or model text", () => {
+  const missingFact = "pdf-english-anonymous:skills[2]";
+  const matchedFact = "pdf-english-anonymous:basics.full_name";
+  const result = realisticBrokerResult(
+    {
+      exact_fact_recall: 0.963,
+      high_priority_fact_recall: 0.9545,
+      parsing_pass: false,
+      primary_failure_category: "expected_fact_missing",
+      primary_failure_phase: "response_semantic_evaluation",
+      expected_fact_count: 27,
+      matched_expected_fact_count: 26,
+      high_priority_fact_count: 22,
+      matched_high_priority_fact_count: 21,
+      missing_expected_fact_ids: [missingFact],
+      missing_high_priority_fact_ids: [missingFact],
+      matched_expected_fact_ids: [matchedFact],
+      matched_high_priority_fact_ids: [matchedFact],
+    },
+    {
+      case_id: "T246-C02",
+      attempt_id: "A01",
+      fixture_sha256: c02Proof.row.fixture_sha256,
+      transcript_sha256: c02Proof.row.transcript_sha256,
+      manifest_sha256: c02Proof.manifestSha256,
+      parsing_pass: false,
+      primary_failure_category: "expected_fact_missing",
+      primary_failure_phase: "response_semantic_evaluation",
+    },
+  );
+  const evidence = buildFinalT246Evidence({
+    brokerResult: result,
+    brokerExitCode: 1,
+    runnerRunIdHash: RUN_ID,
+    runnerStartedAt: RUNNER_STARTED,
+    brokerRemoved: true,
+    callbackPortAbsent: true,
+    secretScanResult: "passed",
+    logSecretScanResult: "passed",
+    caseId: "T246-C02",
+    attemptId: "A01",
+    resultChannel: {
+      result_state: "valid_broker_result",
+      stdout_state: "single_json_stdout",
+      infrastructure_category: null,
+    },
+    readerDiagnostics: {
+      reader_exit_code: 0,
+      reader_state: "validated_final_json",
+    },
+    parseOutcome: { resultReceived: true, rejectionReasons: [] },
+  });
+  assert.deepEqual(evidence.evaluation_metrics.missing_expected_fact_ids, [
+    missingFact,
+  ]);
+  assert.deepEqual(evidence.evaluation_metrics.matched_expected_fact_ids, [
+    matchedFact,
+  ]);
+  assert.deepEqual(evidence.evaluation_metrics.missing_high_priority_fact_ids, [
+    missingFact,
+  ]);
+  assert.deepEqual(evidence.evaluation_metrics.matched_high_priority_fact_ids, [
+    matchedFact,
+  ]);
+  const serialized = JSON.stringify(evidence);
+  for (const line of c02Proof.lines)
+    assert.equal(serialized.includes(line), false);
+  assert.equal(serialized.includes("raw_model_output"), false);
+  assert.equal(serialized.includes(missingFact), true);
+  assert.equal(serialized.includes(matchedFact), true);
+});
+
+test("T246 broker projection derives matched high-priority IDs from the C02 manifest", () => {
+  const result = buildValidT246Result(c02Proof.transcript, c02Proof.manifest);
+  const evaluation = evaluateT246Output(
+    result,
+    c02Proof.transcript,
+    c02Proof.manifest,
+    "T246-C02",
+  );
+  const projection = safeT246EvaluationProjection(evaluation, {
+    manifest: c02Proof.manifest,
+  });
+  assert.equal(
+    projection.matched_high_priority_fact_ids.length,
+    c02Proof.manifest.high_priority_fact_paths.length,
+  );
+  assert.deepEqual(
+    new Set(projection.matched_high_priority_fact_ids),
+    new Set(
+      c02Proof.manifest.high_priority_fact_paths.map(
+        (factPath) => `${c02Proof.manifest.fixture_id}:${factPath}`,
+      ),
+    ),
+  );
+  const serialized = JSON.stringify(projection);
+  for (const line of c02Proof.lines)
+    assert.equal(serialized.includes(line), false);
 });
 
 test("T246 transport failure produces an explicit failure classification", () => {

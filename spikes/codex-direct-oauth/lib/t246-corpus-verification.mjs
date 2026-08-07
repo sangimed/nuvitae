@@ -14,6 +14,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { promptIsolationDiagnostics } from "./t246-live-evaluator.mjs";
 
 const SPIKE_ROOT = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SPIKE_ROOT, "..", "..", "..");
@@ -357,8 +358,17 @@ function verifyRecoveryCase({
   if (fixtureSha256 !== manifest.fixture_sha256) {
     throw new Error("t246_recovery_fixture_mismatch");
   }
+  if (manifest.recovery_input_sha256 !== fixtureSha256) {
+    throw new Error("t246_recovery_input_mismatch");
+  }
   if (registryEntry?.fixture_sha256 !== manifest.fixture_sha256) {
     throw new Error("t246_recovery_registry_fixture_mismatch");
+  }
+  if (manifest.failure_category !== "malformed") {
+    throw new Error("t246_recovery_manifest_failure_category_mismatch");
+  }
+  if (manifest.user_facing_recovery_category !== "malformed_or_corrupted") {
+    throw new Error("t246_recovery_manifest_user_category_mismatch");
   }
   if (manifest.semantic_request_required !== false) {
     throw new Error("t246_recovery_semantic_request_required");
@@ -368,6 +378,15 @@ function verifyRecoveryCase({
   }
   if (manifest.maximum_semantic_backend_requests !== 0) {
     throw new Error("t246_recovery_backend_requests_not_zero");
+  }
+  if (manifest.maximum_live_broker_runs !== 0) {
+    throw new Error("t246_recovery_broker_runs_not_zero");
+  }
+  if (manifest.automatic_retries !== 0) {
+    throw new Error("t246_recovery_retries_not_zero");
+  }
+  if (manifest.evidence_path !== registryEntry?.evidence) {
+    throw new Error("t246_recovery_evidence_path_mismatch");
   }
   if (extraction.ok !== false) {
     throw new Error("t246_recovery_extraction_did_not_fail");
@@ -385,6 +404,7 @@ function verifyRecoveryCase({
     recoveryInputSha256: fixtureSha256,
     failureCategory: extraction.error.category,
     retryable: extraction.error.retryable,
+    userFacingRecoveryCategory: manifest.user_facing_recovery_category,
   };
 }
 
@@ -458,6 +478,8 @@ export async function collectT246CorpusProof() {
       fixture_sha256: proof.fixtureSha256,
       transcript_sha256: proof.transcriptSha256 ?? null,
       recovery_input_sha256: proof.recoveryInputSha256 ?? null,
+      recovery_failure_category: proof.failureCategory ?? null,
+      user_facing_recovery_category: proof.userFacingRecoveryCategory ?? null,
       expected_semantic_json_sha256: proof.expectedSemanticJsonSha256 ?? null,
       manifest_path: caseDefinition.manifestPath,
       manifest_sha256: manifestSha256,
@@ -475,6 +497,10 @@ export async function collectT246CorpusProof() {
           : "expected_json_pinned",
       live_request_required: caseDefinition.liveRequestRequired,
       live_ready: true,
+      prompt_isolation:
+        caseDefinition.caseId === "T246-C07"
+          ? promptIsolationDiagnostics(manifest)
+          : null,
     });
   }
   const evidence = buildSanitizedT246CorpusEvidence({ rows });
@@ -556,6 +582,8 @@ export async function collectT246CaseProof({ caseId, fixtureBytes } = {}) {
     fixture_sha256: proof.fixtureSha256,
     transcript_sha256: proof.transcriptSha256 ?? null,
     recovery_input_sha256: proof.recoveryInputSha256 ?? null,
+    recovery_failure_category: proof.failureCategory ?? null,
+    user_facing_recovery_category: proof.userFacingRecoveryCategory ?? null,
     expected_semantic_json_sha256: proof.expectedSemanticJsonSha256 ?? null,
     manifest_path: caseDefinition.manifestPath,
     manifest_sha256: manifestSha256,
@@ -573,6 +601,10 @@ export async function collectT246CaseProof({ caseId, fixtureBytes } = {}) {
         : "expected_json_pinned",
     live_request_required: caseDefinition.liveRequestRequired,
     live_ready: true,
+    prompt_isolation:
+      caseDefinition.caseId === "T246-C07"
+        ? promptIsolationDiagnostics(manifest)
+        : null,
   };
   return {
     row,

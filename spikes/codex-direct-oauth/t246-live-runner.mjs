@@ -1,8 +1,9 @@
 // Dedicated T246 live runner.
 //
 // The runner implements the single-case attempt contract for an authorized
-// T246 live run. `--mode offline` performs only deterministic artifact
-// verification (never credentials/network). `--mode preflight` exercises every
+// T246 run. `--mode offline` performs only deterministic artifact verification
+// (never credentials/network). `--mode recovery` executes the non-semantic C08
+// malformed recovery path locally, with no operator live opt-in. `--mode preflight` exercises every
 // live check up to, but excluding, credential-volume access and provider
 // invocation (authorization, transcript regeneration, immutable image,
 // credential-free topology preflight, and a broker credential-free
@@ -13,16 +14,20 @@
 const { parseT246AttemptArguments } = await import(
   new URL("./lib/t246-authorization.mjs", import.meta.url)
 );
+const { fileURLToPath } = await import("node:url");
 const { collectT246CorpusProof, T246_CASES } = await import(
   new URL("./lib/t246-corpus-verification.mjs", import.meta.url)
 );
 const { runT246LiveBridge } = await import(
   new URL("./lib/t246-live-bridge.mjs", import.meta.url)
 );
+const { executeT246C08Recovery } = await import(
+  new URL("./lib/t246-recovery.mjs", import.meta.url)
+);
 
 function usage() {
   return [
-    "Usage: node spikes/codex-direct-oauth/t246-live-runner.mjs --mode <offline|preflight|live>",
+    "Usage: node spikes/codex-direct-oauth/t246-live-runner.mjs --mode <offline|recovery|preflight|live>",
     "  --campaign T246-C0X --attempt A01 --semantic-case T246-C0X",
     "  --fixture <path> --manifest <path> --evidence <path>",
     "  --max-broker-runs <n> --max-semantic-backend-requests <n> --automatic-retries <n>",
@@ -50,13 +55,18 @@ async function run() {
   const args = parseArguments(process.argv.slice(2));
   if (
     args.mode !== "offline" &&
+    args.mode !== "recovery" &&
     args.mode !== "preflight" &&
     args.mode !== "live"
   ) {
     throw new Error(`t246_mode_required\n${usage()}`);
   }
   const invocation = parseT246AttemptArguments(args.attemptArgs);
-  const root = new URL(".", import.meta.url).pathname;
+  const root = fileURLToPath(new URL(".", import.meta.url));
+  if (args.mode === "recovery") {
+    const outcome = await executeT246C08Recovery({ root, invocation });
+    return { outcome, mode: args.mode };
+  }
   if (args.mode === "preflight" || args.mode === "live") {
     const outcome = await runT246LiveBridge({
       root,
@@ -93,6 +103,18 @@ async function run() {
 
 run()
   .then((result) => {
+    if (result.mode === "recovery") {
+      console.log(
+        `T246 recovery path passed: ${result.outcome.evidence.case_id} ${result.outcome.evidence.attempt_id}`,
+      );
+      console.log(
+        `malformed_detection=${result.outcome.evidence.malformed_detection} safe_recovery_category=${result.outcome.evidence.safe_recovery_category} invocation_attempted=${result.outcome.evidence.invocation_attempted} semantic_backend_requests=${result.outcome.evidence.semantic_backend_requests} credential_recovery_attempted=${result.outcome.evidence.credential_recovery_attempted} broker_runs=${result.outcome.evidence.broker_runs}`,
+      );
+      console.log(
+        `evidence_sha256=${result.outcome.evidence_sha256} evidence_size_bytes=${result.outcome.evidence_size_bytes}`,
+      );
+      return;
+    }
     if (result.mode === "preflight" || result.mode === "live") {
       const { outcome, mode } = result;
       console.log(

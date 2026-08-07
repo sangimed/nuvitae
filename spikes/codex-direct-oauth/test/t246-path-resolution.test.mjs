@@ -49,7 +49,7 @@ async function authorizedFreshEntry(caseId) {
 }
 
 test("T246 repository-relative operator paths resolve exactly once against the repository root", async () => {
-  const entry = await authorizedFreshEntry("T246-C04");
+  const entry = await authorizedFreshEntry("T246-C05");
   const invocation = parseT246AttemptArguments(argvOf(entry));
   const authorization = await validateT246Authorization({
     root,
@@ -75,7 +75,7 @@ test("T246 repository-relative operator paths resolve exactly once against the r
 });
 
 test("T246 evidence and fixture paths handed to the execution body are canonical and never double-prefixed", async () => {
-  const entry = await authorizedFreshEntry("T246-C04");
+  const entry = await authorizedFreshEntry("T246-C05");
   const invocation = parseT246AttemptArguments(argvOf(entry));
   const authorization = await validateT246Authorization({
     root,
@@ -85,11 +85,11 @@ test("T246 evidence and fixture paths handed to the execution body are canonical
   });
   const canonicalEvidence = path.join(
     repo,
-    "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c04-a42-semantic-parsing.json",
+    "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c05-a42-semantic-parsing.json",
   );
   const canonicalFixture = path.join(
     repo,
-    "tests/fixtures/resumes/anonymous-bilingual-resume.pdf",
+    "tests/fixtures/resumes/anonymous-partial-resume.docx",
   );
   assert.equal(authorization.evidence_path, canonicalEvidence);
   assert.equal(authorization.fixture_path, canonicalFixture);

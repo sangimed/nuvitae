@@ -100,6 +100,7 @@ function harness({
   transport = fakeTransport(),
   readFile = async () => "encrypted-bytes-no-plaintext",
   emit,
+  allowSimulatedLive = true,
   prepareResultDirectory = async () => ({
     effective_uid: 1000,
     effective_gid: 1000,
@@ -145,6 +146,7 @@ function harness({
         emitted.push(result);
         return `${JSON.stringify(result)}\n`;
       }),
+    allowSimulatedLive,
   };
   return {
     calls,
@@ -291,6 +293,29 @@ test("T246 broker does not reach the provider boundary when credential recovery 
   assert.equal(h.calls.transport, 0);
   assert.equal(outcome.result.primary_failure_category, "transport_failure");
   assert.equal(outcome.result.parsing_pass, false);
+});
+
+test("T246 broker requires the operator gate before credential recovery", async () => {
+  const calls = { recover: 0, transport: 0 };
+  const h = harness({
+    allowSimulatedLive: false,
+    recover: async () => {
+      calls.recover += 1;
+      throw new Error("recover_should_not_run");
+    },
+    transport: async () => {
+      calls.transport += 1;
+      throw new Error("transport_should_not_run");
+    },
+  });
+  const outcome = await h.run();
+  assert.equal(outcome.exitCode, 1);
+  assert.equal(calls.recover, 0);
+  assert.equal(calls.transport, 0);
+  assert.equal(
+    outcome.result.primary_failure_category,
+    "t246_live_operator_opt_in_required",
+  );
 });
 
 test("T246 broker produces sanitized failure evidence on HTTP/protocol failure with at most one request", async () => {
