@@ -42,7 +42,7 @@ The implementation plan adopts a container-only workflow for development, build,
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - **Non-technical UX**: PASS. The user flow is visual, guided, and excludes JSON, YAML, prompts, model names, parser internals, credentials, session details, and provider configuration. It includes plain-language disclosure that resume content is sent to the configured AI provider when provider-backed semantic parsing is used.
 - **Import-first onboarding**: PASS. Import is the primary create-resume path while manual entry remains available.
@@ -269,9 +269,9 @@ When no provider is configured, disconnected, expired, unavailable, rate-limited
 
 ## Community MVP Critical Path (Vertical Tranches)
 
-Each tranche includes backend behavior, UI behavior, error and recovery states, responsive behavior, Docker validation, and end-to-end demonstration criteria. See `tasks.md` for the concrete task mapping (existing IDs preserved; new T212-T242 tasks added, plus spike convergence tasks T243-T248 mapped to Tranche 1 and the direct-OAuth spike sequence).
+Each tranche includes backend behavior, UI behavior, error and recovery states, responsive behavior, Docker validation, and end-to-end demonstration criteria. See `tasks.md` for the concrete task mapping (existing IDs preserved; new T212-T242 tasks added, plus spike convergence tasks T243-T249 mapped to Tranche 1 and the direct-OAuth spike sequence).
 
-**Tranche 1 — Community setup and real Codex import.** Docker installation documented and reproducible; Codex OAuth connection works; connection status and recovery work; real semantic parsing wired through the one authoritative Codex path (gated on the T201/T203 conditions); bounded deterministic fallback wired; a real PDF/DOCX reaches review; confirmation does not lose untouched fields. Spike convergence tasks T243-T248 map to this tranche: T243/T244 complete (Campaign-B execution and T202 re-measurement), T245 accepted 2026-08-07 (lifecycle proof; unblocks T213-T215, which remain incomplete), T246 is the next live semantic gate, T247 closes the T208 bookkeeping dependency used by T246, and T248 (real French PDF fixture proof) is complete 2026-08-07 and satisfies the real-French-PDF prerequisite for T246.
+**Tranche 1 — Community setup and real Codex import.** Docker installation documented and reproducible; Codex OAuth connection works; connection status and recovery work; real semantic parsing wired through the one authoritative Codex path (gated on the T201/T203 conditions); bounded deterministic fallback wired; a real PDF/DOCX reaches review; confirmation does not lose untouched fields. Spike convergence tasks T243-T249 map to this tranche: T243/T244 complete (Campaign-B execution and T202 re-measurement), T245 accepted 2026-08-07 (lifecycle proof; unblocks T213-T215, which remain incomplete), T246 is the next live semantic gate, T247 closes the T208 bookkeeping dependency used by T246, T248 (real French PDF fixture proof) is complete 2026-08-07 and satisfies the real-French-PDF prerequisite for T246, and T249 (2026-08-07) completes the remaining T246 real-document corpus prerequisites offline without authorizing any live run.
 
 **Tranche 2 — First credible resume and PDF.** Clean application shell; simplified review language; one structured-resume screen; one credible template; live preview; ATS-friendly PDF export; import-to-PDF end-to-end test.
 

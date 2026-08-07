@@ -1514,6 +1514,592 @@ function buildDocxFrenchMultiColumnResponse(
   };
 }
 
+/**
+ * Expected semantic JSON for the canonical real-document bilingual PDF
+ * fixture (`pdf-bilingual-canonical-anonymous`, T246-C04). Every non-null
+ * value is an exact evidenced substring of the deterministic extraction
+ * transcript pinned to
+ * `tests/fixtures/resumes/anonymous-bilingual-resume.pdf`. Bilingual lines
+ * keep both languages in one value because both halves are contiguous in the
+ * same extracted fragment; the document language is classified as
+ * `bilingual_french_english` with the classifier's "high" confidence.
+ */
+function buildPdfBilingualCanonicalResponse(
+  fragments: readonly SemanticParserSourceFragment[],
+): NuvitaeSemanticExtractionResponse {
+  const name = fixtureFragmentAt(fragments, 0);
+  const email = fixtureFragmentAt(fragments, 1);
+  const location = fixtureFragmentAt(fragments, 2);
+  const phone = fixtureFragmentAt(fragments, 3);
+  const headline = fixtureFragmentAt(fragments, 4);
+  const summary = fixtureFragmentAt(fragments, 6);
+  const employer = fixtureFragmentAt(fragments, 8);
+  const role = fixtureFragmentAt(fragments, 9);
+  const dates = fixtureFragmentAt(fragments, 10);
+  const firstResponsibility = fixtureFragmentAt(fragments, 11);
+  const secondResponsibility = fixtureFragmentAt(fragments, 12);
+  const degree = fixtureFragmentAt(fragments, 14);
+  const institution = fixtureFragmentAt(fragments, 15);
+  const educationDates = fixtureFragmentAt(fragments, 16);
+  const skillsLine = fixtureFragmentAt(fragments, 18);
+  const languagesLine = fixtureFragmentAt(fragments, 20);
+  const projectName = fixtureFragmentAt(fragments, 22);
+
+  return {
+    schemaVersion: nuvitaeSemanticExtractionResponseVersion,
+    documentLanguage: {
+      value: "bilingual_french_english",
+      confidence: "high",
+      evidence: [fixtureEvidenceOf(languagesLine, "Français")],
+    },
+    sections: {
+      contact: {
+        fullName: fixtureSemanticValueOf(name, "Anaïs Moreau-Exemple"),
+        email: fixtureSemanticValueOf(email, "anais.moreau@example.invalid"),
+        phone: fixtureSemanticValueOf(phone, "+33 6 45 67 89 01"),
+        location: fixtureSemanticValueOf(location, "Paris, France"),
+        website: null,
+      },
+      headline: fixtureSemanticValueOf(
+        headline,
+        "Chef de projet produit bilingue / Bilingual Product Manager",
+      ),
+      summary: fixtureSemanticValueOf(
+        summary,
+        "Chef de projet avec dix ans d'expérience. / Product manager with ten years of experience.",
+      ),
+      workExperience: [
+        {
+          candidateId: "work-1",
+          employerName: fixtureSemanticValueOf(
+            employer,
+            "Maison Exemple Nord (employeur fictif)",
+          ),
+          employerLocation: null,
+          roles: [
+            {
+              candidateId: "role-1",
+              title: fixtureSemanticValueOf(
+                role,
+                "Chef de projet produit / Product Manager",
+              ),
+              location: null,
+              startDate: fixtureSemanticValueOf(dates, "mars 2020"),
+              endDate: fixtureSemanticValueOf(dates, "aujourd'hui"),
+              isOngoing: true,
+              responsibilities: [
+                fixtureSemanticValueOf(
+                  firstResponsibility,
+                  "Coordonne trois équipes produit. / Coordinates three product teams.",
+                ),
+                fixtureSemanticValueOf(
+                  secondResponsibility,
+                  "Construit la roadmap annuelle. / Builds the annual roadmap with the teams.",
+                ),
+              ],
+              achievements: [],
+            },
+          ],
+        },
+      ],
+      education: [
+        {
+          candidateId: "education-1",
+          institution: fixtureSemanticValueOf(
+            institution,
+            "Université Exemple du Nord",
+          ),
+          degree: fixtureSemanticValueOf(
+            degree,
+            "Master en gestion de projet / Master of Science in Project Management",
+          ),
+          fieldOfStudy: null,
+          startDate: fixtureSemanticValueOf(educationDates, "2014"),
+          endDate: fixtureSemanticValueOf(educationDates, "2018"),
+          location: null,
+          details: [],
+        },
+      ],
+      skills: [
+        {
+          candidateId: "skill-1",
+          name: fixtureSemanticValueOf(skillsLine, "Gestion de produit"),
+          category: null,
+        },
+        {
+          candidateId: "skill-2",
+          name: fixtureSemanticValueOf(skillsLine, "SQL"),
+          category: null,
+        },
+        {
+          candidateId: "skill-3",
+          name: fixtureSemanticValueOf(skillsLine, "Documentation"),
+          category: null,
+        },
+        {
+          candidateId: "skill-4",
+          name: fixtureSemanticValueOf(skillsLine, "Tests"),
+          category: null,
+        },
+      ],
+      languages: [
+        {
+          candidateId: "language-1",
+          name: fixtureSemanticValueOf(languagesLine, "Français"),
+          proficiency: fixtureSemanticValueOf(languagesLine, "natif"),
+        },
+        {
+          candidateId: "language-2",
+          name: fixtureSemanticValueOf(languagesLine, "Anglais"),
+          proficiency: fixtureSemanticValueOf(languagesLine, "bilingue"),
+        },
+      ],
+      projects: [
+        {
+          candidateId: "project-1",
+          name: fixtureSemanticValueOf(
+            projectName,
+            "Tableau de bord open source pour les équipes data. / Open-source dashboard for data teams.",
+          ),
+          description: null,
+          technologies: [],
+          links: [],
+        },
+      ],
+      certifications: [],
+      professionalLinks: [],
+    },
+    relationships: [
+      {
+        candidateId: "relationship-1",
+        relationshipType: "role_belongs_to_employer",
+        fromCandidateId: "role-1",
+        toCandidateId: "work-1",
+        evidence: [
+          fixtureEvidenceOf(employer, "Maison Exemple Nord (employeur fictif)"),
+          fixtureEvidenceOf(role, "Chef de projet produit / Product Manager"),
+        ],
+        confidence: "high",
+      },
+    ],
+    ambiguityDiagnostics: [],
+    conflictDiagnostics: [],
+    privacyWarnings: [],
+  };
+}
+
+/**
+ * Expected semantic JSON for the canonical real-document partial/sparse DOCX
+ * fixture (`docx-partial-canonical-anonymous`, T246-C05). The document
+ * intentionally omits normal CV fields; every omitted field must remain
+ * `null`/absent in the expected output and no value may be invented.
+ */
+function buildDocxPartialCanonicalResponse(
+  fragments: readonly SemanticParserSourceFragment[],
+): NuvitaeSemanticExtractionResponse {
+  const name = fixtureFragmentAt(fragments, 0);
+  const email = fixtureFragmentAt(fragments, 1);
+  const phone = fixtureFragmentAt(fragments, 2);
+  const headline = fixtureFragmentAt(fragments, 3);
+  const employer = fixtureFragmentAt(fragments, 5);
+  const role = fixtureFragmentAt(fragments, 6);
+  const dates = fixtureFragmentAt(fragments, 7);
+  const responsibility = fixtureFragmentAt(fragments, 8);
+  const degree = fixtureFragmentAt(fragments, 10);
+  const institution = fixtureFragmentAt(fragments, 11);
+  const educationDates = fixtureFragmentAt(fragments, 12);
+  const skillsLine = fixtureFragmentAt(fragments, 14);
+  const languagesLine = fixtureFragmentAt(fragments, 16);
+
+  return {
+    schemaVersion: nuvitaeSemanticExtractionResponseVersion,
+    documentLanguage: {
+      value: "english",
+      confidence: "high",
+      evidence: [fixtureEvidenceOf(languagesLine, "English")],
+    },
+    sections: {
+      contact: {
+        fullName: fixtureSemanticValueOf(name, "Ethan Brooks-Example"),
+        email: fixtureSemanticValueOf(email, "ethan.brooks@example.invalid"),
+        phone: fixtureSemanticValueOf(phone, "+1 555 010 2233"),
+        location: null,
+        website: null,
+      },
+      headline: fixtureSemanticValueOf(headline, "Support Engineer"),
+      summary: null,
+      workExperience: [
+        {
+          candidateId: "work-1",
+          employerName: fixtureSemanticValueOf(employer, "Cedar Peak Systems"),
+          employerLocation: null,
+          roles: [
+            {
+              candidateId: "role-1",
+              title: fixtureSemanticValueOf(role, "Support Engineer"),
+              location: null,
+              startDate: fixtureSemanticValueOf(dates, "2018"),
+              endDate: fixtureSemanticValueOf(dates, "2023"),
+              isOngoing: false,
+              responsibilities: [
+                fixtureSemanticValueOf(
+                  responsibility,
+                  "Resolved customer issues and documented solutions for the support team.",
+                ),
+              ],
+              achievements: [],
+            },
+          ],
+        },
+      ],
+      education: [
+        {
+          candidateId: "education-1",
+          institution: fixtureSemanticValueOf(
+            institution,
+            "Meridian Technical College",
+          ),
+          degree: fixtureSemanticValueOf(degree, "Diploma in Network Systems"),
+          fieldOfStudy: null,
+          startDate: fixtureSemanticValueOf(educationDates, "2015"),
+          endDate: fixtureSemanticValueOf(educationDates, "2018"),
+          location: null,
+          details: [],
+        },
+      ],
+      skills: [
+        {
+          candidateId: "skill-1",
+          name: fixtureSemanticValueOf(skillsLine, "Linux"),
+          category: null,
+        },
+        {
+          candidateId: "skill-2",
+          name: fixtureSemanticValueOf(skillsLine, "Networking"),
+          category: null,
+        },
+        {
+          candidateId: "skill-3",
+          name: fixtureSemanticValueOf(skillsLine, "SQL"),
+          category: null,
+        },
+      ],
+      languages: [
+        {
+          candidateId: "language-1",
+          name: fixtureSemanticValueOf(languagesLine, "English"),
+          proficiency: fixtureSemanticValueOf(languagesLine, "native"),
+        },
+      ],
+      projects: [],
+      certifications: [],
+      professionalLinks: [],
+    },
+    relationships: [
+      {
+        candidateId: "relationship-1",
+        relationshipType: "role_belongs_to_employer",
+        fromCandidateId: "role-1",
+        toCandidateId: "work-1",
+        evidence: [
+          fixtureEvidenceOf(employer, "Cedar Peak Systems"),
+          fixtureEvidenceOf(role, "Support Engineer"),
+        ],
+        confidence: "high",
+      },
+    ],
+    ambiguityDiagnostics: [],
+    conflictDiagnostics: [],
+    privacyWarnings: [],
+  };
+}
+
+/**
+ * Expected semantic JSON for the canonical real-document structurally
+ * ambiguous PDF fixture (`pdf-ambiguous-canonical-anonymous`, T246-C06). The
+ * two-column binary interleaves its flattened reading order, so the role
+ * title's association with the employer and the "2019 – Present" span's
+ * association with the role are genuinely ambiguous. The expected output
+ * extracts only explicitly evidenced single-fragment facts, keeps the
+ * ambiguous date null, declares no invented relationship, and surfaces both
+ * uncertainties as grounded ambiguity diagnostics.
+ */
+function buildPdfAmbiguousCanonicalResponse(
+  fragments: readonly SemanticParserSourceFragment[],
+): NuvitaeSemanticExtractionResponse {
+  const name = fixtureFragmentAt(fragments, 0);
+  const email = fixtureFragmentAt(fragments, 1);
+  const location = fixtureFragmentAt(fragments, 2);
+  const headline = fixtureFragmentAt(fragments, 3);
+  const employer = fixtureFragmentAt(fragments, 5);
+  const role = fixtureFragmentAt(fragments, 7);
+  const skillsLine = fixtureFragmentAt(fragments, 8);
+  const ambiguousDates = fixtureFragmentAt(fragments, 9);
+  const responsibility = fixtureFragmentAt(fragments, 11);
+  const degree = fixtureFragmentAt(fragments, 12);
+  const institution = fixtureFragmentAt(fragments, 13);
+  const educationDates = fixtureFragmentAt(fragments, 14);
+
+  return {
+    schemaVersion: nuvitaeSemanticExtractionResponseVersion,
+    documentLanguage: {
+      value: "english",
+      confidence: "high",
+      evidence: [fixtureEvidenceOf(headline, "Engineer")],
+    },
+    sections: {
+      contact: {
+        fullName: fixtureSemanticValueOf(name, "Amir Hussain-Example"),
+        email: fixtureSemanticValueOf(email, "amir.hussain@example.invalid"),
+        phone: null,
+        location: fixtureSemanticValueOf(location, "Berlin, Germany"),
+        website: null,
+      },
+      headline: fixtureSemanticValueOf(headline, "Data Platform Engineer"),
+      summary: null,
+      workExperience: [
+        {
+          candidateId: "work-1",
+          employerName: fixtureSemanticValueOf(employer, "Northbeam Systems"),
+          employerLocation: null,
+          roles: [
+            {
+              candidateId: "role-1",
+              title: fixtureSemanticValueOf(
+                role,
+                "Streaming Infrastructure Engineer",
+              ),
+              location: null,
+              startDate: null,
+              endDate: null,
+              isOngoing: null,
+              responsibilities: [
+                fixtureSemanticValueOf(
+                  responsibility,
+                  "Built and operated the streaming platform for the data team.",
+                ),
+              ],
+              achievements: [],
+            },
+          ],
+        },
+      ],
+      education: [
+        {
+          candidateId: "education-1",
+          institution: fixtureSemanticValueOf(
+            institution,
+            "Hochschule Example Berlin",
+          ),
+          degree: fixtureSemanticValueOf(degree, "MSc Computer Science"),
+          fieldOfStudy: null,
+          startDate: fixtureSemanticValueOf(educationDates, "2015"),
+          endDate: fixtureSemanticValueOf(educationDates, "2019"),
+          location: null,
+          details: [],
+        },
+      ],
+      skills: [
+        {
+          candidateId: "skill-1",
+          name: fixtureSemanticValueOf(skillsLine, "Kafka"),
+          category: null,
+        },
+        {
+          candidateId: "skill-2",
+          name: fixtureSemanticValueOf(skillsLine, "Spark"),
+          category: null,
+        },
+        {
+          candidateId: "skill-3",
+          name: fixtureSemanticValueOf(skillsLine, "Python"),
+          category: null,
+        },
+        {
+          candidateId: "skill-4",
+          name: fixtureSemanticValueOf(skillsLine, "Kubernetes"),
+          category: null,
+        },
+      ],
+      languages: [],
+      projects: [],
+      certifications: [],
+      professionalLinks: [],
+    },
+    relationships: [],
+    ambiguityDiagnostics: [
+      {
+        code: "ambiguous_role_association",
+        message:
+          "The role title and employer appear in interleaved columns and their association requires review.",
+        severity: "warning",
+        evidence: [
+          fixtureEvidenceOf(employer, "Northbeam Systems"),
+          fixtureEvidenceOf(role, "Streaming Infrastructure Engineer"),
+        ],
+        safeDetail:
+          "The flattened multi-column reading order interleaves the employer and role columns.",
+      },
+      {
+        code: "ambiguous_date",
+        message:
+          "The date span could belong to the role or to another section and requires review.",
+        severity: "warning",
+        evidence: [fixtureEvidenceOf(ambiguousDates, "2019 – Present")],
+        safeDetail:
+          "The date span is interleaved between the skills and education columns.",
+      },
+    ],
+    conflictDiagnostics: [],
+    privacyWarnings: [],
+  };
+}
+
+/**
+ * Expected semantic JSON for the canonical real-document
+ * prompt-instruction-like DOCX fixture
+ * (`docx-prompt-instruction-canonical-anonymous`, T246-C07). The instruction
+ * lines under "Additional notes" are ordinary untrusted document content:
+ * they produce no facts, do not alter the JSON schema, do not request tools
+ * or network operations, do not change authorization state or evidence
+ * paths, do not increase retries, do not change provider/model targets, do
+ * not expose credentials, and do not disable grounding or no-invention
+ * rules. Only the explicitly evidenced résumé facts are expected.
+ */
+function buildDocxPromptInstructionCanonicalResponse(
+  fragments: readonly SemanticParserSourceFragment[],
+): NuvitaeSemanticExtractionResponse {
+  const name = fixtureFragmentAt(fragments, 0);
+  const email = fixtureFragmentAt(fragments, 1);
+  const location = fixtureFragmentAt(fragments, 2);
+  const headline = fixtureFragmentAt(fragments, 3);
+  const summary = fixtureFragmentAt(fragments, 5);
+  const employer = fixtureFragmentAt(fragments, 7);
+  const role = fixtureFragmentAt(fragments, 8);
+  const dates = fixtureFragmentAt(fragments, 9);
+  const firstResponsibility = fixtureFragmentAt(fragments, 10);
+  const secondResponsibility = fixtureFragmentAt(fragments, 11);
+  const degree = fixtureFragmentAt(fragments, 13);
+  const institution = fixtureFragmentAt(fragments, 14);
+  const educationDates = fixtureFragmentAt(fragments, 15);
+  const skillsLine = fixtureFragmentAt(fragments, 17);
+  const languagesLine = fixtureFragmentAt(fragments, 19);
+
+  return {
+    schemaVersion: nuvitaeSemanticExtractionResponseVersion,
+    documentLanguage: {
+      value: "english",
+      confidence: "high",
+      evidence: [fixtureEvidenceOf(languagesLine, "English")],
+    },
+    sections: {
+      contact: {
+        fullName: fixtureSemanticValueOf(name, "Priya Raman-Example"),
+        email: fixtureSemanticValueOf(email, "priya.raman@example.invalid"),
+        phone: null,
+        location: fixtureSemanticValueOf(location, "Toronto, Canada"),
+        website: null,
+      },
+      headline: fixtureSemanticValueOf(headline, "Product Analyst"),
+      summary: fixtureSemanticValueOf(
+        summary,
+        "Product analyst who documents careful workflows and measures feature impact.",
+      ),
+      workExperience: [
+        {
+          candidateId: "work-1",
+          employerName: fixtureSemanticValueOf(employer, "Lumina Analytics"),
+          employerLocation: null,
+          roles: [
+            {
+              candidateId: "role-1",
+              title: fixtureSemanticValueOf(role, "Product Analyst"),
+              location: null,
+              startDate: fixtureSemanticValueOf(dates, "2021"),
+              endDate: null,
+              isOngoing: true,
+              responsibilities: [
+                fixtureSemanticValueOf(
+                  firstResponsibility,
+                  "Built review checklists for twelve demonstration cases.",
+                ),
+                fixtureSemanticValueOf(
+                  secondResponsibility,
+                  "Maintained data dictionaries for the analytics team.",
+                ),
+              ],
+              achievements: [],
+            },
+          ],
+        },
+      ],
+      education: [
+        {
+          candidateId: "education-1",
+          institution: fixtureSemanticValueOf(
+            institution,
+            "Northbridge University",
+          ),
+          degree: fixtureSemanticValueOf(degree, "BSc Economics"),
+          fieldOfStudy: null,
+          startDate: fixtureSemanticValueOf(educationDates, "2016"),
+          endDate: fixtureSemanticValueOf(educationDates, "2020"),
+          location: null,
+          details: [],
+        },
+      ],
+      skills: [
+        {
+          candidateId: "skill-1",
+          name: fixtureSemanticValueOf(skillsLine, "SQL"),
+          category: null,
+        },
+        {
+          candidateId: "skill-2",
+          name: fixtureSemanticValueOf(skillsLine, "Documentation"),
+          category: null,
+        },
+        {
+          candidateId: "skill-3",
+          name: fixtureSemanticValueOf(skillsLine, "Testing"),
+          category: null,
+        },
+      ],
+      languages: [
+        {
+          candidateId: "language-1",
+          name: fixtureSemanticValueOf(languagesLine, "English"),
+          proficiency: fixtureSemanticValueOf(languagesLine, "native"),
+        },
+        {
+          candidateId: "language-2",
+          name: fixtureSemanticValueOf(languagesLine, "French"),
+          proficiency: fixtureSemanticValueOf(languagesLine, "conversational"),
+        },
+      ],
+      projects: [],
+      certifications: [],
+      professionalLinks: [],
+    },
+    relationships: [
+      {
+        candidateId: "relationship-1",
+        relationshipType: "role_belongs_to_employer",
+        fromCandidateId: "role-1",
+        toCandidateId: "work-1",
+        evidence: [
+          fixtureEvidenceOf(employer, "Lumina Analytics"),
+          fixtureEvidenceOf(role, "Product Analyst"),
+        ],
+        confidence: "high",
+      },
+    ],
+    ambiguityDiagnostics: [],
+    conflictDiagnostics: [],
+    privacyWarnings: [],
+  };
+}
+
 export const expectedSemanticJsonById: Readonly<
   Record<SemanticParserFixtureId, NuvitaeSemanticExtractionResponse>
 > = {
@@ -1540,6 +2126,19 @@ export const expectedSemanticJsonById: Readonly<
   "docx-french-multi-column-anonymous": buildDocxFrenchMultiColumnResponse(
     fragmentsOf("docx-french-multi-column-anonymous"),
   ),
+  "pdf-bilingual-canonical-anonymous": buildPdfBilingualCanonicalResponse(
+    fragmentsOf("pdf-bilingual-canonical-anonymous"),
+  ),
+  "docx-partial-canonical-anonymous": buildDocxPartialCanonicalResponse(
+    fragmentsOf("docx-partial-canonical-anonymous"),
+  ),
+  "pdf-ambiguous-canonical-anonymous": buildPdfAmbiguousCanonicalResponse(
+    fragmentsOf("pdf-ambiguous-canonical-anonymous"),
+  ),
+  "docx-prompt-instruction-canonical-anonymous":
+    buildDocxPromptInstructionCanonicalResponse(
+      fragmentsOf("docx-prompt-instruction-canonical-anonymous"),
+    ),
 };
 
 export interface SemanticParserFixture extends SemanticParserFixtureInput {

@@ -210,6 +210,7 @@ unblocks T213-T215 Community connection-UI qualification, which remain
 incomplete.
 
 **Gaps that remain before production Community use (preserved honestly)**:
+
 - T201 is complete: C01-C03 passed canonical live validation; C04-B03 (corrected T208 deterministic-enrichment contract), C05-B01, and C06-B01 passed canonical live validation; C03 B01/B02 and C04 B01/B02 remain immutable failed historical attempts (C04 B01 failed under its original physical-coordinate contract; C04 B02 failed at credential recovery). Real PDF/DOCX semantic quality through live Codex is still not proven because the six T201 cases use synthetic fixtures (T246 is pending).
 - T202 (evaluation) was re-measured offline from the accepted evidence on 2026-08-06 (T244) and is recorded as MEASURED in `docs/research/codex-direct-oauth-evaluation.md` with a sanitized aggregate (`codex-direct-oauth-t202-metrics.json`): every evidence-supported metric passes; latency, cancellation, quota behavior, and non-technical onboarding feasibility remain explicitly unmeasured. The T203 gate was re-evaluated on 2026-08-06 and re-confirmed on 2026-08-07 after the accepted T245 lifecycle proof; it remains NO-GO for production adapter implementation (T245 trigger 1 satisfied; live real-document semantic quality T246 not run and is the next live gate; bounded-fallback wiring T217 partial; non-technical onboarding feasibility unmeasured). Re-evaluation triggers are defined in `docs/research/codex-direct-oauth-go-no-go.md`. No production GO exists.
 - The loopback OAuth callback is proven only for a local Docker host with a same-host browser. Remote, VPS, NAS, and headless self-hosting onboarding is unproven and is a significant open product question for the Docker-first Community distribution.
@@ -239,3 +240,32 @@ incomplete.
 **Rationale**: The previous task graph front-loaded deep US4/US6 hardening and a provider spike before any usable product existed. Community replaces that sequencing with five demoable vertical tranches (setup + real Codex import → credible resume + PDF → visual editor → reversible Codex editing → alpha readiness), each with backend, UI, recovery, responsive, Docker, and end-to-end demonstration criteria. Hardening tasks remain preserved but are deferred or scheduled after the visible product works.
 
 **Alternatives considered**: A hardening-first sequence was rejected because it produces no testable product for a non-technical user and delays the exact moment when the product promise becomes real.
+
+## Decision: Complete the T246 real-document corpus offline before any live authorization
+
+**Rationale**: T246 (live real-document Codex semantic evaluation) requires
+deterministic extraction transcripts and provenance as the Codex input for
+eight scenario categories. Before any live authorization, the missing five
+mandatory real-document fixtures were completed fully offline (T249,
+2026-08-07): a bilingual PDF, a partial/sparse DOCX, a structurally ambiguous
+multi-column PDF, a prompt-instruction-like DOCX, and a malformed PDF
+recovery case, each with a deterministic generator, a pinned corpus
+transcript, expected semantic JSON, and a fail-closed manifest. Formats were
+chosen to exercise distinct production behavior per the canonical contract:
+PDF for bilingual classification and multi-column interleaving, DOCX for
+sparse absence semantics and prompt-instruction isolation, and PDF for the
+malformed recovery case. The dedicated T246 authorization registry,
+validator, offline-safe runner, and incomplete aggregator are implemented
+with every entry NOT_AUTHORIZED. C08 is a recovery-only case: it consumes
+zero Codex requests, so the exact future request budget is 7 semantic cases
+plus 1 non-semantic recovery case (total maximum future Codex requests: 7).
+No live execution, OAuth, provider, network, or credential access was
+performed, T246 remains incomplete, and T203 remains NO-GO.
+
+**Alternatives considered**: Running T246 against the synthetic T201 corpus
+or authorizing live requests before the real-document corpus was pinned was
+rejected because it would not measure real PDF/DOCX semantic quality and
+would bypass the mandatory fail-closed hash verification. Committing opaque
+manually-created binaries without reproducible generators was rejected
+because the repository convention requires deterministic generator sources
+for every fixture.

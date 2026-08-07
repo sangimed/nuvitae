@@ -1,0 +1,41 @@
+{
+  "evidence_classification": "t246_aggregate",
+  "status": "INCOMPLETE",
+  "all_cases_passed": false,
+  "accepted_live_evidence_count": 0,
+  "semantic_cases": [
+    {
+      "case_id": "T246-C01",
+      "accepted": false
+    },
+    {
+      "case_id": "T246-C02",
+      "accepted": false
+    },
+    {
+      "case_id": "T246-C03",
+      "accepted": false
+    },
+    {
+      "case_id": "T246-C04",
+      "accepted": false
+    },
+    {
+      "case_id": "T246-C05",
+      "accepted": false
+    },
+    {
+      "case_id": "T246-C06",
+      "accepted": false
+    },
+    {
+      "case_id": "T246-C07",
+      "accepted": false
+    }
+  ],
+  "recovery_case": {
+    "case_id": "T246-C08",
+    "accepted": false
+  },
+  "note": "Offline T246 corpus is prepared; live execution remains NOT AUTHORIZED. This aggregator stays incomplete until accepted live evidence exists."
+}

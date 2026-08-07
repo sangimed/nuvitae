@@ -1,0 +1,270 @@
+{
+  "schema_version": 1,
+  "t246_case": "T246-C01",
+  "fixture_id": "pdf-french-canonical-anonymous",
+  "fixture_classification": "real_document",
+  "fixture_path": "tests/fixtures/resumes/anonymous-french-resume.pdf",
+  "fixture_sha256": "51593da159285371b05919700ced3e8ed2be666f1b24482b504c48c579e0cf3e",
+  "transcript_sha256": "496bb2335d6ef5b65038aa227a1cd908eb02535413ccec408b5a499f16e5ee77",
+  "expected_semantic_json_sha256": "6a9a6bf9d4d2960f7ee742f3f042ee26befd485f0e59e156ebbb5a52cfd00f95",
+  "document_language": "French",
+  "language_category": "french",
+  "source_format_category": "pdf-derived-text",
+  "layout_category": "single-column",
+  "extraction_format": {
+    "kind": "deterministic_pdf_text",
+    "coordinate_system": "one_based_line_zero_based_utf8_offset",
+    "binary_extraction_performed": true,
+    "reading_order_artifact": "single_column",
+    "contract_version": 2
+  },
+  "expected_section_counts": {
+    "basics": 1,
+    "work_experiences": 1,
+    "education": 1,
+    "skills": 3,
+    "languages": 2,
+    "certifications": 1
+  },
+  "expected_item_counts": {
+    "work_experience_highlights": 2,
+    "warnings_or_ambiguities_minimum": 1
+  },
+  "exact_facts": [
+    {
+      "path": "basics.full_name",
+      "value": "Léa Dupont-Exemple",
+      "priority": "high",
+      "line": 1,
+      "category": "basics"
+    },
+    {
+      "path": "basics.headline",
+      "value": "Ingénieure Systèmes",
+      "priority": "high",
+      "line": 2,
+      "category": "basics"
+    },
+    {
+      "path": "basics.email",
+      "value": "lea.exemple@example.invalid",
+      "priority": "high",
+      "line": 3,
+      "category": "basics"
+    },
+    {
+      "path": "basics.location",
+      "value": "Nantes, France",
+      "priority": "high",
+      "line": 4,
+      "category": "basics"
+    },
+    {
+      "path": "basics.summary",
+      "value": "Ingénieure systèmes qui simplifie des processus d'approbation fictifs.",
+      "priority": "medium",
+      "line": 6,
+      "category": "basics"
+    },
+    {
+      "path": "work_experiences[0].employer",
+      "value": "Atelier Fictif Lumière (employeur fictif)",
+      "priority": "high",
+      "line": 8,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].job_title",
+      "value": "Ingénieure Systèmes",
+      "priority": "high",
+      "line": 9,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].start_date",
+      "value": "avril 2022",
+      "priority": "high",
+      "line": 10,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].end_date",
+      "value": "décembre 2024",
+      "priority": "high",
+      "line": 10,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].highlights[0]",
+      "value": "A cartographié 18 parcours d'approbation fictifs.",
+      "priority": "medium",
+      "line": 11,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].highlights[1]",
+      "value": "A écrit des vérifications JSON pour 300 enregistrements fictifs.",
+      "priority": "medium",
+      "line": 12,
+      "category": "work"
+    },
+    {
+      "path": "education[0].school",
+      "value": "Institut de Design Fictif",
+      "priority": "high",
+      "line": 15,
+      "category": "education"
+    },
+    {
+      "path": "education[0].degree",
+      "value": "Diplôme en Design de Systèmes",
+      "priority": "high",
+      "line": 16,
+      "category": "education"
+    },
+    {
+      "path": "education[0].start_date",
+      "value": "2019",
+      "priority": "medium",
+      "line": 17,
+      "category": "education"
+    },
+    {
+      "path": "education[0].end_date",
+      "value": "2022",
+      "priority": "medium",
+      "line": 17,
+      "category": "education"
+    },
+    {
+      "path": "skills[0]",
+      "value": "JSON",
+      "priority": "high",
+      "line": 18,
+      "category": "skills"
+    },
+    {
+      "path": "skills[1]",
+      "value": "Cartographie",
+      "priority": "high",
+      "line": 18,
+      "category": "skills"
+    },
+    {
+      "path": "skills[2]",
+      "value": "Tests",
+      "priority": "high",
+      "line": 18,
+      "category": "skills"
+    },
+    {
+      "path": "languages[0].name",
+      "value": "Français",
+      "priority": "high",
+      "line": 19,
+      "category": "languages"
+    },
+    {
+      "path": "languages[0].proficiency",
+      "value": "courant",
+      "priority": "high",
+      "line": 19,
+      "category": "languages"
+    },
+    {
+      "path": "languages[1].name",
+      "value": "Anglais",
+      "priority": "high",
+      "line": 19,
+      "category": "languages"
+    },
+    {
+      "path": "languages[1].proficiency",
+      "value": "professionnel",
+      "priority": "high",
+      "line": 19,
+      "category": "languages"
+    },
+    {
+      "path": "certifications[0].name",
+      "value": "Médaille fictive de sécurité",
+      "priority": "high",
+      "line": 20,
+      "category": "certifications"
+    },
+    {
+      "path": "certifications[0].date",
+      "value": "2024",
+      "priority": "medium",
+      "line": 20,
+      "category": "certifications"
+    }
+  ],
+  "high_priority_fact_paths": [
+    "basics.full_name",
+    "basics.headline",
+    "basics.email",
+    "basics.location",
+    "work_experiences[0].employer",
+    "work_experiences[0].job_title",
+    "work_experiences[0].start_date",
+    "work_experiences[0].end_date",
+    "education[0].school",
+    "education[0].degree",
+    "skills[0]",
+    "skills[1]",
+    "skills[2]",
+    "languages[0].name",
+    "languages[0].proficiency",
+    "languages[1].name",
+    "languages[1].proficiency",
+    "certifications[0].name"
+  ],
+  "intentionally_absent_fields": [
+    "basics.phone",
+    "basics.website",
+    "work_experiences[0].location",
+    "work_experiences[0].employment_type",
+    "education[0].grade",
+    "education[0].field_of_study",
+    "education[0].location",
+    "projects",
+    "professional_links"
+  ],
+  "absence_evidence": {
+    "line": 21,
+    "fragment": "ABSENT : téléphone, lieu de l'employeur, mention, émetteur, type d'emploi.",
+    "category": "absence"
+  },
+  "ambiguous_facts": [
+    {
+      "id": "ambiguous-quoted-claim",
+      "source_line": 13,
+      "text": "Résilience opérationnelle",
+      "expected_handling": "Surface the quoted claim as an ambiguous grouping diagnostic; do not convert it into a hard fact or a defined-scope achievement.",
+      "category": "ambiguity"
+    }
+  ],
+  "forbidden_inferences": [
+    {
+      "id": "invented-french-contact-and-scope",
+      "forbidden_values": [
+        "téléphone",
+        "site web",
+        "CDI",
+        "full-time",
+        "manager",
+        "honors"
+      ]
+    }
+  ],
+  "provenance_contract": {
+    "flattened_coordinates": "one_based_line_zero_based_utf8_offset",
+    "deterministic_enrichment": "pdf page/item/physical offsets via the T208 deterministic provenance enrichment path",
+    "model_physical_coordinates_rejected": true
+  },
+  "thresholds": {
+    "minimum_exact_fact_recall": 0.9,
+    "required_high_priority_fact_recall": 1
+  }
+}

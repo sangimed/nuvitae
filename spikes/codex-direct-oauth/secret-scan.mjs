@@ -22,24 +22,33 @@ const ignoredSourceLines = [
   "refresh_token: refreshToken",
   "refresh_token: refreshToken,",
   "code=syntheticAuthorizationCode123",
-  "accessToken: \"synthetic-access\"",
-  "accessToken: \"a\"",
+  'accessToken: "synthetic-access"',
+  'accessToken: "a"',
   "accessToken: credential.access_token",
-  "accountIdentifier: \"synthetic-account\"",
-  "accountIdentifier: \"b\"",
-  "authorization, \"Bearer synthetic-access\"",
+  'accountIdentifier: "synthetic-account"',
+  'accountIdentifier: "b"',
+  'authorization, "Bearer synthetic-access"',
   "alex.exemple@example.invalid",
   "camille.exemple@example.invalid",
   "dana.example@example.invalid",
   "eli.synthetic@example.invalid",
   "noor.fiction@example.invalid",
   "rowan.sample@example.invalid",
+  "lea.exemple@example.invalid",
+  "jordan.avery@example.test",
+  "maya.chen@example.test",
+  "anais.moreau@example.invalid",
+  "ethan.brooks@example.invalid",
+  "amir.hussain@example.invalid",
+  "priya.raman@example.invalid",
 ];
 
 function removeAllowlistedSourceLines(text) {
   return text
     .split("\n")
-    .filter((line) => !ignoredSourceLines.some((allowed) => line.includes(allowed)))
+    .filter(
+      (line) => !ignoredSourceLines.some((allowed) => line.includes(allowed)),
+    )
     .join("\n");
 }
 
@@ -52,7 +61,7 @@ async function filesUnder(target) {
   for (const entry of entries) {
     if (entry.name === "node_modules" || entry.name === ".git") continue;
     if (ignoredSegments.has(entry.name)) continue;
-    results.push(...await filesUnder(path.join(target, entry.name)));
+    results.push(...(await filesUnder(path.join(target, entry.name))));
   }
   return results;
 }

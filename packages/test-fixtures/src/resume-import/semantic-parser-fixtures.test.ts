@@ -170,6 +170,10 @@ describe("T169 semantic parser fixtures", () => {
       "docx-bilingual-anonymous",
       "pdf-english-multi-column-anonymous",
       "docx-french-multi-column-anonymous",
+      "pdf-bilingual-canonical-anonymous",
+      "docx-partial-canonical-anonymous",
+      "pdf-ambiguous-canonical-anonymous",
+      "docx-prompt-instruction-canonical-anonymous",
     ]);
     const languageFormat = new Set<string>();
     const formatLayout = new Set<string>();

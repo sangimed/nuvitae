@@ -1,0 +1,256 @@
+{
+  "schema_version": 1,
+  "t246_case": "T246-C03",
+  "fixture_id": "docx-english-anonymous",
+  "fixture_classification": "real_document",
+  "fixture_path": "tests/fixtures/resumes/semantic-vertical-slice-maya-chen.docx",
+  "fixture_sha256": "fd68340af64a7250cd253e44d726873275caa95c89123cce57375decd753802a",
+  "transcript_sha256": "16e4e2daa3fdb5bc33bd94124e0645b626bdd1acd64f22a6a7f75088e6131120",
+  "expected_semantic_json_sha256": "ce484536af1786001e92272870ada408b2d41c462b8bd84dcbdc6957df6f163c",
+  "document_language": "English",
+  "language_category": "english",
+  "source_format_category": "docx-derived-text",
+  "layout_category": "structural-artifacts",
+  "extraction_format": {
+    "kind": "deterministic_ooxml_text",
+    "coordinate_system": "one_based_line_zero_based_utf8_offset",
+    "binary_extraction_performed": true,
+    "source_locations": "package part/paragraph/run metadata",
+    "contract_version": 2
+  },
+  "expected_section_counts": {
+    "basics": 1,
+    "work_experiences": 2,
+    "education": 0,
+    "skills": 4,
+    "languages": 2,
+    "certifications": 0
+  },
+  "expected_item_counts": {
+    "work_experience_highlights": 2,
+    "warnings_or_ambiguities_minimum": 1
+  },
+  "exact_facts": [
+    {
+      "path": "basics.full_name",
+      "value": "Maya Chen",
+      "priority": "high",
+      "line": 1,
+      "category": "basics"
+    },
+    {
+      "path": "basics.email",
+      "value": "maya.chen@example.test",
+      "priority": "high",
+      "line": 2,
+      "category": "basics"
+    },
+    {
+      "path": "basics.location",
+      "value": "Lyon, France",
+      "priority": "high",
+      "line": 3,
+      "category": "basics"
+    },
+    {
+      "path": "basics.headline",
+      "value": "Product Designer",
+      "priority": "high",
+      "line": 4,
+      "category": "basics"
+    },
+    {
+      "path": "basics.summary",
+      "value": "Product designer focused on design systems and accessibility.",
+      "priority": "medium",
+      "line": 6,
+      "category": "basics"
+    },
+    {
+      "path": "work_experiences[0].employer",
+      "value": "Acme Studio",
+      "priority": "high",
+      "line": 8,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].job_title",
+      "value": "Product Designer",
+      "priority": "high",
+      "line": 9,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].start_date",
+      "value": "2019",
+      "priority": "high",
+      "line": 10,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].highlights[0]",
+      "value": "Shipped the design system used by twelve product teams.",
+      "priority": "medium",
+      "line": 11,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[1].employer",
+      "value": "Bright Labs",
+      "priority": "high",
+      "line": 12,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[1].job_title",
+      "value": "Senior Product Designer",
+      "priority": "high",
+      "line": 13,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[1].start_date",
+      "value": "2022",
+      "priority": "high",
+      "line": 14,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[1].end_date",
+      "value": "Present",
+      "priority": "high",
+      "line": 14,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[1].highlights[0]",
+      "value": "Lead design reviews and user research for the mobile app.",
+      "priority": "medium",
+      "line": 15,
+      "category": "work"
+    },
+    {
+      "path": "skills[0]",
+      "value": "Figma",
+      "priority": "high",
+      "line": 17,
+      "category": "skills"
+    },
+    {
+      "path": "skills[1]",
+      "value": "Prototyping",
+      "priority": "high",
+      "line": 17,
+      "category": "skills"
+    },
+    {
+      "path": "skills[2]",
+      "value": "Design Systems",
+      "priority": "high",
+      "line": 17,
+      "category": "skills"
+    },
+    {
+      "path": "skills[3]",
+      "value": "Accessibility",
+      "priority": "high",
+      "line": 17,
+      "category": "skills"
+    },
+    {
+      "path": "languages[0].name",
+      "value": "French",
+      "priority": "high",
+      "line": 19,
+      "category": "languages"
+    },
+    {
+      "path": "languages[0].proficiency",
+      "value": "native",
+      "priority": "high",
+      "line": 19,
+      "category": "languages"
+    },
+    {
+      "path": "languages[1].name",
+      "value": "English",
+      "priority": "high",
+      "line": 19,
+      "category": "languages"
+    },
+    {
+      "path": "languages[1].proficiency",
+      "value": "professional",
+      "priority": "high",
+      "line": 19,
+      "category": "languages"
+    }
+  ],
+  "high_priority_fact_paths": [
+    "basics.full_name",
+    "basics.email",
+    "basics.location",
+    "basics.headline",
+    "work_experiences[0].employer",
+    "work_experiences[0].job_title",
+    "work_experiences[0].start_date",
+    "work_experiences[1].employer",
+    "work_experiences[1].job_title",
+    "work_experiences[1].start_date",
+    "work_experiences[1].end_date",
+    "skills[0]",
+    "skills[1]",
+    "skills[2]",
+    "skills[3]",
+    "languages[0].name",
+    "languages[0].proficiency",
+    "languages[1].name",
+    "languages[1].proficiency"
+  ],
+  "intentionally_absent_fields": [
+    "basics.phone",
+    "basics.website",
+    "work_experiences[0].location",
+    "work_experiences[0].employment_type",
+    "work_experiences[0].end_date",
+    "work_experiences[1].location",
+    "work_experiences[1].employment_type",
+    "education",
+    "education[0].grade",
+    "certifications",
+    "certifications[0].issuer",
+    "professional_links"
+  ],
+  "ambiguous_facts": [
+    {
+      "id": "ambiguous-docx-role-end-date",
+      "source_line": 10,
+      "text": "2019/2021",
+      "expected_handling": "Record the start year 2019, leave the role end date null, and surface an ambiguous_date diagnostic.",
+      "category": "ambiguity"
+    }
+  ],
+  "forbidden_inferences": [
+    {
+      "id": "docx-structural-inference",
+      "forbidden_values": [
+        "phone",
+        "https://",
+        "honors",
+        "manager",
+        "full-time",
+        "+1",
+        "education"
+      ]
+    }
+  ],
+  "provenance_contract": {
+    "flattened_coordinates": "one_based_line_zero_based_utf8_offset",
+    "deterministic_enrichment": "docx package part/paragraph/run character offsets via the T208 deterministic provenance enrichment path",
+    "model_physical_coordinates_rejected": true
+  },
+  "thresholds": {
+    "minimum_exact_fact_recall": 0.9,
+    "required_high_priority_fact_recall": 1
+  }
+}
