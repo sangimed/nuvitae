@@ -34,7 +34,10 @@ import type { ResumeSemanticParseRequest } from "@nuvitae/contracts";
  * T188 module re-exports it so callers keep one import surface.
  */
 export { limitedDeterministicFallbackProviderTriggers } from "@nuvitae/contracts";
-export type { LimitedDeterministicFallbackProviderTrigger };
+export type {
+  LimitedDeterministicFallbackOutcome,
+  LimitedDeterministicFallbackProviderTrigger,
+};
 
 export interface LimitedDeterministicPartialFallbackInput {
   /**

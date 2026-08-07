@@ -141,6 +141,7 @@ describe("ImportProcessingProcessor", () => {
     expect(queue.add).toHaveBeenCalledTimes(2);
     expect(queue.add.mock.calls[0]?.[2]).toMatchObject({
       jobId: `import-${importId}-extraction-v1`,
+      attempts: 1,
     });
   });
 

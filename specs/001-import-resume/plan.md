@@ -191,9 +191,9 @@ Codex-specific OAuth, tokens, backend routes, request headers, response types, a
 
 **Current spike status (2026-08-05, historical)**: T196 (upstream audit), T197 (security design), T198 (browser OAuth login proof, local Docker Desktop same-host mode), T199 (encrypted credential lifecycle: persistence, refresh, single-flight, logout, deletion), and T200 (minimal direct invocation, HTTP 200 + valid SSE) are complete and are reusable evidence for the Community path. The 2026-08-05 qualification run implemented the T208 deterministic-enrichment contract in the spike (deterministic offline matrix passes 6/6 under the corrected contract; historical evidence unchanged), registered C04-B02/B03, C05-B01, and C06-B01 Campaign-B attempts, and recorded the T203 gate decision as NO-GO for production adapter implementation at this time because no valid ChatGPT/Codex session existed on the host (C04-C06 live cases not executable; fresh browser login blocked). T201 was incomplete at that time: C01-C03 passed canonical live validation, C04 B01 remained a failed immutable attempt under its original physical-coordinate contract, and C05-C06 were unexecuted. T202 was recorded as BLOCKED. T164/T165 production adapter tasks remained incomplete and blocked by the T203 NO-GO. This block is preserved as historical context.
 
-**Current spike status (2026-08-06)**: T196-T200 are complete and reusable. T243 executed the registered Campaign-B attempts: C04-B02 failed immutably at credential recovery (`transport_failure`); C04-B03 (corrected T208 contract), C05-B01, and C06-B01 passed canonical live validation. The T201 semantic matrix is complete and all-passing (`matrix_state: all_cases_live_passed`; authoritative aggregate `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-matrix.json`). T202 has been re-measured offline from the accepted evidence by the deterministic evaluator `spikes/codex-direct-oauth/lib/t202-evaluator.mjs`: every evidence-supported metric passes; latency, cancellation, quota behavior, and non-technical onboarding feasibility remain explicitly unmeasured (canonical record `docs/research/codex-direct-oauth-evaluation.md`, sanitized aggregate `codex-direct-oauth-t202-metrics.json`). The T203 gate was re-evaluated on 2026-08-06 and remains **NO-GO** for production adapter implementation: the mandatory real-document live Codex semantic gate (T246) is not run, bounded-fallback wiring (T217) is partial, and non-technical onboarding feasibility is unmeasured. T164/T165 remain incomplete and blocked by the NO-GO.
+**Historical spike status (2026-08-06)**: T196-T200 are complete and reusable. T243 executed the registered Campaign-B attempts: C04-B02 failed immutably at credential recovery (`transport_failure`); C04-B03 (corrected T208 contract), C05-B01, and C06-B01 passed canonical live validation. The T201 semantic matrix is complete and all-passing (`matrix_state: all_cases_live_passed`; authoritative aggregate `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-matrix.json`). T202 has been re-measured offline from the accepted evidence by the deterministic evaluator `spikes/codex-direct-oauth/lib/t202-evaluator.mjs`: every evidence-supported metric passes; latency, cancellation, quota behavior, and non-technical onboarding feasibility remain explicitly unmeasured (canonical record `docs/research/codex-direct-oauth-evaluation.md`, sanitized aggregate `codex-direct-oauth-t202-metrics.json`). The T203 gate was re-evaluated on 2026-08-06 and remains **NO-GO** for production adapter implementation: the mandatory real-document live Codex semantic gate (T246) was not yet run, bounded-fallback wiring (T217) was partial, and non-technical onboarding feasibility was unmeasured. T164/T165 remain incomplete and blocked by the NO-GO.
 
-**Current spike status (2026-08-07)**: T245 completed and was accepted on
+**Historical spike status (2026-08-07)**: T245 completed and was accepted on
 2026-08-07: fresh browser OAuth login, callback completion,
 `connection_status_after_callback: connected`, encrypted persistence, restart
 recovery, successful invocation after restart (T200, exact HTTP 200), live
@@ -206,9 +206,22 @@ require it). Authoritative aggregate:
 T245 satisfies T203 re-evaluation trigger 1 and unblocks T213-T215 Community
 connection-UI qualification, which remain incomplete. The T203 gate was
 re-confirmed on 2026-08-07 as **NO-GO** for production adapter implementation.
-Remaining blockers: T246 real-document live Codex semantic evaluation (the next
-live gate), T217 bounded-fallback wiring, and non-technical onboarding
-validation (unmeasured). T164/T165 remain incomplete and blocked by the NO-GO.
+At that point the remaining blockers were T246 real-document live Codex
+semantic evaluation, T217 bounded-fallback wiring, and non-technical onboarding
+validation; the current status is recorded below. T164/T165 remain incomplete
+and blocked by the NO-GO.
+
+**Current spike status (2026-08-08)**: T217 bounded-fallback production
+wiring is complete. The worker now performs at most one primary provider call
+and one local deterministic fallback execution, classifies failures through the
+closed provider vocabulary, preserves semantic-quality failures as terminal,
+and atomically persists at most one threshold-qualified partial draft. Queue
+redelivery is limited to one delivery, and the API/UI expose a safe
+provider-neutral terminal state when recovery cannot produce a draft. Focused
+worker/application/UI tests, Docker-backed import persistence and security
+tests, and offline T246 regression tests pass. The T203 decision remains
+**NO-GO** because T246 is finalized as FAILED on semantic recall (C01/C04)
+and non-technical onboarding feasibility remains unmeasured.
 
 The spike order is mandatory:
 
@@ -305,7 +318,7 @@ The implementation is organized as vertical slices (tranches), not infrastructur
 
 - Provider-independent contracts, validation, grounding, persistence, review, confirmation, recovery, and fallback work may continue independently.
 - The Community product decision (2026-08-05) reclassifies direct Codex OAuth as the production primary AI path and MVP-critical, and the validated T196-T200 spike evidence is reusable for that path. The T201 semantic matrix is complete and T202 is measured. It still does not authorize production code: Codex-specific production adapter work remains blocked until the direct-OAuth spike records a GO or qualifying CONDITIONAL GO with its mandatory conditions satisfied (T203), and T164/T165 remain incomplete.
-- T245 (credential lifecycle proof) is accepted as of 2026-08-07 and satisfies T203 re-evaluation trigger 1; T213-T215 are unblocked by T245 but remain incomplete. T246 (real-document live Codex semantic evaluation) is the next remaining live gate; its prerequisites T248 (real French PDF proof), T247 (T208 bookkeeping closure), and T249 (complete offline corpus) are satisfied. Post-live status (2026-08-07): T246-C01-A01 was executed exactly once (backend invocation succeeded, every semantic metric passed, runner finalization failed due to implementation defects) and is CONSUMED and must not be rerun. T246-C01-A02 was executed exactly once, is the first harness-valid C01 semantic attempt, and is CONSUMED after a valid semantic failure (23/24 exact facts, 17/18 high-priority facts; root cause INDETERMINATE); C02-C08 remain NOT_AUTHORIZED; T246 remains INCOMPLETE. The existing contract does not state whether a separately authorized A03 after a valid semantic failure is a replacement, additional sample, or prohibited; policy clarification is required before any such authorization.
+- T245 (credential lifecycle proof) is accepted as of 2026-08-07 and satisfies T203 re-evaluation trigger 1; T213-T215 are unblocked by T245 but remain incomplete. T246 is finalized as FAILED / qualification not passed; its C01/C04 semantic failures remain terminal and must not be retried. T217 bounded-fallback production wiring is complete as of 2026-08-08, with the worker-owned one-call budget, deterministic partial path, idempotent persistence, and provider-neutral UI/status recovery validated offline and through Docker-backed persistence/security tests. Non-technical onboarding feasibility remains unmeasured; T164/T165 remain blocked by the NO-GO.
 - Existing app-server production planning must not be implemented based on the completed T189-T195 result.
 - Direct-OAuth production Codex integration work requires a GO or qualifying CONDITIONAL GO from the new spike; until then, Community-critical OAuth wiring tasks (connection UI, status, reconnect/disconnect, broker lifecycle integration, provider recovery) may proceed against the provider-neutral boundary and the validated broker evidence, while adapter implementation stays gated.
 - The second spike does not implement production provider integration.
@@ -324,7 +337,7 @@ The implementation is organized as vertical slices (tranches), not infrastructur
 - Whether Codex can reliably return strict structured output with stable evidence references from synthetic extracted text plus source identifiers.
 - Whether latency, cancellation, and evidence quality are good enough for the 3-minute foreground import expectation.
 - Community-specific: whether the Codex OAuth loopback-callback flow, proven only for local Docker Desktop with a same-host browser, can be made usable for Community self-hosters on remote hosts, VPS, NAS, or headless environments, and what the supported Community connection modes are.
-- Community-specific: the T201 matrix is now closed (C04 under the corrected deterministic-enrichment contract, C05, and C06 all pass) and T245 is accepted (2026-08-07), but T203 remains NO-GO after the 2026-08-07 re-evaluation because live Codex semantic quality over real PDF/DOCX documents (T246), bounded-fallback wiring (T217), and non-technical onboarding validation remain unexecuted; until T203 records GO or a qualifying CONDITIONAL GO, T164/T165 remain blocked.
+- Community-specific: the T201 matrix is closed (C04 under the corrected deterministic-enrichment contract, C05, and C06 all pass), T245 is accepted (2026-08-07), T246 is finalized as FAILED on C01/C04 semantic recall, and T217 bounded-fallback production wiring is complete (2026-08-08). T203 remains NO-GO after the 2026-08-08 re-evaluation because the T246 qualification failed and non-technical onboarding validation remains unmeasured; until T203 records GO or a qualifying CONDITIONAL GO, T164/T165 remain blocked.
 - Community-specific: whether one authoritative semantic path through Codex meets the Community product quality bar and whether invocation latency and usage stay within the self-hosted user's own Codex/ChatGPT subscription and the 3-minute import window.
 
 ### Container Artifacts (repository root)

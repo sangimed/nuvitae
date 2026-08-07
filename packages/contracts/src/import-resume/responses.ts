@@ -40,6 +40,7 @@ const errorCategorySchema = z.enum([
   "parser_memory_limit",
   "cancelled",
   "expired",
+  "provider_unavailable",
   "terminal_failure",
 ]);
 

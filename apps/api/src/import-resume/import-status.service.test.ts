@@ -144,11 +144,11 @@ describe("ImportStatusService", () => {
       status: "terminal_processing_failure",
       progressKnown: false,
       failure: {
-        code: "terminal_failure",
+        code: "provider_unavailable",
         retryable: false,
-        recoveryActions: ["replace_upload", "manual_entry"],
+        recoveryActions: ["manual_entry"],
       },
-      allowedRecoveryActions: ["replace_upload", "manual_entry"],
+      allowedRecoveryActions: ["manual_entry"],
     });
     expect(response.failure?.userMessage).not.toMatch(
       /provider|parser|storage/i,

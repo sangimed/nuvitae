@@ -176,15 +176,15 @@ export class ImportStatusService {
         status: "terminal_processing_failure",
         progressKnown: false,
         failure: {
-          code: "terminal_failure",
+          code: "provider_unavailable",
           retryable: false,
-          recoveryActions: ["replace_upload", "manual_entry"],
+          recoveryActions: ["manual_entry"],
           userMessage:
-            "Reliable resume parsing is not available on this server right now. Upload a different file or enter your resume manually.",
+            "A reviewable draft could not be created. Enter your resume manually to continue.",
         },
-        allowedRecoveryActions: ["replace_upload", "manual_entry"],
+        allowedRecoveryActions: ["manual_entry"],
         userMessage:
-          "We could not prepare this resume for review. Upload a different file or enter your resume manually.",
+          "We could not prepare this resume for review. Enter your resume manually to continue.",
       });
     }
 

@@ -165,8 +165,10 @@ export class ImportProcessingProcessor extends WorkerHost {
         extractionPayload,
         {
           jobId: importResumeJobId(document.id, "extraction"),
-          attempts: 3,
-          backoff: { type: "exponential", delay: 500 },
+          // Semantic/provider budget is owned by SemanticImportProcessor.
+          // Queue redelivery must not silently create extra provider calls or
+          // rerun the bounded deterministic fallback.
+          attempts: 1,
           removeOnComplete: { age: 300, count: 100 },
           removeOnFail: { age: 900, count: 100 },
         },

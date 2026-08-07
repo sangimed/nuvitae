@@ -198,7 +198,7 @@ describe("semantic parser worker integration", () => {
     expect(drafts.length).toBe(1);
   });
 
-  it("creates no draft and fails closed when the provider reports an error, with privacy-safe provider-neutral logging", async () => {
+  it("runs the bounded fallback when the provider reports an eligible error, with privacy-safe provider-neutral logging", async () => {
     const harness = createHarness(dataSource, {
       provider: failingProvider("provider_unavailable"),
     });
@@ -210,8 +210,8 @@ describe("semantic parser worker integration", () => {
       importedDocumentId: importId,
     });
 
-    await expectStatus(importId, "provider_unavailable");
-    await expectDraftCount(importId, 0);
+    await expectStatus(importId, "ready_for_review");
+    await expectDraftCount(importId, 1);
     await expectStructuredResumeCount(importId, 0);
     const serialized = JSON.stringify(harness.logs);
     expect(serialized).not.toContain("Jordan Avery");
@@ -224,7 +224,7 @@ describe("semantic parser worker integration", () => {
     expect(serialized).not.toContain("sections");
   });
 
-  it("creates no draft when no provider is configured and never falls back to the deterministic extractor", async () => {
+  it("uses the bounded fallback when no provider is configured", async () => {
     const harness = createHarness(dataSource, { provider: undefined });
     const importId = nextImportId();
     await seedImport(harness.repository, "pdf", importId);
@@ -234,8 +234,8 @@ describe("semantic parser worker integration", () => {
       importedDocumentId: importId,
     });
 
-    await expectStatus(importId, "provider_unavailable");
-    await expectDraftCount(importId, 0);
+    await expectStatus(importId, "ready_for_review");
+    await expectDraftCount(importId, 1);
     await expectStructuredResumeCount(importId, 0);
   });
 
@@ -271,8 +271,15 @@ describe("semantic parser worker integration", () => {
         importedDocumentId: importId,
       });
 
-      await expectStatus(importId, "semantic_validation_failed");
-      await expectDraftCount(importId, 0);
+      const protocolFailure =
+        expectedCategory === "schema" ||
+        (_label === "malformed flattened evidence" &&
+          expectedCategory === "evidence");
+      await expectStatus(
+        importId,
+        protocolFailure ? "ready_for_review" : "semantic_validation_failed",
+      );
+      await expectDraftCount(importId, protocolFailure ? 1 : 0);
       await expectStructuredResumeCount(importId, 0);
     },
   );

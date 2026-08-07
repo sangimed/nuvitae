@@ -1,10 +1,18 @@
 import { randomUUID } from "node:crypto";
-import type { NuvitaeSemanticExtractionResponse } from "@nuvitae/contracts";
+import type {
+  NuvitaeSemanticExtractionResponse,
+  ResumeSemanticParseRequest,
+} from "@nuvitae/contracts";
 import {
   resumeSemanticParserContractVersion,
   resumeSemanticParseRequestSchema,
 } from "@nuvitae/contracts";
-import { buildExtractionDraft, type ImportedDocument } from "@nuvitae/domain";
+import {
+  buildExtractionDraft,
+  type DeterministicResumeFieldCandidate,
+  type DeterministicWarningCandidate,
+  type ImportedDocument,
+} from "@nuvitae/domain";
 import {
   fragmentsFromDocx,
   fragmentsFromPdf,
@@ -19,11 +27,14 @@ import {
   consumesProcessingCapacity,
   generateSemanticWarnings,
   mapSemanticCandidates,
+  runLimitedDeterministicPartialFallback,
   serializeSemanticValidationDiagnostic,
   validateSemanticResponse,
   type ImportEventEmitter,
   type ImportEventMetadataFor,
   type ImportProcessingCapacityPort,
+  type LimitedDeterministicFallbackOutcome,
+  type LimitedDeterministicFallbackProviderTrigger,
   type ResumeSemanticParserProvider,
 } from "@nuvitae/import-application";
 import type {
@@ -47,6 +58,18 @@ export interface SemanticImportProcessorPorts {
 export interface SemanticImportLogger {
   emit: ImportEventEmitter["emit"];
 }
+
+/**
+ * T217's application-owned semantic call budget. The deterministic fallback
+ * is local and bounded; it never invokes a second provider or schedules a
+ * provider retry.
+ */
+export const T217_SEMANTIC_FALLBACK_BUDGET = {
+  maximumPrimaryProviderAttempts: 1,
+  maximumFallbackAttempts: 1,
+  maximumTotalSemanticProviderCalls: 1,
+  automaticProviderRetry: false,
+} as const;
 
 export class SemanticImportProcessor {
   private readonly clock: { now(): Date };
@@ -88,19 +111,6 @@ export class SemanticImportProcessor {
 
     await this.transition(document, "semantic_parsing_pending");
     await this.transition(document, "semantic_parsing_running");
-    if (!this.ports.provider) {
-      await this.transition(document, "provider_unavailable");
-      this.emitSemanticOutcome(
-        document,
-        started,
-        "provider_unavailable",
-        true,
-        0,
-        0,
-        input.correlationId,
-      );
-      return;
-    }
 
     try {
       const extracted = await this.readAndNormalize(
@@ -143,6 +153,28 @@ export class SemanticImportProcessor {
         );
         return;
       }
+
+      if (!this.ports.provider) {
+        this.emitSemanticOutcome(
+          document,
+          started,
+          "not_configured",
+          false,
+          0,
+          0,
+          input.correlationId,
+        );
+        await this.runFallbackOrLeaveTerminal(
+          document,
+          requestResult.data,
+          extracted.fragments,
+          "no_provider",
+          started,
+          input,
+        );
+        return;
+      }
+
       this.logger.emit("semantic.provider_invocation_started", {
         importId: document.id,
         contractVersion: resumeSemanticParserContractVersion,
@@ -159,10 +191,48 @@ export class SemanticImportProcessor {
         },
       );
       if (!providerResult.ok) {
+        if (
+          input.abortSignal?.aborted ||
+          providerResult.error.code === "cancelled"
+        ) {
+          await this.transition(document, "cancelled");
+          this.emitSemanticOutcome(
+            document,
+            started,
+            "cancelled",
+            false,
+            0,
+            0,
+            input.correlationId,
+          );
+          return;
+        }
+        const fallbackTrigger = fallbackTriggerForProviderError(
+          providerResult.error.code,
+        );
+        if (fallbackTrigger !== undefined && !input.abortSignal?.aborted) {
+          this.emitSemanticOutcome(
+            document,
+            started,
+            providerResult.error.code,
+            providerResult.error.retryable,
+            0,
+            providerResult.error.validationIssues.length,
+            input.correlationId,
+          );
+          await this.runFallbackOrLeaveTerminal(
+            document,
+            requestResult.data,
+            extracted.fragments,
+            fallbackTrigger,
+            started,
+            input,
+          );
+          return;
+        }
         await this.transition(
           document,
-          providerResult.error.code === "timeout" ||
-            providerResult.error.code === "cancelled"
+          providerResult.error.code === "timeout"
             ? "failed"
             : providerResult.error.code === "not_configured" ||
                 providerResult.error.code === "provider_unavailable"
@@ -206,6 +276,24 @@ export class SemanticImportProcessor {
         );
       }
       if (!validation.accepted || !validation.response) {
+        // A schema-invalid provider response is a recoverable protocol
+        // failure. Grounding, no-invention, ambiguity, conflict, and review
+        // failures are semantic-quality failures and remain terminal; the
+        // deterministic fallback is never used to retry them until they pass.
+        if (
+          isRecoverableProtocolValidation(validation) &&
+          !input.abortSignal?.aborted
+        ) {
+          await this.runFallbackOrLeaveTerminal(
+            document,
+            requestResult.data,
+            extracted.fragments,
+            "malformed_provider_output",
+            started,
+            input,
+          );
+          return;
+        }
         await this.transition(document, "semantic_validation_failed");
         return;
       }
@@ -270,6 +358,7 @@ export class SemanticImportProcessor {
           warningCountBucket: bucket(draftResult.draft!.warnings.length),
         });
       });
+      await this.releaseCapacity(document.id, document.ownerUserId);
     } catch (error) {
       const cancelled = input.abortSignal?.aborted === true;
       await this.transition(document, cancelled ? "cancelled" : "failed");
@@ -283,6 +372,141 @@ export class SemanticImportProcessor {
       });
       void error;
     }
+  }
+
+  private async runFallbackOrLeaveTerminal(
+    document: ImportedDocument,
+    request: ResumeSemanticParseRequest,
+    sourceFragments: readonly ResumeSourceFragment[],
+    trigger: LimitedDeterministicFallbackProviderTrigger,
+    started: Date,
+    input: {
+      readonly ownerUserId: string;
+      readonly importedDocumentId: string;
+      readonly correlationId?: string;
+      readonly abortSignal?: AbortSignal;
+    },
+  ): Promise<void> {
+    if (input.abortSignal?.aborted) {
+      await this.transition(document, "cancelled");
+      this.emitSemanticOutcome(
+        document,
+        started,
+        "cancelled",
+        false,
+        0,
+        0,
+        input.correlationId,
+      );
+      return;
+    }
+
+    let outcome: LimitedDeterministicFallbackOutcome;
+    try {
+      outcome = runLimitedDeterministicPartialFallback({
+        normalizedTranscript: request.normalizedTranscript,
+        sourceFragments: request.sourceFragments,
+        trigger,
+        alternativeProviderAvailable: false,
+      });
+    } catch {
+      await this.transition(document, "failed");
+      this.emitSemanticOutcome(
+        document,
+        started,
+        "extraction_failed",
+        false,
+        0,
+        0,
+        input.correlationId,
+      );
+      return;
+    }
+
+    if (input.abortSignal?.aborted) {
+      await this.transition(document, "cancelled");
+      this.emitSemanticOutcome(
+        document,
+        started,
+        "cancelled",
+        false,
+        0,
+        0,
+        input.correlationId,
+      );
+      return;
+    }
+
+    const fallbackFields = mapFallbackFields(outcome, sourceFragments);
+    const draftResult = buildExtractionDraft({
+      importedDocument: document,
+      fields: fallbackFields,
+      warnings: mapFallbackWarnings(outcome),
+      missingOrUnprocessedSections: fallbackMissingSections,
+      ids: {
+        draftId: randomUUID,
+        fieldId: randomUUID,
+        warningId: randomUUID,
+      },
+      now: this.clock.now(),
+    });
+
+    if (!draftResult.draft || !outcome.meetsDraftThreshold) {
+      await this.transition(
+        document,
+        terminalStatusForFallbackTrigger(trigger),
+      );
+      this.emitSemanticOutcome(
+        document,
+        started,
+        "partial_deterministic_fallback",
+        false,
+        outcome.acceptedCandidateCount,
+        outcome.rejectedCandidateCount,
+        input.correlationId,
+      );
+      return;
+    }
+
+    await this.ports.transactionRunner.transaction(async (manager) => {
+      const current = await this.ports.repository.findImportByOwner(
+        document.id,
+        document.ownerUserId,
+        manager,
+      );
+      if (
+        !current ||
+        current.document.processingStatus === "ready_for_review" ||
+        (await this.ports.repository.findDraftByImportAndOwner(
+          document.id,
+          document.ownerUserId,
+          manager,
+        )) !== null
+      )
+        return;
+      await this.ports.repository.saveDraft(draftResult.draft!, manager);
+      await this.ports.repository.saveImportLifecycle(
+        { ...current.document, processingStatus: "ready_for_review" },
+        manager,
+      );
+      this.logger.emit("review.draft_created", {
+        importId: document.id,
+        draftId: draftResult.draft!.id,
+        status: "review_required",
+        fieldCountBucket: bucket(draftResult.draft!.fields.length),
+        warningCountBucket: bucket(draftResult.draft!.warnings.length),
+      });
+    });
+    await this.releaseCapacity(document.id, document.ownerUserId);
+    this.emitSemanticOutcome(
+      document,
+      started,
+      "partial_deterministic_fallback",
+      false,
+      outcome.acceptedCandidateCount,
+      outcome.rejectedCandidateCount,
+      input.correlationId,
+    );
   }
 
   private async readAndNormalize(
@@ -402,6 +626,155 @@ export class SemanticImportProcessor {
     });
   }
 }
+
+const fallbackMissingSections = [
+  "headline",
+  "summary",
+  "work_experience",
+  "education",
+  "projects",
+  "certifications",
+  "professional_links",
+] as const;
+
+export function fallbackTriggerForProviderError(
+  code: string,
+): LimitedDeterministicFallbackProviderTrigger | undefined {
+  switch (code) {
+    case "not_configured":
+      return "no_provider";
+    case "provider_unavailable":
+      return "provider_unavailable";
+    case "rate_limited":
+      return "rate_limited";
+    case "quota_exceeded":
+      return "quota_exhausted";
+    case "timeout":
+      return "timeout";
+    case "invalid_provider_response":
+    case "schema_violation":
+    case "unsupported_contract_version":
+    case "malformed_flattened_evidence":
+    case "response_too_large":
+      return "malformed_provider_output";
+    default:
+      // Authentication/security, unsupported capability, grounding,
+      // no-invention, ambiguity, conflict, cancellation, and unknown
+      // internal/provider failures never enter the deterministic fallback.
+      return undefined;
+  }
+}
+
+function isRecoverableProtocolValidation(
+  validation: ReturnType<typeof validateSemanticResponse>,
+): boolean {
+  return (
+    !validation.schemaValid ||
+    validation.diagnostics.some(
+      (diagnostic) =>
+        diagnostic.category === "evidence" &&
+        diagnostic.code === "invalid_bounds",
+    )
+  );
+}
+
+function terminalStatusForFallbackTrigger(
+  trigger: LimitedDeterministicFallbackProviderTrigger,
+): ImportedDocument["processingStatus"] {
+  // The public lifecycle has one provider-unavailable terminal state. The
+  // original closed trigger remains in the privacy-safe semantic event stream
+  // and is never replaced by a generic provider payload or error string.
+  void trigger;
+  return "provider_unavailable";
+}
+
+function mapFallbackFields(
+  outcome: LimitedDeterministicFallbackOutcome,
+  sourceFragments: readonly ResumeSourceFragment[],
+): readonly DeterministicResumeFieldCandidate[] {
+  const normalizedFragments = sourceFragments
+    .map((fragment) =>
+      fragment.text.normalize("NFKC").replace(/\s+/gu, " ").trim(),
+    )
+    .map((text, index) => ({ text, fragment: sourceFragments[index] }))
+    .filter(
+      (
+        item,
+      ): item is {
+        readonly text: string;
+        readonly fragment: ResumeSourceFragment;
+      } => item.text.length > 0 && item.fragment !== undefined,
+    );
+
+  return outcome.acceptedCandidates.flatMap((candidate, index) => {
+    const evidence = candidate.evidence[0];
+    const source =
+      evidence === undefined
+        ? undefined
+        : normalizedFragments[evidence.line - 1];
+    if (
+      evidence === undefined ||
+      source === undefined ||
+      source.text.length === 0
+    )
+      return [];
+    return [
+      {
+        section: fallbackSection(candidate.fieldPath),
+        fieldPath: candidate.fieldPath,
+        value: { kind: "text", value: candidate.value },
+        sourceLocation: source.fragment.location,
+        confidence: "high" as const,
+        inferenceStatus: "not_inferred" as const,
+        sourceOrder: evidence.line * 1_000_000 + evidence.start + index,
+      },
+    ];
+  });
+}
+
+function mapFallbackWarnings(
+  outcome: LimitedDeterministicFallbackOutcome,
+): readonly DeterministicWarningCandidate[] {
+  return outcome.warnings.map((warning) => ({
+    warningType: fallbackWarningType(warning.category),
+    section: fallbackSection(warning.fieldPath),
+    ...(warning.fieldPath === undefined
+      ? {}
+      : { fieldPath: warning.fieldPath }),
+    message: warning.message,
+    requiresResolution: warning.requiresResolution,
+  }));
+}
+
+function fallbackSection(
+  fieldPath: string | undefined,
+): DeterministicResumeFieldCandidate["section"] {
+  if (fieldPath?.startsWith("contact.")) return "contact";
+  if (fieldPath?.startsWith("skills.")) return "skills";
+  if (fieldPath?.startsWith("languages.")) return "languages";
+  return "summary";
+}
+
+function fallbackWarningType(
+  category: LimitedDeterministicFallbackOutcome["warnings"][number]["category"],
+): DeterministicWarningCandidate["warningType"] {
+  switch (category) {
+    case "ambiguous":
+      return "ambiguous";
+    case "low_confidence":
+      return "low_confidence";
+    case "unsupported":
+      return "unsupported";
+    case "duplicate":
+      return "duplicate";
+    case "no_reliable_semantic_parsing":
+    case "partial_extraction":
+      return "partial";
+    default:
+      return "partial";
+  }
+}
+
 function bucket(value: number): "0-4" | "5-19" | "20-99" | "100+" {
   return value < 5
     ? "0-4"
@@ -426,6 +799,7 @@ function isProcessable(document: ImportedDocument, now: Date): boolean {
   return (
     document.uploadStatus === "uploaded" &&
     document.validationStatus === "accepted" &&
+    document.processingStatus === "queued" &&
     document.deletionStatus === "not_scheduled" &&
     document.deletedAt === undefined &&
     document.retentionExpiresAt.getTime() > now.getTime() &&

@@ -120,6 +120,7 @@ const validationFailureCategories = [
   "parser_memory_limit",
   "cancelled",
   "expired",
+  "provider_unavailable",
   "terminal_failure",
   "infrastructure_failure",
 ] as const;

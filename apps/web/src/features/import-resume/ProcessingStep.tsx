@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import type { PublicImportStatusResponse } from "@nuvitae/contracts";
 import { ErrorSummary } from "./ErrorSummary";
 import { focusErrorSummary, focusNextLogicalHeading } from "./focus-management";
+import { ProviderRecoveryActions } from "./ProviderRecoveryActions";
 
 const failureStatuses = new Set<PublicImportStatusResponse["status"]>([
   "recoverable_timeout",
@@ -121,32 +122,42 @@ export function ProcessingStep(props: {
       status.status === "cancelled" ||
       status.status === "not_found" ? (
         <>
+          {status.failure?.code === "provider_unavailable" ? (
+            <ProviderRecoveryActions
+              state="provider_unavailable"
+              recoveryActions={["manual_entry"]}
+              alternativeProviderAvailable={false}
+              onManualEntry={props.onManualEntry}
+            />
+          ) : null}
           {status.allowedRecoveryActions.includes("replace_upload") ? (
             <p className="message">
               If you upload a replacement, the previous import is not deleted
               here and remains subject to its original retention deadline.
             </p>
           ) : null}
-          <div className="action-row">
-            {status.allowedRecoveryActions.includes("replace_upload") ? (
-              <button
-                type="button"
-                className="primary-action"
-                onClick={props.onReplaceUpload}
-              >
-                Upload a different file
-              </button>
-            ) : null}
-            {status.allowedRecoveryActions.includes("manual_entry") ? (
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={props.onManualEntry}
-              >
-                Enter manually
-              </button>
-            ) : null}
-          </div>
+          {status.failure?.code === "provider_unavailable" ? null : (
+            <div className="action-row">
+              {status.allowedRecoveryActions.includes("replace_upload") ? (
+                <button
+                  type="button"
+                  className="primary-action"
+                  onClick={props.onReplaceUpload}
+                >
+                  Upload a different file
+                </button>
+              ) : null}
+              {status.allowedRecoveryActions.includes("manual_entry") ? (
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={props.onManualEntry}
+                >
+                  Enter manually
+                </button>
+              ) : null}
+            </div>
+          )}
         </>
       ) : null}
     </section>
