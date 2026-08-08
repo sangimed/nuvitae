@@ -401,14 +401,43 @@ export function mapSemanticCandidates(
       false,
     );
     if (item.startDate !== null) {
-      rejectUnsupported("education", `${prefix}.start_date`);
+      const date = parseResumeYear(item.startDate.value);
+      if (date === undefined) {
+        rejectUnsupported("education", `${prefix}.start_date`);
+      } else {
+        push(
+          "education",
+          `${prefix}.start_date`,
+          item.startDate,
+          { kind: "date", value: date },
+          item.candidateId,
+          false,
+        );
+      }
     }
     if (item.endDate !== null) {
-      rejectUnsupported("education", `${prefix}.end_date`);
+      const date = parseResumeYear(item.endDate.value);
+      if (date === undefined) {
+        rejectUnsupported("education", `${prefix}.end_date`);
+      } else {
+        push(
+          "education",
+          `${prefix}.end_date`,
+          item.endDate,
+          { kind: "date", value: date },
+          item.candidateId,
+          false,
+        );
+      }
     }
-    if (item.location !== null) {
-      rejectUnsupported("education", `${prefix}.location`);
-    }
+    push(
+      "education",
+      `${prefix}.location`,
+      item.location,
+      textValue(item.location),
+      item.candidateId,
+      false,
+    );
     if (item.details.length > 0) {
       rejectUnsupported("education", `${prefix}.details`);
     }

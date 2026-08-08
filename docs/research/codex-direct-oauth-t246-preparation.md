@@ -7,9 +7,12 @@ corpus.
 `feat/import-resume-codex-direct-oauth-spike`.
 **Status**: **OFFLINE PREPARATION COMPLETE (historical preparation snapshot).**
 T246 was subsequently executed and finalized as **COMPLETE — qualification
-FAILED**. T203 remains **NO-GO**; the current blockers are finalized T246
-semantic failure, incomplete T213-T215 production onboarding flow, and not-yet-
-performed moderated human validation. T217 is complete.
+FAILED**. T203 remains **NO-GO**; at preparation time the blockers were the
+pending T246 semantic gate, incomplete T213-T215 production onboarding flow,
+and not-yet-performed moderated human validation. Current status is that T213-
+T215 and T217 are complete offline/local, T246 is terminally finalized as
+FAILED and must not be rerun, live provider/import proof remains pending, and
+moderated human validation remains pending.
 **Live authorization**: NONE. No OAuth, Codex/OpenAI/provider request, network
 request, credential access, or Campaign-B/T246 live attempt was performed or
 authorized by this record. No commit and no push were made.

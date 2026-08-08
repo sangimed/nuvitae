@@ -316,7 +316,7 @@ describe("mapSemanticCandidates (T172)", () => {
     ]);
   });
 
-  it("rejects unsupported fields instead of preserving provider-only output", () => {
+  it("preserves supported education dates and rejects only unsupported details", () => {
     const response = baseResponse();
     response.sections.education = [
       {
@@ -353,20 +353,12 @@ describe("mapSemanticCandidates (T172)", () => {
     });
     expect(result.fields.map((field) => field.fieldPath)).toEqual([
       "education.0.institution",
+      "education.0.end_date",
+      "education.0.location",
       "projects.0.name",
       "certifications.0.name",
     ]);
     expect(result.rejected).toEqual([
-      {
-        section: "education",
-        fieldPath: "education.0.end_date",
-        reason: "unsupported_field",
-      },
-      {
-        section: "education",
-        fieldPath: "education.0.location",
-        reason: "unsupported_field",
-      },
       {
         section: "education",
         fieldPath: "education.0.details",
@@ -582,6 +574,63 @@ describe("mapSemanticCandidates (T172)", () => {
     expect(result.fields).toEqual([]);
     expect(result.evidence).toEqual([]);
     expect(result.rejected).toEqual([]);
+  });
+
+  it("handles optional-detail variants without downgrading explicit facts", () => {
+    const response = baseResponse();
+    response.sections.headline = value("Platform Architect");
+    response.sections.education = [
+      {
+        candidateId: "education-year-only",
+        institution: value("Northbridge Institute"),
+        degree: value("MSc Systems Engineering"),
+        fieldOfStudy: null,
+        startDate: null,
+        endDate: value("2024"),
+        location: null,
+        details: [],
+      },
+    ];
+    response.sections.skills = [
+      {
+        candidateId: "skill-one",
+        name: value("Rust"),
+        category: null,
+      },
+      {
+        candidateId: "skill-two",
+        name: value("SQLite"),
+        category: null,
+      },
+    ];
+    response.sections.languages = [
+      {
+        candidateId: "language-one",
+        name: value("German"),
+        proficiency: null,
+      },
+    ];
+
+    const result = mapSemanticCandidates({
+      response,
+      document: document(),
+    });
+
+    expect(result.fields.map((field) => field.fieldPath)).toEqual([
+      "headline",
+      "education.0.institution",
+      "education.0.credential",
+      "education.0.end_date",
+      "skills.0.name",
+      "skills.1.name",
+      "languages.0.name",
+    ]);
+    expect(
+      result.fields.find((field) => field.fieldPath === "languages.0.name")
+        ?.value,
+    ).toEqual({ kind: "language", name: "German" });
+    expect(result.rejected).toEqual([]);
+    expect(result.reviewRequired).toEqual([]);
   });
 
   it("produces deterministic ordering across repeated mapping runs", () => {

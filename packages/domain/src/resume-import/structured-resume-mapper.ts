@@ -142,6 +142,16 @@ export function mapReviewedImportDraftToStructuredResume(
       affectedFieldCount: singular.summary.length,
     });
   }
+  for (const education of grouped.education.values()) {
+    if (education.institution === undefined) {
+      blockers.push({
+        code: "invalid_reviewed_value",
+        section: "education",
+        fieldLabel: "institution",
+        affectedFieldCount: 1,
+      });
+    }
+  }
   if (blockers.length > 0) return { ok: false, blockers };
 
   const finished: StructuredResumeContent = {
@@ -153,6 +163,7 @@ export function mapReviewedImportDraftToStructuredResume(
       ? {}
       : { summary: singular.summary[0] }),
     workExperiences: finishWorkExperiences(grouped.workExperiences),
+    education: finishEducation(grouped.education),
   };
 
   return {
@@ -313,7 +324,7 @@ function mapField(
     case "work_experience":
       return appendWorkExperience(field, childIds, grouped);
     case "education":
-      return appendEducation(field, childIds, content);
+      return appendEducation(field, childIds, grouped);
     case "projects":
       return appendProject(field, childIds, content);
     case "certifications":
@@ -390,21 +401,61 @@ function appendProfessionalLink(
 function appendEducation(
   field: ExtractedField,
   childIds: StructuredResumeChildIdFactory,
-  content: MutableStructuredResumeContent,
+  grouped: GroupedAccumulator,
 ) {
-  if (field.value.kind !== "text")
-    return { ok: false as const, code: "unsupported_reviewed_shape" as const };
-  const suffix = pathSuffix(field.fieldPath);
-  if (
-    !["institution", "school", "credential", "field_of_study"].includes(suffix)
-  ) {
+  const match =
+    /^education\.([A-Za-z0-9_-]+)\.(institution|school|credential|field_of_study|location|start_date|end_date)$/.exec(
+      field.fieldPath,
+    );
+  if (match === null) {
     return { ok: false as const, code: "unsupported_reviewed_shape" as const };
   }
-  content.education.push({
-    id: childIds.sectionItemId(),
-    institution: sourcedFromField(field, field.value.value),
-    reviewStatus: field.reviewStatus,
-  });
+  const educationKey = match[1];
+  const suffix = match[2];
+  if (educationKey === undefined || suffix === undefined) {
+    return { ok: false as const, code: "unsupported_reviewed_shape" as const };
+  }
+  let education = grouped.education.get(educationKey);
+  if (education === undefined) {
+    education = {
+      id: childIds.sectionItemId(),
+      reviewStatus: field.reviewStatus,
+    };
+    grouped.education.set(educationKey, education);
+  }
+  switch (suffix) {
+    case "institution":
+    case "school":
+      if (field.value.kind !== "text")
+        return { ok: false as const, code: "invalid_reviewed_value" as const };
+      education.institution = sourcedFromField(field, field.value.value);
+      break;
+    case "credential":
+      if (field.value.kind !== "text")
+        return { ok: false as const, code: "invalid_reviewed_value" as const };
+      education.credential = sourcedFromField(field, field.value.value);
+      break;
+    case "field_of_study":
+      if (field.value.kind !== "text")
+        return { ok: false as const, code: "invalid_reviewed_value" as const };
+      education.fieldOfStudy = sourcedFromField(field, field.value.value);
+      break;
+    case "location":
+      if (field.value.kind !== "text")
+        return { ok: false as const, code: "invalid_reviewed_value" as const };
+      education.location = sourcedFromField(field, field.value.value);
+      break;
+    case "start_date":
+      if (field.value.kind !== "date")
+        return { ok: false as const, code: "invalid_reviewed_value" as const };
+      education.startDate = field.value.value;
+      break;
+    case "end_date":
+      if (field.value.kind !== "date")
+        return { ok: false as const, code: "invalid_reviewed_value" as const };
+      education.endDate = field.value.value;
+      break;
+  }
   return { ok: true as const };
 }
 
@@ -447,6 +498,7 @@ function appendCertification(
 
 interface GroupedAccumulator {
   readonly workExperiences: Map<string, WorkAccumulator>;
+  readonly education: Map<string, EducationAccumulator>;
 }
 
 interface WorkAccumulator {
@@ -472,8 +524,19 @@ interface RoleAccumulator {
   inferenceStatus: WorkExperienceRole["inferenceStatus"];
 }
 
+interface EducationAccumulator {
+  readonly id: string;
+  institution?: SourcedText;
+  credential?: SourcedText;
+  fieldOfStudy?: SourcedText;
+  location?: SourcedText;
+  startDate?: Education["startDate"];
+  endDate?: Education["endDate"];
+  reviewStatus: Education["reviewStatus"];
+}
+
 function createGroupedAccumulator(): GroupedAccumulator {
-  return { workExperiences: new Map() };
+  return { workExperiences: new Map(), education: new Map() };
 }
 
 function appendWorkExperience(
@@ -598,6 +661,33 @@ function finishWorkExperiences(
       reviewStatus: work.reviewStatus,
       inferenceStatus: work.inferenceStatus,
     }));
+}
+
+function finishEducation(
+  education: Map<string, EducationAccumulator>,
+): Education[] {
+  return [...education.values()].flatMap((item) =>
+    item.institution === undefined
+      ? []
+      : [
+          {
+            id: item.id,
+            institution: item.institution,
+            ...(item.credential === undefined
+              ? {}
+              : { credential: item.credential }),
+            ...(item.fieldOfStudy === undefined
+              ? {}
+              : { fieldOfStudy: item.fieldOfStudy }),
+            ...(item.location === undefined ? {} : { location: item.location }),
+            ...(item.startDate === undefined
+              ? {}
+              : { startDate: item.startDate }),
+            ...(item.endDate === undefined ? {} : { endDate: item.endDate }),
+            reviewStatus: item.reviewStatus,
+          },
+        ],
+  );
 }
 
 function toSourcedText(field: ExtractedField): SourcedText | undefined {

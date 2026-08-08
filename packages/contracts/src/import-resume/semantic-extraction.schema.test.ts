@@ -323,6 +323,34 @@ describe("candidate sections", () => {
     expect(parsed.sections.professionalLinks).toHaveLength(1);
   });
 
+  it("accepts explicit education years and languages without proficiency", () => {
+    const candidate = validResponse();
+    candidate.sections.education = [
+      {
+        candidateId: "education-1",
+        institution: value,
+        degree: value,
+        fieldOfStudy: null,
+        startDate: null,
+        endDate: value,
+        location: null,
+        details: [],
+      },
+    ];
+    candidate.sections.languages = [
+      {
+        candidateId: "language-1",
+        name: value,
+        proficiency: null,
+      },
+    ];
+
+    const parsed = nuvitaeSemanticExtractionResponseSchema.parse(candidate);
+
+    expect(parsed.sections.education[0]?.endDate?.value).toBe("Jane Example");
+    expect(parsed.sections.languages[0]?.proficiency).toBeNull();
+  });
+
   it("rejects section entries missing required candidate identity", () => {
     const candidate = {
       ...validResponse(),

@@ -91,6 +91,13 @@ authorize or execute C04 at that time.
 Any future Campaign B attempt remains separately authorized and limited to one
 broker run, one maximum semantic backend request, and zero automatic retries.
 
+The 2026-08-09 semantic-import recall correction is offline-validated only:
+explicit title/headline, education degree/institution/year, languages without
+proficiency, and comma-separated skills are preserved, with 68/68 offline
+regressions passing. No post-correction live provider run has occurred; one
+new live semantic smoke revalidation remains pending. This follow-up does not
+reopen or reinterpret T246.
+
 ## 2026-08-05 qualification run (T203 mission)
 
 The T203 mission authorized a bounded qualification attempt on this branch.

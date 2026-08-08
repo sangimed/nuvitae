@@ -46,20 +46,31 @@ connection repository and private encrypted provider-session store. The
 adapter performs per-job readiness/session resolution and one bounded direct
 Codex invocation. This offline result makes the separately authorized live
 production proof ready to attempt; it does not constitute that proof and does
-not change the T203 decision. 2. **Bounded fallback** — PASS. T217 production wiring is complete: the worker
-owns a one-primary-call/one-local-fallback budget; retryable provider and
-protocol failures are classified explicitly; semantic-quality, extraction,
-authorization, cancellation, and internal failures remain terminal; draft
-persistence is atomic/idempotent; and provider-neutral status/UI recovery is
-wired. Docker-backed persistence/security and focused application tests pass. 3. **Non-technical onboarding feasibility** — `PASS_AUTOMATED_FEASIBILITY`
-for deterministic/local coverage only. T213 supplies an executable
-**Connect Codex** action and mocked/local browser handoff, T214 supplies
-callback completion plus the connected/**Codex is ready**, expired, and
-disconnected projections, and T215 supplies disconnect, reconnect,
-expired/revoked recovery, and provider-unavailable recovery. No live
-connection/import or moderated human validation is claimed.
-Evidence: `docs/research/codex-direct-oauth-onboarding-feasibility.md` and
-`tests/browser/import-resume/onboarding-feasibility.spec.ts`.
+not change the T203 decision.
+
+2. **Bounded fallback** — PASS. T217 production wiring is complete: the worker
+   owns a one-primary-call/one-local-fallback budget; retryable provider and
+   protocol failures are classified explicitly; semantic-quality, extraction,
+   authorization, cancellation, and internal failures remain terminal; draft
+   persistence is atomic/idempotent; and provider-neutral status/UI recovery is
+   wired. Docker-backed persistence/security and focused application tests pass.
+
+3. **Non-technical onboarding feasibility** — `PASS_AUTOMATED_FEASIBILITY` for
+   deterministic/local coverage only. T213 supplies an executable **Connect
+   Codex** action and mocked/local browser handoff, T214 supplies callback
+   completion plus the connected/**Codex is ready**, expired, and disconnected
+   projections, and T215 supplies disconnect, reconnect, expired/revoked
+   recovery, and provider-unavailable recovery. No live connection/import or
+   moderated human validation is claimed. Evidence:
+   `docs/research/codex-direct-oauth-onboarding-feasibility.md` and
+   `tests/browser/import-resume/onboarding-feasibility.spec.ts`.
+
+The 2026-08-09 semantic-import recall correction is validated offline only:
+explicit title/headline, education degree/institution/year, languages without
+proficiency, and comma-separated skills are preserved, and the offline
+regression suite passes 68/68. No post-correction live provider run has
+occurred; one new live semantic smoke revalidation remains pending. This
+follow-up does not reopen or reinterpret the finalized T246 qualification.
 
 GO requires every mandatory gate to pass. The framework permits GO or
 CONDITIONAL GO only when all of the re-evaluation conditions below are true;
@@ -110,8 +121,8 @@ remains **NO-GO**, not a judgment about Codex output quality.
   T216. This does not claim live qualification.
 - **T201**: complete (six-case matrix all passing).
 - **T202**: measured (all evidence-supported metrics pass; latency, cancellation,
-  and quota behavior remain unmeasured; onboarding is measured as an automated
-  feasibility failure and is not accepted as live validation).
+  and quota behavior remain unmeasured; onboarding is `PASS_AUTOMATED_FEASIBILITY`
+  for deterministic/local coverage only and is not accepted as live validation).
 - **T243**: executed the registered Campaign-B attempts; C04-B02 failed
   immutably at credential recovery, C04-B03/C05-B01/C06-B01 passed.
 - **T216** (production Codex wiring): complete offline/local. The former
@@ -119,6 +130,10 @@ remains **NO-GO**, not a judgment about Codex output quality.
   remains separately pending.
 - **T217** (bounded fallback wiring): complete and validated 2026-08-08; this
   does not change the T203 decision.
+- **T218** (confirmation data preservation): complete 2026-08-09 under FR-034;
+  reviewed fields are carried into the structured resume unless explicitly
+  excluded. This is offline regression evidence and is independent of live
+  provider qualification.
 - **T212-T215** (Community setup/connection UI): T213 and T214 are complete for
   the production entrypoint/browser handoff, callback completion, persisted
   status, and ready-state UI; T215 is complete for local disconnect,
