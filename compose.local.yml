@@ -24,12 +24,13 @@ services:
       NUVITAE_PROVIDER_SESSION_ROOT: /var/lib/nuvitae/private/provider-sessions
       NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET: "local-play-provider-session-encryption-secret-not-for-production"
       NUVITAE_PROVIDER_SESSION_MAX_BYTES: 65536
-      NUVITAE_CODEX_OAUTH_CALLBACK_PORT: 3001
       QUEUE_HOST: queue
       QUEUE_PORT: 6379
       QUEUE_PASSWORD: ${QUEUE_PASSWORD:-nuvitae_queue_password}
     ports: !override
       - "127.0.0.1:3001:3001"
+      - "127.0.0.1:1455:3001"
+      - "[::1]:1455:3001"
     depends_on:
       postgres:
         condition: service_healthy

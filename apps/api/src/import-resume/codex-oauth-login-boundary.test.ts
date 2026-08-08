@@ -45,6 +45,83 @@ describe("CodexOAuthLoginBoundary (T213)", () => {
     expect(JSON.stringify(result)).not.toContain("code_verifier");
   });
 
+  it("matches the qualified live OAuth request contract structurally", async () => {
+    const originalHost = process.env.NUVITAE_CODEX_OAUTH_REDIRECT_HOST;
+    const originalPort = process.env.NUVITAE_CODEX_OAUTH_CALLBACK_PORT;
+    delete process.env.NUVITAE_CODEX_OAUTH_REDIRECT_HOST;
+    delete process.env.NUVITAE_CODEX_OAUTH_CALLBACK_PORT;
+    try {
+      const result = await new CodexOAuthLoginBoundary().startLogin(
+        context(
+          "10000000-0000-4000-8000-000000000001",
+          "20000000-0000-4000-8000-000000000001",
+        ),
+        null,
+      );
+      const url = new URL(result.browserHandoff!.authorizationUrl);
+
+      expect({
+        origin: url.origin,
+        pathname: url.pathname,
+        parameterNames: [...url.searchParams.keys()].sort(),
+        clientId: url.searchParams.get("client_id"),
+        responseType: url.searchParams.get("response_type"),
+        redirectUri: url.searchParams.get("redirect_uri"),
+        scopes: url.searchParams.get("scope")?.split(" ").sort(),
+        codeChallengeMethod: url.searchParams.get("code_challenge_method"),
+        requiredDynamicFieldsPresent: ["state", "code_challenge"].every(
+          (name) => url.searchParams.has(name),
+        ),
+        authorizationExtras: {
+          idTokenAddOrganizations: url.searchParams.get(
+            "id_token_add_organizations",
+          ),
+          codexCliSimplifiedFlow: url.searchParams.get(
+            "codex_cli_simplified_flow",
+          ),
+          originator: url.searchParams.get("originator"),
+        },
+      }).toEqual({
+        origin: "https://auth.openai.com",
+        pathname: "/oauth/authorize",
+        parameterNames: [
+          "client_id",
+          "code_challenge",
+          "code_challenge_method",
+          "codex_cli_simplified_flow",
+          "id_token_add_organizations",
+          "originator",
+          "redirect_uri",
+          "response_type",
+          "scope",
+          "state",
+        ],
+        clientId: "app_EMoamEEZ73f0CkXaXp7hrann",
+        responseType: "code",
+        redirectUri: "http://localhost:1455/auth/callback",
+        scopes: ["email", "offline_access", "openid", "profile"],
+        codeChallengeMethod: "S256",
+        requiredDynamicFieldsPresent: true,
+        authorizationExtras: {
+          idTokenAddOrganizations: "true",
+          codexCliSimplifiedFlow: "true",
+          originator: "openclaw",
+        },
+      });
+    } finally {
+      if (originalHost === undefined) {
+        delete process.env.NUVITAE_CODEX_OAUTH_REDIRECT_HOST;
+      } else {
+        process.env.NUVITAE_CODEX_OAUTH_REDIRECT_HOST = originalHost;
+      }
+      if (originalPort === undefined) {
+        delete process.env.NUVITAE_CODEX_OAUTH_CALLBACK_PORT;
+      } else {
+        process.env.NUVITAE_CODEX_OAUTH_CALLBACK_PORT = originalPort;
+      }
+    }
+  });
+
   it("resumes one active attempt for repeated clicks and isolates owners", async () => {
     const boundary = new CodexOAuthLoginBoundary();
     const ownerA = context(
@@ -61,6 +138,30 @@ describe("CodexOAuthLoginBoundary (T213)", () => {
 
     expect(repeated.browserHandoff).toEqual(first.browserHandoff);
     expect(other.browserHandoff).not.toEqual(first.browserHandoff);
+  });
+
+  it("clears the cancelled handoff before allowing a replacement attempt", async () => {
+    const boundary = new CodexOAuthLoginBoundary();
+    const owner = context(
+      "10000000-0000-4000-8000-000000000001",
+      "20000000-0000-4000-8000-000000000001",
+    );
+    const first = await boundary.startLogin(owner, null);
+    const firstState = new URL(
+      first.browserHandoff!.authorizationUrl,
+    ).searchParams.get("state")!;
+
+    await boundary.cancelLogin(owner, null);
+    const replacement = await boundary.startLogin(owner, null);
+
+    expect(replacement.browserHandoff).not.toEqual(first.browserHandoff);
+    expect(() =>
+      boundary.resolvePendingLogin(owner.ownerUserId, firstState),
+    ).toThrowError(
+      expect.objectContaining({
+        code: "provider_connection_login_invalid_state",
+      }),
+    );
   });
 
   it("rejects an unsafe redirect host before producing a handoff", async () => {

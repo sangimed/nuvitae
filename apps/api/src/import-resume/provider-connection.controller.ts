@@ -30,13 +30,13 @@ import {
 } from "./verified-principal.guard.js";
 
 @ApiTags("provider connections")
-@Controller("import-resume/provider-connections")
+@Controller()
 export class ProviderConnectionController {
   constructor(
     private readonly connectionInitiation: CodexConnectionInitiationService,
   ) {}
 
-  @Post("codex/oauth/start")
+  @Post("import-resume/provider-connections/codex/oauth/start")
   @UseGuards(VerifiedPrincipalGuard)
   @ApiOperation({ summary: "Start the Codex browser connection handoff" })
   @ApiCreatedResponse({ description: "A pending browser connection handoff." })
@@ -56,7 +56,7 @@ export class ProviderConnectionController {
     }
   }
 
-  @Get("codex/status")
+  @Get("import-resume/provider-connections/codex/status")
   @UseGuards(VerifiedPrincipalGuard)
   @ApiOperation({ summary: "Read the current provider connection status" })
   @ApiOkResponse({ description: "A privacy-safe provider status." })
@@ -67,7 +67,7 @@ export class ProviderConnectionController {
     return toPublicStatusResponse(status);
   }
 
-  @Post("codex/disconnect")
+  @Post("import-resume/provider-connections/codex/disconnect")
   @UseGuards(VerifiedPrincipalGuard)
   @ApiOperation({
     summary: "Disconnect Codex and remove local connection data",
@@ -88,7 +88,10 @@ export class ProviderConnectionController {
     }
   }
 
-  @Get("codex/oauth/callback")
+  @Get([
+    "import-resume/provider-connections/codex/oauth/callback",
+    "auth/callback",
+  ])
   @UseGuards(VerifiedPrincipalGuard)
   @ApiOperation({ summary: "Complete the Codex browser connection callback" })
   @ApiUnauthorizedResponse({ description: "Authentication is required." })

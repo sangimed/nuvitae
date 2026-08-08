@@ -88,6 +88,8 @@ services:
       POSTGRES_STATEMENT_TIMEOUT_MS: 2000
     ports:
       - "3001:3001"
+      - "127.0.0.1:1455:3001"
+      - "[::1]:1455:3001"
     volumes:
       - private-storage:/var/lib/nuvitae/private
     depends_on:

@@ -18,7 +18,10 @@ import {
 const authorizationEndpoint = "https://auth.openai.com/oauth/authorize";
 const clientId = "app_EMoamEEZ73f0CkXaXp7hrann";
 const defaultCallbackPort = "1455";
-const callbackPath = "/import-resume/provider-connections/codex/oauth/callback";
+// The official/qualified Codex browser contract owns this exact loopback
+// callback path. The application exposes an alias for its provider-neutral
+// route, but the authorization request must remain on the qualified contract.
+const callbackPath = "/auth/callback";
 const callbackHosts = new Set(["localhost", "127.0.0.1", "::1"]);
 const pendingLoginTtlMs = 10 * 60 * 1000;
 const maximumPendingLogins = 1_000;
@@ -235,7 +238,10 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
     };
   }
 
-  async cancelLogin(): Promise<ProviderAdapterLoginResult> {
+  async cancelLogin(
+    context: ProviderRuntimeAdapterContext,
+  ): Promise<ProviderAdapterLoginResult> {
+    this.pending.delete(this.key(context));
     return {
       loginStartedAt: this.clock(),
       safeMessage: null,
