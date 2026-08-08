@@ -2,6 +2,7 @@ export const semanticProviderErrorCodes = [
   "not_configured",
   "disconnected",
   "authentication_expired",
+  "authentication_revoked",
   "provider_unavailable",
   "rate_limited",
   "quota_exceeded",
@@ -62,6 +63,11 @@ const defaultRecoveryByCode: Record<
     "manual_entry",
   ],
   authentication_expired: [
+    "reconnect_provider",
+    "choose_another_provider",
+    "manual_entry",
+  ],
+  authentication_revoked: [
     "reconnect_provider",
     "choose_another_provider",
     "manual_entry",

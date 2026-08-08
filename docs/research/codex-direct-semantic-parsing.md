@@ -1,8 +1,10 @@
 # Direct semantic parsing matrix (T201)
 
 This is the canonical T201 document. It records deterministic fixture and
-evaluator coverage only; it does not authorize production Codex integration,
-OAuth login, credential refresh, T202, T203, or T164-T165.
+evaluator coverage only; it does not authorize live production qualification,
+OAuth login, credential refresh, or a change to the T203 decision. T216
+production wiring is tracked separately in
+`docs/research/codex-direct-oauth-t216-production-wiring-2026-08-08.json`.
 
 ## Coverage matrix
 
@@ -29,9 +31,10 @@ and pass; the authoritative aggregate is
 executed and passing. T202 has been re-measured from this matrix
 (`docs/research/codex-direct-oauth-evaluation.md`). T203 remains NO-GO after
 T246 was finalized as FAILED (C01/C04 FAIL; C02/C03/C05/C06/C07 PASS; C08
-PASS) and T217 bounded-fallback wiring was completed. The separate onboarding
-measurement is `FAIL_AUTOMATED_FEASIBILITY` because the production connection
-and ready-state surface is absent; moderated human validation has not occurred.
+PASS) and T216/T217 production wiring was completed offline/local. The separate
+onboarding measurement is `PASS_AUTOMATED_FEASIBILITY` for deterministic/local
+T213-T216 coverage; live provider/import evidence and moderated human
+validation have not occurred.
 
 ## Artifacts
 
@@ -80,9 +83,9 @@ is complete and all-passing (see `codex-direct-oauth-t201-matrix.json`).
 T201 is therefore complete. T202 has been re-measured from the accepted
 evidence and is no longer blocked; the T203 gate was re-evaluated on 2026-08-06
 and re-confirmed on 2026-08-07 after the accepted T245 lifecycle proof, and
-remains NO-GO for production adapter implementation because finalized T246 is
-FAILED and onboarding is `FAIL_AUTOMATED_FEASIBILITY`. T217 is complete.
-T164/T165 remain blocked.
+remains NO-GO for qualified live production use because finalized T246 is
+FAILED and live provider/import evidence plus moderated human validation are
+pending. T216/T217 are complete offline/local.
 T205 completed the current-version offline contract reconciliation; it did not
 authorize or execute C04 at that time.
 Any future Campaign B attempt remains separately authorized and limited to one

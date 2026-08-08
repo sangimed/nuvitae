@@ -147,6 +147,7 @@ const semanticOutcomes = [
   "not_configured",
   "disconnected",
   "authentication_expired",
+  "authentication_revoked",
   "rate_limited",
   "quota_exceeded",
   "unsupported_capability",

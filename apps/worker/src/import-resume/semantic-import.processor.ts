@@ -187,6 +187,7 @@ export class SemanticImportProcessor {
         requestResult.data,
         {
           timeoutMs: this.ports.provider.capabilities.maxTimeoutMs,
+          ownerUserId: input.ownerUserId,
           ...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
         },
       );
@@ -235,7 +236,10 @@ export class SemanticImportProcessor {
           providerResult.error.code === "timeout"
             ? "failed"
             : providerResult.error.code === "not_configured" ||
-                providerResult.error.code === "provider_unavailable"
+                providerResult.error.code === "provider_unavailable" ||
+                providerResult.error.code === "disconnected" ||
+                providerResult.error.code === "authentication_expired" ||
+                providerResult.error.code === "authentication_revoked"
               ? "provider_unavailable"
               : "semantic_response_invalid",
         );

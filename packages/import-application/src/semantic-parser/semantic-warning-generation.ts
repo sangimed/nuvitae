@@ -136,6 +136,7 @@ const providerCategoryByCode: Partial<
   not_configured: "no_provider",
   disconnected: "provider_unavailable",
   authentication_expired: "authentication_expired",
+  authentication_revoked: "authentication_expired",
   provider_unavailable: "provider_unavailable",
   rate_limited: "rate_limited",
   quota_exceeded: "quota_exceeded",

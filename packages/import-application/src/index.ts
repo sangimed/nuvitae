@@ -11,5 +11,21 @@ export * from "./semantic-parser/resume-semantic-parser-provider.js";
 export * from "./semantic-parser/semantic-candidates-to-draft.js";
 export * from "./semantic-parser/semantic-warning-generation.js";
 export * from "./semantic-parser/validate-semantic-response.js";
+export {
+  parseCodexSessionMaterial,
+  type CodexSessionMaterial,
+} from "./providers/codex-session.js";
+export {
+  CodexDirectProviderAdapter,
+  codexDirectProviderKind,
+  type CodexDirectProviderAdapterPorts,
+} from "./providers/codex-direct-provider-adapter.js";
+export {
+  CodexDirectTransport,
+  type CodexDirectTransportFailureCategory,
+  type CodexDirectTransportOptions,
+  type CodexDirectTransportRequest,
+  type CodexDirectTransportResult,
+} from "./providers/codex-direct-transport.js";
 export * from "./validation/semantic-validation.js";
 export * from "./validate-document.js";

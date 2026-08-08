@@ -49,7 +49,9 @@ export interface ResumeSemanticParserConnectionSnapshot {
 export interface ResumeSemanticParserProvider {
   readonly providerKind: string;
   readonly capabilities: ResumeSemanticParserCapabilities;
-  inspectConnection(): Promise<ResumeSemanticParserConnectionSnapshot>;
+  inspectConnection(
+    ownerUserId?: string,
+  ): Promise<ResumeSemanticParserConnectionSnapshot>;
   parse(
     request: ResumeSemanticParseRequest,
     options?: ResumeSemanticParserInvocationOptions,
@@ -59,6 +61,11 @@ export interface ResumeSemanticParserProvider {
 export interface ResumeSemanticParserInvocationOptions {
   readonly timeoutMs: number;
   readonly abortSignal?: AbortSignal;
+  /**
+   * Trusted owner context supplied by worker orchestration. It is deliberately
+   * not part of the provider-neutral request or queue payload.
+   */
+  readonly ownerUserId?: string;
 }
 
 export type ResumeSemanticParserProviderResult =

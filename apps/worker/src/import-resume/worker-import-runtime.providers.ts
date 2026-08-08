@@ -11,19 +11,28 @@ import {
 import {
   ImportLimitService,
   TypeOrmImportLimitStore,
+  CodexDirectProviderAdapter,
+  type ProviderSessionStore,
+  type ResumeSemanticParserProvider,
   ValidateDocumentService,
   createImportEventEmitter,
   type ImportProcessingCapacityPort,
   type ImportProcessingLimits,
 } from "@nuvitae/import-application";
-import type { ResumeSemanticParserProvider } from "@nuvitae/import-application";
 import type {
+  AIProviderRuntimeConnectionsRepository,
   ImportResumeRepository,
   PersistenceTransactionRunner,
 } from "@nuvitae/persistence";
-import { TypeOrmImportLimitAttemptsRepository } from "@nuvitae/persistence";
+import {
+  TypeOrmAIProviderRuntimeConnectionsRepository,
+  TypeOrmImportLimitAttemptsRepository,
+} from "@nuvitae/persistence";
 import { DataSource } from "typeorm";
-import { LocalPrivateImportStorage } from "@nuvitae/storage";
+import {
+  LocalPrivateImportStorage,
+  LocalProviderSessionStorage,
+} from "@nuvitae/storage";
 import {
   WORKER_IMPORT_EVENT_EMITTER,
   WORKER_IMPORT_CAPACITY_PORT,
@@ -49,19 +58,25 @@ export const WORKER_PRIVATE_SOURCE_READER = Symbol(
 export const WORKER_SEMANTIC_PARSER_PROVIDER = Symbol(
   "WORKER_SEMANTIC_PARSER_PROVIDER",
 );
+export const WORKER_PROVIDER_CONNECTION_REPOSITORY = Symbol(
+  "WORKER_PROVIDER_CONNECTION_REPOSITORY",
+);
+export const WORKER_PROVIDER_SESSION_STORE = Symbol(
+  "WORKER_PROVIDER_SESSION_STORE",
+);
 
 /**
  * Production semantic-provider registration boundary.
  *
- * Production mode never activates a semantic provider: the deterministic test
- * adapter is available only through explicit dependency injection for
- * automated/local integration testing and must not be selected here. Absence
- * of a production provider fails closed through the provider-neutral
- * `provider_unavailable` worker state.
+ * Production provider construction is dependency-only. It does not inspect a
+ * user or contact Codex at startup; owner/session resolution happens on each
+ * semantic invocation.
  */
-export function createProductionSemanticParserProvider():
-  ResumeSemanticParserProvider | undefined {
-  return undefined;
+export function createProductionSemanticParserProvider(
+  repository: AIProviderRuntimeConnectionsRepository,
+  sessionStore: ProviderSessionStore,
+): ResumeSemanticParserProvider {
+  return new CodexDirectProviderAdapter({ repository, sessionStore });
 }
 
 class PrivateStorageSourceReader implements ExtractionSourceReader {
@@ -197,6 +212,29 @@ export const workerImportRuntimeProviders: Provider[] = [
   {
     provide: WORKER_SEMANTIC_PARSER_PROVIDER,
     useFactory: createProductionSemanticParserProvider,
+    inject: [
+      WORKER_PROVIDER_CONNECTION_REPOSITORY,
+      WORKER_PROVIDER_SESSION_STORE,
+    ],
+  },
+  {
+    provide: WORKER_PROVIDER_CONNECTION_REPOSITORY,
+    useFactory: (dataSource: DataSource) =>
+      new TypeOrmAIProviderRuntimeConnectionsRepository(dataSource),
+    inject: [DataSource],
+  },
+  {
+    provide: WORKER_PROVIDER_SESSION_STORE,
+    useFactory: async () =>
+      await LocalProviderSessionStorage.create({
+        root: requireEnv("NUVITAE_PROVIDER_SESSION_ROOT"),
+        encryptionSecret: requireEnv(
+          "NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET",
+        ),
+        maxSessionBytes: Number(
+          process.env.NUVITAE_PROVIDER_SESSION_MAX_BYTES ?? "65536",
+        ),
+      }),
   },
   {
     provide: WORKER_IMPORT_EXTRACTION_USE_CASE,

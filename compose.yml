@@ -126,6 +126,9 @@ services:
       QUEUE_PASSWORD: ${QUEUE_PASSWORD:-nuvitae_queue_password}
       WORKER_READY_FILE: /tmp/nuvitae-worker-ready
       PARSER_TMP_ROOT: /tmp/nuvitae-parser
+      NUVITAE_PROVIDER_SESSION_ROOT: /var/lib/nuvitae/private/provider-sessions
+      NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET: ${NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET:?NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET must be configured}
+      NUVITAE_PROVIDER_SESSION_MAX_BYTES: 65536
     volumes:
       - private-storage:/var/lib/nuvitae/private
     tmpfs:

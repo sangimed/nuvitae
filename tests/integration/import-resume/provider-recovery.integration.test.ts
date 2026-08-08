@@ -123,6 +123,7 @@ const warningCategoryByCode: Readonly<
   not_configured: "no_provider",
   disconnected: "provider_unavailable",
   authentication_expired: "authentication_expired",
+  authentication_revoked: "authentication_expired",
   provider_unavailable: "provider_unavailable",
   rate_limited: "rate_limited",
   quota_exceeded: "quota_exceeded",
@@ -216,8 +217,8 @@ describe("provider connection recovery vocabulary (T163)", () => {
     );
 
     const reconnected = await h.service.reconnect(ownerA, connectionA);
-    expect(reconnected.connectionStatus).toBe("connected");
-    expect(reconnected.authenticationStatus).toBe("authenticated");
+    expect(reconnected.connectionStatus).toBe("login_pending");
+    expect(reconnected.authenticationStatus).toBe("pending");
   });
 
   it("revokes sessions, destroys session material, and reconnects after revoked authentication", async () => {
@@ -230,7 +231,8 @@ describe("provider connection recovery vocabulary (T163)", () => {
     expect(h.sessionStore.objects.size).toBe(0);
 
     const reconnected = await h.service.reconnect(ownerA, connectionA);
-    expect(reconnected.connectionStatus).toBe("connected");
+    expect(reconnected.connectionStatus).toBe("login_pending");
+    expect(reconnected.authenticationStatus).toBe("pending");
   });
 
   it("disconnects providers and reconnects through the same service boundary", async () => {
@@ -242,7 +244,8 @@ describe("provider connection recovery vocabulary (T163)", () => {
     expect(h.sessionStore.objects.size).toBe(0);
 
     const reconnected = await h.service.reconnect(ownerA, connectionA);
-    expect(reconnected.connectionStatus).toBe("connected");
+    expect(reconnected.connectionStatus).toBe("login_pending");
+    expect(reconnected.authenticationStatus).toBe("pending");
   });
 });
 
@@ -312,10 +315,9 @@ describe("provider failure classification and warnings (T173)", () => {
       "reconnect_provider",
     );
 
-    // Revoked authentication has no dedicated semantic error code; the safe
-    // provider-neutral recovery is the authentication-expired family, which
-    // the T163 service also allows through `reconnectableStatuses`.
-    const recovery = warningFor("authentication_expired").recoveryActions;
+    // Revoked authentication uses the same safe reconnect family as expired
+    // authentication; the provider-specific session is already unusable.
+    const recovery = warningFor("authentication_revoked").recoveryActions;
     expect(recovery).toContain("reconnect_provider");
     expect(recovery).toContain("manual_entry");
   });
@@ -1039,6 +1041,10 @@ class FakeAdapter implements ProviderRuntimeConnectionAdapter {
   login: ProviderAdapterLoginResult = {
     loginStartedAt: new Date("2026-08-01T09:01:00.000Z"),
     safeMessage: null,
+    browserHandoff: {
+      loginReference: "test-login-reference",
+      authorizationUrl: "https://codex.test/login",
+    },
   };
   quota: ProviderAdapterQuotaResult = {
     availabilityState: "available",

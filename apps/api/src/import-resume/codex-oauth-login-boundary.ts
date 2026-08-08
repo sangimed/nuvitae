@@ -1,5 +1,9 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
+  parseCodexSessionMaterial,
+  type CodexSessionMaterial,
+} from "@nuvitae/import-application";
+import {
   ProviderConnectionError,
   type ProviderAdapterBrowserLoginHandoff,
   type ProviderAdapterConnectedResult,
@@ -134,7 +138,7 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
     }
     let payload: CodexSessionPayload;
     try {
-      payload = parseCodexSessionPayload(
+      payload = parseCodexSessionMaterial(
         await context.sessionStore.readSession({
           ownerUserId: context.ownerUserId,
           connectionId: context.connectionId,
@@ -152,7 +156,7 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
     }
     if (
       payload.expiresAt !== null &&
-      new Date(payload.expiresAt).getTime() <= checkedAt.getTime()
+      payload.expiresAt.getTime() <= checkedAt.getTime()
     ) {
       return {
         connectionState: "authentication_expired",
@@ -210,7 +214,7 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
         refreshToken: credentials.refreshToken,
         accountId: credentials.accountId,
         expiresAt: credentials.expiresAt?.toISOString() ?? null,
-      } satisfies CodexSessionPayload),
+      }),
     );
     try {
       await context.sessionStore.writeSession({
@@ -355,35 +359,7 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
   }
 }
 
-interface CodexSessionPayload {
-  readonly v: 1;
-  readonly accessToken: string;
-  readonly refreshToken: string;
-  readonly accountId: string | null;
-  readonly expiresAt: string | null;
-}
-
-function parseCodexSessionPayload(value: Uint8Array): CodexSessionPayload {
-  const parsed: unknown = JSON.parse(new TextDecoder().decode(value));
-  if (
-    typeof parsed !== "object" ||
-    parsed === null ||
-    (parsed as { v?: unknown }).v !== 1 ||
-    typeof (parsed as { accessToken?: unknown }).accessToken !== "string" ||
-    typeof (parsed as { refreshToken?: unknown }).refreshToken !== "string" ||
-    !(
-      (parsed as { accountId?: unknown }).accountId === null ||
-      typeof (parsed as { accountId?: unknown }).accountId === "string"
-    ) ||
-    !(
-      (parsed as { expiresAt?: unknown }).expiresAt === null ||
-      typeof (parsed as { expiresAt?: unknown }).expiresAt === "string"
-    )
-  ) {
-    throw new Error("invalid_session_payload");
-  }
-  return parsed as CodexSessionPayload;
-}
+type CodexSessionPayload = CodexSessionMaterial;
 
 class OpenAiCodexOAuthTokenExchange implements CodexOAuthTokenExchange {
   async exchange(input: {

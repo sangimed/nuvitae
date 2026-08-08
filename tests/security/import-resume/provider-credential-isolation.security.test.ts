@@ -195,6 +195,10 @@ class FakeAdapter implements ProviderRuntimeConnectionAdapter {
   login: ProviderAdapterLoginResult = {
     loginStartedAt: new Date("2026-08-01T09:01:00.000Z"),
     safeMessage: null,
+    browserHandoff: {
+      loginReference: "test-login-reference",
+      authorizationUrl: "https://codex.test/login",
+    },
   };
   quota: ProviderAdapterQuotaResult = {
     availabilityState: "available",
@@ -560,7 +564,8 @@ describe("provider credential isolation", () => {
     await expect(
       h.service.reconnect(ownerA, connectionA),
     ).resolves.toMatchObject({
-      connectionStatus: "connected",
+      connectionStatus: "login_pending",
+      authenticationStatus: "pending",
     });
   });
 

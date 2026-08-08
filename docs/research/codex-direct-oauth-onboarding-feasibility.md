@@ -52,25 +52,25 @@ validation.
 
 ## Actual journey audit
 
-| State                              | What the user sees                                                                                                              | Result                                                                           |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Entry                              | “Create your resume”, with “Import an existing resume” as the primary action and manual entry as an alternative                 | Pass                                                                             |
-| Start import                       | “Start from your existing resume” and “Import my resume”                                                                        | Pass                                                                             |
-| Connection explanation             | Upload guidance now says “Connect Codex before uploading” and explains why the connection is needed                             | Pass after fix                                                                   |
+| State                              | What the user sees                                                                                                              | Result                                                                            |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Entry                              | “Create your resume”, with “Import an existing resume” as the primary action and manual entry as an alternative                 | Pass                                                                              |
+| Start import                       | “Start from your existing resume” and “Import my resume”                                                                        | Pass                                                                              |
+| Connection explanation             | Upload guidance now says “Connect Codex before uploading” and explains why the connection is needed                             | Pass after fix                                                                    |
 | Connection required                | Plain “Connect Codex” explanation and action; manual entry remains available                                                    | Pass; T213 entrypoint/handoff and T214 callback/status completion are implemented |
-| Connecting state                   | Clear connection-in-progress state with no duplicate initiation                                                                  | Pass; pending state disables duplicate initiation                                 |
-| Connected state                    | Server-proven “Codex is ready” state exists                                                                                     | Pass; UI consumes the authenticated status projection only                       |
-| Expired/unusable state             | Understandable attention-required state without implementation details                                                           | Pass; expired/revoked/unusable states use plain copy                              |
-| Connected lifecycle                | “Codex is ready” with a clear “Disconnect” action and confirmation that resume data stays | Pass; local credential deletion is fail-closed and idempotent                  |
-| Reconnect lifecycle                | “Reconnect Codex” after disconnected, expired, or revoked state; one pending handoff at a time | Pass; reuses the T213 handoff and waits for T214 callback readiness              |
-| Temporarily unavailable            | Codex is temporarily unavailable; connection and resume data are not silently deleted | Pass; unavailable remains separate from authentication failure                  |
-| Upload                             | Labelled file control, PDF/DOCX guidance, size/page/text limits, and “Upload and start import”                                  | Pass                                                                             |
-| Processing                         | “Preparing your resume for review” with a current step and only known progress percentages                                      | Pass                                                                             |
-| Review-ready                       | “Your resume draft is ready” and “Review imported resume”                                                                       | Pass                                                                             |
-| Partial fallback                   | Partial result is labelled as partial and unconfirmed; review remains required                                                  | Pass in recovery/component coverage                                              |
-| Recoverable Codex failure          | Codex-unavailable wording, limited/retry/manual actions where permitted                                                         | Pass in bounded recovery coverage                                                |
-| Terminal or malformed file failure | Plain error, replacement upload where permitted, and manual entry                                                               | Pass                                                                             |
-| Confirmation                       | Review warnings and fields must be resolved before “Create structured resume”; confirmation dialog has an explicit final action | Pass                                                                             |
+| Connecting state                   | Clear connection-in-progress state with no duplicate initiation                                                                 | Pass; pending state disables duplicate initiation                                 |
+| Connected state                    | Server-proven “Codex is ready” state exists                                                                                     | Pass; UI consumes the authenticated status projection only                        |
+| Expired/unusable state             | Understandable attention-required state without implementation details                                                          | Pass; expired/revoked/unusable states use plain copy                              |
+| Connected lifecycle                | “Codex is ready” with a clear “Disconnect” action and confirmation that resume data stays                                       | Pass; local credential deletion is fail-closed and idempotent                     |
+| Reconnect lifecycle                | “Reconnect Codex” after disconnected, expired, or revoked state; one pending handoff at a time                                  | Pass; reuses the T213 handoff and waits for T214 callback readiness               |
+| Temporarily unavailable            | Codex is temporarily unavailable; connection and resume data are not silently deleted                                           | Pass; unavailable remains separate from authentication failure                    |
+| Upload                             | Labelled file control, PDF/DOCX guidance, size/page/text limits, and “Upload and start import”                                  | Pass                                                                              |
+| Processing                         | “Preparing your resume for review” with a current step and only known progress percentages                                      | Pass                                                                              |
+| Review-ready                       | “Your resume draft is ready” and “Review imported resume”                                                                       | Pass                                                                              |
+| Partial fallback                   | Partial result is labelled as partial and unconfirmed; review remains required                                                  | Pass in recovery/component coverage                                               |
+| Recoverable Codex failure          | Codex-unavailable wording, limited/retry/manual actions where permitted                                                         | Pass in bounded recovery coverage                                                 |
+| Terminal or malformed file failure | Plain error, replacement upload where permitted, and manual entry                                                               | Pass                                                                              |
+| Confirmation                       | Review warnings and fields must be resolved before “Create structured resume”; confirmation dialog has an explicit final action | Pass                                                                              |
 
 ## Jargon audit
 
@@ -118,12 +118,13 @@ privacy-safe recovery copy. No test calls a real provider or OAuth endpoint.
 
 ## Result and remaining gap
 
-The T213-T215 portion now passes automated feasibility for the supported
+The T213-T216 portion now passes automated feasibility for the supported
 local/mocked journey: the production import flow exposes Connect Codex,
 completes a fully local/mocked callback, persists the qualified encrypted
 session boundary, renders connected/ready, expired/revoked, connecting,
 temporarily unavailable, and disconnected states, and covers disconnect,
-reconnect, session deletion, and data-preserving recovery. The complete T203
+reconnect, session deletion, data-preserving recovery, and production worker
+provider registration/session resolution. The complete T203
 onboarding gate is not accepted as live product evidence: the supported real
 OAuth/import flow and moderated human validation remain pending. This
 measurement does not claim live OAuth success.
@@ -169,9 +170,10 @@ personal data.
 ## T203 disposition
 
 The onboarding result is **PASS_AUTOMATED_FEASIBILITY** for the deterministic/local
-T213-T215 journey: connection, callback, ready state, disconnect, reconnect,
-expired/revoked recovery, temporary-unavailable guidance, and import/review
-data preservation are covered. This is not live production OAuth/import proof
+T213-T216 journey: connection, callback, ready state, disconnect, reconnect,
+expired/revoked recovery, temporary-unavailable guidance, import/review data
+preservation, and the production per-owner provider preflight are covered. This
+is not live production OAuth/import proof
 and does not replace moderated human validation. T203 remains **NO-GO** for the
 independent, already-finalized reason that T246 is failed. T217 remains complete.
 T246 was not rerun, reinterpreted, or modified.

@@ -2,6 +2,8 @@ import type { Provider } from "@nestjs/common";
 import { createDeterministicSemanticParserProvider } from "@nuvitae/import-application/testing";
 import {
   WORKER_SEMANTIC_PARSER_PROVIDER,
+  WORKER_PROVIDER_CONNECTION_REPOSITORY,
+  WORKER_PROVIDER_SESSION_STORE,
   workerImportRuntimeProviders,
 } from "./worker-import-runtime.providers.js";
 
@@ -22,8 +24,12 @@ export const workerE2EImportRuntimeProviders: Provider[] = [
       typeof provider !== "object" ||
       provider === null ||
       !("provide" in provider) ||
-      (provider as { provide?: unknown }).provide !==
-        WORKER_SEMANTIC_PARSER_PROVIDER,
+      ((provider as { provide?: unknown }).provide !==
+        WORKER_SEMANTIC_PARSER_PROVIDER &&
+        (provider as { provide?: unknown }).provide !==
+          WORKER_PROVIDER_CONNECTION_REPOSITORY &&
+        (provider as { provide?: unknown }).provide !==
+          WORKER_PROVIDER_SESSION_STORE),
   ),
   {
     provide: WORKER_SEMANTIC_PARSER_PROVIDER,

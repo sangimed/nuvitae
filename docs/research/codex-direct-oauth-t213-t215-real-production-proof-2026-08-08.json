@@ -1,0 +1,91 @@
+{
+  "evidence_schema_version": 1,
+  "proof_id": "t213-t215-real-production-flow-2026-08-08",
+  "observation_timestamp": "2026-08-08T22:20:17+02:00",
+  "app_revision": "7d08e821cbfa26b3173047bbe812fed189bc22bb",
+  "branch": "feat/import-resume-codex-direct-oauth-spike",
+  "deployment_shape": "local-self-hosted-production-like-docker-compose",
+  "compose_files": ["compose.yml", "compose.local.yml"],
+  "preflight": {
+    "worktree_and_branch_valid": true,
+    "historical_t246_live_authorization_enabled": false,
+    "t246_registry_state": "all_registered_attempts_consumed",
+    "application_build_succeeded": true,
+    "application_services_healthy": {
+      "web": true,
+      "api": true,
+      "worker": true,
+      "postgres": true,
+      "queue": true
+    },
+    "health_endpoints_http_status": {
+      "web": 200,
+      "api": 200
+    },
+    "callback_projection": {
+      "host": "localhost",
+      "port": 3001,
+      "path": "/import-resume/provider-connections/codex/oauth/callback",
+      "port_matches_api": true,
+      "host_is_allowlisted": true
+    },
+    "session_storage": {
+      "mounted_read_write": true,
+      "root_directory_mode": "0700",
+      "session_directory_mode": "0700",
+      "owner": "app:app",
+      "root_and_session_directories_writable": true,
+      "raw_contents_inspected": false
+    },
+    "stale_state": {
+      "server_status": "not_configured",
+      "ready": false,
+      "stale_connection_contamination_observed": false
+    },
+    "worker_runtime": {
+      "semantic_provider_mode": "production",
+      "production_semantic_provider_registered": false,
+      "deterministic_test_provider_enabled": false
+    }
+  },
+  "live_flow": {
+    "fixture": "none_selected; no live flow was started",
+    "connect_codex": "not_attempted",
+    "oauth_callback": "not_attempted",
+    "server_proven_readiness": "not_attempted",
+    "real_provider_import": "not_attempted",
+    "review_and_confirmation": "not_attempted",
+    "disconnect": "not_attempted",
+    "import_data_preservation": "not_attempted",
+    "reconnect": "not_attempted"
+  },
+  "failure": {
+    "classification": "local infrastructure/configuration",
+    "blocking_condition": "production worker registration has no semantic provider; the production Codex adapter wiring remains T216 and is not present",
+    "safe_action": "stop before OAuth initiation; do not substitute deterministic-e2e-test mode or direct API calls"
+  },
+  "final_classification": "INFRASTRUCTURE_INVALID",
+  "t203_status": "NO-GO; unchanged",
+  "t203_remaining_blockers": [
+    "finalized T246 qualification failure",
+    "moderated human onboarding validation pending",
+    "real production flow not proven because the production semantic provider boundary is not wired"
+  ],
+  "historical_proof_controls": {
+    "t246_rerun": false,
+    "t246_reopened": false,
+    "t246_reinterpreted": false,
+    "moderated_human_validation_performed": false
+  },
+  "secret_controls": {
+    "credentials_tokens_codes_pkce_or_raw_callback_material_persisted": false,
+    "raw_authorization_url_persisted": false,
+    "provider_response_persisted": false,
+    "raw_resume_content_persisted_in_evidence": false,
+    "evidence_contains_secret_material": false
+  },
+  "repository_changes": [
+    "docs/research/codex-direct-oauth-t213-t215-real-production-proof-2026-08-08.json"
+  ],
+  "commit_or_push_performed": false
+}

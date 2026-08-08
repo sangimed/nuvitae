@@ -4,6 +4,7 @@ import {
   DeterministicSemanticParserProvider,
   deterministicSemanticProviderKind,
 } from "@nuvitae/import-application/testing";
+import { CodexDirectProviderAdapter } from "@nuvitae/import-application";
 import {
   WORKER_SEMANTIC_PARSER_PROVIDER,
   createProductionSemanticParserProvider,
@@ -34,13 +35,26 @@ function registrationFor(
 }
 
 describe("semantic provider registration boundaries", () => {
-  it("keeps the production composition provider-less", () => {
-    expect(createProductionSemanticParserProvider()).toBeUndefined();
+  it("registers the production Codex adapter without invoking it at startup", () => {
+    const repository = {
+      findConnectionByProviderAndOwner: async () => null,
+    };
+    const sessionStore = {
+      readSession: async () => new Uint8Array(),
+    };
+    expect(
+      createProductionSemanticParserProvider(
+        repository as never,
+        sessionStore as never,
+      ),
+    ).toBeInstanceOf(CodexDirectProviderAdapter);
     const registration = registrationFor(
       workerImportRuntimeProviders,
       WORKER_SEMANTIC_PARSER_PROVIDER,
     );
-    expect(registration.useFactory()).toBeUndefined();
+    expect(registration.useFactory).toBe(
+      createProductionSemanticParserProvider,
+    );
   });
 
   it("registers the deterministic provider only in the explicit E2E composition", () => {

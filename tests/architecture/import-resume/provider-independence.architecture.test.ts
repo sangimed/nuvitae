@@ -18,6 +18,20 @@ const applicationRoot = join(
 const workerRoot = join(repositoryRoot, "apps", "worker", "src");
 
 const testingProviderDirectory = join(applicationRoot, "providers", "testing");
+// T216's one production provider adapter is the intentional provider-specific
+// edge. It remains behind ResumeSemanticParserProvider and is excluded from
+// the provider-neutral application scan; domain and worker orchestration still
+// cannot import provider-native code directly.
+const productionCodexAdapterFiles = new Set([
+  join(applicationRoot, "providers", "codex-direct-provider-adapter.ts"),
+  join(applicationRoot, "providers", "codex-direct-transport.ts"),
+  join(applicationRoot, "providers", "codex-session.ts"),
+]);
+const productionCodexAdapterExports = new Set([
+  "./providers/codex-direct-provider-adapter.js",
+  "./providers/codex-direct-transport.js",
+  "./providers/codex-session.js",
+]);
 
 const e2eWorkerModule = join(workerRoot, "worker-e2e.module.ts");
 const e2eWorkerProviders = join(
@@ -130,6 +144,12 @@ function forbiddenReason(
   sourcePath: string,
 ): string | undefined {
   const { specifier } = reference;
+  if (
+    sourcePath === join(applicationRoot, "index.ts") &&
+    productionCodexAdapterExports.has(specifier)
+  ) {
+    return undefined;
+  }
   if (providerSpecificPattern.test(specifier)) {
     return `provider-specific import "${specifier}"`;
   }
@@ -167,7 +187,9 @@ function productionWorkerFiles(): string[] {
 function productionApplicationFiles(): string[] {
   return collectSourceFiles(applicationRoot).filter(
     (file) =>
-      !file.endsWith(".test.ts") && !file.startsWith(testingProviderDirectory),
+      !file.endsWith(".test.ts") &&
+      !file.startsWith(testingProviderDirectory) &&
+      !productionCodexAdapterFiles.has(file),
   );
 }
 

@@ -187,6 +187,7 @@ describe("SemanticImportProcessor", () => {
 
   it.each([
     "authentication_expired",
+    "authentication_revoked",
     "disconnected",
     "unsupported_capability",
     "invalid_grounding",
@@ -417,6 +418,7 @@ describe("SemanticImportProcessor", () => {
 
   it.each([
     "authentication_expired",
+    "authentication_revoked",
     "disconnected",
     "unsupported_capability",
     "invalid_grounding",

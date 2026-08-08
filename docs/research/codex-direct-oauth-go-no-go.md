@@ -2,8 +2,9 @@
 
 **Task**: T203 — record the explicit direct-OAuth decision for the Codex
 production adapter path.
-**Latest re-evaluation**: 2026-08-08 (after T217 bounded-fallback validation) — decision remains **NO-GO** for
-production adapter implementation at this time.
+**Latest re-evaluation**: 2026-08-08 (after T216 production wiring and T217
+bounded-fallback validation) — decision remains **NO-GO** for qualified live
+production use at this time.
 **Original decision**: 2026-08-05 — **NO-GO** (evidence-availability; preserved
 as a historical record below).
 
@@ -37,21 +38,28 @@ true`). T246-C01-A01 was executed once on 2026-08-07: the backend invocation
    C02, C03, C05, C06, and C07 pass. C08 passes its separate malformed
    recovery contract without a semantic request. C01/C04 remain terminal
    failures, so the all-case T246 qualification is FAILED.
-2. **Bounded fallback** — PASS. T217 production wiring is complete: the worker
-   owns a one-primary-call/one-local-fallback budget; retryable provider and
-   protocol failures are classified explicitly; semantic-quality, extraction,
-   authorization, cancellation, and internal failures remain terminal; draft
-   persistence is atomic/idempotent; and provider-neutral status/UI recovery is
-   wired. Docker-backed persistence/security and focused application tests pass.
-3. **Non-technical onboarding feasibility** — `PASS_AUTOMATED_FEASIBILITY`
-   for deterministic/local coverage only. T213 supplies an executable
-   **Connect Codex** action and mocked/local browser handoff, T214 supplies
-   callback completion plus the connected/**Codex is ready**, expired, and
-   disconnected projections, and T215 supplies disconnect, reconnect,
-   expired/revoked recovery, and provider-unavailable recovery. No live
-   connection/import or moderated human validation is claimed.
-   Evidence: `docs/research/codex-direct-oauth-onboarding-feasibility.md` and
-   `tests/browser/import-resume/onboarding-feasibility.spec.ts`.
+
+T216 is nevertheless complete. It resolves the separate implementation gap
+identified by the failed T213-T215 production preflight: the production worker
+now registers `CodexDirectProviderAdapter` with the TypeORM owner-bound
+connection repository and private encrypted provider-session store. The
+adapter performs per-job readiness/session resolution and one bounded direct
+Codex invocation. This offline result makes the separately authorized live
+production proof ready to attempt; it does not constitute that proof and does
+not change the T203 decision. 2. **Bounded fallback** — PASS. T217 production wiring is complete: the worker
+owns a one-primary-call/one-local-fallback budget; retryable provider and
+protocol failures are classified explicitly; semantic-quality, extraction,
+authorization, cancellation, and internal failures remain terminal; draft
+persistence is atomic/idempotent; and provider-neutral status/UI recovery is
+wired. Docker-backed persistence/security and focused application tests pass. 3. **Non-technical onboarding feasibility** — `PASS_AUTOMATED_FEASIBILITY`
+for deterministic/local coverage only. T213 supplies an executable
+**Connect Codex** action and mocked/local browser handoff, T214 supplies
+callback completion plus the connected/**Codex is ready**, expired, and
+disconnected projections, and T215 supplies disconnect, reconnect,
+expired/revoked recovery, and provider-unavailable recovery. No live
+connection/import or moderated human validation is claimed.
+Evidence: `docs/research/codex-direct-oauth-onboarding-feasibility.md` and
+`tests/browser/import-resume/onboarding-feasibility.spec.ts`.
 
 GO requires every mandatory gate to pass. The framework permits GO or
 CONDITIONAL GO only when all of the re-evaluation conditions below are true;
@@ -61,22 +69,22 @@ remains **NO-GO**, not a judgment about Codex output quality.
 
 ### Criteria table (re-evaluated 2026-08-08 after T217)
 
-| Mandatory gate                         | Required evidence                                            | Current state                                                                                                                                                                                                                                                                                | Result               |
-| -------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
-| Direct OAuth login (fresh)             | Live browser login + callback completion                     | T199 live proof: initial live OAuth succeeded and final reauthentication succeeded; T245 accepted 2026-08-07 (`callback_completion: completed`, `connection_status_after_callback: connected`)                                                                                               | PASS                 |
-| Encrypted credential persistence       | Live encrypted store, no plaintext                           | T199: `real_encrypted_record_created: true`; lifecycle report: serialized contents contain no plaintext; confirmed by the accepted T245 aggregate                                                                                                                                            | PASS                 |
-| Restart recovery                       | Credential usable after container restart                    | T199: `real_restart_recovery_succeeded`, `real_disconnected_restart_succeeded`, `final_real_encrypted_recovery_succeeded`; confirmed by the accepted T245 aggregate                                                                                                                          | PASS                 |
-| Token refresh                          | Live refresh with rotation                                   | T199: refresh succeeded, token rotated, `live_network_refresh_count=1` for two concurrent requests (single-flight); confirmed by the accepted T245 aggregate                                                                                                                                 | PASS                 |
-| Live invocation after restart          | HTTP 200 + valid SSE with authenticated session              | T200: HTTP 200, valid SSE, `NUVITAE_T200_OK` verified; all six T201 cases HTTP 200 + valid protocol                                                                                                                                                                                          | PASS                 |
-| T245 lifecycle proof                   | Live lifecycle aggregate in the supported deployment shape   | Accepted 2026-08-07: `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`; 9/9 mandatory criteria passing (8 live-observed, 1 deterministic-only invalid-grant classification); provider-side revocation not exercised and not required                               | PASS                 |
-| T201 mandatory live cases              | C01-C06 all executed and independently passing               | Matrix `all_cases_live_passed`; C01-C06 pass                                                                                                                                                                                                                                                 | PASS                 |
-| Semantic quality (real PDF/DOCX)       | Real documents through live Codex                            | T246 aggregate: C01 FAIL (A01 harness-invalid; A02 23/24 exact, 17/18 high-priority), C02 PASS, C03 PASS, C04 FAIL (18/24 exact, 13/19 high-priority), C05 PASS, C06 PASS, C07 PASS; C08 separately PASSes malformed recovery with zero provider activity; all attempts consumed, no retries | NOT ACCEPTED         |
-| Prompt-injection resistance            | Deterministic security tests                                 | 92 security/evaluation tests pass                                                                                                                                                                                                                                                            | PASS (deterministic) |
-| Bounded fallback                       | No-provider/failure → bounded outcome                        | T217 production wiring passes focused worker/application/UI tests, Docker-backed import persistence/security tests, and offline T246 regression tests; one primary provider call, one local fallback execution, no queue retry, and no duplicate accepted draft                              | PASS                 |
-| Non-technical onboarding feasibility   | Understandable live connection/import journey                | Deterministic/local T213-T215 entrypoint, callback, ready-state, disconnect, reconnect, expired/revoked, unavailable, and import-preservation coverage passes; no live provider run or moderated human validation was performed                                                                                                               | PASS (automated/local only; live gate pending)         |
-| Credential security / no token leakage | Secret scan, token-blind evidence                            | `secret_scan_result=passed` on T199/T200/all T201 evidence; no raw credential or account identifier exposure                                                                                                                                                                                 | PASS                 |
-| Provider-neutral architecture          | Import domain depends only on `ResumeSemanticParserProvider` | 1064 default-suite tests pass incl. worker orchestration through the provider boundary                                                                                                                                                                                                       | PASS                 |
-| Factual preservation / no-invention    | Evidence rules enforced                                      | All six live cases: `no_invention_pass: true`, unsupported facts 0, forbidden inferences 0                                                                                                                                                                                                   | PASS                 |
+| Mandatory gate                         | Required evidence                                            | Current state                                                                                                                                                                                                                                                                                | Result                                         |
+| -------------------------------------- | ------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Direct OAuth login (fresh)             | Live browser login + callback completion                     | T199 live proof: initial live OAuth succeeded and final reauthentication succeeded; T245 accepted 2026-08-07 (`callback_completion: completed`, `connection_status_after_callback: connected`)                                                                                               | PASS                                           |
+| Encrypted credential persistence       | Live encrypted store, no plaintext                           | T199: `real_encrypted_record_created: true`; lifecycle report: serialized contents contain no plaintext; confirmed by the accepted T245 aggregate                                                                                                                                            | PASS                                           |
+| Restart recovery                       | Credential usable after container restart                    | T199: `real_restart_recovery_succeeded`, `real_disconnected_restart_succeeded`, `final_real_encrypted_recovery_succeeded`; confirmed by the accepted T245 aggregate                                                                                                                          | PASS                                           |
+| Token refresh                          | Live refresh with rotation                                   | T199: refresh succeeded, token rotated, `live_network_refresh_count=1` for two concurrent requests (single-flight); confirmed by the accepted T245 aggregate                                                                                                                                 | PASS                                           |
+| Live invocation after restart          | HTTP 200 + valid SSE with authenticated session              | T200: HTTP 200, valid SSE, `NUVITAE_T200_OK` verified; all six T201 cases HTTP 200 + valid protocol                                                                                                                                                                                          | PASS                                           |
+| T245 lifecycle proof                   | Live lifecycle aggregate in the supported deployment shape   | Accepted 2026-08-07: `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`; 9/9 mandatory criteria passing (8 live-observed, 1 deterministic-only invalid-grant classification); provider-side revocation not exercised and not required                               | PASS                                           |
+| T201 mandatory live cases              | C01-C06 all executed and independently passing               | Matrix `all_cases_live_passed`; C01-C06 pass                                                                                                                                                                                                                                                 | PASS                                           |
+| Semantic quality (real PDF/DOCX)       | Real documents through live Codex                            | T246 aggregate: C01 FAIL (A01 harness-invalid; A02 23/24 exact, 17/18 high-priority), C02 PASS, C03 PASS, C04 FAIL (18/24 exact, 13/19 high-priority), C05 PASS, C06 PASS, C07 PASS; C08 separately PASSes malformed recovery with zero provider activity; all attempts consumed, no retries | NOT ACCEPTED                                   |
+| Prompt-injection resistance            | Deterministic security tests                                 | 92 security/evaluation tests pass                                                                                                                                                                                                                                                            | PASS (deterministic)                           |
+| Bounded fallback                       | No-provider/failure → bounded outcome                        | T217 production wiring passes focused worker/application/UI tests, Docker-backed import persistence/security tests, and offline T246 regression tests; one primary provider call, one local fallback execution, no queue retry, and no duplicate accepted draft                              | PASS                                           |
+| Non-technical onboarding feasibility   | Understandable live connection/import journey                | Deterministic/local T213-T216 entrypoint, callback, ready-state, disconnect, reconnect, expired/revoked, unavailable, import-preservation, and production per-owner provider-wiring coverage passes; no live provider run or moderated human validation was performed                        | PASS (automated/local only; live gate pending) |
+| Credential security / no token leakage | Secret scan, token-blind evidence                            | `secret_scan_result=passed` on T199/T200/all T201 evidence; no raw credential or account identifier exposure                                                                                                                                                                                 | PASS                                           |
+| Provider-neutral architecture          | Import domain depends only on `ResumeSemanticParserProvider` | 1064 default-suite tests pass incl. worker orchestration through the provider boundary                                                                                                                                                                                                       | PASS                                           |
+| Factual preservation / no-invention    | Evidence rules enforced                                      | All six live cases: `no_invention_pass: true`, unsupported facts 0, forbidden inferences 0                                                                                                                                                                                                   | PASS                                           |
 
 ### Evidence for the re-evaluation
 
@@ -96,16 +104,19 @@ remains **NO-GO**, not a judgment about Codex output quality.
 
 ### Downstream consequences (current)
 
-- **T164, T165** (production Codex adapter + response converter): remain
-  **blocked**. They must NOT be implemented on the basis of this NO-GO.
+- **T164, T165** (production Codex adapter + response converter): their thin
+  adapter/response-mapping responsibility is implemented within T216; the
+  historical task entries are not marked here because this change is scoped to
+  T216. This does not claim live qualification.
 - **T201**: complete (six-case matrix all passing).
 - **T202**: measured (all evidence-supported metrics pass; latency, cancellation,
   and quota behavior remain unmeasured; onboarding is measured as an automated
   feasibility failure and is not accepted as live validation).
 - **T243**: executed the registered Campaign-B attempts; C04-B02 failed
   immutably at credential recovery, C04-B03/C05-B01/C06-B01 passed.
-- **T216** (production Codex wiring): must not start; its dependency on a
-  qualifying T203 outcome is unsatisfied.
+- **T216** (production Codex wiring): complete offline/local. The former
+  missing-provider-registration blocker is resolved; live OAuth/import proof
+  remains separately pending.
 - **T217** (bounded fallback wiring): complete and validated 2026-08-08; this
   does not change the T203 decision.
 - **T212-T215** (Community setup/connection UI): T213 and T214 are complete for
@@ -161,8 +172,9 @@ following are true:
 4. The decisive product question is answered positively: a non-technical user
    can import a typical PDF/DOCX and receive a review-useful draft without
    dangerous hallucinations or excessive manual reconstruction; and
-5. **SATISFIED (2026-08-08)** — bounded-fallback production wiring (T217) is
-   complete.
+5. **SATISFIED (2026-08-08)** — production semantic-provider wiring (T216) and
+   bounded-fallback production wiring (T217) are complete offline/local. The
+   separately authorized live proof remains pending.
 
 Until those conditions produce qualifying evidence, the Community MVP must not
 treat the direct Codex path as production-qualified.
