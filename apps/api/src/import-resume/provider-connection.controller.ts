@@ -64,27 +64,28 @@ export class ProviderConnectionController {
   async readStatus(@Req() request: object) {
     const authenticated = getGuardedAuthenticatedContext(request);
     const status = await this.connectionInitiation.status(authenticated.userId);
-    return providerConnectionStatusResponseSchema.parse(
-      status === null
-        ? {
-            version: "2026-08-08",
-            providerKind: "codex",
-            connectionStatus: "not_configured",
-            authenticationStatus: "unauthenticated",
-            availabilityStatus: "unknown",
-            ready: false,
-            safeMessage: null,
-          }
-        : {
-            version: "2026-08-08",
-            providerKind: status.providerKind,
-            connectionStatus: status.connectionStatus,
-            authenticationStatus: status.authenticationStatus,
-            availabilityStatus: status.availabilityStatus,
-            ready: status.ready,
-            safeMessage: publicStatusMessage(status),
-          },
-    );
+    return toPublicStatusResponse(status);
+  }
+
+  @Post("codex/disconnect")
+  @UseGuards(VerifiedPrincipalGuard)
+  @ApiOperation({
+    summary: "Disconnect Codex and remove local connection data",
+  })
+  @ApiOkResponse({ description: "The privacy-safe disconnected state." })
+  @ApiServiceUnavailableResponse({
+    description: "The local connection could not be removed safely.",
+  })
+  @ApiUnauthorizedResponse({ description: "Authentication is required." })
+  async disconnect(@Req() request: object) {
+    const authenticated = getGuardedAuthenticatedContext(request);
+    try {
+      return toPublicStatusResponse(
+        await this.connectionInitiation.disconnect(authenticated.userId),
+      );
+    } catch (error) {
+      throw mapDisconnectError(error);
+    }
   }
 
   @Get("codex/oauth/callback")
@@ -147,6 +148,32 @@ function publicStatusMessage(status: {
     return "Codex connection needs attention.";
   }
   return null;
+}
+
+function toPublicStatusResponse(
+  status: Awaited<ReturnType<CodexConnectionInitiationService["status"]>>,
+) {
+  return providerConnectionStatusResponseSchema.parse(
+    status === null
+      ? {
+          version: "2026-08-08",
+          providerKind: "codex",
+          connectionStatus: "not_configured",
+          authenticationStatus: "unauthenticated",
+          availabilityStatus: "unknown",
+          ready: false,
+          safeMessage: null,
+        }
+      : {
+          version: "2026-08-08",
+          providerKind: status.providerKind,
+          connectionStatus: status.connectionStatus,
+          authenticationStatus: status.authenticationStatus,
+          availabilityStatus: status.availabilityStatus,
+          ready: status.ready,
+          safeMessage: publicStatusMessage(status),
+        },
+  );
 }
 
 function normalizeCallbackQuery(query: Record<string, unknown>) {
@@ -285,6 +312,29 @@ function mapInitiationError(error: unknown): HttpException {
       statusCode: HttpStatus.SERVICE_UNAVAILABLE,
       code: "connection_unavailable",
       message: "Codex connection could not be started. Try again later.",
+    },
+    HttpStatus.SERVICE_UNAVAILABLE,
+  );
+}
+
+function mapDisconnectError(error: unknown): HttpException {
+  const code =
+    error instanceof ProviderConnectionError ? error.code : undefined;
+  if (code === "provider_connection_state_conflict") {
+    return new HttpException(
+      {
+        statusCode: HttpStatus.CONFLICT,
+        code: "connection_state_conflict",
+        message: "Codex cannot be disconnected while it is still connecting.",
+      },
+      HttpStatus.CONFLICT,
+    );
+  }
+  return new HttpException(
+    {
+      statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+      code: "disconnect_unavailable",
+      message: "Codex could not be disconnected safely. Try again later.",
     },
     HttpStatus.SERVICE_UNAVAILABLE,
   );

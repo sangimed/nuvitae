@@ -404,11 +404,33 @@ export class ProviderConnectionService {
       throw new ProviderConnectionError("provider_connection_state_conflict");
     }
 
+    // Reconnect is a replacement operation. Delete any old unusable session
+    // before starting the existing T213 browser handoff so a cancelled or
+    // failed replacement cannot leave stale credential material attached.
+    if (
+      connection.connectionStatus !== "not_configured" &&
+      connection.connectionStatus !== "login_pending" &&
+      connection.sessionReference !== null
+    ) {
+      await this.deleteSessionMaterial(
+        ownerUserId,
+        connection.id,
+        connection.sessionReference,
+      );
+      connection = await this.saveSafely(connection, {
+        ...connection,
+        sessionReference: null,
+        capabilities: null,
+        capabilitySnapshotAt: null,
+        lastCheckedAt: new Date(),
+      });
+    }
+
     let login: ProviderAdapterLoginResult;
     try {
       login = await this.ports.adapter.startLogin(
         this.context(ownerUserId, connection.id),
-        connection.sessionReference,
+        null,
       );
     } catch (error) {
       throw mapAdapterError(error);
@@ -561,44 +583,85 @@ export class ProviderConnectionService {
       throw new ProviderConnectionError("provider_connection_state_conflict");
     }
     assertStatus(connection, "reconnect", reconnectableStatuses);
+    // Reconnect deliberately reuses the same browser handoff and callback
+    // path as initial connection. It returns pending until T214 callback
+    // completion persists a replacement encrypted session.
+    const result = await this.beginBrowserLogin(ownerUserId, {
+      ...(connection.displayName === null
+        ? {}
+        : { displayName: connection.displayName }),
+    });
+    return result.status;
+  }
 
-    let connected: ProviderAdapterConnectedResult;
-    try {
-      connected = await this.ports.adapter.reconnect(
-        this.context(ownerUserId, connectionId),
-        connection.sessionReference,
-      );
-    } catch (error) {
-      throw mapAdapterError(error);
+  /**
+   * Records a temporary provider outage without deleting a valid session or
+   * changing authentication state. This is a projection only; it never
+   * retries semantic parsing.
+   */
+  async markProviderUnavailable(
+    ownerUserId: string,
+    connectionId: string,
+    now = new Date(),
+  ): Promise<ProviderConnectionStatusView> {
+    const connection = await this.requireActiveByOwner(
+      ownerUserId,
+      connectionId,
+      "status",
+    );
+    if (
+      connection.connectionStatus !== "connected" ||
+      connection.authenticationStatus !== "authenticated" ||
+      connection.sessionReference === null
+    ) {
+      throw new ProviderConnectionError("provider_connection_state_conflict");
     }
-    try {
-      assertOpaqueSessionReference(connected.sessionReference);
-      const now = connected.connectedAt;
-      const next: AIProviderRuntimeConnection = {
-        ...connection,
-        connectionStatus: "connected",
-        authenticationStatus: "authenticated",
-        availabilityStatus: "available",
-        sessionReference: connected.sessionReference,
-        capabilities: connected.capabilities,
-        capabilitySnapshotAt: now,
-        connectedAt: now,
-        refreshedAt: now,
-        expiresAt: connected.expiresAt,
-        disconnectedAt: null,
-        revokedAt: null,
-        revocationReason: null,
-        lastCheckedAt: now,
-      };
-      return toStatusView(await this.saveSafely(connection, next), null);
-    } catch (error) {
-      await this.deleteSessionMaterial(
+    const next: AIProviderRuntimeConnection = {
+      ...connection,
+      availabilityStatus: "unavailable",
+      lastCheckedAt: now,
+    };
+    return toStatusView(
+      await this.saveSafely(connection, next),
+      "Codex is temporarily unavailable. Your connection and resume data are still here.",
+    );
+  }
+
+  /** Explicit recovery from a persisted temporary-unavailable projection. */
+  async markProviderAvailable(
+    ownerUserId: string,
+    connectionId: string,
+    now = new Date(),
+  ): Promise<ProviderConnectionStatusView> {
+    const connection = await this.requireActiveByOwner(
+      ownerUserId,
+      connectionId,
+      "status",
+    );
+    if (connection.connectionStatus !== "connected") {
+      throw new ProviderConnectionError("provider_connection_state_conflict");
+    }
+    const next: AIProviderRuntimeConnection = {
+      ...connection,
+      availabilityStatus: "available",
+      lastCheckedAt: now,
+    };
+    return toStatusView(await this.saveSafely(connection, next), null);
+  }
+
+  /** Owner-scoped lookup for the authenticated disconnect endpoint. */
+  async disconnectForProvider(
+    ownerUserId: string,
+    providerKind = this.ports.adapter.providerKind,
+    now = new Date(),
+  ): Promise<ProviderConnectionStatusView | null> {
+    const connection =
+      await this.ports.repository.findConnectionByProviderAndOwner(
+        providerKind,
         ownerUserId,
-        connectionId,
-        connected.sessionReference,
-      ).catch(() => undefined);
-      throw error;
-    }
+      );
+    if (connection === null || connection.deletedAt !== null) return null;
+    return this.disconnect(ownerUserId, connection.id, now);
   }
 
   /**
@@ -955,7 +1018,14 @@ export class ProviderConnectionService {
       ...connection,
       connectionStatus: inspection.connectionState,
       authenticationStatus: inspection.authenticationState,
-      availabilityStatus: inspection.availabilityState,
+      // Local session inspection cannot prove that a remote provider has
+      // recovered. Keep an explicit temporary-unavailable projection until
+      // an explicit provider availability check clears it.
+      availabilityStatus:
+        connection.availabilityStatus !== "available" &&
+        inspection.availabilityState === "available"
+          ? connection.availabilityStatus
+          : inspection.availabilityState,
       lastCheckedAt: inspection.checkedAt,
     };
     return this.saveSafely(connection, next);

@@ -4,26 +4,37 @@ import { useEffect, useRef, useState } from "react";
 import type { ProviderConnectionStatusResponse } from "@nuvitae/contracts";
 import {
   beginCodexConnection,
+  disconnectCodexConnection,
   readCodexConnectionStatus,
   type BeginCodexConnectionOutcome,
+  type DisconnectCodexConnectionOutcome,
   type ReadCodexConnectionStatusOutcome,
 } from "../../services/import-resume/codex-connection-client";
+import { DisconnectDialog } from "./DisconnectDialog";
 
 type VisibleStatus =
-  "loading" | "disconnected" | "connecting" | "ready" | "expired";
+  | "loading"
+  | "disconnected"
+  | "connecting"
+  | "ready"
+  | "expired"
+  | "unavailable";
 
 export function ConnectionStatusCard(props: {
   readonly onInitiateConnection?: typeof beginCodexConnection;
   readonly onReadStatus?: typeof readCodexConnectionStatus;
+  readonly onDisconnect?: typeof disconnectCodexConnection;
   readonly onNavigate?: (authorizationUrl: string) => void;
 }) {
   const [status, setStatus] = useState<ProviderConnectionStatusResponse>();
   const [statusMessage, setStatusMessage] = useState<string>();
   const [busy, setBusy] = useState(false);
+  const [disconnectOpen, setDisconnectOpen] = useState(false);
   const inFlight = useRef(false);
   const connectionAttempted = useRef(false);
   const readStatus = props.onReadStatus ?? readCodexConnectionStatus;
   const initiate = props.onInitiateConnection ?? beginCodexConnection;
+  const disconnect = props.onDisconnect ?? disconnectCodexConnection;
 
   useEffect(() => {
     // T213 component tests inject only initiation; production and T214 tests
@@ -50,7 +61,12 @@ export function ConnectionStatusCard(props: {
   }, [props.onInitiateConnection, props.onReadStatus, readStatus]);
 
   const visibleStatus = toVisibleStatus(status);
-  const canStart = visibleStatus === "disconnected";
+  const canStart =
+    visibleStatus === "disconnected" || visibleStatus === "expired";
+  const connectAction =
+    status === undefined || status.connectionStatus === "not_configured"
+      ? "Connect Codex"
+      : "Reconnect Codex";
 
   async function connect() {
     if (inFlight.current || !canStart) return;
@@ -81,6 +97,23 @@ export function ConnectionStatusCard(props: {
     setStatusMessage(outcome.message);
   }
 
+  async function disconnectCodex() {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    setStatusMessage(undefined);
+    const outcome = await disconnect();
+    if (outcome.ok) {
+      setStatus(outcome.response);
+      setDisconnectOpen(false);
+      setStatusMessage("Codex disconnected. Your resume data is still here.");
+    } else {
+      setStatusMessage(outcome.message);
+    }
+    inFlight.current = false;
+    setBusy(false);
+  }
+
   return (
     <section
       className="guidance-panel"
@@ -100,9 +133,25 @@ export function ConnectionStatusCard(props: {
           disabled={busy}
           aria-busy={busy}
         >
-          {busy ? "Opening secure connection…" : "Connect Codex"}
+          {busy ? "Opening secure connection…" : connectAction}
         </button>
       ) : null}
+      {visibleStatus === "ready" ? (
+        <button
+          type="button"
+          className="secondary-action"
+          onClick={() => setDisconnectOpen(true)}
+          disabled={busy}
+        >
+          Disconnect
+        </button>
+      ) : null}
+      <DisconnectDialog
+        open={disconnectOpen}
+        busy={busy}
+        onCancel={() => setDisconnectOpen(false)}
+        onConfirm={() => void disconnectCodex()}
+      />
     </section>
   );
 }
@@ -115,6 +164,14 @@ function toVisibleStatus(
   if (status === undefined) return "disconnected";
   if (status.ready) return "ready";
   if (status.connectionStatus === "login_pending") return "connecting";
+  if (
+    status.connectionStatus === "connected" &&
+    (status.availabilityStatus === "unavailable" ||
+      status.availabilityStatus === "rate_limited" ||
+      status.availabilityStatus === "quota_exceeded")
+  ) {
+    return "unavailable";
+  }
   if (
     status.connectionStatus === "authentication_expired" ||
     status.connectionStatus === "authentication_revoked" ||
@@ -143,11 +200,19 @@ function renderStatusMessage(
       return <p>Connecting Codex. Keep this page open while you finish.</p>;
     case "ready":
       return <p>Codex is ready.</p>;
+    case "unavailable":
+      return (
+        <p>
+          Codex is temporarily unavailable. Your connection and resume data are
+          still here. Try again later.
+        </p>
+      );
     case "expired":
       return (
         <p>
-          Codex connection expired. Codex needs attention before you can
-          continue.
+          {response?.connectionStatus === "authentication_revoked"
+            ? "Codex connection needs attention. Reconnect Codex before you can continue."
+            : "Codex connection expired. Reconnect Codex before you can continue."}
           {response?.safeMessage === null
             ? null
             : ` ${response?.safeMessage ?? ""}`}
@@ -157,3 +222,4 @@ function renderStatusMessage(
 }
 
 export type { BeginCodexConnectionOutcome, ReadCodexConnectionStatusOutcome };
+export type { DisconnectCodexConnectionOutcome };

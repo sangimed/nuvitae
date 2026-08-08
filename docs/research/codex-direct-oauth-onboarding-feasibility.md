@@ -1,9 +1,12 @@
 # T203 Non-Technical Onboarding Feasibility Measurement
 
-**Measured**: 2026-08-08 (T214 delta)
-**Deployment evidence**: deterministic web UI tests and existing local import
-tests; no live Codex/OAuth activity  
-**Classification**: `FAIL_AUTOMATED_FEASIBILITY`
+**Measured**: 2026-08-08 (T215 delta)
+**Deployment evidence**: deterministic API/service/security tests, local mocked
+provider Playwright tests, and existing local import tests; no live
+Codex/OAuth activity
+**Classification**: `PASS_AUTOMATED_FEASIBILITY` for the local/mocked journey;
+final live production OAuth/import proof and moderated human validation remain
+pending.
 
 ## Canonical requirement
 
@@ -58,6 +61,9 @@ validation.
 | Connecting state                   | Clear connection-in-progress state with no duplicate initiation                                                                  | Pass; pending state disables duplicate initiation                                 |
 | Connected state                    | Server-proven “Codex is ready” state exists                                                                                     | Pass; UI consumes the authenticated status projection only                       |
 | Expired/unusable state             | Understandable attention-required state without implementation details                                                           | Pass; expired/revoked/unusable states use plain copy                              |
+| Connected lifecycle                | “Codex is ready” with a clear “Disconnect” action and confirmation that resume data stays | Pass; local credential deletion is fail-closed and idempotent                  |
+| Reconnect lifecycle                | “Reconnect Codex” after disconnected, expired, or revoked state; one pending handoff at a time | Pass; reuses the T213 handoff and waits for T214 callback readiness              |
+| Temporarily unavailable            | Codex is temporarily unavailable; connection and resume data are not silently deleted | Pass; unavailable remains separate from authentication failure                  |
 | Upload                             | Labelled file control, PDF/DOCX guidance, size/page/text limits, and “Upload and start import”                                  | Pass                                                                             |
 | Processing                         | “Preparing your resume for review” with a current step and only known progress percentages                                      | Pass                                                                             |
 | Review-ready                       | “Your resume draft is ready” and “Review imported resume”                                                                       | Pass                                                                             |
@@ -97,6 +103,13 @@ responses and synthetic file bytes only:
    ready label.
 3. Codex unavailable: the user sees a plain failure, no review button is
    offered, and manual entry is available.
+4. Connected recovery: the user sees **Disconnect**, confirms it, sees that
+   resume data remains, and receives **Reconnect Codex**; the mocked handoff is
+   bounded to one initiation.
+5. Expired/revoked recovery: both states offer the same plain **Reconnect
+   Codex** action and never claim readiness before callback completion.
+6. Temporary provider unavailability: the user is told that the connection and
+   resume data remain; no reconnect or credential-deletion action is implied.
 
 Existing canonical UI/accessibility and component coverage exercises the happy
 path, upload validation, processing, timeout, draft review, partial fallback,
@@ -105,13 +118,15 @@ privacy-safe recovery copy. No test calls a real provider or OAuth endpoint.
 
 ## Result and remaining gap
 
-The T213/T214 portion now passes automated feasibility: the production import
-flow exposes Connect Codex, completes a fully local/mocked callback, persists
-the qualified encrypted session boundary, and renders connected/ready,
-expired/unusable, connecting, and disconnected states. The complete onboarding
-criterion still does not pass because T215 recovery operations, live provider
-activity, and moderated human validation remain incomplete. This measurement
-does not claim live OAuth success.
+The T213-T215 portion now passes automated feasibility for the supported
+local/mocked journey: the production import flow exposes Connect Codex,
+completes a fully local/mocked callback, persists the qualified encrypted
+session boundary, renders connected/ready, expired/revoked, connecting,
+temporarily unavailable, and disconnected states, and covers disconnect,
+reconnect, session deletion, and data-preserving recovery. The complete T203
+onboarding gate is not accepted as live product evidence: the supported real
+OAuth/import flow and moderated human validation remain pending. This
+measurement does not claim live OAuth success.
 
 ### Import state across the callback
 
@@ -153,9 +168,10 @@ personal data.
 
 ## T203 disposition
 
-The onboarding blocker remains **measured** as a failed automated feasibility
-result for the full journey: T213/T214 connection, callback, and ready-state
-behavior are present, but T215 recovery operations are absent. T203 remains **NO-GO** for
-the independent, already-finalized reason that T246 is failed; the onboarding
-gate is also not accepted. T217 remains complete. T246 was not rerun,
-reinterpreted, or modified.
+The onboarding result is **PASS_AUTOMATED_FEASIBILITY** for the deterministic/local
+T213-T215 journey: connection, callback, ready state, disconnect, reconnect,
+expired/revoked recovery, temporary-unavailable guidance, and import/review
+data preservation are covered. This is not live production OAuth/import proof
+and does not replace moderated human validation. T203 remains **NO-GO** for the
+independent, already-finalized reason that T246 is failed. T217 remains complete.
+T246 was not rerun, reinterpreted, or modified.

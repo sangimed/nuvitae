@@ -23,6 +23,7 @@ function serviceMock(overrides: Record<string, unknown> = {}) {
   return {
     begin: vi.fn(),
     status: vi.fn(async () => null),
+    disconnect: vi.fn(async () => null),
     completeCallback: vi.fn(async () => undefined),
     ...overrides,
   } as unknown as CodexConnectionInitiationService;
@@ -76,6 +77,75 @@ describe("ProviderConnectionController (T214)", () => {
     expect(response.connectionStatus).toBe("connected");
     expect(JSON.stringify(response)).not.toContain("internal-connection-id");
     expect(JSON.stringify(response)).not.toMatch(/token|account|session|url/i);
+  });
+
+  it("disconnects only through the authenticated owner context and returns a safe disconnected projection", async () => {
+    const disconnect = vi.fn(async () => ({
+      connectionId: "internal-connection-id",
+      providerKind: "codex",
+      displayName: "Codex",
+      connectionStatus: "disconnected" as const,
+      authenticationStatus: "unauthenticated" as const,
+      availabilityStatus: "unknown" as const,
+      capabilities: null,
+      capabilitySnapshotAt: null,
+      lastCheckedAt: new Date(),
+      loginStartedAt: null,
+      connectedAt: new Date(),
+      refreshedAt: null,
+      expiresAt: null,
+      disconnectedAt: new Date(),
+      revokedAt: null,
+      deletedAt: null,
+      safeMessage: null,
+      ready: false,
+    }));
+    const controller = new ProviderConnectionController(
+      serviceMock({ disconnect }),
+    );
+
+    const response = await controller.disconnect(authenticatedRequest());
+    expect(disconnect).toHaveBeenCalledWith(ownerUserId);
+    expect(response.connectionStatus).toBe("disconnected");
+    expect(response.ready).toBe(false);
+    expect(JSON.stringify(response)).not.toMatch(
+      /token|account|session|credential|oauth|internal-connection-id/i,
+    );
+  });
+
+  it("keeps provider-unavailable separate from authentication expiry", async () => {
+    const controller = new ProviderConnectionController(
+      serviceMock({
+        status: vi.fn(async () => ({
+          connectionId: "internal-connection-id",
+          providerKind: "codex",
+          displayName: "Codex",
+          connectionStatus: "connected",
+          authenticationStatus: "authenticated",
+          availabilityStatus: "unavailable",
+          capabilities: null,
+          capabilitySnapshotAt: null,
+          lastCheckedAt: new Date(),
+          loginStartedAt: null,
+          connectedAt: new Date(),
+          refreshedAt: null,
+          expiresAt: null,
+          disconnectedAt: null,
+          revokedAt: null,
+          deletedAt: null,
+          safeMessage: null,
+          ready: false,
+        })),
+      }),
+    );
+    const response = await controller.readStatus(authenticatedRequest());
+    expect(response).toMatchObject({
+      connectionStatus: "connected",
+      authenticationStatus: "authenticated",
+      availabilityStatus: "unavailable",
+      ready: false,
+      safeMessage: "Codex is temporarily unavailable.",
+    });
   });
 
   it("redirects a valid callback only to the allowlisted local product", async () => {

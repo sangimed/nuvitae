@@ -339,12 +339,37 @@ describe("provider connection service", () => {
     await service.disconnect(ownerA, connectionA);
     await expect(service.reconnect(ownerA, connectionA)).resolves.toMatchObject(
       {
-        connectionStatus: "connected",
+        connectionStatus: "login_pending",
+        ready: false,
       },
     );
+    await service.completeLogin(ownerA, connectionA);
     expect(repository.rows.get(connectionA)?.connectionStatus).toBe(
       "connected",
     );
+  });
+
+  it("reconnects expired credentials through the existing browser path and deletes the old session first", async () => {
+    const { service, repository, sessionStore } = harness();
+    await service.connect(ownerA, connectionA);
+    await service.completeLogin(ownerA, connectionA);
+    repository.rows.set(connectionA, {
+      ...repository.rows.get(connectionA)!,
+      connectionStatus: "authentication_expired",
+      authenticationStatus: "expired",
+      availabilityStatus: "unknown",
+    });
+
+    const pending = await service.reconnect(ownerA, connectionA);
+    expect(pending.connectionStatus).toBe("login_pending");
+    expect(pending.ready).toBe(false);
+    expect(sessionStore.objects.size).toBe(0);
+
+    await service.completeLogin(ownerA, connectionA);
+    expect(repository.rows.get(connectionA)?.connectionStatus).toBe(
+      "connected",
+    );
+    expect(sessionStore.objects.size).toBe(1);
   });
 
   it("cleans up orphaned encrypted sessions when persistence fails after connect", async () => {
@@ -383,6 +408,45 @@ describe("provider connection service", () => {
     const again = await service.disconnect(ownerA, connectionA);
     expect(again.connectionStatus).toBe("disconnected");
     expect(adapter.disconnectCalls).toBe(1);
+  });
+
+  it("keeps provider-unavailable connections authenticated and preserves unrelated import data", async () => {
+    const { service, repository, sessionStore } = harness();
+    await service.connect(ownerA, connectionA);
+    await service.completeLogin(ownerA, connectionA);
+    const importData = {
+      importedDocumentId: "import-1",
+      draftId: "draft-1",
+      confirmedResumeId: "resume-1",
+    };
+
+    const unavailable = await service.markProviderUnavailable(
+      ownerA,
+      connectionA,
+      new Date("2026-08-01T13:00:00.000Z"),
+    );
+    expect(unavailable.connectionStatus).toBe("connected");
+    expect(unavailable.authenticationStatus).toBe("authenticated");
+    expect(unavailable.availabilityStatus).toBe("unavailable");
+    expect(unavailable.ready).toBe(false);
+    expect(repository.rows.get(connectionA)?.sessionReference).toBe(
+      sessionReference,
+    );
+    expect(sessionStore.objects.size).toBe(1);
+    expect(importData).toEqual({
+      importedDocumentId: "import-1",
+      draftId: "draft-1",
+      confirmedResumeId: "resume-1",
+    });
+
+    const status = await service.status(ownerA, connectionA);
+    expect(status.availabilityStatus).toBe("unavailable");
+    expect(status.ready).toBe(false);
+
+    await service.markProviderAvailable(ownerA, connectionA);
+    expect(repository.rows.get(connectionA)?.availabilityStatus).toBe(
+      "available",
+    );
   });
 
   it("revokes by destroying session material and recording revocation metadata", async () => {
@@ -496,6 +560,9 @@ describe("provider connection service", () => {
         expect.objectContaining({ code: "provider_connection_not_found" }),
       );
     }
+    await expect(
+      service.disconnectForProvider(ownerB, "test_provider"),
+    ).resolves.toBeNull();
     const deleteView = await service.deleteConnection(ownerB, connectionA);
     expect(deleteView.deletedAt).not.toBeNull();
     expect(repository.rows.get(connectionA)).toEqual(before);
@@ -542,7 +609,9 @@ describe("provider connection service", () => {
       checkedAt: new Date("2026-08-01T10:01:00.000Z"),
       safeMessage: null,
     };
-    await expect(service.status(ownerA, connectionA)).resolves.toMatchObject({
+    await expect(
+      service.refreshQuotaState(ownerA, connectionA),
+    ).resolves.toMatchObject({
       availabilityStatus: "available",
     });
     expect(sessionStore.objects.size).toBe(1);

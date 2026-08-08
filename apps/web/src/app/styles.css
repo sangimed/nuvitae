@@ -186,10 +186,26 @@ input:focus-visible,
 }
 
 .primary-action:disabled,
+.secondary-action:disabled,
 .secondary-button:disabled,
 input:disabled {
   cursor: not-allowed;
   opacity: 0.65;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.modal-backdrop > [role="dialog"] {
+  width: min(100%, 32rem);
+  box-shadow: 0 1rem 3rem rgba(15, 23, 42, 0.2);
 }
 
 .upload-form {

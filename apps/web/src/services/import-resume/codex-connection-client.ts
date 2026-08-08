@@ -25,6 +25,10 @@ export type ReadCodexConnectionStatusOutcome =
   | { readonly ok: true; readonly response: ProviderConnectionStatusResponse }
   | { readonly ok: false; readonly message: string };
 
+export type DisconnectCodexConnectionOutcome =
+  | { readonly ok: true; readonly response: ProviderConnectionStatusResponse }
+  | { readonly ok: false; readonly message: string };
+
 export async function readCodexConnectionStatus(
   input: {
     readonly fetchImpl?: typeof fetch;
@@ -123,6 +127,51 @@ export async function beginCodexConnection(
       ok: false,
       category: "temporarily_unavailable",
       message: "Codex could not be connected right now. Try again later.",
+    };
+  }
+}
+
+export async function disconnectCodexConnection(
+  input: {
+    readonly fetchImpl?: typeof fetch;
+    readonly signal?: AbortSignal;
+  } = {},
+): Promise<DisconnectCodexConnectionOutcome> {
+  try {
+    const response = await (input.fetchImpl ?? fetch)(
+      importResumeApiPath(
+        "/import-resume/provider-connections/codex/disconnect",
+      ),
+      {
+        method: "POST",
+        ...(input.signal === undefined ? {} : { signal: input.signal }),
+      },
+    );
+    if (!response.ok) {
+      return {
+        ok: false,
+        message: "Codex could not be disconnected safely. Try again later.",
+      };
+    }
+    const parsed = providerConnectionStatusResponseSchema.safeParse(
+      await response.json(),
+    );
+    return parsed.success
+      ? { ok: true, response: parsed.data }
+      : {
+          ok: false,
+          message: "Codex could not be disconnected safely. Try again later.",
+        };
+  } catch (error) {
+    if (isAbortError(error)) {
+      return {
+        ok: false,
+        message: "The disconnect request was stopped before it finished.",
+      };
+    }
+    return {
+      ok: false,
+      message: "Codex could not be disconnected safely. Try again later.",
     };
   }
 }

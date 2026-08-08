@@ -45,4 +45,8 @@ export class CodexConnectionInitiationService {
   async status(ownerUserId: string) {
     return this.providerConnections.statusForProvider(ownerUserId, "codex");
   }
+
+  async disconnect(ownerUserId: string) {
+    return this.providerConnections.disconnectForProvider(ownerUserId, "codex");
+  }
 }

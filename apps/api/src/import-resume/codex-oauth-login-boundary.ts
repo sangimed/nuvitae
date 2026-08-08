@@ -232,23 +232,37 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
   }
 
   async cancelLogin(): Promise<ProviderAdapterLoginResult> {
-    throw unsupportedUntilFutureState("cancel_login");
+    return {
+      loginStartedAt: this.clock(),
+      safeMessage: null,
+    };
   }
 
   async reconnect(): Promise<ProviderAdapterConnectedResult> {
-    throw unsupportedUntilFutureState("reconnect");
+    // Reconnect is intentionally initiated through startLogin so the
+    // application reuses T213's browser handoff and T214's callback. A direct
+    // adapter reconnect cannot prove a replacement session without a browser
+    // authorization result.
+    throw new ProviderConnectionError("provider_connection_state_conflict");
   }
 
   async disconnect(): Promise<void> {
-    throw unsupportedUntilFutureState("disconnect");
+    // Local encrypted session deletion is owned by ProviderConnectionService.
+    // No supported remote revocation endpoint is assumed by T245/T215.
+    return;
   }
 
   async revoke(): Promise<void> {
-    throw unsupportedUntilFutureState("revoke");
+    // Remote provider-side revocation is intentionally out of scope. The
+    // application records the provider-neutral revoked state and deletes local
+    // encrypted material before calling this boundary.
+    return;
   }
 
   async deleteLocalState(): Promise<void> {
-    throw unsupportedUntilFutureState("delete_local_state");
+    // The provider session store is the local state boundary and is deleted by
+    // the application service with owner/connection/reference scoping.
+    return;
   }
 
   async capabilities(): Promise<never> {

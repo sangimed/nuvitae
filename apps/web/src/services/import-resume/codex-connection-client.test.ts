@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { beginCodexConnection } from "./codex-connection-client";
+import {
+  beginCodexConnection,
+  disconnectCodexConnection,
+} from "./codex-connection-client";
 
 const response = {
   version: "2026-08-08",
@@ -47,5 +50,46 @@ describe("beginCodexConnection (T213)", () => {
         ),
     });
     expect(result.ok).toBe(false);
+  });
+});
+
+describe("disconnectCodexConnection (T215)", () => {
+  it("accepts only the provider-neutral disconnected projection", async () => {
+    const result = await disconnectCodexConnection({
+      fetchImpl: async (_input, init) => {
+        expect(init?.method).toBe("POST");
+        return new Response(
+          JSON.stringify({
+            version: "2026-08-08",
+            providerKind: "codex",
+            connectionStatus: "disconnected",
+            authenticationStatus: "unauthenticated",
+            availabilityStatus: "unknown",
+            ready: false,
+            safeMessage: null,
+          }),
+          { status: 200 },
+        );
+      },
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      response: { connectionStatus: "disconnected", ready: false },
+    });
+    expect(JSON.stringify(result)).not.toMatch(
+      /token|credential|session|account|oauth/i,
+    );
+  });
+
+  it("sanitizes repeated or failed disconnect responses", async () => {
+    const result = await disconnectCodexConnection({
+      fetchImpl: async () =>
+        new Response("provider token=secret", { status: 503 }),
+    });
+    expect(result).toEqual({
+      ok: false,
+      message: "Codex could not be disconnected safely. Try again later.",
+    });
+    expect(JSON.stringify(result)).not.toContain("secret");
   });
 });

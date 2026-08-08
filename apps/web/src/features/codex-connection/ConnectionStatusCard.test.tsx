@@ -75,6 +75,7 @@ describe("ConnectionStatusCard (T214)", () => {
       }).response,
     );
     expect(container.textContent).toContain("Codex is ready");
+    expect(container.textContent).toContain("Disconnect");
   });
 
   it("does not infer readiness from connected-but-unusable state", async () => {
@@ -85,7 +86,58 @@ describe("ConnectionStatusCard (T214)", () => {
         availabilityStatus: "unavailable",
       }).response,
     );
-    expect(container.textContent).toContain("Codex connection expired");
+    expect(container.textContent).toContain("temporarily unavailable");
+    expect(container.textContent).not.toContain("Codex is ready");
+  });
+
+  it("offers Reconnect Codex after authentication expiry", async () => {
+    await renderStatus(
+      status({
+        connectionStatus: "authentication_expired",
+        authenticationStatus: "expired",
+      }).response,
+    );
+    expect(container.textContent).toContain("Reconnect Codex");
+    expect(container.textContent).not.toContain("Disconnect");
+  });
+
+  it("confirms disconnect and replaces ready state with the server response", async () => {
+    root = createRoot(container);
+    const onDisconnect = vi.fn(async () => ({
+      ok: true as const,
+      response: status({
+        connectionStatus: "disconnected",
+        authenticationStatus: "unauthenticated",
+      }).response,
+    }));
+    await act(async () => {
+      root?.render(
+        <ConnectionStatusCard
+          onReadStatus={vi.fn(async () =>
+            status({
+              connectionStatus: "connected",
+              authenticationStatus: "authenticated",
+              availabilityStatus: "available",
+              ready: true,
+            }),
+          )}
+          onDisconnect={onDisconnect}
+        />,
+      );
+    });
+    await act(async () => {
+      [...container.querySelectorAll("button")]
+        .find((button) => button.textContent === "Disconnect")
+        ?.click();
+    });
+    expect(container.textContent).toContain("Disconnect Codex?");
+    await act(async () => {
+      [...container.querySelectorAll('[role="dialog"] button')]
+        .find((button) => button.textContent === "Disconnect")
+        ?.click();
+    });
+    expect(onDisconnect).toHaveBeenCalledTimes(1);
+    expect(container.textContent).toContain("Reconnect Codex");
     expect(container.textContent).not.toContain("Codex is ready");
   });
 });
