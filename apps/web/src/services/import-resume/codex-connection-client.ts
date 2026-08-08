@@ -1,4 +1,8 @@
-import { codexConnectionInitiationResponseSchema } from "@nuvitae/contracts";
+import {
+  codexConnectionInitiationResponseSchema,
+  providerConnectionStatusResponseSchema,
+  type ProviderConnectionStatusResponse,
+} from "@nuvitae/contracts";
 import { importResumeApiPath } from "./config";
 
 export type BeginCodexConnectionOutcome =
@@ -16,6 +20,44 @@ export type BeginCodexConnectionOutcome =
         | "temporarily_unavailable";
       readonly message: string;
     };
+
+export type ReadCodexConnectionStatusOutcome =
+  | { readonly ok: true; readonly response: ProviderConnectionStatusResponse }
+  | { readonly ok: false; readonly message: string };
+
+export async function readCodexConnectionStatus(
+  input: {
+    readonly fetchImpl?: typeof fetch;
+    readonly signal?: AbortSignal;
+  } = {},
+): Promise<ReadCodexConnectionStatusOutcome> {
+  try {
+    const response = await (input.fetchImpl ?? fetch)(
+      importResumeApiPath("/import-resume/provider-connections/codex/status"),
+      {
+        method: "GET",
+        ...(input.signal === undefined ? {} : { signal: input.signal }),
+      },
+    );
+    if (!response.ok) {
+      return {
+        ok: false,
+        message: "Codex status could not be checked right now.",
+      };
+    }
+    const parsed = providerConnectionStatusResponseSchema.safeParse(
+      await response.json(),
+    );
+    return parsed.success
+      ? { ok: true, response: parsed.data }
+      : { ok: false, message: "Codex status could not be checked right now." };
+  } catch {
+    return {
+      ok: false,
+      message: "Codex status could not be checked right now.",
+    };
+  }
+}
 
 /**
  * Starts only the server-owned browser handoff. The authorization URL is

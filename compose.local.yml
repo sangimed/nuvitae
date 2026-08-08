@@ -21,6 +21,10 @@ services:
       NUVITAE_PRIVATE_STORAGE_ROOT: /var/lib/nuvitae/private
       NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET: "local-play-storage-signing-secret-not-for-production"
       NUVITAE_PRIVATE_STORAGE_MAX_SIGNED_REFERENCE_TTL_SECONDS: 300
+      NUVITAE_PROVIDER_SESSION_ROOT: /var/lib/nuvitae/private/provider-sessions
+      NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET: "local-play-provider-session-encryption-secret-not-for-production"
+      NUVITAE_PROVIDER_SESSION_MAX_BYTES: 65536
+      NUVITAE_CODEX_OAUTH_CALLBACK_PORT: 3001
       QUEUE_HOST: queue
       QUEUE_PORT: 6379
       QUEUE_PASSWORD: ${QUEUE_PASSWORD:-nuvitae_queue_password}

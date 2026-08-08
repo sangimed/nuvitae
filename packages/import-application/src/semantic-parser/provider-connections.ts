@@ -73,6 +73,19 @@ export interface ProviderAdapterConnectedResult {
   readonly capabilities: ProviderRuntimeCapabilities;
 }
 
+/**
+ * Normalized callback envelope. The API controller validates and bounds the
+ * browser query before this crosses into the adapter boundary. The
+ * authorization code is held only in memory until the adapter exchanges it;
+ * it is never returned, persisted, or logged by the application service.
+ */
+export interface ProviderOAuthCallback {
+  readonly state: string;
+  readonly authorizationCode?: string;
+  readonly providerError?:
+    "access_denied" | "temporarily_unavailable" | "invalid_request" | "unknown";
+}
+
 export interface ProviderAdapterQuotaResult {
   readonly availabilityState: ProviderRuntimeAvailabilityStatus;
   readonly checkedAt: Date;
@@ -99,6 +112,7 @@ export interface ProviderRuntimeConnectionAdapter {
   completeLogin(
     context: ProviderRuntimeAdapterContext,
     sessionReference: string | null,
+    callback?: ProviderOAuthCallback,
   ): Promise<ProviderAdapterConnectedResult>;
   cancelLogin(
     context: ProviderRuntimeAdapterContext,
@@ -142,6 +156,8 @@ export type ProviderConnectionErrorCode =
   | "provider_quota_exceeded"
   | "provider_connection_already_connected"
   | "provider_connection_login_expired"
+  | "provider_connection_login_invalid_state"
+  | "provider_connection_login_cancelled"
   | "provider_connection_handoff_unavailable";
 
 /**
@@ -176,6 +192,8 @@ export interface ProviderConnectionStatusView {
   readonly revokedAt: Date | null;
   readonly deletedAt: Date | null;
   readonly safeMessage: string | null;
+  /** True only after a persisted, owner-bound, usable session is inspected. */
+  readonly ready: boolean;
 }
 
 export interface ProviderConnectionServicePorts {
@@ -232,6 +250,12 @@ export class ProviderConnectionService {
       connectionId,
       "status",
     );
+    if (
+      connection.connectionStatus === "login_pending" &&
+      isPendingLoginFresh(connection.loginStartedAt)
+    ) {
+      return toStatusView(connection, null);
+    }
     let inspection: ProviderAdapterInspection;
     try {
       inspection = await this.ports.adapter.inspect(
@@ -253,6 +277,19 @@ export class ProviderConnectionService {
     return connections
       .filter((connection) => connection.deletedAt === null)
       .map((connection) => toStatusView(connection, null));
+  }
+
+  async statusForProvider(
+    ownerUserId: string,
+    providerKind = this.ports.adapter.providerKind,
+  ): Promise<ProviderConnectionStatusView | null> {
+    const connection =
+      await this.ports.repository.findConnectionByProviderAndOwner(
+        providerKind,
+        ownerUserId,
+      );
+    if (connection === null || connection.deletedAt !== null) return null;
+    return this.status(ownerUserId, connection.id);
   }
 
   /**
@@ -407,6 +444,7 @@ export class ProviderConnectionService {
   async completeLogin(
     ownerUserId: string,
     connectionId: string,
+    callback?: ProviderOAuthCallback,
   ): Promise<ProviderConnectionStatusView> {
     const connection = await this.requireActiveByOwner(
       ownerUserId,
@@ -422,9 +460,24 @@ export class ProviderConnectionService {
       connected = await this.ports.adapter.completeLogin(
         this.context(ownerUserId, connectionId),
         connection.sessionReference,
+        callback,
       );
     } catch (error) {
-      throw mapAdapterError(error);
+      const mapped = mapAdapterError(error);
+      if (
+        mapped.code === "provider_connection_login_cancelled" ||
+        mapped.code === "provider_adapter_failed" ||
+        mapped.code === "provider_session_storage_unavailable"
+      ) {
+        await this.saveSafely(connection, {
+          ...connection,
+          connectionStatus: "login_cancelled",
+          authenticationStatus: "unauthenticated",
+          availabilityStatus: "unknown",
+          lastCheckedAt: new Date(),
+        }).catch(() => undefined);
+      }
+      throw mapped;
     }
     try {
       assertOpaqueSessionReference(connected.sessionReference);
@@ -671,6 +724,7 @@ export class ProviderConnectionService {
         revokedAt: null,
         deletedAt: now,
         safeMessage: null,
+        ready: false,
       };
     }
     if (connection.deletedAt !== null) {
@@ -1002,7 +1056,35 @@ function toStatusView(
     revokedAt: connection.revokedAt,
     deletedAt: connection.deletedAt,
     safeMessage,
+    ready: isProviderConnectionReady(connection),
   };
+}
+
+/**
+ * The sole readiness predicate used by the API projection and UI contract.
+ * A pending row, handoff, callback visit, or capability snapshot alone can
+ * never make a connection ready: the encrypted session reference and the
+ * persisted authenticated/available state must all be present.
+ */
+export function isProviderConnectionReady(
+  connection: Pick<
+    AIProviderRuntimeConnection,
+    | "connectionStatus"
+    | "authenticationStatus"
+    | "availabilityStatus"
+    | "sessionReference"
+    | "capabilities"
+    | "connectedAt"
+  >,
+): boolean {
+  return (
+    connection.connectionStatus === "connected" &&
+    connection.authenticationStatus === "authenticated" &&
+    connection.availabilityStatus === "available" &&
+    connection.sessionReference !== null &&
+    connection.capabilities !== null &&
+    connection.connectedAt !== null
+  );
 }
 
 function mapAdapterError(error: unknown): ProviderConnectionError {
@@ -1044,5 +1126,7 @@ export const providerConnectionErrorCodes = [
   "provider_quota_exceeded",
   "provider_connection_already_connected",
   "provider_connection_login_expired",
+  "provider_connection_login_invalid_state",
+  "provider_connection_login_cancelled",
   "provider_connection_handoff_unavailable",
 ] as const satisfies readonly ProviderConnectionErrorCode[];

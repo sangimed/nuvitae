@@ -15,6 +15,7 @@ export {
   type ProviderAdapterInspection,
   type ProviderAdapterLoginResult,
   type ProviderAdapterQuotaResult,
+  type ProviderOAuthCallback,
   type ProviderConnectionErrorCode,
   type ProviderConnectionServicePorts,
   type ProviderConnectionStatusView,
@@ -23,4 +24,5 @@ export {
   type ProviderSessionStorageInput,
   type ProviderSessionStore,
   type ProviderSessionWriteInput,
+  isProviderConnectionReady,
 } from "@nuvitae/import-application";

@@ -1,6 +1,6 @@
 # T203 Non-Technical Onboarding Feasibility Measurement
 
-**Measured**: 2026-08-08  
+**Measured**: 2026-08-08 (T214 delta)
 **Deployment evidence**: deterministic web UI tests and existing local import
 tests; no live Codex/OAuth activity  
 **Classification**: `FAIL_AUTOMATED_FEASIBILITY`
@@ -54,8 +54,10 @@ validation.
 | Entry                              | “Create your resume”, with “Import an existing resume” as the primary action and manual entry as an alternative                 | Pass                                                                             |
 | Start import                       | “Start from your existing resume” and “Import my resume”                                                                        | Pass                                                                             |
 | Connection explanation             | Upload guidance now says “Connect Codex before uploading” and explains why the connection is needed                             | Pass after fix                                                                   |
-| Connection required                | Plain “Connect Codex” explanation and action; manual entry remains available                                                    | Pass for T213 entrypoint/handoff; callback and connected state remain T214 scope |
-| Connected state                    | No production connection status card or “Codex is ready” state exists                                                           | Fail / T214 scope remains                                                        |
+| Connection required                | Plain “Connect Codex” explanation and action; manual entry remains available                                                    | Pass; T213 entrypoint/handoff and T214 callback/status completion are implemented |
+| Connecting state                   | Clear connection-in-progress state with no duplicate initiation                                                                  | Pass; pending state disables duplicate initiation                                 |
+| Connected state                    | Server-proven “Codex is ready” state exists                                                                                     | Pass; UI consumes the authenticated status projection only                       |
+| Expired/unusable state             | Understandable attention-required state without implementation details                                                           | Pass; expired/revoked/unusable states use plain copy                              |
 | Upload                             | Labelled file control, PDF/DOCX guidance, size/page/text limits, and “Upload and start import”                                  | Pass                                                                             |
 | Processing                         | “Preparing your resume for review” with a current step and only known progress percentages                                      | Pass                                                                             |
 | Review-ready                       | “Your resume draft is ready” and “Review imported resume”                                                                       | Pass                                                                             |
@@ -88,8 +90,12 @@ responses and synthetic file bytes only:
 1. Connection required: the user sees why Codex is needed, receives the
    actionable **Connect Codex** button, reaches the mocked safe browser handoff,
    retains manual recovery, and sees no technical vocabulary leak. The test
-   does not claim a connected or ready state.
-2. Codex unavailable: the user sees a plain failure, no review button is
+   does not claim readiness from the handoff alone.
+2. Callback/status completion: a fully local mocked exchange returns through
+   the callback boundary, persists an encrypted session, and the returned
+   import page shows **Codex is ready**; pending-only status cannot produce the
+   ready label.
+3. Codex unavailable: the user sees a plain failure, no review button is
    offered, and manual entry is available.
 
 Existing canonical UI/accessibility and component coverage exercises the happy
@@ -99,12 +105,23 @@ privacy-safe recovery copy. No test calls a real provider or OAuth endpoint.
 
 ## Result and remaining gap
 
-The T213 portion now passes automated feasibility: the production import flow
-exposes a real Connect Codex action and a mocked/local safe browser handoff.
-The complete onboarding criterion still does not pass because T214/T215 do not
-yet provide callback completion, connected/ready state, or recovery operations,
-and no live provider activity or moderated human validation was performed. This
-measurement does not claim OAuth success.
+The T213/T214 portion now passes automated feasibility: the production import
+flow exposes Connect Codex, completes a fully local/mocked callback, persists
+the qualified encrypted session boundary, and renders connected/ready,
+expired/unusable, connecting, and disconnected states. The complete onboarding
+criterion still does not pass because T215 recovery operations, live provider
+activity, and moderated human validation remain incomplete. This measurement
+does not claim live OAuth success.
+
+### Import state across the callback
+
+The callback returns to the allowlisted `/import-resume` destination. No raw
+resume file, CV content, or authorization material is stored in browser
+storage. A page reload may therefore require the user to select the file again;
+the provider connection itself remains persisted behind the server boundary, so
+the ready state survives the reload. This is the privacy-preserving behavior
+chosen for T214 until a later task defines a separate server-side import
+correlation contract.
 
 No human participants were used. This is not user testing. Because the
 canonical contract explicitly requires moderated usability testing and the
@@ -137,8 +154,8 @@ personal data.
 ## T203 disposition
 
 The onboarding blocker remains **measured** as a failed automated feasibility
-result for the full journey: T213's connection UI/handoff is present, but the
-T214/T215 ready-state and recovery surface is absent. T203 remains **NO-GO** for
+result for the full journey: T213/T214 connection, callback, and ready-state
+behavior are present, but T215 recovery operations are absent. T203 remains **NO-GO** for
 the independent, already-finalized reason that T246 is failed; the onboarding
 gate is also not accepted. T217 remains complete. T246 was not rerun,
 reinterpreted, or modified.

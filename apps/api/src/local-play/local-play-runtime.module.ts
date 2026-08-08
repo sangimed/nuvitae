@@ -12,7 +12,10 @@ import {
   TypeOrmAIProviderRuntimeConnectionsRepository,
   TypeOrmImportLimitAttemptsRepository,
 } from "@nuvitae/persistence";
-import { LocalPrivateImportStorage } from "@nuvitae/storage";
+import {
+  LocalPrivateImportStorage,
+  LocalProviderSessionStorage,
+} from "@nuvitae/storage";
 import { DataSource } from "typeorm";
 import { createImportEventEmitter } from "../observability/import-events.js";
 import { ApiPersistenceModule } from "../persistence/api-persistence.module.js";
@@ -38,7 +41,6 @@ import {
 import { readLocalPlayConfig } from "./local-play.config.js";
 import { LocalPlayPrincipalMiddleware } from "./local-play-principal.middleware.js";
 import { CodexOAuthLoginBoundary } from "../import-resume/codex-oauth-login-boundary.js";
-import { browserHandoffOnlySessionStore } from "../import-resume/browser-handoff-session-store.js";
 import {
   API_PROVIDER_CONNECTION_ADAPTER,
   API_PROVIDER_CONNECTION_REPOSITORY,
@@ -71,7 +73,18 @@ const localPlayProviders: Provider[] = [
   },
   {
     provide: API_PROVIDER_SESSION_STORE,
-    useValue: browserHandoffOnlySessionStore,
+    useFactory: async () => {
+      const config = readLocalPlayConfig();
+      return await LocalProviderSessionStorage.create({
+        root: config.providerSessionRoot,
+        encryptionSecret: config.providerSessionEncryptionSecret,
+        maxSessionBytes: config.maxProviderSessionBytes,
+      });
+    },
+  },
+  {
+    provide: CodexOAuthLoginBoundary,
+    useExisting: API_PROVIDER_CONNECTION_ADAPTER,
   },
   {
     provide: API_PROVIDER_CONNECTION_SERVICE,

@@ -42,3 +42,52 @@ export const codexConnectionInitiationResponseSchema = z
 export type CodexConnectionInitiationResponse = z.infer<
   typeof codexConnectionInitiationResponseSchema
 >;
+
+const providerConnectionStatusSchema = z.enum([
+  "not_configured",
+  "login_pending",
+  "connected",
+  "login_cancelled",
+  "disconnected",
+  "authentication_expired",
+  "authentication_revoked",
+]);
+
+const providerAuthenticationStatusSchema = z.enum([
+  "unauthenticated",
+  "pending",
+  "authenticated",
+  "expired",
+  "revoked",
+  "unknown",
+]);
+
+const providerAvailabilityStatusSchema = z.enum([
+  "available",
+  "unavailable",
+  "rate_limited",
+  "quota_exceeded",
+  "unsupported_capability",
+  "unknown",
+]);
+
+/**
+ * Provider-neutral read-only connection projection. It deliberately omits
+ * connection identifiers, session references, URLs, account data, and
+ * capability internals because the normal UI does not need them.
+ */
+export const providerConnectionStatusResponseSchema = z
+  .object({
+    version: z.literal(providerConnectionResponseSchemaVersion),
+    providerKind: z.string().min(1).max(64),
+    connectionStatus: providerConnectionStatusSchema,
+    authenticationStatus: providerAuthenticationStatusSchema,
+    availabilityStatus: providerAvailabilityStatusSchema,
+    ready: z.boolean(),
+    safeMessage: z.string().max(240).nullable(),
+  })
+  .strict();
+
+export type ProviderConnectionStatusResponse = z.infer<
+  typeof providerConnectionStatusResponseSchema
+>;

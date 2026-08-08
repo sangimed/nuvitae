@@ -85,3 +85,159 @@ describe("CodexOAuthLoginBoundary (T213)", () => {
     }
   });
 });
+
+describe("CodexOAuthLoginBoundary callback completion (T214)", () => {
+  it("exchanges once, writes an opaque owner-bound session, and inspects ready state", async () => {
+    const stored = new Map<string, Uint8Array>();
+    const sessionStore: ProviderSessionStore = {
+      writeSession: async (input) => {
+        stored.set(input.sessionReference, input.payload);
+        return input;
+      },
+      readSession: async (input) =>
+        stored.get(input.sessionReference) ?? new Uint8Array(),
+      deleteSession: async (input) => ({
+        deleted: stored.delete(input.sessionReference),
+      }),
+      hasSession: async (input) => stored.has(input.sessionReference),
+    };
+    let exchanges = 0;
+    const boundary = new CodexOAuthLoginBoundary({
+      exchange: {
+        async exchange() {
+          exchanges += 1;
+          return {
+            accessToken: "access-token-sentinel",
+            refreshToken: "refresh-token-sentinel",
+            accountId: "account-id-sentinel",
+            expiresAt: new Date("2099-01-01T00:00:00.000Z"),
+          };
+        },
+      },
+    });
+    const context = {
+      ownerUserId: "10000000-0000-4000-8000-000000000001",
+      connectionId: "20000000-0000-4000-8000-000000000001",
+      sessionStore,
+    };
+    const login = await boundary.startLogin(context, null);
+    const state = new URL(
+      login.browserHandoff!.authorizationUrl,
+    ).searchParams.get("state")!;
+    const connectionId = boundary.resolvePendingLogin(
+      context.ownerUserId,
+      state,
+    );
+    expect(connectionId).toBe(context.connectionId);
+
+    const result = await boundary.completeLogin(context, null, {
+      state,
+      authorizationCode: "authorization-code-sentinel",
+    });
+
+    expect(exchanges).toBe(1);
+    expect(result.sessionReference).toMatch(/^[a-f0-9]{64}$/);
+    expect(JSON.stringify(result)).not.toContain("access-token-sentinel");
+    expect(JSON.stringify(result)).not.toContain("account-id-sentinel");
+    expect(stored.size).toBe(1);
+    await expect(
+      boundary.inspect(context, result.sessionReference),
+    ).resolves.toMatchObject({
+      connectionState: "connected",
+      authenticationState: "authenticated",
+      availabilityState: "available",
+    });
+  });
+
+  it.each([
+    "wrong state",
+    "foreign owner",
+    "replayed callback",
+    "stale callback",
+  ])("rejects %s without another exchange", async (caseName) => {
+    let now = new Date("2026-08-08T12:00:00.000Z");
+    const boundary = new CodexOAuthLoginBoundary({
+      now: () => now,
+      exchange: {
+        async exchange() {
+          return {
+            accessToken: "a",
+            refreshToken: "r",
+            accountId: null,
+            expiresAt: null,
+          };
+        },
+      },
+    });
+    const owner = context(
+      "10000000-0000-4000-8000-000000000001",
+      "20000000-0000-4000-8000-000000000001",
+    );
+    const login = await boundary.startLogin(owner, null);
+    const state = new URL(
+      login.browserHandoff!.authorizationUrl,
+    ).searchParams.get("state")!;
+    const callbackState = caseName === "wrong state" ? `${state}-wrong` : state;
+    const callbackOwner =
+      caseName === "foreign owner"
+        ? context(
+            "10000000-0000-4000-8000-000000000002",
+            "20000000-0000-4000-8000-000000000002",
+          )
+        : owner;
+    if (caseName === "stale callback") {
+      now = new Date("2026-08-08T12:11:00.000Z");
+    }
+    if (caseName === "replayed callback") {
+      await boundary.completeLogin(owner, null, {
+        state,
+        authorizationCode: "code",
+      });
+      await expect(
+        boundary.completeLogin(owner, null, {
+          state,
+          authorizationCode: "code",
+        }),
+      ).rejects.toMatchObject({
+        code: "provider_connection_login_invalid_state",
+      });
+      return;
+    }
+    await expect(
+      boundary.completeLogin(callbackOwner, null, {
+        state: callbackState,
+        authorizationCode: "code",
+      }),
+    ).rejects.toMatchObject({
+      code:
+        caseName === "stale callback"
+          ? "provider_connection_login_expired"
+          : "provider_connection_login_invalid_state",
+    });
+  });
+
+  it("sanitizes a provider error and consumes its callback state", async () => {
+    const boundary = new CodexOAuthLoginBoundary();
+    const owner = context(
+      "10000000-0000-4000-8000-000000000001",
+      "20000000-0000-4000-8000-000000000001",
+    );
+    const login = await boundary.startLogin(owner, null);
+    const state = new URL(
+      login.browserHandoff!.authorizationUrl,
+    ).searchParams.get("state")!;
+    await expect(
+      boundary.completeLogin(owner, null, {
+        state,
+        providerError: "access_denied",
+      }),
+    ).rejects.toMatchObject({ code: "provider_connection_login_cancelled" });
+    expect(() =>
+      boundary.resolvePendingLogin(owner.ownerUserId, state),
+    ).toThrowError(
+      expect.objectContaining({
+        code: "provider_connection_login_invalid_state",
+      }),
+    );
+  });
+});
