@@ -5,8 +5,11 @@ operator-authorized live Codex semantic evaluation over the real-document
 corpus.
 **Prepared**: 2026-08-07 (Europe/Paris), branch
 `feat/import-resume-codex-direct-oauth-spike`.
-**Status**: **OFFLINE PREPARATION COMPLETE - T246 remains INCOMPLETE / NOT
-RUN. T203 remains NO-GO.**
+**Status**: **OFFLINE PREPARATION COMPLETE (historical preparation snapshot).**
+T246 was subsequently executed and finalized as **COMPLETE — qualification
+FAILED**. T203 remains **NO-GO**; the current blockers are finalized T246
+semantic failure, incomplete T213-T215 production onboarding flow, and not-yet-
+performed moderated human validation. T217 is complete.
 **Live authorization**: NONE. No OAuth, Codex/OpenAI/provider request, network
 request, credential access, or Campaign-B/T246 live attempt was performed or
 authorized by this record. No commit and no push were made.
@@ -14,10 +17,10 @@ authorized by this record. No commit and no push were made.
 This record is the completed offline preparation for the canonical T246
 real-document corpus: all eight mandatory cases now have deterministic binary
 fixtures, pinned production extraction transcripts, provenance, semantic
-expectations, fail-closed manifests, and regression coverage. It remains a
-STOP report for live execution: T246 is still INCOMPLETE / NOT RUN, no live
-command is authorized, and the operator must explicitly review and flip each
-per-case authorization entry before any live execution.
+expectations, fail-closed manifests, and regression coverage. The preparation
+statements below are historical as-of-2026-08-07 instructions and authorization
+states. They do not override the finalized aggregate, and no live command is
+authorized by this documentation update.
 
 ## 1. Canonical T246 acceptance criteria (verbatim contract)
 
@@ -1230,7 +1233,9 @@ Its canonical sanitized evidence is
 
 The final aggregate is `FAILED` / qualification not passed, with six passing
 cases and two failing cases: C01 FAIL, C02 PASS, C03 PASS, C04 FAIL, C05 PASS,
-C06 PASS, C07 PASS, C08 PASS. T203 remains NO-GO; remaining blockers are the
-failed C01/C04 semantic-quality gate, partial T217 bounded-fallback wiring, and
-unmeasured non-technical onboarding feasibility. Earlier preparation and
-execution records remain historical and are not rewritten.
+C06 PASS, C07 PASS, C08 PASS. T203 remains NO-GO. The current blockers are the
+failed C01/C04 semantic-quality gate, incomplete T213-T215 production
+connection/status/recovery flow, and not-yet-performed moderated human
+onboarding validation. T217 bounded-fallback wiring is complete; onboarding is
+measured as `FAIL_AUTOMATED_FEASIBILITY`, not unmeasured. Earlier preparation
+and execution records remain historical and are not rewritten.

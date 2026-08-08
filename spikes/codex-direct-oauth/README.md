@@ -1,5 +1,18 @@
 # Codex Direct OAuth Compatibility Spike
 
+## Current status (2026-08-08)
+
+T217 bounded-fallback production wiring is complete. T246 is finalized as
+**COMPLETE — qualification FAILED**: C01 FAIL, C02 PASS, C03 PASS, C04 FAIL,
+C05 PASS, C06 PASS, C07 PASS, and C08 PASS; all attempts are consumed and the
+qualification must not be reopened or weakened. T203 remains **NO-GO**.
+T213-T215 remain incomplete and own the missing production Connect Codex,
+connection-state/“Codex is ready”, and reconnect/disconnect flow. Automated
+onboarding is `FAIL_AUTOMATED_FEASIBILITY`; moderated human validation has not
+been performed. This README's dated preparation/run instructions below are
+historical where they describe T246 as pending or unauthorized and do not
+authorize live OAuth/provider activity.
+
 This directory is a disposable local compatibility spike only. It is not
 production application code and is not wired into the API, web app, worker,
 domain, queue payloads, or persistence model.
@@ -82,8 +95,10 @@ runner). The verifier reads only the immutable historical sanitized evidence,
 the checked-in artifact pins, and the authorization registry; it never rewrites
 the historical evidence. It recomputes the canonical T246 complete gate from
 the retained `evaluation_metrics` projection and writes a derived acceptance
-artifact reporting `semantic_result=PASS`, `runner_finalization=FAIL`, while
-T246 stays INCOMPLETE and T203 stays NO-GO:
+artifact reporting `semantic_result=PASS`, `runner_finalization=FAIL`. This is
+historical derived-artifact inspection only; it does not change the finalized
+T246 aggregate, which is complete with a failed qualification, and T203 stays
+NO-GO:
 
 ```sh
 node spikes/codex-direct-oauth/re-evaluate-t246-a01.mjs

@@ -8,6 +8,12 @@ evidence has been re-computed; metrics without supporting evidence are
 explicitly recorded as unmeasured. The earlier 2026-08-05 BLOCKED record is
 preserved below as historical context.
 
+The onboarding row in this 2026-08-06 T202 measurement is a historical
+snapshot. The current onboarding result is recorded separately in
+`codex-direct-oauth-onboarding-feasibility.md` as
+`FAIL_AUTOMATED_FEASIBILITY`; it is measured, not merely unmeasured. Current
+T203 status is NO-GO with finalized T246 `FAILED` and complete T217 wiring.
+
 ## Scope
 
 The direct Codex OAuth path under evaluation:
@@ -137,12 +143,12 @@ true`.
 
 ## Unmeasured metrics (recorded, not dropped)
 
-| Metric                               | Why unmeasured                                                                                                                     |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Turn latency                         | No sanitized timing fields exist in the accepted live evidence; the 1.88 ms deterministic baseline is provider-neutral, not Codex. |
-| Cancellation latency                 | Cancellation was not exercised in any accepted live run.                                                                           |
-| Quota behavior                       | No quota/rate-limit exercise exists in accepted live evidence; only safe failure mapping is proven.                                |
-| Non-technical onboarding feasibility | Requires the real import flow in the supported deployment shape (T245 completed 2026-08-07; T246 and T213-T215 remain pending).    |
+| Metric                               | Why unmeasured                                                                                                                                                                                                                                   |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Turn latency                         | No sanitized timing fields exist in the accepted live evidence; the 1.88 ms deterministic baseline is provider-neutral, not Codex.                                                                                                               |
+| Cancellation latency                 | Cancellation was not exercised in any accepted live run.                                                                                                                                                                                         |
+| Quota behavior                       | No quota/rate-limit exercise exists in accepted live evidence; only safe failure mapping is proven.                                                                                                                                              |
+| Non-technical onboarding feasibility | Historical T202 snapshot: the separate real-flow feasibility record did not yet exist. Superseded by `codex-direct-oauth-onboarding-feasibility.md`, which records `FAIL_AUTOMATED_FEASIBILITY`; moderated human validation remains outstanding. |
 
 ## Historical failed attempts (preserved, excluded from authoritative denominators)
 

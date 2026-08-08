@@ -1,5 +1,38 @@
 # Research: Import Existing Resume
 
+## Current status reconciliation (2026-08-08)
+
+This is the canonical cross-artifact status summary for the direct-OAuth and
+Community onboarding work. Evidence paths below are read-only references; this
+reconciliation does not authorize T213-T215 implementation, reopen T246, or
+change the T203 decision.
+
+| Task | Canonical title                                                             | Status                                     | Dependency/blocker                                                                                                                                     | Evidence                                                                                                     | Document disagreement                                               |
+| ---- | --------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| T203 | Record direct-OAuth GO/CONDITIONAL GO/NO-GO decision                        | COMPLETE (decision recorded: NO-GO)        | T246 qualification failed; onboarding is `FAIL_AUTOMATED_FEASIBILITY`; moderated human validation and live connection/import evidence are not complete | `docs/research/codex-direct-oauth-go-no-go.md`, `docs/research/codex-direct-oauth-onboarding-feasibility.md` | Historical 2026-08-05/06 snapshots are labeled and superseded.      |
+| T213 | Implement the Codex connection screen and executable “Connect Codex” action | INCOMPLETE                                 | T162/T163 and the broker login boundary; T245 unblocked qualification, but no production connection screen/action exists                               | `specs/001-import-resume/tasks.md` T213; onboarding feasibility record                                       | None in current sections.                                           |
+| T214 | Implement OAuth callback handling and provider-neutral connection-state UI  | INCOMPLETE                                 | T213; the production “Codex is ready”, expired, and not-connected surface is absent                                                                    | `specs/001-import-resume/tasks.md` T214; onboarding feasibility record                                       | None in current sections.                                           |
+| T215 | Implement reconnect/disconnect, local credential deletion, and recovery     | INCOMPLETE                                 | T214; production operations and data-preserving recovery flow are absent                                                                               | `specs/001-import-resume/tasks.md` T215; onboarding feasibility record                                       | None in current sections.                                           |
+| T217 | Wire bounded deterministic fallback and provider-neutral recovery           | COMPLETE                                   | T188; no T203/T246 blocker remains for this fallback scope                                                                                             | `specs/001-import-resume/tasks.md` T217; `docs/research/codex-direct-oauth-go-no-go.md`                      | Historical partial-wiring wording is labeled/superseded.            |
+| T246 | Execute and qualify real-document semantic matrix                           | COMPLETE (qualification finalized: FAILED) | Terminal C01/C04 semantic failures; all C01-C08 consumed; no retry or reopening                                                                        | `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-aggregate.json`                                  | Historical preparation states are labeled; no current disagreement. |
+| T248 | Prove the canonical real French PDF fixture                                 | COMPLETE                                   | No remaining dependency; satisfies the T246 French-PDF prerequisite                                                                                    | `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t248-french-pdf.json`                                 | None in current sections.                                           |
+| T249 | Complete the T246 real-document corpus offline                              | COMPLETE                                   | No remaining dependency; does not authorize new live work                                                                                              | `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-corpus-offline.json`                             | Historical NOT_AUTHORIZED wording is scoped to T249 preparation.    |
+| T164 | Implement the production Codex direct-OAuth adapter                         | BLOCKED                                    | T203 remains NO-GO; also requires the accepted OAuth, lifecycle, invocation, semantic, and security gates                                              | `specs/001-import-resume/tasks.md` T164; T203 decision                                                       | None in current sections.                                           |
+| T165 | Implement the direct-OAuth response converter                               | BLOCKED                                    | T203 remains NO-GO and T164/provider adapter prerequisites are incomplete                                                                              | `specs/001-import-resume/tasks.md` T165; T203 decision                                                       | None in current sections.                                           |
+
+The single current T203 blocker list is therefore:
+
+1. T246 semantic qualification is finalized as FAILED: C01 FAIL, C02 PASS,
+   C03 PASS, C04 FAIL, C05 PASS, C06 PASS, C07 PASS, C08 PASS.
+2. The T213-T215 production Codex connection, connection-state, and ready-state
+   flow is incomplete. Recent import/recovery copy and provider-neutral recovery
+   actions are partial UX preparation, not the missing production flow.
+3. Moderated human onboarding/usability validation has not been performed and
+   remains required by SC-001, SC-003, SC-004, and SC-009.
+
+T217 is resolved and is not a current T203 blocker. T248 and T249 are complete
+prerequisites and are not blockers. T164/T165 remain blocked by the NO-GO.
+
 ## Decision: Build the feature in a Nuvitae-owned TypeScript full-stack architecture
 
 **Rationale**: The accepted foundation ADR selects a Nuvitae-owned hybrid architecture: Reactive Resume and Resuml are references, while Nuvitae owns the application shell, domain, import pipeline, persistence, AI boundary, and user experience. A TypeScript monorepo keeps domain types shared across web, API, workers, extraction adapters, and tests while matching the evaluated reference ecosystem.
@@ -212,7 +245,7 @@ incomplete.
 **Gaps that remain before production Community use (preserved honestly)**:
 
 - T201 is complete: C01-C03 passed canonical live validation; C04-B03 (corrected T208 deterministic-enrichment contract), C05-B01, and C06-B01 passed canonical live validation; C03 B01/B02 and C04 B01/B02 remain immutable failed historical attempts (C04 B01 failed under its original physical-coordinate contract; C04 B02 failed at credential recovery). T246 is finalized as FAILED / qualification not passed: C01 and C04 are semantic recall failures, while C02, C03, C05, C06, C07, and C08 pass. This result remains unchanged and is not converted by T217.
-- T202 (evaluation) was re-measured offline from the accepted evidence on 2026-08-06 (T244) and is recorded as MEASURED in `docs/research/codex-direct-oauth-evaluation.md` with a sanitized aggregate (`codex-direct-oauth-t202-metrics.json`): every evidence-supported metric passes; latency, cancellation, quota behavior, and non-technical onboarding feasibility remain explicitly unmeasured. T217 bounded-fallback production wiring completed on 2026-08-08: one application-owned primary call, one local deterministic fallback execution, no hidden provider retry, closed failure classification, atomic/idempotent draft persistence, safe terminal failure, and provider-neutral UI/status recovery. The T203 gate remains NO-GO for production adapter implementation because T246 qualification failed and non-technical onboarding feasibility remains unmeasured. Re-evaluation triggers are defined in `docs/research/codex-direct-oauth-go-no-go.md`. No production GO exists.
+- T202 (evaluation) was re-measured offline from the accepted evidence on 2026-08-06 (T244) and is recorded as MEASURED in `docs/research/codex-direct-oauth-evaluation.md` with a sanitized aggregate (`codex-direct-oauth-t202-metrics.json`): every evidence-supported metric passes; latency, cancellation, and quota behavior remain explicitly unmeasured. T217 bounded-fallback production wiring completed on 2026-08-08: one application-owned primary call, one local deterministic fallback execution, no hidden provider retry, closed failure classification, atomic/idempotent draft persistence, safe terminal failure, and provider-neutral UI/status recovery. The T203 gate remains NO-GO for production adapter implementation because finalized T246 qualification failed and onboarding is separately measured as `FAIL_AUTOMATED_FEASIBILITY` due to the absent production connection/ready-state surface. Re-evaluation triggers are defined in `docs/research/codex-direct-oauth-go-no-go.md`. No production GO exists.
 - The loopback OAuth callback is proven only for a local Docker host with a same-host browser. Remote, VPS, NAS, and headless self-hosting onboarding is unproven and is a significant open product question for the Docker-first Community distribution.
 - The direct `chatgpt.com/backend-api/codex` transport is undocumented or compatibility-sensitive for third-party use; upstream changes may break compatibility.
 - No task is marked complete merely because Community depends on it, and the Community product decision does not authorize production adapter code (T164/T165 remain blocked).
@@ -242,6 +275,11 @@ incomplete.
 **Alternatives considered**: A hardening-first sequence was rejected because it produces no testable product for a non-technical user and delays the exact moment when the product promise becomes real.
 
 ## Decision: Complete the T246 real-document corpus offline before any live authorization
+
+This decision records the offline-preparation state before the later T246 live
+campaign. Its `T246 remains incomplete` wording is historical; the current
+aggregate is finalized as FAILED and is governed by the reconciliation at the
+top of this document.
 
 **Rationale**: T246 (live real-document Codex semantic evaluation) requires
 deterministic extraction transcripts and provenance as the Codex input for

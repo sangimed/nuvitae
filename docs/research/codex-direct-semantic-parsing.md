@@ -21,19 +21,17 @@ section/item counts, high-priority facts, language metadata, and source-local
 evidence coordinates. PDF/DOCX cases contain text already produced by a
 deterministic extraction layer and explicitly do not implement binary parsing.
 
-**Matrix status (2026-08-06)**: complete. All six mandatory cases are present
+**Matrix status (2026-08-08 current reconciliation)**: T201 remains complete.
+All six mandatory cases are present
 and pass; the authoritative aggregate is
 `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-matrix.json`
 (`matrix_state: all_cases_live_passed`, `matrix_pass: true`). C01-C06 are
 executed and passing. T202 has been re-measured from this matrix
-(`docs/research/codex-direct-oauth-evaluation.md`) and the T203 gate has been
-re-evaluated (`docs/research/codex-direct-oauth-go-no-go.md`) and re-confirmed
-on 2026-08-07 after the accepted T245 lifecycle proof; the decision remains
-NO-GO because live Codex semantic quality over real PDF/DOCX documents (T246)
-is not accepted (T246-C01-A01 was executed once on 2026-08-07: invocation and
-every semantic metric passed, runner finalization failed, and A01 is
-CONSUMED; C02-C08 remain NOT_AUTHORIZED) and bounded-fallback wiring (T217)
-remains unexecuted.
+(`docs/research/codex-direct-oauth-evaluation.md`). T203 remains NO-GO after
+T246 was finalized as FAILED (C01/C04 FAIL; C02/C03/C05/C06/C07 PASS; C08
+PASS) and T217 bounded-fallback wiring was completed. The separate onboarding
+measurement is `FAIL_AUTOMATED_FEASIBILITY` because the production connection
+and ready-state surface is absent; moderated human validation has not occurred.
 
 ## Artifacts
 
@@ -82,10 +80,9 @@ is complete and all-passing (see `codex-direct-oauth-t201-matrix.json`).
 T201 is therefore complete. T202 has been re-measured from the accepted
 evidence and is no longer blocked; the T203 gate was re-evaluated on 2026-08-06
 and re-confirmed on 2026-08-07 after the accepted T245 lifecycle proof, and
-remains NO-GO for production adapter implementation because the live
-real-document semantic gate (T246) is not accepted (T246-C01-A01 executed once
-on 2026-08-07, consumed after runner finalization failed) and bounded-fallback
-wiring (T217) remains unexecuted. T164/T165 remain blocked.
+remains NO-GO for production adapter implementation because finalized T246 is
+FAILED and onboarding is `FAIL_AUTOMATED_FEASIBILITY`. T217 is complete.
+T164/T165 remain blocked.
 T205 completed the current-version offline contract reconciliation; it did not
 authorize or execute C04 at that time.
 Any future Campaign B attempt remains separately authorized and limited to one
@@ -193,10 +190,10 @@ The sanitized proof aggregate is
 (verifier `spikes/codex-direct-oauth/verify-t248-french-pdf.mjs`; regression
 coverage in `tests/integration/import-resume/french-pdf-fixture-evaluation.integration.test.ts`
 and `spikes/codex-direct-oauth/test/t248-french-pdf-verifier.test.mjs`). The
-real-French-PDF prerequisite for T246 is satisfied; T246 remains incomplete
-and C01-A01 is CONSUMED (executed once 2026-08-07; semantic metrics passed,
-runner finalization failed; C02-C08 remain NOT_AUTHORIZED). The T203 decision
-remains **NO-GO**.
+real-French-PDF prerequisite for T246 is satisfied. The later T246 aggregate
+is finalized as FAILED: C01 and C04 fail, C02/C03/C05/C06/C07 pass, and C08
+passes recovery; all attempts are consumed. C01-A01 remains an immutable
+harness-invalid historical attempt. The T203 decision remains **NO-GO**.
 
 ## Execution boundary
 
@@ -224,6 +221,9 @@ The former path `docs/research/codex-direct-oauth-semantic-parsing.md` is a
 compatibility redirect/archive pointer. Its useful historical C01 transport,
 limit, privacy, failure, and evidence details remain preserved there while
 this file is the canonical path for the T201 matrix going forward.
+
+The next paragraph is preserved historical material from the 2026-08-07
+reconciliation; the current status is the T246/T217/onboarding summary above.
 
 T201 is complete: every mandatory case has an independently passing bounded
 evaluation, and the consolidated matrix records `all_cases_live_passed`. T202 is

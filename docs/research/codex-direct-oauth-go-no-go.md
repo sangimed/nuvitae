@@ -43,10 +43,13 @@ true`). T246-C01-A01 was executed once on 2026-08-07: the backend invocation
    authorization, cancellation, and internal failures remain terminal; draft
    persistence is atomic/idempotent; and provider-neutral status/UI recovery is
    wired. Docker-backed persistence/security and focused application tests pass.
-3. **Non-technical onboarding feasibility** — unmeasured (requires the real
-   import flow in the supported deployment shape; T213-T215 are unblocked by
-   the accepted T245 proof but remain incomplete, and onboarding validation is
-   still pending).
+3. **Non-technical onboarding feasibility** — `FAIL_AUTOMATED_FEASIBILITY`.
+   Deterministic UI coverage shows that upload, processing, recovery, review,
+   and confirmation are understandable, but the production flow has no
+   executable **Connect Codex** action and no connected/**Codex is ready** state.
+   The canonical live connection/import requirement is therefore not met.
+   Evidence: `docs/research/codex-direct-oauth-onboarding-feasibility.md` and
+   `tests/browser/import-resume/onboarding-feasibility.spec.ts`.
 
 GO requires every mandatory gate to pass. The framework permits GO or
 CONDITIONAL GO only when all of the re-evaluation conditions below are true;
@@ -68,6 +71,7 @@ remains **NO-GO**, not a judgment about Codex output quality.
 | Semantic quality (real PDF/DOCX)       | Real documents through live Codex                            | T246 aggregate: C01 FAIL (A01 harness-invalid; A02 23/24 exact, 17/18 high-priority), C02 PASS, C03 PASS, C04 FAIL (18/24 exact, 13/19 high-priority), C05 PASS, C06 PASS, C07 PASS; C08 separately PASSes malformed recovery with zero provider activity; all attempts consumed, no retries | NOT ACCEPTED         |
 | Prompt-injection resistance            | Deterministic security tests                                 | 92 security/evaluation tests pass                                                                                                                                                                                                                                                            | PASS (deterministic) |
 | Bounded fallback                       | No-provider/failure → bounded outcome                        | T217 production wiring passes focused worker/application/UI tests, Docker-backed import persistence/security tests, and offline T246 regression tests; one primary provider call, one local fallback execution, no queue retry, and no duplicate accepted draft                              | PASS                 |
+| Non-technical onboarding feasibility   | Understandable live connection/import journey                | Automated UX evidence passes upload, processing, recovery, review, and confirmation copy; required Connect Codex action and ready-state UI are absent, and no live provider run was performed                                                                                                | NOT ACCEPTED         |
 | Credential security / no token leakage | Secret scan, token-blind evidence                            | `secret_scan_result=passed` on T199/T200/all T201 evidence; no raw credential or account identifier exposure                                                                                                                                                                                 | PASS                 |
 | Provider-neutral architecture          | Import domain depends only on `ResumeSemanticParserProvider` | 1064 default-suite tests pass incl. worker orchestration through the provider boundary                                                                                                                                                                                                       | PASS                 |
 | Factual preservation / no-invention    | Evidence rules enforced                                      | All six live cases: `no_invention_pass: true`, unsupported facts 0, forbidden inferences 0                                                                                                                                                                                                   | PASS                 |
@@ -93,8 +97,9 @@ remains **NO-GO**, not a judgment about Codex output quality.
 - **T164, T165** (production Codex adapter + response converter): remain
   **blocked**. They must NOT be implemented on the basis of this NO-GO.
 - **T201**: complete (six-case matrix all passing).
-- **T202**: measured (all evidence-supported metrics pass; four metrics
-  unmeasured).
+- **T202**: measured (all evidence-supported metrics pass; latency, cancellation,
+  and quota behavior remain unmeasured; onboarding is measured as an automated
+  feasibility failure and is not accepted as live validation).
 - **T243**: executed the registered Campaign-B attempts; C04-B02 failed
   immutably at credential recovery, C04-B03/C05-B01/C06-B01 passed.
 - **T216** (production Codex wiring): must not start; its dependency on a
@@ -102,10 +107,12 @@ remains **NO-GO**, not a judgment about Codex output quality.
 - **T217** (bounded fallback wiring): complete and validated 2026-08-08; this
   does not change the T203 decision.
 - **T212-T215** (Community setup/connection UI): remain incomplete; T213-T215
-  are now unblocked by the accepted T245 lifecycle proof (2026-08-07).
+  are now unblocked by the accepted T245 lifecycle proof (2026-08-07), and the
+  onboarding measurement identifies their missing connection action/status as
+  the current UX blocker.
 - **T245**: complete (accepted 2026-08-07; aggregate
   `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`).
-  **T246**: the remaining real-document semantic gate. T246-C01-A01 was executed once (2026-08-07): the
+  **T246**: the finalized real-document semantic gate. T246-C01-A01 was executed once (2026-08-07): the
   backend invocation and every semantic metric passed, but the runner failed
   during finalization (implementation defect) and A01 is CONSUMED. T246-C01-A02
   was then executed once and is the first harness-valid C01 semantic attempt;
@@ -134,25 +141,18 @@ following are true:
    deterministic-only (1 of 9 criteria), provider-side remote revocation was
    not exercised, and provider-side revocation is not required by canonical
    T245; it is not claimed as a live result. And
-2. T246 executes live Codex semantic evaluation over the real-document corpus
-   (real French PDF, English PDF, DOCX, bilingual, partial/sparse, structurally
-   ambiguous, prompt-instruction-like, and malformed/unsupported recovery)
-   under the T208 enrichment contract; T246 is the completed but FAILED
-   qualification gate, whose prerequisites T248 (real French PDF proof), T247
-   (T208 bookkeeping closure), and T249 (offline corpus preparation) are
-   satisfied. T246-C01-A01 was executed once on 2026-08-07 and is CONSUMED
-   (invocation and semantic metrics passed; runner finalization failed).
-   T246-C01-A02 was executed once and is CONSUMED after a valid semantic
-   failure (23/24 exact facts, 17/18 high-priority facts; root cause
-   INDETERMINATE). C04-A01 is also a consumed semantic FAIL; C02/C03/C05/C06/C07
-   pass and C08 passes the malformed recovery contract with zero broker runs,
-   zero semantic backend requests, and no credential access. All C01-C08
-   attempts are CONSUMED, and the qualification remains not accepted;
-   and
+2. The finalized T246 qualification remains failed: C01 and C04 are semantic
+   FAIL results, C02/C03/C05/C06/C07 pass, and C08 passes the malformed recovery
+   contract. All C01-C08 attempts are consumed; this work does not rerun T246,
+   create a replacement attempt, or weaken its thresholds. The prerequisites
+   T248 (real French PDF proof), T247 (T208 bookkeeping closure), and T249
+   (offline corpus preparation) remain recorded as satisfied; and
 3. T202 metrics are re-measured from those live runs, including schema-valid
    rate, precision, recall, grouping, evidence validity, invention rate,
    latency, cancellation, quota behavior, refresh rotation, restart recovery,
-   and non-technical onboarding feasibility; and
+   and non-technical onboarding feasibility; the current deterministic
+   onboarding result is explicitly not a substitute for this live evidence;
+   and
 4. The decisive product question is answered positively: a non-technical user
    can import a typical PDF/DOCX and receive a review-useful draft without
    dangerous hallucinations or excessive manual reconstruction; and
@@ -198,6 +198,10 @@ are defined below; the path is not permanently closed.
   production adapter until re-evaluation produces qualifying live evidence.
 
 ## 3. Criteria table
+
+The following table is the historical 2026-08-05 qualification snapshot. It is
+preserved for auditability; section 0 and the current downstream-consequences
+section above are authoritative for present status.
 
 | Mandatory gate                         | Required evidence                                            | State                                                                                                                  | Result                              |
 | -------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------- |
