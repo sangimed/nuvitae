@@ -49,20 +49,20 @@ validation.
 
 ## Actual journey audit
 
-| State                              | What the user sees                                                                                                              | Result                                                                      |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Entry                              | “Create your resume”, with “Import an existing resume” as the primary action and manual entry as an alternative                 | Pass                                                                        |
-| Start import                       | “Start from your existing resume” and “Import my resume”                                                                        | Pass                                                                        |
-| Connection explanation             | Upload guidance now says “Connect Codex before uploading” and explains why the connection is needed                             | Pass after fix                                                              |
-| Connection required                | “Connect Codex to continue”, a plain explanation, and “Enter manually”                                                          | Understandable, but no executable Connect Codex action exists in production |
-| Connected state                    | No production connection status card or “Codex is ready” state exists                                                           | Fail / missing T213–T215 surface                                            |
-| Upload                             | Labelled file control, PDF/DOCX guidance, size/page/text limits, and “Upload and start import”                                  | Pass                                                                        |
-| Processing                         | “Preparing your resume for review” with a current step and only known progress percentages                                      | Pass                                                                        |
-| Review-ready                       | “Your resume draft is ready” and “Review imported resume”                                                                       | Pass                                                                        |
-| Partial fallback                   | Partial result is labelled as partial and unconfirmed; review remains required                                                  | Pass in recovery/component coverage                                         |
-| Recoverable Codex failure          | Codex-unavailable wording, limited/retry/manual actions where permitted                                                         | Pass in bounded recovery coverage                                           |
-| Terminal or malformed file failure | Plain error, replacement upload where permitted, and manual entry                                                               | Pass                                                                        |
-| Confirmation                       | Review warnings and fields must be resolved before “Create structured resume”; confirmation dialog has an explicit final action | Pass                                                                        |
+| State                              | What the user sees                                                                                                              | Result                                                                           |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Entry                              | “Create your resume”, with “Import an existing resume” as the primary action and manual entry as an alternative                 | Pass                                                                             |
+| Start import                       | “Start from your existing resume” and “Import my resume”                                                                        | Pass                                                                             |
+| Connection explanation             | Upload guidance now says “Connect Codex before uploading” and explains why the connection is needed                             | Pass after fix                                                                   |
+| Connection required                | Plain “Connect Codex” explanation and action; manual entry remains available                                                    | Pass for T213 entrypoint/handoff; callback and connected state remain T214 scope |
+| Connected state                    | No production connection status card or “Codex is ready” state exists                                                           | Fail / T214 scope remains                                                        |
+| Upload                             | Labelled file control, PDF/DOCX guidance, size/page/text limits, and “Upload and start import”                                  | Pass                                                                             |
+| Processing                         | “Preparing your resume for review” with a current step and only known progress percentages                                      | Pass                                                                             |
+| Review-ready                       | “Your resume draft is ready” and “Review imported resume”                                                                       | Pass                                                                             |
+| Partial fallback                   | Partial result is labelled as partial and unconfirmed; review remains required                                                  | Pass in recovery/component coverage                                              |
+| Recoverable Codex failure          | Codex-unavailable wording, limited/retry/manual actions where permitted                                                         | Pass in bounded recovery coverage                                                |
+| Terminal or malformed file failure | Plain error, replacement upload where permitted, and manual entry                                                               | Pass                                                                             |
+| Confirmation                       | Review warnings and fields must be resolved before “Create structured resume”; confirmation dialog has an explicit final action | Pass                                                                             |
 
 ## Jargon audit
 
@@ -85,9 +85,10 @@ The new Playwright coverage in
 `tests/browser/import-resume/onboarding-feasibility.spec.ts` uses mocked API
 responses and synthetic file bytes only:
 
-1. Connection required: the user sees why Codex is needed, receives manual
-   recovery, and no technical vocabulary leaks. The test records that the
-   required **Connect Codex** button is absent.
+1. Connection required: the user sees why Codex is needed, receives the
+   actionable **Connect Codex** button, reaches the mocked safe browser handoff,
+   retains manual recovery, and sees no technical vocabulary leak. The test
+   does not claim a connected or ready state.
 2. Codex unavailable: the user sees a plain failure, no review button is
    offered, and manual entry is available.
 
@@ -98,12 +99,12 @@ privacy-safe recovery copy. No test calls a real provider or OAuth endpoint.
 
 ## Result and remaining gap
 
-The existing import/review journey is understandable once it reaches upload,
-processing, recovery, review, and confirmation. The onboarding criterion does
-not pass because the production flow cannot start or complete the required
-Codex connection and cannot show a connected/ready state. T213–T215 remain the
-bounded implementation work for that missing surface; this measurement does
-not implement a fake connection button or claim OAuth success.
+The T213 portion now passes automated feasibility: the production import flow
+exposes a real Connect Codex action and a mocked/local safe browser handoff.
+The complete onboarding criterion still does not pass because T214/T215 do not
+yet provide callback completion, connected/ready state, or recovery operations,
+and no live provider activity or moderated human validation was performed. This
+measurement does not claim OAuth success.
 
 No human participants were used. This is not user testing. Because the
 canonical contract explicitly requires moderated usability testing and the
@@ -135,8 +136,9 @@ personal data.
 
 ## T203 disposition
 
-The onboarding blocker is now **measured**, but it is a failed automated
-feasibility result because the required connection UI is absent. T203 remains
-**NO-GO** for the independent, already-finalized reason that T246 is failed;
-the onboarding gate is also not accepted. T217 remains complete. T246 was not
-rerun, reinterpreted, or modified.
+The onboarding blocker remains **measured** as a failed automated feasibility
+result for the full journey: T213's connection UI/handoff is present, but the
+T214/T215 ready-state and recovery surface is absent. T203 remains **NO-GO** for
+the independent, already-finalized reason that T246 is failed; the onboarding
+gate is also not accepted. T217 remains complete. T246 was not rerun,
+reinterpreted, or modified.

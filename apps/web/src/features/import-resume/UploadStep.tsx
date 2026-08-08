@@ -11,6 +11,7 @@ import {
 import { ProviderDisclosure } from "./ProviderDisclosure";
 import { ErrorSummary } from "./ErrorSummary";
 import { focusErrorSummary } from "./focus-management";
+import { CodexConnectionScreen } from "../codex-connection/CodexConnectionScreen";
 
 const maximumFileSizeBytes = 10 * 1024 * 1024;
 const allowedExtensions = [".pdf", ".docx"] as const;
@@ -93,6 +94,7 @@ export function UploadStep(props: {
         </ul>
       </div>
 
+      <CodexConnectionScreen />
       <ProviderDisclosure />
 
       <form className="upload-form" onSubmit={submit} noValidate>

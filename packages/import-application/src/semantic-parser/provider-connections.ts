@@ -8,6 +8,7 @@ import type {
   ProviderRuntimeConnectionStatus,
 } from "@nuvitae/domain";
 import type { AIProviderRuntimeConnectionsRepository } from "@nuvitae/persistence";
+import { randomUUID } from "node:crypto";
 import type {
   ImportEventEmitter,
   ImportEventMetadataFor,
@@ -41,6 +42,9 @@ export interface ProviderSessionStore {
 
 export interface ProviderRuntimeAdapterContext {
   readonly sessionStore: ProviderSessionStore;
+  /** Authenticated owner scope supplied by the application, never the browser. */
+  readonly ownerUserId: string;
+  readonly connectionId: string;
 }
 
 export interface ProviderAdapterInspection {
@@ -54,6 +58,12 @@ export interface ProviderAdapterInspection {
 export interface ProviderAdapterLoginResult {
   readonly loginStartedAt: Date;
   readonly safeMessage: string | null;
+  readonly browserHandoff?: ProviderAdapterBrowserLoginHandoff;
+}
+
+export interface ProviderAdapterBrowserLoginHandoff {
+  readonly loginReference: string;
+  readonly authorizationUrl: string;
 }
 
 export interface ProviderAdapterConnectedResult {
@@ -72,7 +82,7 @@ export interface ProviderAdapterQuotaResult {
 /**
  * Provider-neutral adapter port. No adapter method may accept or return
  * credentials, authorization codes, prompts, provider-native payloads,
- * account profile data, headers, cookies, or callback URLs. Production
+ * account profile data, headers, cookies, or callback query data. Production
  * provider adapters (including Codex) are implemented behind this boundary
  * only after their own decision gates; this service never assumes one.
  */
@@ -129,7 +139,10 @@ export type ProviderConnectionErrorCode =
   | "provider_session_storage_unavailable"
   | "provider_unavailable"
   | "provider_rate_limited"
-  | "provider_quota_exceeded";
+  | "provider_quota_exceeded"
+  | "provider_connection_already_connected"
+  | "provider_connection_login_expired"
+  | "provider_connection_handoff_unavailable";
 
 /**
  * Privacy-safe service error. It never embeds identifiers, session material,
@@ -222,7 +235,7 @@ export class ProviderConnectionService {
     let inspection: ProviderAdapterInspection;
     try {
       inspection = await this.ports.adapter.inspect(
-        this.context(),
+        this.context(ownerUserId, connectionId),
         connection.sessionReference,
       );
     } catch (error) {
@@ -285,7 +298,7 @@ export class ProviderConnectionService {
     let login: ProviderAdapterLoginResult;
     try {
       login = await this.ports.adapter.startLogin(
-        this.context(),
+        this.context(ownerUserId, connectionId),
         connection.sessionReference,
       );
     } catch (error) {
@@ -304,6 +317,86 @@ export class ProviderConnectionService {
       await this.saveSafely(connection, next),
       login.safeMessage,
     );
+  }
+
+  /**
+   * T213: begin the browser handoff without accepting a connection id from
+   * the browser. An active pending login is resumed by the adapter boundary;
+   * a stale pending login is replaced once and remains bounded by the broker.
+   */
+  async beginBrowserLogin(
+    ownerUserId: string,
+    options: { readonly displayName?: string } = {},
+  ): Promise<{
+    readonly status: ProviderConnectionStatusView;
+    readonly browserHandoff: ProviderAdapterBrowserLoginHandoff;
+  }> {
+    let connection =
+      await this.ports.repository.findConnectionByProviderAndOwner(
+        this.ports.adapter.providerKind,
+        ownerUserId,
+      );
+    if (connection === null) {
+      connection = await this.createConnection(
+        ownerUserId,
+        randomUUID(),
+        options,
+      );
+    }
+    this.assertNotDeleted(connection, "connect");
+    if (connection.connectionStatus === "connected") {
+      throw new ProviderConnectionError(
+        "provider_connection_already_connected",
+      );
+    }
+    if (
+      connection.connectionStatus === "login_pending" &&
+      !isPendingLoginFresh(connection.loginStartedAt)
+    ) {
+      connection = await this.saveSafely(connection, {
+        ...connection,
+        connectionStatus: "login_cancelled",
+        authenticationStatus: "unauthenticated",
+        lastCheckedAt: new Date(),
+      });
+    }
+    if (
+      connection.connectionStatus !== "login_pending" &&
+      !connectableStatuses.includes(connection.connectionStatus)
+    ) {
+      throw new ProviderConnectionError("provider_connection_state_conflict");
+    }
+
+    let login: ProviderAdapterLoginResult;
+    try {
+      login = await this.ports.adapter.startLogin(
+        this.context(ownerUserId, connection.id),
+        connection.sessionReference,
+      );
+    } catch (error) {
+      throw mapAdapterError(error);
+    }
+    if (login.browserHandoff === undefined) {
+      throw new ProviderConnectionError(
+        "provider_connection_handoff_unavailable",
+      );
+    }
+
+    const next: AIProviderRuntimeConnection = {
+      ...connection,
+      connectionStatus: "login_pending",
+      authenticationStatus: "pending",
+      availabilityStatus: "unknown",
+      loginStartedAt: login.loginStartedAt,
+      lastCheckedAt: login.loginStartedAt,
+    };
+    return {
+      status: toStatusView(
+        await this.saveSafely(connection, next),
+        login.safeMessage,
+      ),
+      browserHandoff: login.browserHandoff,
+    };
   }
 
   /**
@@ -327,7 +420,7 @@ export class ProviderConnectionService {
     let connected: ProviderAdapterConnectedResult;
     try {
       connected = await this.ports.adapter.completeLogin(
-        this.context(),
+        this.context(ownerUserId, connectionId),
         connection.sessionReference,
       );
     } catch (error) {
@@ -383,7 +476,7 @@ export class ProviderConnectionService {
     let cancelled: ProviderAdapterLoginResult;
     try {
       cancelled = await this.ports.adapter.cancelLogin(
-        this.context(),
+        this.context(ownerUserId, connectionId),
         connection.sessionReference,
       );
     } catch (error) {
@@ -419,7 +512,7 @@ export class ProviderConnectionService {
     let connected: ProviderAdapterConnectedResult;
     try {
       connected = await this.ports.adapter.reconnect(
-        this.context(),
+        this.context(ownerUserId, connectionId),
         connection.sessionReference,
       );
     } catch (error) {
@@ -484,7 +577,7 @@ export class ProviderConnectionService {
     await this.destroySession(ownerUserId, connectionId, connection);
     try {
       await this.ports.adapter.disconnect(
-        this.context(),
+        this.context(ownerUserId, connectionId),
         connection.sessionReference,
       );
     } catch (error) {
@@ -527,7 +620,7 @@ export class ProviderConnectionService {
     await this.destroySession(ownerUserId, connectionId, connection);
     try {
       await this.ports.adapter.revoke(
-        this.context(),
+        this.context(ownerUserId, connectionId),
         connection.sessionReference,
       );
     } catch (error) {
@@ -587,7 +680,7 @@ export class ProviderConnectionService {
     await this.destroySession(ownerUserId, connectionId, connection);
     try {
       await this.ports.adapter.deleteLocalState(
-        this.context(),
+        this.context(ownerUserId, connectionId),
         connection.sessionReference,
       );
     } catch (error) {
@@ -657,7 +750,7 @@ export class ProviderConnectionService {
     let capabilities: ProviderRuntimeCapabilities;
     try {
       capabilities = await this.ports.adapter.capabilities(
-        this.context(),
+        this.context(ownerUserId, connectionId),
         connection.sessionReference,
       );
     } catch (error) {
@@ -687,7 +780,7 @@ export class ProviderConnectionService {
     let quota: ProviderAdapterQuotaResult;
     try {
       quota = await this.ports.adapter.quotaState(
-        this.context(),
+        this.context(ownerUserId, connectionId),
         connection.sessionReference,
       );
     } catch (error) {
@@ -704,8 +797,11 @@ export class ProviderConnectionService {
     );
   }
 
-  private context(): ProviderRuntimeAdapterContext {
-    return { sessionStore: this.ports.sessionStore };
+  private context(
+    ownerUserId: string,
+    connectionId: string,
+  ): ProviderRuntimeAdapterContext {
+    return { sessionStore: this.ports.sessionStore, ownerUserId, connectionId };
   }
 
   private async findByOwner(
@@ -868,6 +964,15 @@ function assertStatus(
 }
 
 const opaqueSessionReferencePattern = /^[a-f0-9]{64}$/;
+const pendingLoginTtlMs = 10 * 60 * 1000;
+
+function isPendingLoginFresh(loginStartedAt: Date | null): boolean {
+  return (
+    loginStartedAt !== null &&
+    Date.now() - loginStartedAt.getTime() >= 0 &&
+    Date.now() - loginStartedAt.getTime() < pendingLoginTtlMs
+  );
+}
 
 function assertOpaqueSessionReference(sessionReference: string): void {
   if (!opaqueSessionReferencePattern.test(sessionReference)) {
@@ -937,4 +1042,7 @@ export const providerConnectionErrorCodes = [
   "provider_unavailable",
   "provider_rate_limited",
   "provider_quota_exceeded",
+  "provider_connection_already_connected",
+  "provider_connection_login_expired",
+  "provider_connection_handoff_unavailable",
 ] as const satisfies readonly ProviderConnectionErrorCode[];

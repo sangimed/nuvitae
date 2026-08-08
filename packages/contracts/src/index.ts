@@ -12,5 +12,6 @@ export * from "./import-resume/responses.js";
 export * from "./import-resume/review.js";
 export * from "./import-resume/confirmation.js";
 export * from "./import-resume/limited-deterministic-partial-fallback.js";
+export * from "./import-resume/provider-connections.js";
 export * from "./import-resume/semantic-extraction.js";
 export * from "./manual-resume.js";

@@ -8,7 +8,10 @@ import {
 import { BullModule } from "@nestjs/bullmq";
 import { randomUUID } from "node:crypto";
 import { IMPORT_RESUME_PROCESSING_QUEUE } from "@nuvitae/contracts";
-import { TypeOrmImportLimitAttemptsRepository } from "@nuvitae/persistence";
+import {
+  TypeOrmAIProviderRuntimeConnectionsRepository,
+  TypeOrmImportLimitAttemptsRepository,
+} from "@nuvitae/persistence";
 import { LocalPrivateImportStorage } from "@nuvitae/storage";
 import { DataSource } from "typeorm";
 import { createImportEventEmitter } from "../observability/import-events.js";
@@ -34,12 +37,56 @@ import {
 } from "../import-resume/start-import.tokens.js";
 import { readLocalPlayConfig } from "./local-play.config.js";
 import { LocalPlayPrincipalMiddleware } from "./local-play-principal.middleware.js";
+import { CodexOAuthLoginBoundary } from "../import-resume/codex-oauth-login-boundary.js";
+import { browserHandoffOnlySessionStore } from "../import-resume/browser-handoff-session-store.js";
+import {
+  API_PROVIDER_CONNECTION_ADAPTER,
+  API_PROVIDER_CONNECTION_REPOSITORY,
+  API_PROVIDER_CONNECTION_SERVICE,
+  API_PROVIDER_SESSION_STORE,
+} from "../import-resume/provider-connection.tokens.js";
+import { ProviderConnectionController } from "../import-resume/provider-connection.controller.js";
+import { CodexConnectionInitiationService } from "../import-resume/codex-connection-initiation.service.js";
+import {
+  ProviderConnectionService,
+  type ProviderRuntimeConnectionAdapter,
+  type ProviderSessionStore,
+} from "../services/import-resume/provider-connections.js";
+import type { AIProviderRuntimeConnectionsRepository } from "@nuvitae/persistence";
 
 const localPlayProviders: Provider[] = [
   {
     provide: START_IMPORT_PROCESSING_LIMITS,
     useFactory: () => parseImportProcessingLimitsEnv(process.env),
   },
+  {
+    provide: API_PROVIDER_CONNECTION_REPOSITORY,
+    useFactory: (dataSource: DataSource) =>
+      new TypeOrmAIProviderRuntimeConnectionsRepository(dataSource),
+    inject: [DataSource],
+  },
+  {
+    provide: API_PROVIDER_CONNECTION_ADAPTER,
+    useClass: CodexOAuthLoginBoundary,
+  },
+  {
+    provide: API_PROVIDER_SESSION_STORE,
+    useValue: browserHandoffOnlySessionStore,
+  },
+  {
+    provide: API_PROVIDER_CONNECTION_SERVICE,
+    useFactory: (
+      repository: AIProviderRuntimeConnectionsRepository,
+      adapter: ProviderRuntimeConnectionAdapter,
+      sessionStore: ProviderSessionStore,
+    ) => new ProviderConnectionService({ repository, adapter, sessionStore }),
+    inject: [
+      API_PROVIDER_CONNECTION_REPOSITORY,
+      API_PROVIDER_CONNECTION_ADAPTER,
+      API_PROVIDER_SESSION_STORE,
+    ],
+  },
+  CodexConnectionInitiationService,
   {
     provide: START_IMPORT_PRIVATE_STORAGE,
     useFactory: async () => {
@@ -107,6 +154,7 @@ const localPlayProviders: Provider[] = [
         BullModule.registerQueue({ name: IMPORT_RESUME_PROCESSING_QUEUE }),
       ],
       providers: localPlayProviders,
+      controllers: [ProviderConnectionController],
     }),
   ],
 })

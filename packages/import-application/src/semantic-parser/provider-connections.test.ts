@@ -158,6 +158,11 @@ class FakeAdapter implements ProviderRuntimeConnectionAdapter {
   login: ProviderAdapterLoginResult = {
     loginStartedAt: new Date("2026-08-01T09:01:00.000Z"),
     safeMessage: null,
+    browserHandoff: {
+      loginReference: "login-reference-123456",
+      authorizationUrl:
+        "https://auth.openai.com/oauth/authorize?state=server-state",
+    },
   };
   quota: ProviderAdapterQuotaResult = {
     availabilityState: "available",
@@ -274,6 +279,38 @@ describe("provider connection service", () => {
     const stored = repository.rows.get(connectionA);
     expect(stored?.sessionReference).toBe(sessionReference);
     expect(stored?.expiresAt).toEqual(adapter.connected.expiresAt);
+  });
+
+  it("begins an owner-scoped browser handoff without exposing session material", async () => {
+    const { service, repository, adapter } = harness();
+    const first = await service.beginBrowserLogin(ownerA);
+    const repeated = await service.beginBrowserLogin(ownerA);
+    const otherOwner = await service.beginBrowserLogin(ownerB);
+
+    expect(first.status.connectionStatus).toBe("login_pending");
+    expect(first.browserHandoff).toEqual(repeated.browserHandoff);
+    expect(otherOwner.status.connectionId).not.toBe(first.status.connectionId);
+    expect(repository.rows.get(connectionA)).toBeUndefined();
+    const ownerConnection = [...repository.rows.values()].find(
+      (row) => row.ownerUserId === ownerA,
+    );
+    expect(ownerConnection?.providerKind).toBe(adapter.providerKind);
+    expect(JSON.stringify(first)).not.toContain(sessionReference);
+    expect(JSON.stringify(first)).not.toContain("token");
+  });
+
+  it("fails closed when the owner already has a connected provider", async () => {
+    const { service, repository } = harness();
+    await service.connect(ownerA, connectionA);
+    const connected = repository.rows.get(connectionA)!;
+    repository.rows.set(connectionA, {
+      ...connected,
+      connectionStatus: "connected",
+      authenticationStatus: "authenticated",
+    });
+    await expect(service.beginBrowserLogin(ownerA)).rejects.toMatchObject({
+      code: "provider_connection_already_connected",
+    });
   });
 
   it("is idempotent for connect and rejects invalid transitions fail-closed", async () => {

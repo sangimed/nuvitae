@@ -7,12 +7,12 @@ import { ProviderDisclosure } from "./ProviderDisclosure";
 describe("ProviderDisclosure (T175)", () => {
   it("explains provider requirement and provider use before provider-backed processing", async () => {
     const markup = renderToStaticMarkup(createElement(ProviderDisclosure));
-    expect(markup).toContain("connected, compatible AI provider");
+    expect(markup).toContain("Codex to be connected");
     expect(markup).toContain("text extracted from your resume");
     expect(markup).toContain("unconfirmed until you review");
     expect(markup).toContain("backed by your document");
     expect(markup).toContain("limited automatic extraction");
-    expect(markup).toContain("does not provide reliable full semantic parsing");
+    expect(markup).toContain("does not provide a reliable complete analysis");
 
     const uploadSource = await readFile(
       "apps/web/src/features/import-resume/UploadStep.tsx",
@@ -42,7 +42,6 @@ describe("ProviderDisclosure (T175)", () => {
       "prompt",
       "session",
       "OpenAI",
-      "Codex",
       "endpoint",
       "config",
       "diagnostic",

@@ -11,6 +11,7 @@ export {
   ProviderConnectionService,
   providerConnectionErrorCodes,
   type ProviderAdapterConnectedResult,
+  type ProviderAdapterBrowserLoginHandoff,
   type ProviderAdapterInspection,
   type ProviderAdapterLoginResult,
   type ProviderAdapterQuotaResult,
