@@ -14,4 +14,5 @@ export * from "./import-resume/confirmation.js";
 export * from "./import-resume/limited-deterministic-partial-fallback.js";
 export * from "./import-resume/provider-connections.js";
 export * from "./import-resume/semantic-extraction.js";
+export * from "./import-resume/semantic-extraction-v2.js";
 export * from "./manual-resume.js";
