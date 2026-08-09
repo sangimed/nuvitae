@@ -486,6 +486,7 @@ describe("SemanticImportProcessor", () => {
       docxTextExtractor: {} as never,
       provider: unavailableProvider,
       repository: repository as never,
+      clock: { now: () => now },
     });
 
     await processor.process({ ownerUserId, importedDocumentId: importId });

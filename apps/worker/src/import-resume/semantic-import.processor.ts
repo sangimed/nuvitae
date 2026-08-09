@@ -29,6 +29,7 @@ import {
   mapSemanticCandidates,
   runLimitedDeterministicPartialFallback,
   serializeSemanticValidationDiagnostic,
+  validationIssueCategory,
   validateSemanticResponse,
   type ImportEventEmitter,
   type ImportEventMetadataFor,
@@ -207,6 +208,19 @@ export class SemanticImportProcessor {
             input.correlationId,
           );
           return;
+        }
+        for (const issue of providerResult.error.validationIssues) {
+          this.logger.emit("semantic.validation_diagnostics", {
+            category: validationIssueCategory(issue),
+            code: issue.code,
+            retryable: providerResult.error.retryable,
+            requiresReview: false,
+            path: issue.path,
+            importId: document.id,
+            ...(input.correlationId === undefined
+              ? {}
+              : { correlationId: input.correlationId }),
+          });
         }
         const fallbackTrigger = fallbackTriggerForProviderError(
           providerResult.error.code,

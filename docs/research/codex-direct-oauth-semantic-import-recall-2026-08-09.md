@@ -1,7 +1,104 @@
 # Semantic-import recall follow-up: anonymous selectable resume
 
-**Status**: Offline correction complete; one separately authorized live smoke
-revalidation remains required.
+**Status**: Offline semantic-contract correction complete; real-provider recall
+remains **UNVERIFIED** and one separately authorized live smoke revalidation
+remains required.
+
+## 2026-08-09 production semantic-response milestone
+
+The already-observed production import
+`06471f68-6e9d-4ee2-b829-54847ffc5ccb` proved the Codex transport and reached
+semantic validation. No provider, OAuth, or network activity was performed
+for this follow-up, and no raw provider response was persisted or recovered.
+
+Sanitized runtime evidence:
+
+- HTTP status category: `2xx` at approximately 833 ms;
+- first byte: approximately 834 ms;
+- SSE started: approximately 835 ms;
+- `response.completed`: approximately 32.7 s;
+- response EOF/completion: approximately 32.8 s;
+- 1,229 SSE frames and 1,229 data fields;
+- JSON objects parsed; final recognized event type: `response.completed`;
+- semantic outcome: `malformed_flattened_evidence`;
+- T217 then produced `partial_deterministic_fallback`.
+
+This establishes that transport, framing, terminal completion, JSON extraction,
+and worker survival are no longer the current blocker. The response was
+rejected at the strict semantic response schema boundary before canonical
+candidate mapping. The exact malformed provider shape cannot be identified
+from the persisted local evidence because raw output and factual values are
+not retained. No nested-vs-flat, key-name, identifier, range, cardinality, or
+object-level placement claim is made about this response.
+
+### Canonical flattened-evidence contract
+
+The validator-owned contract is now stated explicitly in the provider prompt
+and covered offline. Every non-null factual value is exactly:
+
+```json
+{
+  "value": "source substring",
+  "normalizedValue": null,
+  "evidence": [
+    {
+      "line": 1,
+      "start": 0,
+      "end": 12,
+      "fragmentHash": "sha256-of-normalized-fragment",
+      "fragmentId": "fragment-1"
+    }
+  ],
+  "classification": "explicit",
+  "confidence": "high"
+}
+```
+
+Evidence is per value, flat, and an array of 1–8 records. `start` is inclusive,
+`end` is exclusive and strictly greater than `start`; `line` is 1-based;
+`fragmentHash` must match the supplied source fragment; `fragmentId` is a
+required key whose value is either null or the canonical `fragment-{order + 1}`
+identifier. Exact duplicate evidence records within one value are rejected;
+the validator does not impose an evidence-array sort order or separately reject
+overlapping ranges when each range independently grounds. Nullable fields are
+explicitly `null`; absent collections are `[]`; shared evidence on a
+section/object and evidence text, page, or physical coordinates are forbidden.
+Document-language classification may have empty evidence because it is not a
+returned resume fact. Relationships and diagnostics retain their schema-owned
+flat evidence arrays.
+
+### Prompt-vs-validator diff
+
+Before this correction, the prompt required “canonical flattened evidence” but
+did not define the evidence object keys, inclusive/exclusive offset semantics,
+required `fragmentId` key, per-value cardinality, nullable/empty exceptions, or
+the prohibition on nested/object-level evidence. Its compact `output` hint also
+listed section names without the exact nested field shapes. The runtime Zod
+schema, by contrast, strictly required the exact top-level/section keys, value
+object keys, flat evidence record, 1–8 evidence cardinality, and range/hash
+constraints. This was contract drift: the validator was authoritative, but the
+provider-facing contract was underspecified. The prompt now contains the
+validator-aligned field-by-field shape and synthetic example. The strict
+validator was not loosened.
+
+### Privacy-safe diagnostics added
+
+Malformed responses remain fail-closed and retain the existing
+`malformed_flattened_evidence` rejection. They now classify structural issues
+using only schema field names and paths: `evidence_missing`,
+`evidence_wrong_type`, `evidence_fragment_id_missing`,
+`evidence_fragment_id_unknown`, `evidence_range_missing`,
+`evidence_range_invalid`, `evidence_shape_nested`,
+`evidence_shape_unexpected_key`, and `evidence_cardinality_invalid`.
+Provider-boundary issues are emitted through the existing validation-diagnostic
+event with category/path/code only. No resume text, factual value, source
+fragment text, raw response, credentials, or token is recorded.
+
+Offline regressions cover valid flattened evidence, nested evidence objects,
+evidence strings, missing/unknown fragment identifiers, invalid ranges,
+object-level evidence, multiple per-value records, skills/languages, education
+degree/institution/end-year, and fail-closed malformed output. No live smoke
+was performed. T217 budgets and T246 evidence were untouched.
 
 ## Fixture and observed product defect
 

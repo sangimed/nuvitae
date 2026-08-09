@@ -29,9 +29,7 @@ export function validateEvidence(
   const candidates = request.sourceFragments.filter(
     (fragment) =>
       fragment.hash === evidence.fragmentHash &&
-      fragment.line === evidence.line &&
-      (evidence.fragmentId === null ||
-        evidence.fragmentId === `fragment-${fragment.order + 1}`),
+      fragment.line === evidence.line,
   );
   if (candidates.length !== 1) {
     return [
@@ -48,6 +46,14 @@ export function validateEvidence(
   const fragment = candidates[0];
   if (!fragment)
     return [diagnostic("evidence", "foreign_fragment", path, evidence)];
+  if (
+    evidence.fragmentId !== null &&
+    evidence.fragmentId !== `fragment-${fragment.order + 1}`
+  ) {
+    return [
+      diagnostic("evidence", "evidence_fragment_id_unknown", path, evidence),
+    ];
+  }
   if (normalizedFragmentHash(fragment.text) !== evidence.fragmentHash) {
     return [diagnostic("grounding", "fragment_hash_mismatch", path, evidence)];
   }

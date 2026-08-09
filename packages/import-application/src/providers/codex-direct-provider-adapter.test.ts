@@ -220,7 +220,7 @@ describe("CodexDirectProviderAdapter (T216)", () => {
     const invocation = harness.transport.invoke.mock.calls[0]?.[0] as
       { readonly instructions: string; readonly inputText: string } | undefined;
     expect(invocation?.instructions).toContain(
-      "Preserve explicit professional titles",
+      "preserve explicit professional titles",
     );
     const input = JSON.parse(invocation?.inputText ?? "{}") as {
       readonly output?: { readonly sections?: string };
