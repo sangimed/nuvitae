@@ -94,6 +94,33 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Limit Behavior**: Rate and concurrency rejections use an appropriate response such as HTTP 429, include `Retry-After` where applicable, and include a plain-language recovery message.
 
+### Document Understanding Layer (future boundary)
+
+**Status**: Proposed / spike required / not implemented. This boundary is not a
+runtime contract for the current V1 path and does not authorize a Docling
+dependency, parser replacement, routing, or multimodal provider call.
+
+**Conceptual Input**: A validated, born-digital PDF or DOCX plus import-scoped
+ownership and resource limits.
+
+**Conceptual Output**: A canonical `NuvitaeDocument` containing Nuvitae-owned
+document metadata, pages, stable blocks/fragments, reading order, optional
+bounding boxes, sections, tables, optional style signals, retained assets,
+source provenance, and bounded engine/version/configuration quality metadata.
+
+**Rules**: The import domain must not depend on `DoclingDocument`, PyMuPDF
+dictionaries, Azure `analyzeResult`, Unstructured elements, Apryse JSON, Google
+DocumentLayout output, Adobe extraction JSON, or any other parser-native
+schema. Canonical block/fragment IDs and provenance are owned by Nuvitae. The
+active V1 PDF.js/OOXML/LibreOffice stack remains supported and is the only
+current runtime path; it may later be adapted behind this boundary after the
+controlled Current Extractor versus Docling benchmark.
+
+**Representation Distinction**: `NuvitaeDocument` is a canonical runtime/document
+representation. It is not structured resume state and does not define
+persistence. Source-reconstructing inputs and temporary artifacts remain under
+the existing retention and deletion contract.
+
 ### Validate Document
 
 **Input**: `ImportedDocument` id owned by user.
@@ -110,7 +137,7 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Output**: processing state, partial/complete extraction summary, draft id when threshold is met, provider failure state if any, warnings, recovery actions.
 
-**Rules**: Deterministic validation and source preparation run through concrete PDF and DOCX extraction adapters before semantic parsing. PDF extraction must include page and text-item source-location provenance. DOCX extraction must include package part, paragraph/table/cell/run, and character-offset provenance. When a usable AI provider is connected, semantic parsing runs through `ResumeSemanticParserProvider` as the primary semantic mapping and grouping path. The worker submits only a controlled extraction request. Foreground processing times out after 3 minutes and returns threshold-qualified partial results when available. A parser memory-limit breach terminates the isolated parser process, creates no review draft from abruptly terminated partial output, cleans up files and source-reconstructing artifacts for the failed attempt, and returns retry, replacement-upload, provider recovery where applicable, and manual-entry recovery actions.
+**Rules**: The active V1 path performs deterministic validation and source preparation through the concrete PDF.js and DOCX extraction adapters before semantic parsing. PDF extraction includes page and text-item source-location provenance. DOCX extraction includes package part, paragraph/table/cell/run, and character-offset provenance, with isolated LibreOffice used only for rendered-page-count validation. A future path may normalize the validated input through the proposed Document Understanding Layer into `NuvitaeDocument`; that migration is not scheduled by this contract. When a usable AI provider is connected, semantic parsing runs through `ResumeSemanticParserProvider` as the primary semantic mapping and grouping path. The worker submits only a controlled extraction request. Foreground processing times out after 3 minutes and returns threshold-qualified partial results when available. A parser memory-limit breach terminates the isolated parser process, creates no review draft from abruptly terminated partial output, cleans up files and source-reconstructing artifacts for the failed attempt, and returns retry, replacement-upload, provider recovery where applicable, and manual-entry recovery actions.
 
 ### Validate Semantic Parser Output
 
@@ -118,7 +145,7 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Output**: versioned Nuvitae extraction response, accepted candidate fields and relationships, rejected/unusable candidates, grounding results, warnings.
 
-**Rules**: Provider adapters translate provider-native output into a versioned Nuvitae-owned response before the import domain consumes it. Strict Zod validation rejects malformed output, unknown fields, invalid relationships, unsupported values, provider-native schema leakage, invalid confidence categories, and missing required fields. Evidence grounding validation requires source page or document location, exact source text or source fragment identifier, explicit-versus-inferred classification, and confidence category for every AI-produced candidate. Ungrounded or invented values are rejected or marked unusable; they are never silently accepted.
+**Rules**: Provider adapters translate provider-native output into a versioned Nuvitae-owned response before the import domain consumes it. The active V1 contract retains flattened transcript coordinates and deterministic native provenance. The future `nuvitae.semantic-extraction.v2` response instead provides semantic values, logical grouping, and bounded `sourceRefs` containing Nuvitae-owned fragment/block ids plus exact quote hints; Nuvitae resolves and verifies those hints and reconstructs canonical evidence, identity, and policy metadata. Strict validation rejects malformed output, unknown fields, invalid relationships, unsupported values, provider-native schema leakage, invalid confidence/classification metadata, and missing required source references. Ungrounded or invented values are rejected or marked unusable; they are never silently accepted.
 
 ### Provider Failure Recovery
 
@@ -268,7 +295,7 @@ These service boundaries add the Community MVP surface (Codex connection, visual
 
 ### Semantic Import (Codex Path)
 
-**Input**: accepted imported document, active Codex connection, provider capability snapshot, provider-ready source representation.
+**Input**: accepted imported document, active Codex connection, provider capability snapshot, and the active V1 transcript/source fragments or a future canonical `NuvitaeDocument` projection.
 
 **Output**: processing state, partial/complete extraction summary, draft id when the threshold is met, provider failure state if any, warnings, recovery actions.
 

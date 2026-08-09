@@ -8,6 +8,52 @@ planned separately from domain concepts. TypeORM entities are persistence models
 not business-domain entities, and rows must be mapped explicitly before entering
 the domain layer.
 
+## Proposed NuvitaeDocument runtime representation
+
+`NuvitaeDocument` is a future, import-scoped canonical document representation
+produced by the proposed provider-neutral Document Understanding Layer. It is
+not a TypeORM entity, persistence schema, or confirmed resume model. Its
+purpose is to normalize different document engines into Nuvitae-owned content,
+structure, and provenance that can support both the active V1 semantic path and
+future document-aware or multimodal semantic paths.
+
+The minimum conceptual scope is:
+
+| Area                           | Canonical responsibility                                                                                                                 |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Document identity and metadata | Import-scoped document id; source format; MIME type; detected language; bounded engine/version/configuration metadata.                   |
+| Pages                          | Stable page identity and number; width/height or other dimensions when available.                                                        |
+| Blocks/fragments               | Stable Nuvitae-owned block id; text; block type; reading order; page reference when available; optional bounding box; source provenance. |
+| Sections                       | Hierarchy and grouping of headings or logical document regions.                                                                          |
+| Tables                         | Rows, columns, cells, and spans where the source engine can support them without inventing structure.                                    |
+| Styles                         | Optional deterministic signals such as heading/list/emphasis style; never required for semantic acceptance.                              |
+| Assets                         | Figures or images retained for a qualified document-aware path when allowed by retention and privacy policy.                             |
+| Provenance                     | Mapping from canonical blocks/content back to source document locations, including native PDF/DOCX locations where available.            |
+| Extraction metadata            | Engine, engine version, configuration fingerprint, and bounded quality/diagnostic indicators; no raw provider payloads.                  |
+
+Canonical block and fragment identifiers are generated and owned by Nuvitae.
+They are the only source-reference identifiers exposed to the semantic-provider
+boundary. A provider may return a bounded `sourceRefs` hint containing a
+Nuvitae-owned block/fragment id and exact quote; Nuvitae verifies the quote and
+reconstructs authoritative evidence, offsets, hashes, and native provenance.
+Parser-native identifiers and schemas never become domain concepts.
+
+The representations remain distinct:
+
+- **Canonical runtime/document representation**: `NuvitaeDocument`, retained
+  only as long as the import workflow and approved future capabilities require.
+- **Source-reconstructing temporary artifacts**: uploaded files, raw extraction
+  output, rendered pages, cached parser output, and equivalent data subject to
+  the existing ownership, deletion, and seven-day retention rules.
+- **Structured resume domain state**: reviewed and explicitly confirmed resume
+  fields. It is not a copy of `NuvitaeDocument` and must survive source deletion
+  without raw source reconstruction.
+
+The current PDF.js/OOXML extraction stack is the active V1 implementation and
+may later implement this conceptual boundary. That migration is not selected,
+scheduled, or designed here. Docling is only the first candidate for the
+controlled benchmark described in the dedicated research record.
+
 ## ImportedDocument
 
 Represents the uploaded source file. It is distinct from the import draft and any structured resume.
@@ -102,7 +148,7 @@ Versioned, provider-neutral structured output accepted from a provider adapter o
 
 **Relationships**: Belongs to one `SemanticParseAttempt`; creates `ExtractedField`, `WorkExperience`, and `ImportWarning` records only after strict schema, grounding, and no-invention validation.
 
-**Validation Rules**: Unknown fields, invalid relationships, unsupported values, provider-native schema leakage, malformed output, missing evidence, invented facts, and invalid confidence or classification categories fail safely or become explicit review warnings. Provider-native JSON must not enter the import domain directly.
+**Validation Rules**: Unknown fields, invalid relationships, unsupported values, provider-native schema leakage, malformed output, missing evidence, invented facts, and invalid confidence or classification categories fail safely or become explicit review warnings. The future `nuvitae.semantic-extraction.v2` response contains semantic values, logical grouping, and bounded Nuvitae-owned `sourceRefs`; it does not contain parser-native document identifiers, application candidate IDs, canonical evidence coordinates, hashes, or provider-owned confidence/classification metadata. Provider-native JSON must not enter the import domain directly.
 
 ## EvidenceRecord
 
@@ -112,7 +158,7 @@ Grounding reference for an AI-produced candidate value or relationship.
 
 **Relationships**: Belongs to one `NuvitaeExtractionResponse`; may be referenced by one or more `ExtractedField` or relationship candidates.
 
-**Validation Rules**: Classification values identify whether the candidate is explicit or inferred. Confidence values are `high`, `medium`, `low`, and `not_applicable`. Missing or invalid evidence rejects the candidate or marks it unusable; unsupported evidence must not be silently accepted.
+**Validation Rules**: This is a Nuvitae-owned canonical evidence record created after source-reference resolution; `candidateId` is generated by Nuvitae and is never trusted from provider output. Classification values identify whether the candidate is explicit or inferred. Confidence values are `high`, `medium`, `low`, and `not_applicable`. Missing or invalid evidence rejects the candidate or marks it unusable; unsupported evidence must not be silently accepted.
 
 ## ExtractedField
 

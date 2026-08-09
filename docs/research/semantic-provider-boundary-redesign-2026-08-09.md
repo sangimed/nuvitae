@@ -2,7 +2,7 @@
 
 **Recorded**: 2026-08-09
 **Status**: Architecture decision; implementation not started
-**Scope**: V1 Grounded Text Import and the transversal provider boundary
+**Scope**: V1 Grounded Text Import, the future Document Understanding Layer, and the transversal provider boundary
 **Out of scope**: live provider/OAuth calls, T246, and Grounded Multimodal Import V2 implementation
 
 ## Decision summary
@@ -19,6 +19,15 @@ The canonical rule is:
 
 > **LLM for understanding. Nuvitae for proof.**
 
+The semantic boundary is downstream of a future provider-neutral Document
+Understanding Layer. That layer produces canonical Nuvitae-owned
+`NuvitaeDocument` blocks/fragments and provenance. The semantic provider does
+not receive or return parser-native document schemas; it receives a bounded
+Nuvitae-owned projection and returns semantic values plus source-reference
+hints. The current V1 PDF.js/OOXML extraction stack remains active and may
+provide that projection until a separate engine benchmark and replacement
+decision are complete.
+
 The provider's `sourceRefs` are untrusted locating hints. Nuvitae resolves them
 against the source-fragment registry, reconstructs exact evidence, derives
 deterministic values and policy metadata, and accepts only independently
@@ -31,7 +40,7 @@ V1 remains **Grounded Text Import = active**. V2 remains
 
 ## Current provider-boundary diagnosis
 
-The current path is:
+The current V1 path is:
 
 ```text
 PDF/DOCX
@@ -44,6 +53,18 @@ PDF/DOCX
   -> review draft and warnings
   -> reviewed draft confirmation
   -> structured resume and evidence persistence
+```
+
+The future document-aware path inserts the canonical document boundary before
+the semantic provider:
+
+```text
+PDF/DOCX
+  -> Document Understanding Layer
+  -> NuvitaeDocument
+  -> Nuvitae-owned source fragments/blocks
+  -> nuvitae.semantic-extraction.v2
+  -> Nuvitae canonicalization / grounding / identity / review
 ```
 
 The request construction is Nuvitae-owned and currently produces the canonical
@@ -298,7 +319,9 @@ occurrence without proving uniqueness.
 This mechanism is future-compatible with a provider-neutral
 `NuvitaeDocument`: Docling or another extractor can expose equivalent stable
 canonical fragments and quoted text without forcing the provider to know PDF
-pages, DOCX runs, layout coordinates, or homemade extraction internals.
+pages, DOCX runs, layout coordinates, or homemade extraction internals. Docling
+remains only the first candidate for a controlled benchmark; it is not selected
+as the production engine.
 
 ## Nuvitae-owned canonicalization pipeline
 
@@ -416,23 +439,26 @@ normalized transcript
   -> review draft
 ```
 
-No multimodal input is required. The current extraction adapters, normalized
-transcript, bounded worker, owner-bound provider resolution, T217 fallback,
-review, confirmation, and source-retention behavior remain in place.
+No multimodal input is required. The current PDF.js/OOXML extraction adapters,
+normalized transcript, bounded worker, owner-bound provider resolution, T217
+fallback, review, confirmation, and source-retention behavior remain in place.
+The active V1 transcript/fragments can be treated as a Nuvitae-owned projection
+while the future `NuvitaeDocument` boundary is evaluated.
 
 The response boundary is the change. The provider adapter may build a smaller
 provider-facing fragment envelope from the existing request while keeping the
 full Nuvitae source registry private to canonicalization. V1 can therefore
 adopt V2 without changing the deterministic PDF/DOCX extraction architecture.
 
-## V2 / Docling compatibility
+## Document Understanding Layer compatibility
 
 The decision is intentionally independent of PDF text items, DOCX runs, page
 coordinates, and the current `fragment-{order + 1}` construction. Those are
-Nuvitae-owned source-registry details. A future Docling-backed or other
-provider-neutral `NuvitaeDocument` layer can expose equivalent logical source
-fragments and stable IDs, while a deterministic enrichment layer can retain
-physical provenance after semantic acceptance.
+implementation details behind a future Nuvitae-owned document contract. A
+future Docling-backed or other provider-neutral engine can expose equivalent
+logical blocks, sections, tables, stable fragments, and provenance while a
+deterministic enrichment layer retains physical provenance after semantic
+acceptance. Parser-native schemas must not enter the semantic or import domain.
 
 V2 may add visual/document context as an additional provider input in a future
 spike. It must still return the same class of semantic atoms and source hints;

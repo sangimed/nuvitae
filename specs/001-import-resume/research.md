@@ -79,6 +79,89 @@ production-provider-registration blocker is resolved. The remaining T203
 blockers are only the finalized T246 qualification failure, the unperformed
 real production OAuth/import proof, and moderated human onboarding validation.
 
+The document-extraction reconciliation is recorded in the dedicated
+[`Document Understanding Layer evaluation`](../../docs/research/document-understanding-layer-2026-08-09.md)
+research record. It is **PROPOSED / SPIKE REQUIRED / NOT IMPLEMENTED** and does
+not change the current status table above.
+
+## Architecture reconciliation: document understanding is a future boundary
+
+The current V1 truth is unchanged: `packages/extraction` owns deterministic
+PDF.js/pdfjs-dist selectable-text extraction and page/text-item provenance for
+PDF, Office Open XML extraction using `yauzl` and `fast-xml-parser` for DOCX,
+and isolated LibreOffice rendering only for DOCX rendered-page-count
+validation. The stack is active, supported, and test-covered. It remains
+required until a replacement decision is made.
+
+The research conclusion is that this physical extraction stack must not be
+treated as the assumed long-term document-understanding architecture. The
+harder future problem is document structure: reading order, sections and
+headings, lists, tables, spatial grouping, styles, figures/assets, bounding
+boxes, and provenance. A provider-neutral boundary is therefore proposed:
+
+```text
+validated born-digital PDF/DOCX
+→ DocumentUnderstandingProvider (proposed; not implemented)
+→ canonical NuvitaeDocument
+→ ResumeSemanticParserProvider
+→ nuvitae.semantic-extraction.v2
+→ Nuvitae canonicalization / grounding / identity / review
+```
+
+`NuvitaeDocument` is a canonical runtime/document representation, not a
+persistence design. It is expected to normalize document metadata, pages,
+stable Nuvitae-owned blocks/fragments, reading order, optional bounding boxes,
+sections, tables, optional style signals, retained assets, source provenance,
+and bounded engine/version/configuration quality metadata. It is distinct from
+source-reconstructing temporary artifacts and from structured resume domain
+state.
+
+The import and semantic domains must not depend on `DoclingDocument`, PyMuPDF
+dictionaries, Azure `analyzeResult`, Unstructured elements, Apryse JSON,
+Google DocumentLayout output, Adobe extraction JSON, or equivalent
+parser-native schemas. The current PDF.js/OOXML stack may later become one
+implementation behind the proposed boundary, but no migration is scheduled
+before the controlled benchmark.
+
+The semantic-provider redesign remains compatible with this boundary. A future
+provider receives Nuvitae-owned fragment/block references and returns semantic
+values plus bounded `sourceRefs`; Nuvitae resolves the references, verifies
+quotes and values, reconstructs exact evidence, derives application identity,
+and applies fail-closed acceptance. The governing principle remains
+**“LLM for understanding. Nuvitae for proof.”**
+
+## Decision: Keep the current physical extractor active for V1, without making it the long-term engine decision
+
+The existing PDF.js, OOXML, and LibreOffice decisions remain the active V1
+implementation record. They continue to own deterministic validation,
+selectable-text checks, rendered-page limits, native source provenance, parser
+isolation, and the V1 transcript/fragments used for grounding. They are not
+deprecated and are not removed from the plan or task history.
+
+Their architectural status is now explicitly bounded: they are one current
+implementation of the physical/document-understanding responsibility, not a
+commitment that Nuvitae will retain this parser model indefinitely. The future
+canonical contract is `NuvitaeDocument`, and the first replacement hypothesis
+must be tested before any migration or routing decision.
+
+## Decision: Benchmark the current extractor against Docling first
+
+Docling is the first candidate worth benchmarking because it offers PDF and
+DOCX support, structured document output, layout and reading-order
+reconstruction, bounding boxes/provenance, local or self-hosted execution,
+and provider-independent structured output. This is a benchmark hypothesis
+only. Docling has not been benchmarked against the Nuvitae corpus and is not
+selected as the production engine.
+
+The initial spike is intentionally limited to the current extractor versus
+Docling. It must answer whether Docling can replace or substantially simplify
+custom physical extraction/layout reconstruction while preserving the
+canonical grounding contract. The spike is non-blocking for V1, does not
+install dependencies or change runtime code in this reconciliation, and may
+conclude that Nuvitae should keep the current extractor, replace most
+extraction, use Docling only for complex layouts, retain the current fast path
+with a richer path, or benchmark another candidate.
+
 ## Decision: Build the feature in a Nuvitae-owned TypeScript full-stack architecture
 
 **Rationale**: The accepted foundation ADR selects a Nuvitae-owned hybrid architecture: Reactive Resume and Resuml are references, while Nuvitae owns the application shell, domain, import pipeline, persistence, AI boundary, and user experience. A TypeScript monorepo keeps domain types shared across web, API, workers, extraction adapters, and tests while matching the evaluated reference ecosystem.
@@ -119,9 +202,9 @@ The development workspace image contains pinned Node.js, Corepack, pnpm, and sha
 
 **Trade-offs**: Cold image builds can be slower than host installs. File watching under Docker Desktop can require polling or WSL 2 filesystem placement. Docker-managed caches and volumes need reset and cleanup guidance. Images require version pinning and maintenance. Windows support depends on correctly configured WSL 2 integration.
 
-## Decision: Preserve deterministic physical extraction as provider-ready source preparation
+## Decision (V1 active implementation): Preserve deterministic physical extraction as provider-ready source preparation
 
-**Rationale**: The amended specification makes AI-assisted semantic parsing the primary semantic extraction path whenever a usable provider is connected, but deterministic processing still owns validation, safety, parser isolation, storage, schema validation, evidence validation, provenance, no-invention enforcement, review, confirmation, retention, and deletion. Existing PDF.js and DOCX adapters remain necessary to validate supported files, enforce page/selectable-text limits, prepare source text and locations, and provide evidence anchors that provider output can be grounded against.
+**Rationale**: The amended specification makes AI-assisted semantic parsing the primary semantic extraction path whenever a usable provider is connected, but deterministic processing still owns validation, safety, parser isolation, storage, schema validation, evidence validation, provenance, no-invention enforcement, review, confirmation, retention, and deletion. Existing PDF.js and DOCX adapters remain necessary for V1 to validate supported files, enforce page/selectable-text limits, prepare source text and locations, and provide evidence anchors that provider output can be grounded against. This decision does not select the current physical extraction stack as the long-term document-understanding engine; that question is delegated to the controlled benchmark.
 
 **Alternatives considered**: Replacing deterministic validation/source preparation with provider-only file interpretation was rejected because uploaded documents are untrusted and evidence must be validated before review. Returning to deterministic semantic reconstruction as the primary path was rejected because it conflicts with the amended spec. OCR-first extraction was rejected for the initial release because selectable text is required and scanned/image-only documents are out of scope.
 

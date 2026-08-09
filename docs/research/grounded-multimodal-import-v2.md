@@ -19,6 +19,11 @@ when a response has no `Content-Type`. Real-provider semantic recall remains
 response successfully traverses that pipeline and is evaluated against the
 current simple smoke fixture.
 
+The latest semantic live failure remains historically recorded as
+`sections.headline -> invalid_type`. It is a provider-contract/validation
+failure and is not reinterpreted as a document-extraction failure by this
+architecture reconciliation.
+
 The immutable current qualification state remains:
 
 - **T203: NO-GO**.
@@ -33,8 +38,11 @@ the gate defined below.
 
 ## Problem statement
 
-Text extraction can preserve the words in a document while weakening semantic
-relationships carried by layout. Examples include multi-column resumes,
+Text extraction can preserve the words in a document while weakening document
+structure. The difficult future problem is not basic OCR or character
+extraction for the supported born-digital inputs; it is reading order,
+sections/headings, lists, tables, spatial grouping, styles, figures/assets,
+bounding boxes, and provenance. Examples include multi-column resumes,
 sidebars, visually grouped skill lists, employer/title/date relationships,
 timelines, language/proficiency layouts, compact education entries, icon-based
 professional links, and modern templates where spatial position carries
@@ -51,58 +59,78 @@ Backend Engineer                NestJS
 ```
 
 A flattened transcript may preserve every word while weakening the
-relationship between those values. V2 investigates whether additional visual
-or document context helps a semantic model reconstruct those relationships,
-while keeping Nuvitae-owned deterministic evidence authoritative.
+relationship between those values. The primary V2 hypothesis is therefore a
+provider-neutral Document Understanding Layer that produces a canonical
+`NuvitaeDocument`. Optional visual/document context is a capability layered on
+top of that representation, not the sole definition of V2.
 
 ## V1 — Grounded Text Import (active architecture)
 
 ```text
 PDF/DOCX
-→ deterministic local extraction
-→ normalized transcript
-→ canonical source fragments/evidence
-→ Codex semantic extraction
-→ Nuvitae validation/grounding
+→ Nuvitae-owned deterministic PDF.js + OOXML extraction
+→ normalized transcript and canonical source fragments/evidence
+→ ResumeSemanticParserProvider
+→ Nuvitae canonicalization/grounding
 → review
 ```
 
-V1 sends the canonical locally extracted text representation through the
-provider-independent semantic boundary. Nuvitae validates the provider result
-against canonical local fragments/evidence before presenting candidates for
-user review. V1 is a legitimate product path and remains the current
-implementation and stabilization target.
+The current PDF.js/pdfjs-dist, `yauzl` + `fast-xml-parser`, and isolated
+LibreOffice rendered-page validation stack is the active V1 implementation. It
+is supported and test-covered. It remains the runtime path until a separate
+replacement decision is made; it is not described as deprecated.
 
-## V2 — Grounded Multimodal Import (proposed)
+## V2 — Grounded Multimodal Import (proposed; document-aware architecture)
 
-The semantic model would receive both:
-
-1. the canonical locally extracted transcript, fragments, and evidence; and
-2. an additional visual/document representation, such as the original
-   supported document or locally rendered page images.
-
-The proposed flow is:
+The updated architecture introduces a provider-neutral Document Understanding
+Layer before semantic extraction:
 
 ```text
-document
-├─ deterministic extraction
-│  └─ transcript + canonical fragments/evidence
-│
-└─ visual/document representation
-                  ↓
-            semantic model
-                  ↓
-        structured candidates
-                  ↓
-        Nuvitae deterministic grounding
-                  ↓
-                review
+PDF/DOCX
+    ↓
+Document Understanding Layer
+    ↓
+canonical NuvitaeDocument
+    ├─ canonical text / blocks / structure / provenance
+    └─ optional qualified visual/document representation
+                    ↓
+             semantic provider
+                    ↓
+       nuvitae.semantic-extraction.v2
+                    ↓
+          Nuvitae canonicalizer
+                    ↓
+             grounding / review
 ```
 
-The visual input is additional semantic context, not a replacement for the
-canonical local source representation. The model may interpret layout,
-grouping, and relationships, but every accepted factual value must remain
-grounded against Nuvitae-owned canonical evidence.
+The future `DocumentUnderstandingProvider` is conceptual and is not
+implemented here. It accepts a validated born-digital PDF or DOCX and returns
+`NuvitaeDocument`, whose minimum scope includes document metadata, pages,
+stable Nuvitae-owned blocks/fragments, reading order, optional bounding boxes,
+sections, tables, optional style signals, retained assets, source provenance,
+and bounded engine/version/configuration quality metadata.
+
+The semantic provider receives Nuvitae-owned source references, not
+parser-native ids. It returns semantic values and bounded `sourceRefs`; Nuvitae
+resolves those references, verifies quotes and values, reconstructs exact
+evidence, derives application identity, and applies fail-closed acceptance.
+The principle remains: **LLM for understanding. Nuvitae for proof.**
+
+Multimodal input is optional and conditional. The architecture supports:
+
+```text
+A. NuvitaeDocument structured content → text/document-aware provider
+
+B. NuvitaeDocument + qualified rendered page images
+   → multimodal semantic provider
+
+C. NuvitaeDocument → V1-compatible transcript/fragments
+   → text-only semantic provider
+```
+
+No multimodal provider is required. Structured-only, text-only, local, and
+self-hosted providers remain valid future paths. Original-document input and
+rendered-page input are capability options to qualify, not assumptions.
 
 The intended architecture is explicitly not:
 
@@ -137,9 +165,10 @@ thresholds.
 
 Any future V2 implementation must preserve all of the following:
 
-- deterministic local document extraction;
-- a normalized canonical transcript;
-- canonical source fragments/evidence owned by Nuvitae;
+- a provider-neutral Document Understanding Layer boundary;
+- a canonical `NuvitaeDocument` runtime/document representation;
+- canonical text, blocks, structure, and provenance owned by Nuvitae;
+- a normalized transcript projection for V1-compatible providers;
 - grounding/no-invention validation;
 - evidence required for every accepted factual value;
 - user review before confirmation;
@@ -152,63 +181,68 @@ Any future V2 implementation must preserve all of the following:
 - no raw provider response persistence unless explicitly permitted;
 - the current credential/session privacy guarantees.
 
-The visual/document input is additional semantic context only. It must never
-replace canonical local evidence, relax semantic validation, or make a
-provider-native output the Nuvitae source of truth.
+The current V1 extractor is one implementation of the document-understanding
+responsibility, not the assumed long-term engine. The visual/document input is
+an optional capability layered on top of `NuvitaeDocument`; it must never
+replace canonical Nuvitae-owned evidence, relax semantic validation, or make a
+provider-native output the Nuvitae source of truth. The domain must not depend
+on `DoclingDocument`, PyMuPDF dictionaries, Azure `analyzeResult`, Unstructured
+elements, Apryse JSON, Google DocumentLayout output, Adobe extraction JSON, or
+equivalent parser-native schemas.
 
 ## Candidate input strategies (alternatives, not selected)
 
-These strategies are recorded for a future spike. Neither B nor C is selected.
+These strategies are recorded for a future spike. None is selected.
 
-### A. V1 baseline
-
-```text
-transcript
-+ canonical fragments/evidence
-→ semantic model
-```
-
-This is the control path and must remain in the comparison.
-
-### B. Original-document multimodal
+### A. Structured document only
 
 ```text
-original PDF/document
-+ transcript
-+ canonical fragments/evidence
-→ semantic model
+NuvitaeDocument
+→ semantic provider
 ```
 
-This may preserve native document context, but exact support, request limits,
-privacy handling, and provider behavior must be qualified against the exact
-production transport.
+This is the primary control architecture for document understanding. For V1
+compatibility, the provider may receive a Nuvitae-owned transcript and
+canonical fragments projected from `NuvitaeDocument`.
 
-### C. Rendered-page multimodal
+### B. Structured + rendered visual context
 
 ```text
-render document pages locally
-→ page image(s)
-+ transcript
-+ canonical fragments/evidence
-→ semantic model
+NuvitaeDocument
++ locally rendered page images
+→ multimodal semantic provider
 ```
 
-This may make the architecture more format-neutral:
+This may improve layout-aware understanding, but rendered images are optional
+and exact support, request limits, privacy handling, and provider behavior must
+be qualified against the exact provider/transport.
+
+### C. Optional original-document representation
+
+```text
+NuvitaDocument
++ original PDF/DOCX when explicitly qualified
+→ document-aware semantic provider
+```
+
+Original-document input may preserve native context, but it is not required by
+V2 and is not assumed to be supported by the current Codex transport.
+
+The format-neutral boundary is:
 
 ```text
 PDF
-├─ local text extraction
-└─ local page rendering
+└─ Document Understanding Layer
 
 DOCX
-├─ local structured/text extraction
-└─ local visual rendering
+└─ Document Understanding Layer
 
-Both converge into a common multimodal semantic stage.
+Both converge into canonical NuvitaeDocument data.
 ```
 
-Rendering introduces its own fidelity, resource, retention, and isolation
-questions. It is an alternative to evaluate, not an approved direction.
+Rendering and original-document transfer introduce fidelity, resource,
+retention, privacy, and isolation questions. They are alternatives to evaluate,
+not approved directions.
 
 ## Provider capability constraint
 
@@ -222,7 +256,7 @@ production transport and provider before any V2 implementation. Support must
 not be inferred from another OpenAI API, SDK, product surface, or unrelated
 provider integration.
 
-## Provider neutrality and possible future routing
+## Provider neutrality and possible future capability selection
 
 V2 must not make resume import fundamentally Codex-specific. A future provider
 capability model could conceptually distinguish:
@@ -231,23 +265,39 @@ capability model could conceptually distinguish:
 - multimodal document capability;
 - multimodal image capability.
 
-A future routing hypothesis is:
+A future capability-selection hypothesis is:
 
 ```text
-provider supports qualified multimodal path
-→ Grounded Multimodal Import
+provider supports qualified structured/document path
+→ NuvitaeDocument-only semantic execution
 
-otherwise
-→ Grounded Text Import
+provider additionally supports qualified visual/document context
+→ optional multimodal execution
 ```
 
-This capability model and routing are recorded for research only. They are not
-implemented, selected, or added to the current provider boundary in V1.
+This capability model and any routing are recorded for research only. They are
+not implemented, selected, or added to the current provider boundary in V1.
+
+## Document Understanding Layer and engine compatibility
+
+The proposed Document Understanding Layer is deliberately independent of PDF
+text items, DOCX runs, page coordinates, and the current `fragment-{order + 1}`
+construction. Those are implementation details behind a Nuvitae-owned
+canonical document contract. A future Docling-backed or other engine can expose
+equivalent logical blocks, sections, tables, assets, stable fragments, and
+provenance without leaking its native schema into the import domain.
+
+Docling is the first candidate for a controlled benchmark only. The benchmark
+record at
+[`document-understanding-layer-2026-08-09.md`](./document-understanding-layer-2026-08-09.md)
+compares it with the current extractor and explicitly does not select a
+production engine. No Docling dependency, migration, routing, or V2
+implementation work is authorized by this record.
 
 ## V1 remains a legitimate path
 
-V2 does not delete or replace V1. Grounded Text Import may remain preferable
-for:
+V2 does not delete or replace V1. The current Grounded Text Import path may
+remain preferable for:
 
 - providers without qualified multimodal support;
 - cheaper or lower-latency operation;
@@ -256,13 +306,14 @@ for:
 - provider portability;
 - local or self-hosted deployments with different provider capabilities.
 
-The possible future shape is therefore a hypothesis:
+The possible future shape is therefore a layered hypothesis:
 
 ```text
 document
-→ deterministic extraction
-        ├─ qualified multimodal provider → V2
-        └─ otherwise                    → V1
+→ Document Understanding Layer
+→ NuvitaeDocument
+        ├─ structured/text-only semantic provider → V1-compatible path
+        └─ optional qualified visual context     → V2 capability
 ```
 
 ## Security, privacy, and ownership implications
@@ -296,10 +347,11 @@ pricing schemes. The future spike must record capability evidence per exact
 provider/transport and fail closed when a requested representation is not
 qualified.
 
-The Nuvitae-owned canonical transcript/fragments/evidence contract should
-remain stable across V1 and V2. Provider adapters may translate a qualified
-input representation, but provider-native request and response formats must
-not leak into the import domain.
+The Nuvitae-owned `NuvitaeDocument` blocks/fragments/provenance contract and
+the semantic-provider source-reference contract should remain stable across V1
+and V2. Provider adapters may translate a qualified input representation, but
+provider-native request and response formats must not leak into the import
+domain.
 
 ## Trade-offs and risks
 
@@ -336,12 +388,14 @@ architecture.
 
 ## Future experimental comparison
 
-After the V1 production path is stabilized, run a dedicated V2 spike using the
-same documents for every strategy:
+After the V1 production path is stabilized and the document-engine benchmark
+has produced a reviewed canonical representation, run a dedicated V2 spike
+using the same documents for every strategy:
 
-1. **Grounded Text Import — V1** (control);
-2. **visual/document-only experimental path**, if technically possible; and
-3. **Grounded Multimodal Import — V2**.
+1. **Grounded Text Import — V1** (current extractor / transcript control);
+2. **structured NuvitaeDocument-only semantic execution**; and
+3. **Grounded Multimodal Import — V2** with optional qualified visual/document
+   context.
 
 The corpus should include at least:
 
@@ -354,10 +408,10 @@ The corpus should include at least:
 - a resume where layout changes field relationships.
 
 The current anonymous selectable smoke fixture remains one baseline case. The
-same pinned documents, canonical extraction, evaluation contracts, and bounded
-request budgets should be used for comparable runs. The experiment must record
-when a strategy is technically unavailable instead of silently substituting a
-different input path.
+same pinned documents, canonical document output, evaluation contracts, and
+bounded request budgets should be used for comparable runs. The experiment
+must record when a strategy or provider capability is technically unavailable
+instead of silently substituting a different input path.
 
 ## Evaluation dimensions
 

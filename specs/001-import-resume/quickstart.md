@@ -90,12 +90,14 @@ docker compose run --rm workspace pnpm test
 
 ## Deterministic Source Preparation Tests
 
-PDF.js PDF extraction and the streaming Office Open XML DOCX extractor are
-tested with deterministic, in-memory synthetic document generators. These tests
-validate physical text extraction, page/rendered-page limits, source locations,
-and provider-ready source representation. They do not assert that deterministic
-code owns full semantic resume reconstruction when a usable AI provider is
-connected:
+The active V1 PDF.js PDF extraction and streaming Office Open XML DOCX extractor
+are tested with deterministic, in-memory synthetic document generators. These
+tests validate physical text extraction, page/rendered-page limits, source
+locations, and the V1 provider-ready source representation. They do not assert
+that deterministic code owns full semantic resume reconstruction when a usable
+AI provider is connected. The future Document Understanding Layer and
+Current Extractor versus Docling benchmark are research-only and are not part
+of these commands:
 
 ```bash
 docker compose run --rm workspace pnpm exec vitest run packages/extraction/src/pdf/pdfjs-pdf-adapter.test.ts
