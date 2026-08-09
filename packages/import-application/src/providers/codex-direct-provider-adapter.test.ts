@@ -22,6 +22,16 @@ const evidence = {
   fragmentId: null,
 };
 
+function semanticValue(value: string) {
+  return {
+    value,
+    normalizedValue: null,
+    evidence: [evidence],
+    classification: "explicit" as const,
+    confidence: "high" as const,
+  };
+}
+
 function response() {
   return {
     schemaVersion: "nuvitae.semantic-extraction.v1" as const,
@@ -201,6 +211,68 @@ function setup(
 }
 
 describe("CodexDirectProviderAdapter (T216)", () => {
+  it("accepts a semantic candidate without a provider-owned ID", async () => {
+    const candidate = response() as {
+      sections: { skills: unknown[] };
+    };
+    candidate.sections.skills = [
+      { name: semanticValue("TypeScript"), category: null },
+    ];
+
+    const harness = setup(connection(), {
+      ok: true,
+      normalizedOutput: JSON.stringify(candidate),
+    });
+    const result = await harness.provider.parse(request(), {
+      timeoutMs: 30000,
+      ownerUserId: ownerA,
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("does not treat null or arbitrary legacy IDs as application identity", async () => {
+    for (const candidateId of [null, "provider-controlled"]) {
+      const candidate = response() as {
+        sections: { skills: unknown[] };
+      };
+      candidate.sections.skills = [
+        { candidateId, name: semanticValue("TypeScript"), category: null },
+      ];
+      const harness = setup(connection(), {
+        ok: true,
+        normalizedOutput: JSON.stringify(candidate),
+      });
+
+      const result = await harness.provider.parse(request(), {
+        timeoutMs: 30000,
+        ownerUserId: ownerA,
+      });
+
+      expect(result.ok).toBe(true);
+    }
+  });
+
+  it("ignores a wrong-typed legacy candidate ID at the provider boundary", async () => {
+    const candidate = response() as {
+      sections: { skills: unknown[] };
+    };
+    candidate.sections.skills = [
+      { candidateId: 42, name: semanticValue("TypeScript"), category: null },
+    ];
+    const harness = setup(connection(), {
+      ok: true,
+      normalizedOutput: JSON.stringify(candidate),
+    });
+
+    await expect(
+      harness.provider.parse(request(), {
+        timeoutMs: 30000,
+        ownerUserId: ownerA,
+      }),
+    ).resolves.toMatchObject({ ok: true });
+  });
+
   it("resolves the ready owner-bound session and invokes Codex once", async () => {
     const harness = setup();
     const result = await harness.provider.parse(request(), {
@@ -222,10 +294,12 @@ describe("CodexDirectProviderAdapter (T216)", () => {
     expect(invocation?.instructions).toContain(
       "preserve explicit professional titles",
     );
+    expect(invocation?.instructions).toContain("Do not return candidateId");
     const input = JSON.parse(invocation?.inputText ?? "{}") as {
       readonly output?: { readonly sections?: string };
     };
     expect(input.output?.sections).toContain("education");
+    expect(input.output?.sections).not.toContain("candidateId");
   });
 
   it.each([

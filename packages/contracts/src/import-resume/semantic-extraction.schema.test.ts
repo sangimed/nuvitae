@@ -250,6 +250,62 @@ describe("response versioning", () => {
 });
 
 describe("candidate sections", () => {
+  it("accepts semantic candidates without an application candidate ID", () => {
+    const candidate = {
+      ...validResponse(),
+      sections: {
+        ...validResponse().sections,
+        education: [
+          {
+            institution: value,
+            degree: null,
+            fieldOfStudy: null,
+            startDate: null,
+            endDate: null,
+            location: null,
+            details: [],
+          },
+        ],
+        skills: [{ name: value, category: null }],
+        languages: [{ name: value, proficiency: null }],
+      },
+    };
+
+    expect(
+      nuvitaeSemanticExtractionResponseSchema.safeParse(candidate).success,
+    ).toBe(true);
+  });
+
+  it("accepts an explicit null legacy candidate ID as absent", () => {
+    const candidate = {
+      ...validResponse(),
+      sections: {
+        ...validResponse().sections,
+        skills: [{ candidateId: null, name: value, category: null }],
+      },
+    };
+
+    expect(
+      nuvitaeSemanticExtractionResponseSchema.safeParse(candidate).success,
+    ).toBe(true);
+  });
+
+  it("ignores a wrong-typed legacy candidate ID", () => {
+    const candidate = {
+      ...validResponse(),
+      sections: {
+        ...validResponse().sections,
+        skills: [{ candidateId: 42, name: value, category: null }],
+      },
+    };
+
+    const result = nuvitaeSemanticExtractionResponseSchema.safeParse(candidate);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.sections.skills[0]).not.toHaveProperty("candidateId");
+    }
+  });
+
   it("accepts populated candidate sections across the response", () => {
     const candidate = {
       ...validResponse(),

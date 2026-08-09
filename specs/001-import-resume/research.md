@@ -12,6 +12,27 @@ not claim live OAuth or provider-import evidence. T217 and T218 are complete;
 the semantic-import recall correction is validated offline only, and one new
 live smoke revalidation remains pending.
 
+### Candidate identity correction (offline, 2026-08-09)
+
+The latest real import (`51364b5a-18ff-4282-9831-7c9b30df3a5`) proved transport
+end-to-end — HTTP 2xx, SSE completion, EOF, and JSON parsing — but semantic
+validation rejected `candidateId` types in education, skills, and languages.
+The flattened-evidence blocker was therefore resolved enough to reach schema
+validation; the current blocker was a candidate-ID ownership mismatch.
+
+`candidateId` is an internal Nuvitae correlation key, not source information.
+The provider contract strips the legacy field before strict semantic validation,
+so omission, explicit `null`, wrong types, and arbitrary strings cannot reject
+or influence otherwise valid facts; the prompt explicitly says not to return
+it. The application mapper generates
+`candidate-{importId}-{structuralPath}` IDs, keeps them unique and stable for
+the import review lifecycle, and never uses provider strings as application
+identity. Evidence grounding, no-invention, T217 budgets, T246 status, and V2
+scope are unchanged. The live counts (1 education, 4 skills, 2 languages)
+match the smoke fixture and are structural recall encouragement only, not
+accepted real-provider recall. Exactly one separately authorized future smoke
+is warranted after this offline correction.
+
 The post-V1 architecture hypothesis **Grounded Multimodal Import (V2)** is
 recorded separately in
 [`docs/research/grounded-multimodal-import-v2.md`](../../docs/research/grounded-multimodal-import-v2.md).

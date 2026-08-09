@@ -6,6 +6,67 @@ OAuth login, credential refresh, or a change to the T203 decision. T216
 production wiring is tracked separately in
 `docs/research/codex-direct-oauth-t216-production-wiring-2026-08-08.json`.
 
+## 2026-08-09 candidate identity correction (offline)
+
+The latest real import evidence is transport-successful but semantically
+rejected: import `51364b5a-18ff-4282-9831-7c9b30df3a5` completed HTTP 2xx/SSE,
+`response.completed`, EOF, and JSON parsing, then failed schema validation at
+`sections.education[0].candidateId`, all four skills, and both languages with
+`invalid_type`. No provider or OAuth activity was performed for this correction.
+
+### Ownership decision
+
+`candidateId` is an internal Nuvitae correlation identity, not semantic source
+information. The provider supplies facts, evidence, and (where present) legacy
+relationship references. Review identity is owned by generated `ExtractedField`
+IDs and review operation IDs; persistence is owner/response scoped; confirmation
+generates structured-resume child IDs. No candidate ID participates in an
+authorization boundary.
+
+Nuvitae now generates the canonical candidate ID in the semantic mapper as:
+
+`candidate-{importId}-{structuralPath}`
+
+where dots in the structural path become hyphens. It is a non-empty safe
+identifier string, at most 120 characters, unique across candidate sections
+within an import response, and stable for the same import and structural
+response throughout the review lifecycle. Provider-supplied IDs are never used
+as application identity. Legacy string IDs may only resolve a relationship
+reference to the generated ID; ambiguous or unknown references remain invalid.
+
+### Prompt versus validator
+
+Before this correction, the prompt required every candidate object to contain a
+provider-produced string `candidateId`, while the strict validator required a
+non-null safe string (`1..120`, `[A-Za-z0-9._:-]+`). The model could not infer
+that application-level identity or its format from resume text, producing the
+observed type rejection. That was an asymmetric contract:
+
+`prompt: candidateId required` → `validator: candidateId required string` →
+`mapper/persistence: provider value trusted as correlation identity`
+
+The prompt now explicitly omits `candidateId`. The versioned schema strips the
+legacy field before strict semantic validation, so omission, `null`, wrong
+types, and arbitrary strings cannot reject or influence otherwise valid facts.
+The mapper ignores the field and generates application identity itself.
+Semantic evidence and grounding requirements are unchanged.
+
+### Evidence interpretation and status
+
+The live response contained one education candidate, four skills, and two
+languages, matching the simple smoke fixture. This is encouraging structural
+recall evidence only; because the values and evidence did not pass the full
+semantic contract, real-provider semantic recall remains **UNVERIFIED**.
+
+Exactly one future, separately authorized live semantic smoke is warranted after
+this offline correction to verify that the provider omits candidate IDs and the
+full response is accepted. It must not rerun or reinterpret T246 and must retain
+the existing T217 one-call/fallback budgets.
+
+V1 Grounded Text Import remains **active**. V2 Grounded Multimodal Import remains
+**PROPOSED / POST-V1 SPIKE / NOT IMPLEMENTED**. T203 remains **NO-GO**; T246 is
+untouched.
+
 ## Coverage matrix
 
 | Case     | Language       | Source format               | Layout                   | Status                                                                                                                                                                                                          |

@@ -295,7 +295,7 @@ function buildSemanticInput(request: ResumeSemanticParseRequest): string {
       evidenceCardinality: "1..8 per non-null factual value",
       documentLanguageShape: ["value", "confidence", "evidence"],
       sections:
-        "contact{fullName,email,phone,location,website}; headline; summary; workExperience[{candidateId,employerName,employerLocation,roles[{candidateId,title,location,startDate,endDate,isOngoing,responsibilities,achievements}]}]; education[{candidateId,institution,degree,fieldOfStudy,startDate,endDate,location,details}]; skills[{candidateId,name,category}]; languages[{candidateId,name,proficiency}]; projects[{candidateId,name,description,technologies,links}]; certifications[{candidateId,name,issuer,date}]; professionalLinks",
+        "contact{fullName,email,phone,location,website}; headline; summary; workExperience[{employerName,employerLocation,roles[{title,location,startDate,endDate,isOngoing,responsibilities,achievements}]}]; education[{institution,degree,fieldOfStudy,startDate,endDate,location,details}]; skills[{name,category}]; languages[{name,proficiency}]; projects[{name,description,technologies,links}]; certifications[{name,issuer,date}]; professionalLinks",
       relationships: "schema-defined array with flat evidence arrays",
       ambiguityDiagnostics: "schema-defined array with flat evidence arrays",
       conflictDiagnostics: "schema-defined array with flat evidence arrays",

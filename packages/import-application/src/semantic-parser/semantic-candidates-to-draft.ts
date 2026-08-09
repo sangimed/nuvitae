@@ -92,6 +92,35 @@ export interface SemanticCandidateMappingResult {
   readonly reviewRequired: readonly ReviewRequiredField[];
 }
 
+/** Nuvitae owns candidate correlation IDs; providers only return semantic facts. */
+function applicationCandidateId(
+  documentId: string,
+  structuralPath: string,
+): string {
+  return `candidate-${documentId}-${structuralPath.replaceAll(".", "-")}`;
+}
+
+function registerProviderCandidateAlias(
+  aliases: Map<string, string | null>,
+  providerCandidateId: unknown,
+  applicationId: string,
+): void {
+  if (typeof providerCandidateId !== "string") return;
+  const existing = aliases.get(providerCandidateId);
+  aliases.set(
+    providerCandidateId,
+    existing === undefined || existing === applicationId ? applicationId : null,
+  );
+}
+
+function resolveProviderCandidateAlias(
+  aliases: ReadonlyMap<string, string | null>,
+  providerCandidateId: string,
+): string | undefined {
+  const applicationId = aliases.get(providerCandidateId);
+  return applicationId === null ? undefined : applicationId;
+}
+
 const reviewReasonOrder: readonly CandidateReviewReason[] = [
   "inferred",
   "low_confidence",
@@ -166,6 +195,7 @@ export function mapSemanticCandidates(
   const duplicates: DuplicateCandidate[] = [];
   const rejected: RejectedCandidate[] = [];
   const seen = new Map<string, string>();
+  const providerCandidateAliases = new Map<string, string | null>();
   let duplicateSuppressed = 0;
 
   const roleIds = new Set<string>();
@@ -294,24 +324,50 @@ export function mapSemanticCandidates(
     false,
   );
 
-  for (const work of input.response.sections.workExperience) {
-    workIds.add(work.candidateId);
-    knownCandidateIds.add(work.candidateId);
-    for (const role of work.roles) {
-      roleIds.add(role.candidateId);
-      knownCandidateIds.add(role.candidateId);
+  for (const [
+    workIndex,
+    work,
+  ] of input.response.sections.workExperience.entries()) {
+    const workApplicationId = applicationCandidateId(
+      input.document.id,
+      `work_experience.${workIndex}`,
+    );
+    workIds.add(workApplicationId);
+    knownCandidateIds.add(workApplicationId);
+    registerProviderCandidateAlias(
+      providerCandidateAliases,
+      work.candidateId,
+      workApplicationId,
+    );
+    for (const [roleIndex, role] of work.roles.entries()) {
+      const roleApplicationId = applicationCandidateId(
+        input.document.id,
+        `work_experience.${workIndex}.roles.${roleIndex}`,
+      );
+      roleIds.add(roleApplicationId);
+      knownCandidateIds.add(roleApplicationId);
+      registerProviderCandidateAlias(
+        providerCandidateAliases,
+        role.candidateId,
+        roleApplicationId,
+      );
     }
   }
 
   input.response.sections.workExperience.forEach((work, workIndex) => {
     work.roles.forEach((role, roleIndex) => {
       const prefix = `work_experience.${workIndex}.roles.${roleIndex}`;
+      const workCandidateId = applicationCandidateId(
+        input.document.id,
+        `work_experience.${workIndex}`,
+      );
+      const roleCandidateId = applicationCandidateId(input.document.id, prefix);
       push(
         "work_experience",
         `${prefix}.employer`,
         work.employerName,
         textValue(work.employerName),
-        work.candidateId,
+        workCandidateId,
         false,
       );
       push(
@@ -319,7 +375,7 @@ export function mapSemanticCandidates(
         `${prefix}.employer_location`,
         work.employerLocation,
         textValue(work.employerLocation),
-        work.candidateId,
+        workCandidateId,
         false,
       );
       push(
@@ -327,7 +383,7 @@ export function mapSemanticCandidates(
         `${prefix}.title`,
         role.title,
         textValue(role.title),
-        role.candidateId,
+        roleCandidateId,
         false,
       );
       push(
@@ -335,7 +391,7 @@ export function mapSemanticCandidates(
         `${prefix}.location`,
         role.location,
         textValue(role.location),
-        role.candidateId,
+        roleCandidateId,
         false,
       );
       const dateRange = buildRoleDateRange(role);
@@ -345,7 +401,7 @@ export function mapSemanticCandidates(
           `${prefix}.date_range`,
           role.startDate ?? role.endDate,
           dateRange,
-          role.candidateId,
+          roleCandidateId,
           false,
         );
       }
@@ -355,7 +411,7 @@ export function mapSemanticCandidates(
           `${prefix}.responsibility`,
           value,
           textValue(value),
-          role.candidateId,
+          roleCandidateId,
           false,
         ),
       );
@@ -365,7 +421,7 @@ export function mapSemanticCandidates(
           `${prefix}.achievement`,
           value,
           textValue(value),
-          role.candidateId,
+          roleCandidateId,
           false,
         ),
       );
@@ -373,15 +429,21 @@ export function mapSemanticCandidates(
   });
 
   input.response.sections.education.forEach((item, index) => {
-    educationIds.add(item.candidateId);
-    knownCandidateIds.add(item.candidateId);
     const prefix = `education.${index}`;
+    const candidateId = applicationCandidateId(input.document.id, prefix);
+    educationIds.add(candidateId);
+    knownCandidateIds.add(candidateId);
+    registerProviderCandidateAlias(
+      providerCandidateAliases,
+      item.candidateId,
+      candidateId,
+    );
     push(
       "education",
       `${prefix}.institution`,
       item.institution,
       textValue(item.institution),
-      item.candidateId,
+      candidateId,
       false,
     );
     push(
@@ -389,7 +451,7 @@ export function mapSemanticCandidates(
       `${prefix}.credential`,
       item.degree,
       textValue(item.degree),
-      item.candidateId,
+      candidateId,
       false,
     );
     push(
@@ -397,7 +459,7 @@ export function mapSemanticCandidates(
       `${prefix}.field_of_study`,
       item.fieldOfStudy,
       textValue(item.fieldOfStudy),
-      item.candidateId,
+      candidateId,
       false,
     );
     if (item.startDate !== null) {
@@ -410,7 +472,7 @@ export function mapSemanticCandidates(
           `${prefix}.start_date`,
           item.startDate,
           { kind: "date", value: date },
-          item.candidateId,
+          candidateId,
           false,
         );
       }
@@ -425,7 +487,7 @@ export function mapSemanticCandidates(
           `${prefix}.end_date`,
           item.endDate,
           { kind: "date", value: date },
-          item.candidateId,
+          candidateId,
           false,
         );
       }
@@ -435,7 +497,7 @@ export function mapSemanticCandidates(
       `${prefix}.location`,
       item.location,
       textValue(item.location),
-      item.candidateId,
+      candidateId,
       false,
     );
     if (item.details.length > 0) {
@@ -444,21 +506,39 @@ export function mapSemanticCandidates(
   });
 
   input.response.sections.skills.forEach((item, index) => {
-    skillIds.add(item.candidateId);
-    knownCandidateIds.add(item.candidateId);
+    const candidateId = applicationCandidateId(
+      input.document.id,
+      `skills.${index}`,
+    );
+    skillIds.add(candidateId);
+    knownCandidateIds.add(candidateId);
+    registerProviderCandidateAlias(
+      providerCandidateAliases,
+      item.candidateId,
+      candidateId,
+    );
     push(
       "skills",
       `skills.${index}.name`,
       item.name,
       textValue(item.name),
-      item.candidateId,
+      candidateId,
       true,
     );
   });
 
   input.response.sections.languages.forEach((item, index) => {
-    languageIds.add(item.candidateId);
-    knownCandidateIds.add(item.candidateId);
+    const candidateId = applicationCandidateId(
+      input.document.id,
+      `languages.${index}`,
+    );
+    languageIds.add(candidateId);
+    knownCandidateIds.add(candidateId);
+    registerProviderCandidateAlias(
+      providerCandidateAliases,
+      item.candidateId,
+      candidateId,
+    );
     if (item.name === null) return;
     const fieldPath = `languages.${index}.name`;
     push(
@@ -472,22 +552,28 @@ export function mapSemanticCandidates(
           ? {}
           : { proficiency: item.proficiency.value }),
       },
-      item.candidateId,
+      candidateId,
       true,
       item.proficiency === null ? [] : [item.proficiency],
     );
   });
 
   input.response.sections.projects.forEach((item, index) => {
-    projectIds.add(item.candidateId);
-    knownCandidateIds.add(item.candidateId);
     const prefix = `projects.${index}`;
+    const candidateId = applicationCandidateId(input.document.id, prefix);
+    projectIds.add(candidateId);
+    knownCandidateIds.add(candidateId);
+    registerProviderCandidateAlias(
+      providerCandidateAliases,
+      item.candidateId,
+      candidateId,
+    );
     push(
       "projects",
       `${prefix}.name`,
       item.name,
       textValue(item.name),
-      item.candidateId,
+      candidateId,
       false,
     );
     push(
@@ -495,7 +581,7 @@ export function mapSemanticCandidates(
       `${prefix}.description`,
       item.description,
       textValue(item.description),
-      item.candidateId,
+      candidateId,
       false,
     );
     if (item.technologies.length > 0) {
@@ -507,15 +593,21 @@ export function mapSemanticCandidates(
   });
 
   input.response.sections.certifications.forEach((item, index) => {
-    certificationIds.add(item.candidateId);
-    knownCandidateIds.add(item.candidateId);
     const prefix = `certifications.${index}`;
+    const candidateId = applicationCandidateId(input.document.id, prefix);
+    certificationIds.add(candidateId);
+    knownCandidateIds.add(candidateId);
+    registerProviderCandidateAlias(
+      providerCandidateAliases,
+      item.candidateId,
+      candidateId,
+    );
     push(
       "certifications",
       `${prefix}.name`,
       item.name,
       textValue(item.name),
-      item.candidateId,
+      candidateId,
       false,
     );
     push(
@@ -523,7 +615,7 @@ export function mapSemanticCandidates(
       `${prefix}.issuer`,
       item.issuer,
       textValue(item.issuer),
-      item.candidateId,
+      candidateId,
       false,
     );
     if (item.date !== null) {
@@ -543,17 +635,21 @@ export function mapSemanticCandidates(
     );
   });
 
-  const relationships = input.response.relationships.map((relationship) =>
-    mapRelationship(relationship, {
-      knownCandidateIds,
-      roleIds,
-      workIds,
-      educationIds,
-      skillIds,
-      languageIds,
-      projectIds,
-      certificationIds,
-    }),
+  const relationships = input.response.relationships.map(
+    (relationship, index) =>
+      mapRelationship(relationship, {
+        documentId: input.document.id,
+        relationshipIndex: index,
+        knownCandidateIds,
+        providerCandidateAliases,
+        roleIds,
+        workIds,
+        educationIds,
+        skillIds,
+        languageIds,
+        projectIds,
+        certificationIds,
+      }),
   );
 
   const reviewRequired = buildReviewRequired(fields, input.diagnostics ?? []);
@@ -641,7 +737,10 @@ function appendEvidence(
 function mapRelationship(
   relationship: NuvitaeSemanticExtractionResponse["relationships"][number],
   registry: {
+    readonly documentId: string;
+    readonly relationshipIndex: number;
     readonly knownCandidateIds: ReadonlySet<string>;
+    readonly providerCandidateAliases: ReadonlyMap<string, string | null>;
     readonly roleIds: ReadonlySet<string>;
     readonly workIds: ReadonlySet<string>;
     readonly educationIds: ReadonlySet<string>;
@@ -651,16 +750,29 @@ function mapRelationship(
     readonly certificationIds: ReadonlySet<string>;
   },
 ): MappedRelationship {
+  const fromCandidateId = resolveProviderCandidateAlias(
+    registry.providerCandidateAliases,
+    relationship.fromCandidateId,
+  );
+  const toCandidateId = resolveProviderCandidateAlias(
+    registry.providerCandidateAliases,
+    relationship.toCandidateId,
+  );
   const base = {
-    candidateId: relationship.candidateId,
+    candidateId: applicationCandidateId(
+      registry.documentId,
+      `relationships.${registry.relationshipIndex}`,
+    ),
     relationshipType: relationship.relationshipType,
-    fromCandidateId: relationship.fromCandidateId,
-    toCandidateId: relationship.toCandidateId,
+    fromCandidateId: fromCandidateId ?? relationship.fromCandidateId,
+    toCandidateId: toCandidateId ?? relationship.toCandidateId,
     confidence: relationship.confidence,
   };
   if (
-    !registry.knownCandidateIds.has(relationship.fromCandidateId) ||
-    !registry.knownCandidateIds.has(relationship.toCandidateId)
+    fromCandidateId === undefined ||
+    toCandidateId === undefined ||
+    !registry.knownCandidateIds.has(fromCandidateId) ||
+    !registry.knownCandidateIds.has(toCandidateId)
   ) {
     return { ...base, state: "invalid", reason: "unknown_candidate" };
   }
@@ -668,17 +780,17 @@ function mapRelationship(
   switch (relationship.relationshipType) {
     case "role_belongs_to_employer":
       valid =
-        registry.roleIds.has(relationship.fromCandidateId) &&
-        registry.workIds.has(relationship.toCandidateId);
+        registry.roleIds.has(fromCandidateId) &&
+        registry.workIds.has(toCandidateId);
       break;
     case "achievement_belongs_to_role":
-      valid = registry.roleIds.has(relationship.toCandidateId);
+      valid = registry.roleIds.has(toCandidateId);
       break;
     case "skill_belongs_to_category":
-      valid = registry.skillIds.has(relationship.fromCandidateId);
+      valid = registry.skillIds.has(fromCandidateId);
       break;
     case "link_belongs_to_project":
-      valid = registry.projectIds.has(relationship.toCandidateId);
+      valid = registry.projectIds.has(toCandidateId);
       break;
   }
   if (!valid) {

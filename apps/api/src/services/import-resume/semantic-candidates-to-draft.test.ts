@@ -173,6 +173,88 @@ function fullResponse(): NuvitaeSemanticExtractionResponse {
 }
 
 describe("mapSemanticCandidates (T172)", () => {
+  it("generates deterministic application IDs when the provider omits candidate IDs", () => {
+    const response = baseResponse();
+    response.sections.education = [
+      {
+        institution: value("Example University"),
+        degree: value("BSc"),
+        fieldOfStudy: null,
+        startDate: null,
+        endDate: null,
+        location: null,
+        details: [],
+      },
+    ];
+    response.sections.skills = [
+      { name: value("TypeScript"), category: null },
+      { name: value("PostgreSQL"), category: null },
+    ];
+    response.sections.languages = [
+      { name: value("French"), proficiency: null },
+    ];
+
+    const result = mapSemanticCandidates({
+      response,
+      document: document(),
+    });
+
+    expect(result.candidateIdentities).toEqual({
+      "education.0.institution": `candidate-${importId}-education-0`,
+      "education.0.credential": `candidate-${importId}-education-0`,
+      "skills.0.name": `candidate-${importId}-skills-0`,
+      "skills.1.name": `candidate-${importId}-skills-1`,
+      "languages.0.name": `candidate-${importId}-languages-0`,
+    });
+    expect(
+      result.evidence
+        .filter((item) => item.candidateId !== undefined)
+        .map((item) => item.candidateId),
+    ).toEqual([
+      `candidate-${importId}-education-0`,
+      `candidate-${importId}-education-0`,
+      `candidate-${importId}-skills-0`,
+      `candidate-${importId}-skills-1`,
+      `candidate-${importId}-languages-0`,
+    ]);
+    expect(
+      new Set(
+        result.evidence
+          .map((item) => item.candidateId)
+          .filter((item): item is string => item !== undefined),
+      ).size,
+    ).toBe(4);
+  });
+
+  it("does not let provider-supplied IDs influence generated application identity", () => {
+    const first = baseResponse();
+    first.sections.skills = [
+      {
+        candidateId: "provider-one",
+        name: value("TypeScript"),
+        category: null,
+      },
+    ];
+    const second = structuredClone(first);
+    second.sections.skills[0]!.candidateId = "attacker-controlled";
+
+    const firstResult = mapSemanticCandidates({
+      response: first,
+      document: document(),
+    });
+    const secondResult = mapSemanticCandidates({
+      response: second,
+      document: document(),
+    });
+
+    expect(firstResult.candidateIdentities).toEqual(
+      secondResult.candidateIdentities,
+    );
+    expect(firstResult.candidateIdentities["skills.0.name"]).toBe(
+      `candidate-${importId}-skills-0`,
+    );
+  });
+
   it("maps supported basics, work, education, skills, languages, certifications, projects, links, and relationships into unconfirmed candidates", () => {
     const result = mapSemanticCandidates({
       response: fullResponse(),
@@ -228,15 +310,19 @@ describe("mapSemanticCandidates (T172)", () => {
     });
     expect(result.relationships).toEqual([
       expect.objectContaining({
-        candidateId: "relationship-1",
+        candidateId: `candidate-${importId}-relationships-0`,
+        fromCandidateId: `candidate-${importId}-work_experience-0-roles-0`,
+        toCandidateId: `candidate-${importId}-work_experience-0`,
         state: "valid",
       }),
     ]);
     expect(result.duplicateSuppressed).toBe(0);
     expect(result.rejected).toEqual([]);
-    expect(result.candidateIdentities["skills.0.name"]).toBe("skill-1");
+    expect(result.candidateIdentities["skills.0.name"]).toBe(
+      `candidate-${importId}-skills-0`,
+    );
     expect(result.candidateIdentities["work_experience.0.roles.0.title"]).toBe(
-      "role-1",
+      `candidate-${importId}-work_experience-0-roles-0`,
     );
   });
 
@@ -494,12 +580,12 @@ describe("mapSemanticCandidates (T172)", () => {
     });
     expect(result.relationships).toEqual([
       expect.objectContaining({
-        candidateId: "relationship-1",
+        candidateId: `candidate-${importId}-relationships-0`,
         state: "invalid",
         reason: "relationship_type_mismatch",
       }),
       expect.objectContaining({
-        candidateId: "relationship-2",
+        candidateId: `candidate-${importId}-relationships-1`,
         state: "invalid",
         reason: "relationship_type_mismatch",
       }),
@@ -554,7 +640,7 @@ describe("mapSemanticCandidates (T172)", () => {
     expect(result.evidence).toEqual([
       {
         fieldPath: "skills.0.name",
-        candidateId: "skill-1",
+        candidateId: `candidate-${importId}-skills-0`,
         line: 3,
         start: 10,
         end: 20,

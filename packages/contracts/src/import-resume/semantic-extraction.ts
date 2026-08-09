@@ -13,6 +13,9 @@ const safeIdentifierSchema = z
   .min(1)
   .max(120)
   .regex(/^[A-Za-z0-9._:-]+$/);
+// Kept only so legacy provider payloads cannot invalidate otherwise valid
+// semantic facts. The value is ignored and never becomes application identity.
+const legacyApplicationCandidateIdSchema = z.unknown().optional();
 const sha256Schema = z.string().regex(/^[a-f0-9]{64}$/);
 const boundedTextSchema = z.string().min(1).max(2_000);
 const shortTextSchema = z.string().min(1).max(240);
@@ -132,7 +135,9 @@ const contactSectionSchema = z
 
 const workRoleSchema = z
   .object({
-    candidateId: safeIdentifierSchema,
+    // Legacy provider output may contain this field, but Nuvitae owns the
+    // application identity and generates the canonical ID after validation.
+    candidateId: legacyApplicationCandidateIdSchema,
     title: semanticValueSchema.nullable(),
     location: semanticValueSchema.nullable(),
     startDate: semanticValueSchema.nullable(),
@@ -145,7 +150,7 @@ const workRoleSchema = z
 
 const workExperienceSchema = z
   .object({
-    candidateId: safeIdentifierSchema,
+    candidateId: legacyApplicationCandidateIdSchema,
     employerName: semanticValueSchema.nullable(),
     employerLocation: semanticValueSchema.nullable(),
     roles: z.array(workRoleSchema).max(12),
@@ -154,7 +159,7 @@ const workExperienceSchema = z
 
 const educationSchema = z
   .object({
-    candidateId: safeIdentifierSchema,
+    candidateId: legacyApplicationCandidateIdSchema,
     institution: semanticValueSchema.nullable(),
     degree: semanticValueSchema.nullable(),
     fieldOfStudy: semanticValueSchema.nullable(),
@@ -167,7 +172,7 @@ const educationSchema = z
 
 const skillSchema = z
   .object({
-    candidateId: safeIdentifierSchema,
+    candidateId: legacyApplicationCandidateIdSchema,
     name: semanticValueSchema,
     category: semanticValueSchema.nullable(),
   })
@@ -175,7 +180,7 @@ const skillSchema = z
 
 const languageSchema = z
   .object({
-    candidateId: safeIdentifierSchema,
+    candidateId: legacyApplicationCandidateIdSchema,
     name: semanticValueSchema,
     proficiency: semanticValueSchema.nullable(),
   })
@@ -183,7 +188,7 @@ const languageSchema = z
 
 const projectSchema = z
   .object({
-    candidateId: safeIdentifierSchema,
+    candidateId: legacyApplicationCandidateIdSchema,
     name: semanticValueSchema.nullable(),
     description: semanticValueSchema.nullable(),
     technologies: z.array(semanticValueSchema).max(20),
@@ -193,7 +198,7 @@ const projectSchema = z
 
 const certificationSchema = z
   .object({
-    candidateId: safeIdentifierSchema,
+    candidateId: legacyApplicationCandidateIdSchema,
     name: semanticValueSchema.nullable(),
     issuer: semanticValueSchema.nullable(),
     date: semanticValueSchema.nullable(),
@@ -202,7 +207,7 @@ const certificationSchema = z
 
 const relationshipSchema = z
   .object({
-    candidateId: safeIdentifierSchema,
+    candidateId: legacyApplicationCandidateIdSchema,
     relationshipType: z.enum([
       "role_belongs_to_employer",
       "achievement_belongs_to_role",
@@ -224,30 +229,85 @@ const documentLanguageClassificationSchema = z
   })
   .strict();
 
-export const nuvitaeSemanticExtractionResponseSchema = z
-  .object({
-    schemaVersion: z.literal(nuvitaeSemanticExtractionResponseVersion),
-    documentLanguage: documentLanguageClassificationSchema,
-    sections: z
-      .object({
-        contact: contactSectionSchema,
-        headline: semanticValueSchema.nullable(),
-        summary: semanticValueSchema.nullable(),
-        workExperience: z.array(workExperienceSchema).max(25),
-        education: z.array(educationSchema).max(20),
-        skills: z.array(skillSchema).max(120),
-        languages: z.array(languageSchema).max(20),
-        projects: z.array(projectSchema).max(30),
-        certifications: z.array(certificationSchema).max(30),
-        professionalLinks: z.array(semanticValueSchema).max(30),
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function stripLegacyApplicationCandidateIds(value: unknown): unknown {
+  if (!isRecord(value) || !isRecord(value.sections)) return value;
+
+  const sections = { ...value.sections };
+  for (const section of [
+    "workExperience",
+    "education",
+    "skills",
+    "languages",
+    "projects",
+    "certifications",
+  ]) {
+    const candidates = sections[section];
+    if (!Array.isArray(candidates)) continue;
+    sections[section] = candidates.map((candidate) => {
+      if (!isRecord(candidate)) return candidate;
+      const semanticCandidate = withoutLegacyCandidateId(candidate);
+      if (section !== "workExperience" || !Array.isArray(candidate.roles)) {
+        return semanticCandidate;
+      }
+      return {
+        ...semanticCandidate,
+        roles: candidate.roles.map((role) => {
+          if (!isRecord(role)) return role;
+          return withoutLegacyCandidateId(role);
+        }),
+      };
+    });
+  }
+
+  const relationships = Array.isArray(value.relationships)
+    ? value.relationships.map((relationship) => {
+        if (!isRecord(relationship)) return relationship;
+        return withoutLegacyCandidateId(relationship);
       })
-      .strict(),
-    relationships: z.array(relationshipSchema).max(120),
-    ambiguityDiagnostics: z.array(semanticAmbiguityDiagnosticSchema).max(50),
-    conflictDiagnostics: z.array(semanticConflictDiagnosticSchema).max(50),
-    privacyWarnings: z.array(semanticPrivacyWarningSchema).max(50),
-  })
-  .strict();
+    : value.relationships;
+
+  return { ...value, sections, relationships };
+}
+
+function withoutLegacyCandidateId(
+  value: Record<string, unknown>,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(value).filter(([key]) => key !== "candidateId"),
+  );
+}
+
+export const nuvitaeSemanticExtractionResponseSchema = z.preprocess(
+  stripLegacyApplicationCandidateIds,
+  z
+    .object({
+      schemaVersion: z.literal(nuvitaeSemanticExtractionResponseVersion),
+      documentLanguage: documentLanguageClassificationSchema,
+      sections: z
+        .object({
+          contact: contactSectionSchema,
+          headline: semanticValueSchema.nullable(),
+          summary: semanticValueSchema.nullable(),
+          workExperience: z.array(workExperienceSchema).max(25),
+          education: z.array(educationSchema).max(20),
+          skills: z.array(skillSchema).max(120),
+          languages: z.array(languageSchema).max(20),
+          projects: z.array(projectSchema).max(30),
+          certifications: z.array(certificationSchema).max(30),
+          professionalLinks: z.array(semanticValueSchema).max(30),
+        })
+        .strict(),
+      relationships: z.array(relationshipSchema).max(120),
+      ambiguityDiagnostics: z.array(semanticAmbiguityDiagnosticSchema).max(50),
+      conflictDiagnostics: z.array(semanticConflictDiagnosticSchema).max(50),
+      privacyWarnings: z.array(semanticPrivacyWarningSchema).max(50),
+    })
+    .strict(),
+);
 
 const languageContextSchema = z
   .object({
