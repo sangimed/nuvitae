@@ -1,7 +1,6 @@
 import {
-  maxSemanticExtractionResponseJsonBytes,
+  maxSemanticExtractionV2ResponseJsonBytes,
   maxSemanticParserRequestJsonBytes,
-  nuvitaeSemanticExtractionResponseVersion,
   type ResumeSemanticParseRequest,
 } from "@nuvitae/contracts";
 import type { AIProviderRuntimeConnection } from "@nuvitae/domain";
@@ -14,17 +13,17 @@ import {
   createPrivacySafeSemanticProviderError,
   type SemanticProviderErrorCode,
 } from "../semantic-parser/provider-errors.js";
+import { canonicalizeSemanticExtractionV2 } from "../semantic-parser/semantic-extraction-v2-canonicalizer.js";
+import { createSourceRegistryFromSemanticParseRequest } from "../semantic-parser/source-registry.js";
 import type {
   ResumeSemanticParserCapabilities,
   ResumeSemanticParserConnectionSnapshot,
   ResumeSemanticParserInvocationOptions,
   ResumeSemanticParserProvider,
   ResumeSemanticParserProviderResult,
+  ResumeSemanticParserV2ProviderResult,
 } from "../semantic-parser/resume-semantic-parser-provider.js";
-import {
-  validateSemanticExtractionResponse,
-  validateSemanticParseRequest,
-} from "../semantic-parser/validate-semantic-response.js";
+import { validateSemanticParseRequest } from "../semantic-parser/validate-semantic-response.js";
 import { semanticParserInstructions } from "../validation/semantic-parser-instructions.js";
 import {
   CodexDirectTransport,
@@ -48,7 +47,7 @@ const capabilities: ResumeSemanticParserCapabilities = {
   exposesCredentialsToDomain: false,
   predictsPhysicalCoordinates: false,
   maxRequestJsonBytes: maxSemanticParserRequestJsonBytes,
-  maxResponseJsonBytes: maxSemanticExtractionResponseJsonBytes,
+  maxResponseJsonBytes: maxSemanticExtractionV2ResponseJsonBytes,
   maxTimeoutMs: 30_000,
 };
 
@@ -111,10 +110,14 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
     return state;
   }
 
-  async parse(
+  async parse(): Promise<ResumeSemanticParserProviderResult> {
+    return failure("unsupported_capability");
+  }
+
+  async parseV2(
     request: ResumeSemanticParseRequest,
     options?: ResumeSemanticParserInvocationOptions,
-  ): Promise<ResumeSemanticParserProviderResult> {
+  ): Promise<ResumeSemanticParserV2ProviderResult> {
     if (options?.abortSignal?.aborted === true) return failure("cancelled");
     const validatedRequest = validateSemanticParseRequest(request);
     if (!validatedRequest.ok) return validatedRequest;
@@ -218,11 +221,29 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
     try {
       candidate = JSON.parse(transportResult.normalizedOutput);
     } catch {
-      return failure("invalid_provider_response");
+      return failure("invalid_provider_response", "v2_invalid_envelope");
     }
-    const validatedResponse = validateSemanticExtractionResponse(candidate);
-    if (!validatedResponse.ok) return validatedResponse;
-    return { ok: true, response: validatedResponse.value };
+    let canonical;
+    try {
+      canonical = canonicalizeSemanticExtractionV2({
+        response: candidate,
+        sourceRegistry: createSourceRegistryFromSemanticParseRequest(
+          validatedRequest.value,
+        ),
+        importId:
+          validatedRequest.value.importId ??
+          validatedRequest.value.correlationId ??
+          "unbound-import",
+      });
+    } catch {
+      return failure("schema_violation", "v2_invalid_envelope");
+    }
+    if (!canonical.ok) return failureForV2WholeResponse(canonical.reason);
+    return {
+      ok: true,
+      contractVersion: "nuvitae.semantic-extraction.v2",
+      canonical,
+    };
   }
 
   private async findOwnerConnection(
@@ -281,33 +302,37 @@ const semanticInstructions = `${semanticParserInstructions} Use minified JSON se
 
 function buildSemanticInput(request: ResumeSemanticParseRequest): string {
   return JSON.stringify({
-    contract: "nuvitae.semantic-extraction.v1",
-    output: {
-      schemaVersion: nuvitaeSemanticExtractionResponseVersion,
-      semanticValueShape: [
-        "value",
-        "normalizedValue",
-        "evidence",
-        "classification",
-        "confidence",
-      ],
-      evidenceShape: ["line", "start", "end", "fragmentHash", "fragmentId"],
-      evidenceCardinality: "1..8 per non-null factual value",
-      documentLanguageShape: ["value", "confidence", "evidence"],
-      sections:
-        "contact{fullName,email,phone,location,website}; headline; summary; workExperience[{employerName,employerLocation,roles[{title,location,startDate,endDate,isOngoing,responsibilities,achievements}]}]; education[{institution,degree,fieldOfStudy,startDate,endDate,location,details}]; skills[{name,category}]; languages[{name,proficiency}]; projects[{name,description,technologies,links}]; certifications[{name,issuer,date}]; professionalLinks",
-      relationships: "schema-defined array with flat evidence arrays",
-      ambiguityDiagnostics: "schema-defined array with flat evidence arrays",
-      conflictDiagnostics: "schema-defined array with flat evidence arrays",
-      privacyWarnings: "schema-defined array with flat evidence arrays",
-    },
+    contract: "nuvitae.semantic-extraction.v2",
     document: {
       format: request.documentFormat,
-      language: request.languageContext,
-      transcript: request.normalizedTranscript,
-      sourceFragments: request.sourceFragments,
+      language: request.languageContext.detectedLanguage,
+      fragments: request.sourceFragments.map((fragment) => ({
+        fragmentId: `fragment-${fragment.order + 1}`,
+        order: fragment.order,
+        text: fragment.text,
+      })),
     },
   });
+}
+
+function failureForV2WholeResponse(
+  reason:
+    | "malformed_json"
+    | "response_too_large"
+    | "unsafe_structure"
+    | "unsupported_contract_version"
+    | "invalid_top_level_envelope",
+) {
+  switch (reason) {
+    case "response_too_large":
+      return failure("response_too_large", "v2_invalid_envelope");
+    case "unsupported_contract_version":
+      return failure("unsupported_contract_version", "v2_invalid_envelope");
+    case "malformed_json":
+    case "unsafe_structure":
+    case "invalid_top_level_envelope":
+      return failure("schema_violation", "v2_invalid_envelope");
+  }
 }
 
 async function parseSession(
@@ -386,10 +411,13 @@ function mapTransportFailure(
   }
 }
 
-function failure(code: SemanticProviderErrorCode) {
+function failure(code: SemanticProviderErrorCode, diagnosticCode?: string) {
   return {
     ok: false as const,
-    error: createPrivacySafeSemanticProviderError(code),
+    error: createPrivacySafeSemanticProviderError(
+      code,
+      diagnosticCode === undefined ? [] : [{ path: [], code: diagnosticCode }],
+    ),
   };
 }
 

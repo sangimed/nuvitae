@@ -27,6 +27,7 @@ import {
   consumesProcessingCapacity,
   generateSemanticWarnings,
   mapSemanticCandidates,
+  mapSemanticV2CandidatesToDraft,
   runLimitedDeterministicPartialFallback,
   serializeSemanticValidationDiagnostic,
   validationIssueCategory,
@@ -184,14 +185,21 @@ export class SemanticImportProcessor {
           ? {}
           : { correlationId: requestResult.data.correlationId }),
       });
-      const providerResult = await this.ports.provider.parse(
-        requestResult.data,
-        {
-          timeoutMs: this.ports.provider.capabilities.maxTimeoutMs,
-          ownerUserId: input.ownerUserId,
-          ...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
-        },
-      );
+      const invocationOptions = {
+        timeoutMs: this.ports.provider.capabilities.maxTimeoutMs,
+        ownerUserId: input.ownerUserId,
+        ...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
+      };
+      const providerResult =
+        this.ports.provider.parseV2 === undefined
+          ? await this.ports.provider.parse(
+              requestResult.data,
+              invocationOptions,
+            )
+          : await this.ports.provider.parseV2(
+              requestResult.data,
+              invocationOptions,
+            );
       if (!providerResult.ok) {
         if (
           input.abortSignal?.aborted ||
@@ -229,7 +237,11 @@ export class SemanticImportProcessor {
           this.emitSemanticOutcome(
             document,
             started,
-            providerResult.error.code,
+            providerResult.error.validationIssues.some(
+              (issue) => issue.code === "v2_invalid_envelope",
+            )
+              ? "v2_invalid_envelope"
+              : providerResult.error.code,
             providerResult.error.retryable,
             0,
             providerResult.error.validationIssues.length,
@@ -266,6 +278,111 @@ export class SemanticImportProcessor {
           0,
           input.correlationId,
         );
+        return;
+      }
+      if ("canonical" in providerResult) {
+        const canonical = providerResult.canonical;
+        if (canonical.candidates.length === 0) {
+          this.emitSemanticOutcome(
+            document,
+            started,
+            "v2_zero_accepted_fields",
+            false,
+            0,
+            canonical.rejected.length,
+            input.correlationId,
+          );
+          if (!input.abortSignal?.aborted) {
+            await this.runFallbackOrLeaveTerminal(
+              document,
+              requestResult.data,
+              extracted.fragments,
+              "malformed_provider_output",
+              started,
+              input,
+            );
+          }
+          return;
+        }
+        for (const rejected of canonical.rejected.slice(0, 20)) {
+          this.logger.emit("semantic.validation_diagnostics", {
+            category: "schema",
+            code: rejected.code,
+            retryable: false,
+            requiresReview: true,
+            path: rejected.path,
+            importId: document.id,
+            ...(input.correlationId === undefined
+              ? {}
+              : { correlationId: input.correlationId }),
+          });
+        }
+        const mapping = mapSemanticV2CandidatesToDraft({
+          candidates: canonical.candidates,
+          rejected: canonical.rejected,
+          signals: canonical.signals,
+          document,
+        });
+        const draftResult = buildExtractionDraft({
+          importedDocument: document,
+          fields: mapping.fields,
+          warnings: mapping.warnings,
+          missingOrUnprocessedSections: [],
+          ids: {
+            draftId: randomUUID,
+            fieldId: randomUUID,
+            warningId: randomUUID,
+          },
+          now: this.clock.now(),
+        });
+        this.emitSemanticOutcome(
+          document,
+          started,
+          canonical.rejected.length > 0 || canonical.signals.length > 0
+            ? "v2_partial_acceptance"
+            : "v2_success",
+          false,
+          canonical.candidates.length,
+          canonical.rejected.length + canonical.signals.length,
+          input.correlationId,
+        );
+        if (!draftResult.draft) {
+          await this.transition(document, "semantic_validation_failed");
+          return;
+        }
+        await this.ports.transactionRunner.transaction(async (manager) => {
+          const current = await this.ports.repository.findImportByOwner(
+            document.id,
+            document.ownerUserId,
+            manager,
+          );
+          if (
+            !current ||
+            current.document.processingStatus === "ready_for_review" ||
+            (await this.ports.repository.findDraftByImportAndOwner(
+              document.id,
+              document.ownerUserId,
+              manager,
+            ))
+          )
+            return;
+          await this.ports.repository.saveDraft(draftResult.draft!, manager);
+          await this.ports.repository.saveImportLifecycle(
+            { ...current.document, processingStatus: "ready_for_review" },
+            manager,
+          );
+          this.logger.emit("review.draft_created", {
+            importId: document.id,
+            draftId: draftResult.draft!.id,
+            status:
+              draftResult.draft!.status === "ready_to_confirm"
+                ? "ready_to_confirm"
+                : "review_required",
+            fieldCountBucket: bucket(draftResult.draft!.fields.length),
+            warningCountBucket: bucket(draftResult.draft!.warnings.length),
+          });
+        });
+        await this.releaseCapacity(document.id, document.ownerUserId);
         return;
       }
       const validation = validateSemanticResponse({

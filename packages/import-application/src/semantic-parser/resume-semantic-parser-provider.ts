@@ -5,6 +5,8 @@ import type {
   SemanticDocumentLanguage,
 } from "@nuvitae/contracts";
 
+import type { V2CanonicalizationResult } from "./semantic-extraction-v2-canonicalizer.js";
+
 import type { PrivacySafeSemanticProviderError } from "./provider-errors.js";
 
 export type SemanticProviderConnectionState =
@@ -56,6 +58,11 @@ export interface ResumeSemanticParserProvider {
     request: ResumeSemanticParseRequest,
     options?: ResumeSemanticParserInvocationOptions,
   ): Promise<ResumeSemanticParserProviderResult>;
+  /** Optional newer semantic boundary; V1 providers remain valid. */
+  readonly parseV2?: (
+    request: ResumeSemanticParseRequest,
+    options?: ResumeSemanticParserInvocationOptions,
+  ) => Promise<ResumeSemanticParserV2ProviderResult>;
 }
 
 export interface ResumeSemanticParserInvocationOptions {
@@ -72,6 +79,18 @@ export type ResumeSemanticParserProviderResult =
   | {
       readonly ok: true;
       readonly response: NuvitaeSemanticExtractionResponse;
+    }
+  | {
+      readonly ok: false;
+      readonly error: PrivacySafeSemanticProviderError;
+    };
+
+export type ResumeSemanticParserV2ProviderResult =
+  | {
+      readonly ok: true;
+      readonly contractVersion: "nuvitae.semantic-extraction.v2";
+      /** V2 is already canonicalized and grounded by Nuvitae. */
+      readonly canonical: Extract<V2CanonicalizationResult, { ok: true }>;
     }
   | {
       readonly ok: false;

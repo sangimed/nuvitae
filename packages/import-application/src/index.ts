@@ -13,6 +13,7 @@ export * from "./semantic-parser/semantic-warning-generation.js";
 export * from "./semantic-parser/validate-semantic-response.js";
 export * from "./semantic-parser/source-registry.js";
 export * from "./semantic-parser/semantic-extraction-v2-canonicalizer.js";
+export * from "./semantic-parser/semantic-v2-candidates-to-draft.js";
 export {
   parseCodexSessionMaterial,
   type CodexSessionMaterial,
