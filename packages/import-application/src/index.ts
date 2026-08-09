@@ -22,10 +22,14 @@ export {
 } from "./providers/codex-direct-provider-adapter.js";
 export {
   CodexDirectTransport,
+  type CodexDirectHttpStatusCategory,
+  type CodexDirectTransportProtocolShape,
   type CodexDirectTransportFailureCategory,
   type CodexDirectTransportOptions,
   type CodexDirectTransportRequest,
   type CodexDirectTransportResult,
+  type CodexDirectTransportTiming,
+  type CodexDirectTransportTimingPhase,
 } from "./providers/codex-direct-transport.js";
 export * from "./validation/semantic-validation.js";
 export * from "./validate-document.js";

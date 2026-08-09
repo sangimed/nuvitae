@@ -18,6 +18,7 @@ import {
   createImportEventEmitter,
   type ImportProcessingCapacityPort,
   type ImportProcessingLimits,
+  type ImportEventEmitter,
 } from "@nuvitae/import-application";
 import type {
   AIProviderRuntimeConnectionsRepository,
@@ -75,8 +76,20 @@ export const WORKER_PROVIDER_SESSION_STORE = Symbol(
 export function createProductionSemanticParserProvider(
   repository: AIProviderRuntimeConnectionsRepository,
   sessionStore: ProviderSessionStore,
+  logger?: ImportEventEmitter,
 ): ResumeSemanticParserProvider {
-  return new CodexDirectProviderAdapter({ repository, sessionStore });
+  return new CodexDirectProviderAdapter({
+    repository,
+    sessionStore,
+    ...(logger === undefined
+      ? {}
+      : {
+          onTransportTiming: (timing) =>
+            logger.emit("semantic.provider_transport_timing", timing),
+          onTransportProtocolShape: (shape) =>
+            logger.emit("semantic.provider_protocol_shape", shape),
+        }),
+  });
 }
 
 class PrivateStorageSourceReader implements ExtractionSourceReader {
@@ -215,6 +228,7 @@ export const workerImportRuntimeProviders: Provider[] = [
     inject: [
       WORKER_PROVIDER_CONNECTION_REPOSITORY,
       WORKER_PROVIDER_SESSION_STORE,
+      WORKER_IMPORT_EVENT_EMITTER,
     ],
   },
   {

@@ -29,6 +29,8 @@ import {
   CodexDirectTransport,
   type CodexDirectTransportFailureCategory,
   type CodexDirectTransportRequest,
+  type CodexDirectTransportProtocolShape,
+  type CodexDirectTransportTiming,
 } from "./codex-direct-transport.js";
 import { parseCodexSessionMaterial } from "./codex-session.js";
 
@@ -54,6 +56,18 @@ export interface CodexDirectProviderAdapterPorts {
   readonly sessionStore: ProviderSessionStore;
   readonly transport?: Pick<CodexDirectTransport, "invoke">;
   readonly now?: () => Date;
+  readonly onTransportTiming?: (
+    timing: CodexDirectTransportTiming & {
+      readonly importId: string;
+      readonly correlationId?: string;
+    },
+  ) => void;
+  readonly onTransportProtocolShape?: (
+    shape: CodexDirectTransportProtocolShape & {
+      readonly importId: string;
+      readonly correlationId?: string;
+    },
+  ) => void;
 }
 
 /**
@@ -157,6 +171,36 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
       ...(options?.abortSignal === undefined
         ? {}
         : { abortSignal: options.abortSignal }),
+      onTiming: (timing) => {
+        try {
+          if (request.importId === null) return;
+          this.ports.onTransportTiming?.({
+            ...timing,
+            importId: request.importId,
+            ...(request.correlationId === null ||
+            request.correlationId === undefined
+              ? {}
+              : { correlationId: request.correlationId }),
+          });
+        } catch {
+          // Transport diagnostics must never change provider behavior.
+        }
+      },
+      onProtocolShape: (shape) => {
+        try {
+          if (request.importId === null) return;
+          this.ports.onTransportProtocolShape?.({
+            ...shape,
+            importId: request.importId,
+            ...(request.correlationId === null ||
+            request.correlationId === undefined
+              ? {}
+              : { correlationId: request.correlationId }),
+          });
+        } catch {
+          // Protocol diagnostics must never change provider behavior.
+        }
+      },
     };
 
     // This is deliberately one call. T217 owns retry/fallback budget.

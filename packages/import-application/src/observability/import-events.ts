@@ -166,6 +166,26 @@ const semanticOutcomes = [
   "unknown_provider_failure",
   "partial_deterministic_fallback",
 ] as const;
+const semanticTransportTimingPhases = [
+  "request_started",
+  "response_headers",
+  "first_byte",
+  "sse_started",
+  "completion_event",
+  "response_eof",
+  "request_timeout",
+  "stream_inactivity_timeout",
+  "cancelled",
+  "completed",
+  "transport_error",
+] as const;
+const semanticTransportHttpStatusCategories = [
+  "not_observed",
+  "2xx",
+  "3xx",
+  "4xx",
+  "5xx",
+] as const;
 
 const validationDiagnosticCategories = [
   "schema",
@@ -265,8 +285,15 @@ type PathField = {
   readonly kind: "path";
   readonly optional?: boolean;
 };
+type TokenListField = {
+  readonly kind: "token_list";
+  readonly maxItems: number;
+  readonly maxItemLength: number;
+  readonly optional?: boolean;
+};
 
-type FieldSpec = StringField | IntField | BoolField | EnumField | PathField;
+type FieldSpec =
+  StringField | IntField | BoolField | EnumField | PathField | TokenListField;
 
 export interface ImportEventSchema {
   readonly level: ImportEventLevel;
@@ -301,6 +328,16 @@ const enumOf = (values: readonly string[], optional = false): EnumField => ({
   optional,
 });
 const path = (optional = false): PathField => ({ kind: "path", optional });
+const tokenList = (
+  maxItems: number,
+  maxItemLength = 128,
+  optional = false,
+): TokenListField => ({
+  kind: "token_list",
+  maxItems,
+  maxItemLength,
+  optional,
+});
 
 const commonIdentifierFields = {
   importId: id(true),
@@ -555,6 +592,41 @@ export const importEventSchemas = {
       correlationId: id(true),
     },
   },
+  "semantic.provider_transport_timing": {
+    level: "info",
+    fields: {
+      importId: id(),
+      phase: enumOf(semanticTransportTimingPhases),
+      elapsedMs: int(0, 86_400_000),
+      httpStatusCategory: enumOf(semanticTransportHttpStatusCategories),
+      firstByteReceived: bool(),
+      sseStarted: bool(),
+      completionEventReceived: bool(),
+      correlationId: id(true),
+    },
+  },
+  "semantic.provider_protocol_shape": {
+    level: "info",
+    fields: {
+      importId: id(),
+      contentType: {
+        kind: "string",
+        max: 256,
+      },
+      eventLinesObserved: bool(),
+      eventNames: tokenList(64),
+      eventTypes: tokenList(64),
+      sseFrameCount: int(0, 4_096),
+      dataFieldCount: int(0, 1_048_576),
+      multilineDataObserved: bool(),
+      doneSentinelObserved: bool(),
+      eofObserved: bool(),
+      jsonObjectParsed: bool(),
+      jsonTopLevelKeys: tokenList(64),
+      finalRecognizedEventType: token(true),
+      correlationId: id(true),
+    },
+  },
   "semantic.outcome": {
     level: "info",
     fields: {
@@ -751,6 +823,32 @@ export interface ImportEventMetadataMap {
     readonly contractVersion: string;
     readonly correlationId?: string;
   };
+  "semantic.provider_transport_timing": {
+    readonly importId: string;
+    readonly phase: (typeof semanticTransportTimingPhases)[number];
+    readonly elapsedMs: number;
+    readonly httpStatusCategory: (typeof semanticTransportHttpStatusCategories)[number];
+    readonly firstByteReceived: boolean;
+    readonly sseStarted: boolean;
+    readonly completionEventReceived: boolean;
+    readonly correlationId?: string;
+  };
+  "semantic.provider_protocol_shape": {
+    readonly importId: string;
+    readonly contentType: string;
+    readonly eventLinesObserved: boolean;
+    readonly eventNames: readonly string[];
+    readonly eventTypes: readonly string[];
+    readonly sseFrameCount: number;
+    readonly dataFieldCount: number;
+    readonly multilineDataObserved: boolean;
+    readonly doneSentinelObserved: boolean;
+    readonly eofObserved: boolean;
+    readonly jsonObjectParsed: boolean;
+    readonly jsonTopLevelKeys: readonly string[];
+    readonly finalRecognizedEventType?: string;
+    readonly correlationId?: string;
+  };
   "semantic.outcome": {
     readonly importId: string;
     readonly outcome: (typeof semanticOutcomes)[number];
@@ -907,7 +1005,28 @@ function normalizeField(
         : INVALID;
     case "path":
       return normalizePath(value);
+    case "token_list":
+      return normalizeTokenList(spec, value);
   }
+}
+
+function normalizeTokenList(
+  spec: TokenListField,
+  value: unknown,
+): readonly string[] | typeof INVALID {
+  const items = extractArray(value, spec.maxItems);
+  if (items === null) return INVALID;
+  const normalized: string[] = [];
+  for (const item of items) {
+    if (
+      typeof item !== "string" ||
+      item.length > spec.maxItemLength ||
+      !safeTokenPattern.test(item)
+    )
+      return INVALID;
+    normalized.push(item);
+  }
+  return normalized;
 }
 
 function normalizeString(
