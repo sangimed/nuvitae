@@ -12,6 +12,14 @@ not claim live OAuth or provider-import evidence. T217 and T218 are complete;
 the semantic-import recall correction is validated offline only, and one new
 live smoke revalidation remains pending.
 
+The transversal semantic-provider boundary redesign is recorded in
+[`docs/research/semantic-provider-boundary-redesign-2026-08-09.md`](../../docs/research/semantic-provider-boundary-redesign-2026-08-09.md).
+It recommends an explicit `nuvitae.semantic-extraction.v2` response boundary,
+deterministic Nuvitae canonicalization, and field-level fail-closed acceptance
+inside a valid response envelope. This is an offline architecture decision;
+it does not authorize a live retry, reopen T246, or activate Grounded
+Multimodal Import V2.
+
 ### Candidate identity correction (offline, 2026-08-09)
 
 The latest real import (`51364b5a-18ff-4282-9831-7c9b30df3a5`) proved transport
