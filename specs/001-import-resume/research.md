@@ -12,6 +12,14 @@ not claim live OAuth or provider-import evidence. T217 and T218 are complete;
 the semantic-import recall correction is validated offline only, and one new
 live smoke revalidation remains pending.
 
+The post-V1 architecture hypothesis **Grounded Multimodal Import (V2)** is
+recorded separately in
+[`docs/research/grounded-multimodal-import-v2.md`](../../docs/research/grounded-multimodal-import-v2.md).
+It is **PROPOSED / POST-V1 SPIKE / NOT IMPLEMENTED** and does not change this
+feature's V1 execution plan, T203, T246, or T217. V1 remains **Grounded Text
+Import**; the core principle for any future V2 work is **“LLM for
+understanding. Nuvitae for proof.”**
+
 | Task | Canonical title                                                             | Status                                     | Dependency/blocker                                                                                                                                                         | Evidence                                                                                                                                                | Document disagreement                                                        |
 | ---- | --------------------------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | T203 | Record direct-OAuth GO/CONDITIONAL GO/NO-GO decision                        | COMPLETE (decision recorded: NO-GO)        | T246 qualification failed; deterministic/local onboarding feasibility passes, while moderated human validation and live connection/import evidence are not complete        | `docs/research/codex-direct-oauth-go-no-go.md`, `docs/research/codex-direct-oauth-onboarding-feasibility.md`                                            | Historical 2026-08-05/06 snapshots are labeled and superseded.               |

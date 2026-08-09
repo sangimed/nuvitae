@@ -14,6 +14,15 @@ The implementation plan adopts a container-only workflow for development, build,
 
 **Strategic direction (2026-08-05)**: The approved strategy is product-first. **Nuvitae Community** is the first MVP release: self-hosted, distributed through the existing Docker-first setup, free to use, and powered by the user's own Codex access connected through OAuth. Direct Codex OAuth is the production primary AI connection path and part of onboarding; hosted managed AI is deferred to a later commercial edition and is not on the Community critical path. The plan below delivers Community in vertical tranches: real Codex import → credible resume + PDF → visual editor → reversible Codex editing → Community alpha readiness. Existing completed foundations, historical spike evidence, and unresolved security gates are preserved.
 
+**Future direction (post-V1, not scheduled)**: The proposed **Grounded
+Multimodal Import (V2)** architecture is documented in
+[`docs/research/grounded-multimodal-import-v2.md`](../../docs/research/grounded-multimodal-import-v2.md).
+It is research-only and does not alter this plan or create implementation work:
+V1 remains **Grounded Text Import**, with deterministic local extraction and
+canonical Nuvitae-owned evidence authoritative for grounding. Any future V2
+spike must first satisfy the documented V1 decision gate; no multimodal Codex
+capability is assumed or selected.
+
 ## Technical Context
 
 **Language/Version**: TypeScript on pinned Node.js 20+ executed only inside Docker images for web, API, workers, domain packages, and extraction orchestration.
