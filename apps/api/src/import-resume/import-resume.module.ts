@@ -3,6 +3,7 @@ import {
   Module,
   type ModuleMetadata,
   type Provider,
+  type Type,
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { StartImportController } from "./start-import.controller.js";
@@ -25,6 +26,7 @@ import { ConfirmStructuredResumeService } from "../services/import-resume/confir
 export interface ImportResumeModuleOptions {
   readonly imports?: ModuleMetadata["imports"];
   readonly providers: readonly Provider[];
+  readonly controllers?: readonly Type<unknown>[];
 }
 
 /**
@@ -44,6 +46,7 @@ export class ImportResumeModule {
         ReviewController,
         ConfirmController,
         ConfirmedStructuredResumeController,
+        ...(options.controllers === undefined ? [] : [...options.controllers]),
       ],
       providers: [
         StartImportService,

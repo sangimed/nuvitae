@@ -1,0 +1,221 @@
+{
+  "schema_version": 1,
+  "t246_case": "T246-C05",
+  "fixture_id": "docx-partial-canonical-anonymous",
+  "fixture_classification": "real_document",
+  "fixture_path": "tests/fixtures/resumes/anonymous-partial-resume.docx",
+  "fixture_sha256": "a15a71c03a3ed3c7a531d7ad9bc8bbbbfdd993e1ead7ded479f70e0a3241a245",
+  "transcript_sha256": "2358561e02dc0adcb79a749f853ea5a63d3621be56dacb763fd1654fb896fca6",
+  "expected_semantic_json_sha256": "7a2eb748a4555a4666302cda259ee7208680e557778052bd03e3f79058ee3dad",
+  "document_language": "English",
+  "language_category": "english",
+  "source_format_category": "docx-derived-text",
+  "layout_category": "single-column",
+  "extraction_format": {
+    "kind": "deterministic_ooxml_text",
+    "coordinate_system": "one_based_line_zero_based_utf8_offset",
+    "binary_extraction_performed": true,
+    "source_locations": "package part/paragraph/run metadata",
+    "contract_version": 2
+  },
+  "expected_section_counts": {
+    "basics": 1,
+    "work_experiences": 1,
+    "education": 1,
+    "skills": 3,
+    "languages": 1,
+    "certifications": 0
+  },
+  "expected_item_counts": {
+    "work_experience_highlights": 1,
+    "warnings_or_ambiguities_minimum": 0
+  },
+  "exact_facts": [
+    {
+      "path": "basics.full_name",
+      "value": "Ethan Brooks-Example",
+      "priority": "high",
+      "line": 1,
+      "category": "basics"
+    },
+    {
+      "path": "basics.email",
+      "value": "ethan.brooks@example.invalid",
+      "priority": "high",
+      "line": 2,
+      "category": "basics"
+    },
+    {
+      "path": "basics.phone",
+      "value": "+1 555 010 2233",
+      "priority": "high",
+      "line": 3,
+      "category": "basics"
+    },
+    {
+      "path": "basics.headline",
+      "value": "Support Engineer",
+      "priority": "high",
+      "line": 4,
+      "category": "basics"
+    },
+    {
+      "path": "work_experiences[0].employer",
+      "value": "Cedar Peak Systems",
+      "priority": "high",
+      "line": 6,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].job_title",
+      "value": "Support Engineer",
+      "priority": "high",
+      "line": 7,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].start_date",
+      "value": "2018",
+      "priority": "high",
+      "line": 8,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].end_date",
+      "value": "2023",
+      "priority": "high",
+      "line": 8,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].highlights[0]",
+      "value": "Resolved customer issues and documented solutions for the support team.",
+      "priority": "medium",
+      "line": 9,
+      "category": "work"
+    },
+    {
+      "path": "education[0].school",
+      "value": "Meridian Technical College",
+      "priority": "high",
+      "line": 12,
+      "category": "education"
+    },
+    {
+      "path": "education[0].degree",
+      "value": "Diploma in Network Systems",
+      "priority": "high",
+      "line": 11,
+      "category": "education"
+    },
+    {
+      "path": "education[0].start_date",
+      "value": "2015",
+      "priority": "medium",
+      "line": 13,
+      "category": "education"
+    },
+    {
+      "path": "education[0].end_date",
+      "value": "2018",
+      "priority": "medium",
+      "line": 13,
+      "category": "education"
+    },
+    {
+      "path": "skills[0]",
+      "value": "Linux",
+      "priority": "high",
+      "line": 15,
+      "category": "skills"
+    },
+    {
+      "path": "skills[1]",
+      "value": "Networking",
+      "priority": "high",
+      "line": 15,
+      "category": "skills"
+    },
+    {
+      "path": "skills[2]",
+      "value": "SQL",
+      "priority": "high",
+      "line": 15,
+      "category": "skills"
+    },
+    {
+      "path": "languages[0].name",
+      "value": "English",
+      "priority": "high",
+      "line": 17,
+      "category": "languages"
+    },
+    {
+      "path": "languages[0].proficiency",
+      "value": "native",
+      "priority": "high",
+      "line": 17,
+      "category": "languages"
+    }
+  ],
+  "high_priority_fact_paths": [
+    "basics.full_name",
+    "basics.email",
+    "basics.phone",
+    "basics.headline",
+    "work_experiences[0].employer",
+    "work_experiences[0].job_title",
+    "work_experiences[0].start_date",
+    "work_experiences[0].end_date",
+    "education[0].school",
+    "education[0].degree",
+    "skills[0]",
+    "skills[1]",
+    "skills[2]",
+    "languages[0].name",
+    "languages[0].proficiency"
+  ],
+  "intentionally_absent_fields": [
+    "basics.location",
+    "basics.website",
+    "basics.summary",
+    "work_experiences[0].location",
+    "work_experiences[0].employment_type",
+    "education[0].grade",
+    "education[0].field_of_study",
+    "education[0].location",
+    "projects",
+    "certifications",
+    "professional_links"
+  ],
+  "absence_evidence": {
+    "line": 18,
+    "fragment": "ABSENT: location, summary, employer location, achievements, field of study, education location, projects, certifications, professional links.",
+    "category": "absence"
+  },
+  "ambiguous_facts": [],
+  "forbidden_inferences": [
+    {
+      "id": "sparse-guessing",
+      "forbidden_values": [
+        "summary",
+        "location",
+        "https://",
+        "honors",
+        "manager",
+        "full-time",
+        "certifications",
+        "projects"
+      ]
+    }
+  ],
+  "provenance_contract": {
+    "flattened_coordinates": "one_based_line_zero_based_utf8_offset",
+    "deterministic_enrichment": "docx package part/paragraph/run character offsets via the T208 deterministic provenance enrichment path",
+    "model_physical_coordinates_rejected": true
+  },
+  "thresholds": {
+    "minimum_exact_fact_recall": 0.9,
+    "required_high_priority_fact_recall": 1
+  }
+}

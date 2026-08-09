@@ -8,6 +8,52 @@ planned separately from domain concepts. TypeORM entities are persistence models
 not business-domain entities, and rows must be mapped explicitly before entering
 the domain layer.
 
+## Proposed NuvitaeDocument runtime representation
+
+`NuvitaeDocument` is a future, import-scoped canonical document representation
+produced by the proposed provider-neutral Document Understanding Layer. It is
+not a TypeORM entity, persistence schema, or confirmed resume model. Its
+purpose is to normalize different document engines into Nuvitae-owned content,
+structure, and provenance that can support both the active V1 semantic path and
+future document-aware or multimodal semantic paths.
+
+The minimum conceptual scope is:
+
+| Area                           | Canonical responsibility                                                                                                                 |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Document identity and metadata | Import-scoped document id; source format; MIME type; detected language; bounded engine/version/configuration metadata.                   |
+| Pages                          | Stable page identity and number; width/height or other dimensions when available.                                                        |
+| Blocks/fragments               | Stable Nuvitae-owned block id; text; block type; reading order; page reference when available; optional bounding box; source provenance. |
+| Sections                       | Hierarchy and grouping of headings or logical document regions.                                                                          |
+| Tables                         | Rows, columns, cells, and spans where the source engine can support them without inventing structure.                                    |
+| Styles                         | Optional deterministic signals such as heading/list/emphasis style; never required for semantic acceptance.                              |
+| Assets                         | Figures or images retained for a qualified document-aware path when allowed by retention and privacy policy.                             |
+| Provenance                     | Mapping from canonical blocks/content back to source document locations, including native PDF/DOCX locations where available.            |
+| Extraction metadata            | Engine, engine version, configuration fingerprint, and bounded quality/diagnostic indicators; no raw provider payloads.                  |
+
+Canonical block and fragment identifiers are generated and owned by Nuvitae.
+They are the only source-reference identifiers exposed to the semantic-provider
+boundary. A provider may return a bounded `sourceRefs` hint containing a
+Nuvitae-owned block/fragment id and exact quote; Nuvitae verifies the quote and
+reconstructs authoritative evidence, offsets, hashes, and native provenance.
+Parser-native identifiers and schemas never become domain concepts.
+
+The representations remain distinct:
+
+- **Canonical runtime/document representation**: `NuvitaeDocument`, retained
+  only as long as the import workflow and approved future capabilities require.
+- **Source-reconstructing temporary artifacts**: uploaded files, raw extraction
+  output, rendered pages, cached parser output, and equivalent data subject to
+  the existing ownership, deletion, and seven-day retention rules.
+- **Structured resume domain state**: reviewed and explicitly confirmed resume
+  fields. It is not a copy of `NuvitaeDocument` and must survive source deletion
+  without raw source reconstruction.
+
+The current PDF.js/OOXML extraction stack is the active V1 implementation and
+may later implement this conceptual boundary. That migration is not selected,
+scheduled, or designed here. Docling is only the first candidate for the
+controlled benchmark described in the dedicated research record.
+
 ## ImportedDocument
 
 Represents the uploaded source file. It is distinct from the import draft and any structured resume.
@@ -64,13 +110,13 @@ Temporary unsupported-language recovery view containing only explicitly detectab
 
 Represents a user's configured AI provider runtime connection for a self-hosted installation.
 
-**Fields**: `id`, `ownerUserId`, `providerKind`, `displayName`, `connectionStatus`, `capabilityState`, `authenticationStatus`, `availabilityStatus`, `lastCheckedAt`, `loginStartedAt`, `connectedAt`, `disconnectedAt`, `logoutAt`, `revokedAt`, `expiresAt`.
+**Fields**: `id`, `ownerUserId`, `providerKind`, `displayName`, `connectionStatus`, `capabilityState`, `authenticationStatus`, `availabilityStatus`, `credentialReferenceId`, `loginStartedAt`, `connectedAt`, `disconnectedAt`, `logoutAt`, `revokedAt`, `expiresAt`, `lastCheckedAt`, `reconnectRequestedAt`.
 
-**Relationships**: Owned by one user. May be referenced by many `SemanticParseAttempt` records. For the Codex direct-OAuth candidate, provider-neutral connection state may correspond to broker-owned credential state, but no raw provider credentials, access tokens, refresh tokens, provider auth files, or provider session material are exposed to the import domain, web application, browser storage, API controllers, regular worker jobs, semantic extraction contracts, logs, diagnostics, ordinary API responses, or import review.
+**Relationships**: Owned by one user. May be referenced by many `SemanticParseAttempt` records. For the Codex direct-OAuth candidate, provider-neutral connection state may correspond to broker-owned credential state, but no raw provider credentials, access tokens, refresh tokens, provider auth files, or provider session material are exposed to the import domain, web application, browser storage, API controllers, regular worker jobs, semantic extraction contracts, logs, diagnostics, ordinary API responses, or import review. `credentialReferenceId` is a broker-owned opaque reference (for example a broker credential namespace or envelope identifier) used to bind connection state to broker-managed credentials; it is a reference, never the credential material itself, and the broker remains the only component that can resolve it to encrypted credentials.
 
 **Validation Rules**: Initial provider kind is `codex_direct` for the candidate self-hosted Codex adapter. Connection status values include `not_configured`, `login_pending`, `connected`, `login_cancelled`, `disconnected`, `auth_expired`, `auth_revoked`, `unavailable`, `rate_limited`, `quota_exceeded`, and `unsupported_capability`. Normal Nuvitae application surfaces remain token-blind. For Codex direct OAuth, login, encrypted credential persistence, refresh, expiry, recovery, logout, local revocation, and deletion are owned only by the isolated `CodexOAuthBroker`, not by the resume-import domain or ordinary workers.
 
-**State Transitions**: `not_configured` -> `login_pending` -> `connected` or `login_cancelled`; `connected` -> `auth_expired`, `auth_revoked`, `unavailable`, `rate_limited`, `quota_exceeded`, `disconnected`, or `revoked`; recoverable states may return to `login_pending` or `connected` after reconnect or retry. `connected` may transition to `disconnected` after user logout/disconnect without deleting uploaded resumes, import drafts, structured resumes, or source-retention records.
+**State Transitions**: `not_configured` -> `login_pending` -> `connected` or `login_cancelled`; `connected` -> `auth_expired`, `auth_revoked`, `unavailable`, `rate_limited`, `quota_exceeded`, `disconnected`, or `revoked`; recoverable states may return to `login_pending` or `connected` after reconnect or retry. `connected` may transition to `disconnected` after user logout/disconnect without deleting uploaded resumes, import drafts, structured resumes, or source-retention records. Reconnect starts a new `login_pending` cycle and reauthorization replaces the broker credential reference; a successful reconnect returns to `connected` with a fresh `connectedAt` and `expiresAt`, and `auth_expired` returns to `login_pending` for browser reauthorization. The user-visible plain actions map as follows: "Connect Codex" starts `login_pending`; "Codex is ready" is `connected`; "Codex connection expired" is `auth_expired` or `auth_revoked`; "Reconnect Codex" restarts `login_pending`; "Disconnect" transitions to `disconnected` and requests broker logout/local credential deletion.
 
 ## CodexOAuthBroker
 
@@ -102,7 +148,7 @@ Versioned, provider-neutral structured output accepted from a provider adapter o
 
 **Relationships**: Belongs to one `SemanticParseAttempt`; creates `ExtractedField`, `WorkExperience`, and `ImportWarning` records only after strict schema, grounding, and no-invention validation.
 
-**Validation Rules**: Unknown fields, invalid relationships, unsupported values, provider-native schema leakage, malformed output, missing evidence, invented facts, and invalid confidence or classification categories fail safely or become explicit review warnings. Provider-native JSON must not enter the import domain directly.
+**Validation Rules**: Unknown fields, invalid relationships, unsupported values, provider-native schema leakage, malformed output, missing evidence, invented facts, and invalid confidence or classification categories fail safely or become explicit review warnings. The future `nuvitae.semantic-extraction.v2` response contains semantic values, logical grouping, and bounded Nuvitae-owned `sourceRefs`; it does not contain parser-native document identifiers, application candidate IDs, canonical evidence coordinates, hashes, or provider-owned confidence/classification metadata. Provider-native JSON must not enter the import domain directly.
 
 ## EvidenceRecord
 
@@ -112,7 +158,7 @@ Grounding reference for an AI-produced candidate value or relationship.
 
 **Relationships**: Belongs to one `NuvitaeExtractionResponse`; may be referenced by one or more `ExtractedField` or relationship candidates.
 
-**Validation Rules**: Classification values identify whether the candidate is explicit or inferred. Confidence values are `high`, `medium`, `low`, and `not_applicable`. Missing or invalid evidence rejects the candidate or marks it unusable; unsupported evidence must not be silently accepted.
+**Validation Rules**: This is a Nuvitae-owned canonical evidence record created after source-reference resolution; `candidateId` is generated by Nuvitae and is never trusted from provider output. Classification values identify whether the candidate is explicit or inferred. Confidence values are `high`, `medium`, `low`, and `not_applicable`. Missing or invalid evidence rejects the candidate or marks it unusable; unsupported evidence must not be silently accepted.
 
 ## ExtractedField
 
@@ -158,13 +204,53 @@ Specific role within an employer.
 
 ## StructuredResume
 
-Confirmed structured resume data created from reviewed import fields.
+Confirmed structured resume data created from reviewed import fields. In the Community MVP it is the editable source of truth (FR-035).
 
-**Fields**: `id`, `ownerUserId`, `sourceImportDraftId`, `provenanceLabel`, `confirmationStatus`, `createdAt`, `updatedAt`, `deletedAt`.
+**Fields**: `id`, `ownerUserId`, `sourceImportDraftId`, `provenanceLabel`, `confirmationStatus`, `title`, `editingState`, `lastSavedAt`, `createdAt`, `updatedAt`, `deletedAt`.
 
-**Relationships**: Created from one confirmed `ImportDraft`. Contains confirmed personal information, contact information, headline, summary, work experiences, education, skills, languages, projects, certifications, links, and user-added content.
+**Relationships**: Created from one confirmed `ImportDraft`. Contains confirmed personal information, contact information, headline, summary, work experiences, education, skills, languages, projects, certifications, links, and user-added content. Has at most one active `ResumeTemplateChoice`. May have `ResumeEditSnapshot` records for lightweight undo, `AIChangeProposal` records for reviewed AI edits, and `ResumeExportRecord` records for PDF exports.
 
-**Validation Rules**: Created only after explicit confirmation, all warnings are addressed, and at least one supported field is user-confirmed. After source deletion it may retain only minimal non-sensitive provenance such as "imported from initial resume" and "confirmed by user"; it must not retain raw snippets, page references, thumbnails, extracted raw text, embeddings, cached parsing output, or equivalent source-reconstructing data.
+**Validation Rules**: Created only after explicit confirmation, all warnings are addressed, and at least one supported field is user-confirmed. `editingState` tracks save status (`unsaved`, `saving`, `saved`, `save_error`, `stale_conflict`) and `lastSavedAt` records the last persisted save so the editor can show "Saving… / Saved / Error — retry" and stale-conflict behavior without localStorage as source of truth. After source deletion it may retain only minimal non-sensitive provenance such as "imported from initial resume" and "confirmed by user"; it must not retain raw snippets, page references, thumbnails, extracted raw text, embeddings, cached parsing output, or equivalent source-reconstructing data.
+
+## ResumeTemplateChoice
+
+The template applied to a structured resume for preview and export.
+
+**Fields**: `id`, `structuredResumeId`, `templateId`, `templateVersion`, `chosenAt`, `lastAppliedAt`.
+
+**Relationships**: Belongs to one `StructuredResume`.
+
+**Validation Rules**: At least one credible template (`templateId`) MUST be available in the Community MVP (FR-036). Changing `templateId` MUST NOT modify resume content; content and presentation remain separate. The renderer used for preview and PDF export consumes the same `templateId`/`templateVersion` so preview↔export fidelity is structurally guaranteed.
+
+## AIChangeProposal
+
+A reversible, reviewable AI-editing proposal on a resume field or section.
+
+**Fields**: `id`, `structuredResumeId`, `ownerUserId`, `aiActionId`, `targetType`, `targetId`, `scope`, `originalValue`, `proposedValue`, `proposalStatus`, `createdAt`, `resolvedAt`, `replacedByProposalId`, `invocationReferenceId`.
+
+**Relationships**: Belongs to one `StructuredResume`; may be superseded by another proposal (regenerate); may be produced through the Codex provider path referenced by an `AIProviderRuntimeConnection`.
+
+**Validation Rules**: `proposalStatus` values are `proposed`, `accepted`, `rejected`, `superseded`, and `expired`. Nothing is applied to the resume until the user explicitly accepts (`accepted`). `rejected` and `superseded` proposals must not modify content. `originalValue` is the last saved value and `proposedValue` the AI variant, enabling before/after review. Fact preservation (FR-041) is enforced before a proposal is offered and re-checked on accept; proposals that add new names, dates, companies, metrics, or other unsupported facts are rejected. `invocationReferenceId` links to a privacy-safe invocation record and never contains prompts, tokens, provider-runtime state, or raw provider payloads.
+
+## ResumeEditSnapshot
+
+Lightweight undo record for manual and AI edits.
+
+**Fields**: `id`, `structuredResumeId`, `ownerUserId`, `snapshotType`, `reason`, `payload`, `createdAt`.
+
+**Relationships**: Belongs to one `StructuredResume`.
+
+**Validation Rules**: The Community MVP requires lightweight undo only: a snapshot of the last saved state (and optionally the current state) is kept so an AI change or manual edit can be undone to the last saved version (FR-040). Full version history is deferred. `payload` stores only structured resume content with the same no-raw-source-snippet restrictions as the resume itself; it must not contain raw source snippets, tokens, or provider material.
+
+## ResumeExportRecord
+
+Metadata for a PDF export of a structured resume.
+
+**Fields**: `id`, `structuredResumeId`, `ownerUserId`, `templateId`, `templateVersion`, `format`, `status`, `startedAt`, `completedAt`, `byteSizeBytes`, `failureReason`.
+
+**Relationships**: Belongs to one `StructuredResume`; rendered from the same template renderer used for preview.
+
+**Validation Rules**: `format` is `ats_pdf` in the Community MVP (FR-038). `status` values are `queued`, `generating`, `succeeded`, and `failed`. Export is deterministic and re-renderable from the same template and content version; preview and export share one renderer so fidelity is structurally guaranteed. `failureReason` uses plain privacy-safe categories and never exposes provider or rendering internals.
 
 ## ManualStructuredResumeDraft
 
@@ -212,4 +298,4 @@ Application boundary implemented by provider adapters, not a persisted domain en
 
 **Contract Fields**: `providerKind`, `capabilities`, `connectionState`, `inspectConnection()`, `startLogin()`, `observeLogin()`, `cancelLogin()`, `completeLogin()`, `logout()`, `reconnect()`, `parse(request)`.
 
-**Validation Rules**: The import domain depends only on this boundary and the versioned Nuvitae extraction response. Adapters must not expose provider SDKs, provider-native JSON, prompts, credentials, auth files, access tokens, refresh tokens, backend routes, required headers, or session material to the domain. The candidate first self-hosted adapter is `CodexDirectProviderAdapter` behind an isolated `CodexOAuthBroker`, but production Codex adapter implementation remains blocked until the direct-OAuth compatibility spike records a GO or qualifying CONDITIONAL GO.
+**Validation Rules**: The import domain depends only on this boundary and the versioned Nuvitae extraction response. Adapters must not expose provider SDKs, provider-native JSON, prompts, credentials, auth files, access tokens, refresh tokens, backend routes, required headers, or session material to the domain. For the Community MVP, `CodexDirectProviderAdapter` behind an isolated `CodexOAuthBroker` is the production primary semantic path and the one authoritative parsing path; production Codex adapter implementation still remains blocked until the direct-OAuth compatibility spike records a GO or qualifying CONDITIONAL GO and its mandatory conditions (T164/T165) are satisfied. The provider abstraction remains a boundary, not a mandate to ship multiple production adapters in the MVP.

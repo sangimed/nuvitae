@@ -1,0 +1,215 @@
+{
+  "schema_version": 1,
+  "t246_case": "T246-C06",
+  "fixture_id": "pdf-ambiguous-canonical-anonymous",
+  "fixture_classification": "real_document",
+  "fixture_path": "tests/fixtures/resumes/anonymous-ambiguous-resume.pdf",
+  "fixture_sha256": "3fa893f0917a5826e922497b5f4e4d4c3e3423b86c68b61c0ebe5f27c3d8c28d",
+  "transcript_sha256": "391425b075884756b5a7a72472a38375f5177a2027f3858167d33e7e07a011a4",
+  "expected_semantic_json_sha256": "3e1c1e2d124694a735c21faa500cb90bfa8821606e9bcca6b1d48db705fbecc8",
+  "document_language": "English",
+  "language_category": "english",
+  "source_format_category": "pdf-derived-text",
+  "layout_category": "multi-column-interleaved",
+  "extraction_format": {
+    "kind": "deterministic_pdf_text",
+    "coordinate_system": "one_based_line_zero_based_utf8_offset",
+    "binary_extraction_performed": true,
+    "reading_order_artifact": "adjacent_columns_interleaved",
+    "contract_version": 2
+  },
+  "expected_section_counts": {
+    "basics": 1,
+    "work_experiences": 1,
+    "education": 1,
+    "skills": 4,
+    "languages": 0,
+    "certifications": 0
+  },
+  "expected_item_counts": {
+    "work_experience_highlights": 1,
+    "warnings_or_ambiguities_minimum": 2
+  },
+  "exact_facts": [
+    {
+      "path": "basics.full_name",
+      "value": "Amir Hussain-Example",
+      "priority": "high",
+      "line": 1,
+      "category": "basics"
+    },
+    {
+      "path": "basics.email",
+      "value": "amir.hussain@example.invalid",
+      "priority": "high",
+      "line": 2,
+      "category": "basics"
+    },
+    {
+      "path": "basics.location",
+      "value": "Berlin, Germany",
+      "priority": "high",
+      "line": 3,
+      "category": "basics"
+    },
+    {
+      "path": "basics.headline",
+      "value": "Data Platform Engineer",
+      "priority": "high",
+      "line": 4,
+      "category": "basics"
+    },
+    {
+      "path": "work_experiences[0].employer",
+      "value": "Northbeam Systems",
+      "priority": "high",
+      "line": 6,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].job_title",
+      "value": "Streaming Infrastructure Engineer",
+      "priority": "high",
+      "line": 8,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].highlights[0]",
+      "value": "Built and operated the streaming platform for the data team.",
+      "priority": "medium",
+      "line": 12,
+      "category": "work"
+    },
+    {
+      "path": "education[0].school",
+      "value": "Hochschule Example Berlin",
+      "priority": "high",
+      "line": 14,
+      "category": "education"
+    },
+    {
+      "path": "education[0].degree",
+      "value": "MSc Computer Science",
+      "priority": "high",
+      "line": 13,
+      "category": "education"
+    },
+    {
+      "path": "education[0].start_date",
+      "value": "2015",
+      "priority": "medium",
+      "line": 15,
+      "category": "education"
+    },
+    {
+      "path": "education[0].end_date",
+      "value": "2019",
+      "priority": "medium",
+      "line": 15,
+      "category": "education"
+    },
+    {
+      "path": "skills[0]",
+      "value": "Kafka",
+      "priority": "high",
+      "line": 9,
+      "category": "skills"
+    },
+    {
+      "path": "skills[1]",
+      "value": "Spark",
+      "priority": "high",
+      "line": 9,
+      "category": "skills"
+    },
+    {
+      "path": "skills[2]",
+      "value": "Python",
+      "priority": "high",
+      "line": 9,
+      "category": "skills"
+    },
+    {
+      "path": "skills[3]",
+      "value": "Kubernetes",
+      "priority": "high",
+      "line": 9,
+      "category": "skills"
+    }
+  ],
+  "high_priority_fact_paths": [
+    "basics.full_name",
+    "basics.email",
+    "basics.location",
+    "basics.headline",
+    "work_experiences[0].employer",
+    "work_experiences[0].job_title",
+    "education[0].school",
+    "education[0].degree",
+    "skills[0]",
+    "skills[1]",
+    "skills[2]",
+    "skills[3]"
+  ],
+  "intentionally_absent_fields": [
+    "basics.phone",
+    "basics.website",
+    "basics.summary",
+    "work_experiences[0].location",
+    "work_experiences[0].employment_type",
+    "work_experiences[0].start_date",
+    "work_experiences[0].end_date",
+    "education[0].grade",
+    "education[0].field_of_study",
+    "education[0].location",
+    "projects",
+    "certifications",
+    "professional_links"
+  ],
+  "absence_evidence": {
+    "line": 5,
+    "fragment": "ABSENT: phone, website, summary, employer location, certifications, projects.",
+    "category": "absence"
+  },
+  "ambiguous_facts": [
+    {
+      "id": "ambiguous-role-association",
+      "source_line": 8,
+      "text": "Streaming Infrastructure Engineer",
+      "expected_handling": "Record the role title as an explicit fact but do not assign it a hard relationship to the employer; surface an ambiguous_role_association diagnostic.",
+      "category": "ambiguity"
+    },
+    {
+      "id": "ambiguous-date-span",
+      "source_line": 10,
+      "text": "2019 – Present",
+      "expected_handling": "Keep the role start and end dates null and surface an ambiguous_date diagnostic instead of forcing the span onto the role.",
+      "category": "ambiguity"
+    }
+  ],
+  "forbidden_inferences": [
+    {
+      "id": "multi-column-join",
+      "forbidden_values": [
+        "summary",
+        "website",
+        "certifications",
+        "projects",
+        "honors",
+        "manager",
+        "full-time",
+        "team lead",
+        "+1"
+      ]
+    }
+  ],
+  "provenance_contract": {
+    "flattened_coordinates": "one_based_line_zero_based_utf8_offset",
+    "deterministic_enrichment": "pdf page/item/physical offsets via the T208 deterministic provenance enrichment path; column geometry is not visible to the provider",
+    "model_physical_coordinates_rejected": true
+  },
+  "thresholds": {
+    "minimum_exact_fact_recall": 0.9,
+    "required_high_priority_fact_recall": 1
+  }
+}

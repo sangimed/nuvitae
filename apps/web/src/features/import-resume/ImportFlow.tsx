@@ -3,13 +3,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PublicImportStatusResponse } from "@nuvitae/contracts";
 import {
+  ImportStatusLiveRegion,
+  type ImportLiveRegionState,
+  type ImportStatusAnnouncement,
+} from "./ImportStatusLiveRegion";
+import {
+  ProviderRecoveryActions,
+  type ProviderRecoveryState,
+} from "./ProviderRecoveryActions";
+import {
   initialImportState,
   transitionImportState,
   type ClientImportState,
 } from "./state";
 import { CreateResumeEntry } from "./CreateResumeEntry";
-import { UploadStep } from "./UploadStep";
+import { labelForStep } from "./ProcessingStep";
 import { ProcessingStep } from "./ProcessingStep";
+import { UploadStep } from "./UploadStep";
 import { pollImportStatus } from "../../services/import-resume/import-status-client";
 import { startImportUpload } from "../../services/import-resume/start-import-client";
 
@@ -26,11 +36,105 @@ const initialProcessingStatus = (
   userMessage: "Checking that your document can be imported.",
 });
 
+/**
+ * T063 - maps a public import status to a normalized, provider-neutral live
+ * announcement. Unknown or unmapped statuses fail safely to the generic
+ * "unknown" announcement rather than exposing internal details.
+ */
+export function announcementForStatus(
+  status: PublicImportStatusResponse,
+  processingAnnounced: boolean,
+): ImportStatusAnnouncement {
+  switch (status.status) {
+    case "processing":
+      return processingAnnounced
+        ? {
+            state: "processing_progress",
+            progressStep: labelForStep(status.currentStep),
+            progressKnown: status.progressKnown,
+            ...(status.progressPercent === undefined
+              ? {}
+              : { progressPercent: status.progressPercent }),
+          }
+        : { state: "processing_started" };
+    case "draft_ready":
+      return { state: "review_ready" };
+    case "partial_extraction":
+      return { state: "partial_draft_ready" };
+    case "recoverable_timeout":
+    case "validation_failure":
+    case "terminal_processing_failure":
+    case "expired":
+      return { state: "processing_failed" };
+    case "cancelled":
+      return { state: "cancellation_completed" };
+    case "authentication_required":
+    case "connectivity_lost":
+    case "not_found":
+      return { state: "unknown" };
+  }
+}
+
+/**
+ * T063 - maps a provider recovery state to the closest safe announcement.
+ * The flow uses this when a provider recovery panel appears; unmapped or
+ * unexpected states fall back to the generic announcement.
+ */
+export function announcementForRecoveryState(
+  state: ProviderRecoveryState,
+): ImportLiveRegionState {
+  switch (state) {
+    case "no_provider":
+    case "disconnected":
+    case "authentication_expired":
+    case "authentication_revoked":
+      return "provider_connection_required";
+    case "provider_unavailable":
+    case "rate_limited":
+    case "quota_exceeded":
+    case "timeout":
+      return "provider_unavailable";
+    case "malformed_output":
+    case "invalid_schema":
+    case "invalid_evidence":
+    case "ungrounded":
+    case "invented":
+    case "unsupported_capability":
+      return "processing_failed";
+    case "unknown":
+      return "unknown";
+  }
+}
+
+/**
+ * T063 - generic fail-safe recovery for unknown or malformed frontend import
+ * states. It offers only explicitly safe actions (replacement upload and
+ * manual entry) and is rendered with intentional focus by
+ * ProviderRecoveryActions.
+ */
+export function UnknownImportRecovery(props: {
+  readonly onReplaceUpload: () => void;
+  readonly onManualEntry: () => void;
+}) {
+  return (
+    <ProviderRecoveryActions
+      state="unknown"
+      recoveryActions={["replace_upload", "manual_entry"]}
+      alternativeProviderAvailable={false}
+      onReplaceUpload={props.onReplaceUpload}
+      onManualEntry={props.onManualEntry}
+    />
+  );
+}
+
 export function ImportFlow() {
   const [state, setState] = useState<ClientImportState>(initialImportState);
   const [selectedFile, setSelectedFile] = useState<File | undefined>();
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | undefined>();
+  const [announcement, setAnnouncement] = useState<
+    ImportStatusAnnouncement | undefined
+  >();
   const [status, setStatus] = useState<
     PublicImportStatusResponse | undefined
   >();
@@ -39,6 +143,8 @@ export function ImportFlow() {
   >();
   const uploadAbort = useRef<AbortController | null>(null);
   const uploadInFlight = useRef(false);
+  const processingAnnouncedImportRef = useRef<string | null>(null);
+  const announcedUnknownRef = useRef(false);
 
   const activeImportId = useMemo(
     () => ("importId" in state ? state.importId : undefined),
@@ -60,12 +166,32 @@ export function ImportFlow() {
       onStatus: (next) => {
         setConnectivityMessage(undefined);
         setStatus(next);
+        const processingAnnounced =
+          processingAnnouncedImportRef.current === next.importId;
+        setAnnouncement(announcementForStatus(next, processingAnnounced));
+        if (next.status === "processing") {
+          processingAnnouncedImportRef.current = next.importId;
+        }
         applyStatusState(next, setState);
       },
       onConnectivityLost: setConnectivityMessage,
     });
     return () => controller.abort();
   }, [activeImportId, status]);
+
+  const unknownRecovery =
+    state.state !== "initial_choice" &&
+    state.state !== "upload_selection" &&
+    !("importId" in state);
+
+  useEffect(() => {
+    // Unknown or malformed frontend states fail safely: announce the generic
+    // status once and render the generic recovery panel below.
+    if (unknownRecovery && !announcedUnknownRef.current) {
+      announcedUnknownRef.current = true;
+      setAnnouncement({ state: "unknown" });
+    }
+  }, [unknownRecovery]);
 
   function chooseImport() {
     setState(
@@ -107,7 +233,7 @@ export function ImportFlow() {
         importId: outcome.response.importId,
       }) ?? state,
     );
-    setStatus(initialProcessingStatus(outcome.response.importId));
+    setAnnouncement({ state: "upload_accepted" });
   }
 
   function replaceUpload() {
@@ -115,6 +241,9 @@ export function ImportFlow() {
     setSelectedFile(undefined);
     setUploadError(undefined);
     setStatus(undefined);
+    setAnnouncement(undefined);
+    processingAnnouncedImportRef.current = null;
+    announcedUnknownRef.current = false;
     setState({ state: "upload_selection" });
   }
 
@@ -122,12 +251,11 @@ export function ImportFlow() {
     window.location.assign("/resumes/new/manual");
   }
 
+  let content;
   if (state.state === "initial_choice") {
-    return <CreateResumeEntry onChooseImport={chooseImport} />;
-  }
-
-  if (state.state === "upload_selection") {
-    return (
+    content = <CreateResumeEntry onChooseImport={chooseImport} />;
+  } else if (state.state === "upload_selection") {
+    content = (
       <UploadStep
         {...(selectedFile === undefined ? {} : { selectedFile })}
         busy={uploading}
@@ -148,27 +276,42 @@ export function ImportFlow() {
         onSubmit={submit}
       />
     );
+  } else {
+    const shownStatus =
+      status ??
+      ("importId" in state
+        ? initialProcessingStatus(state.importId)
+        : undefined);
+    if (shownStatus !== undefined) {
+      content = (
+        <ProcessingStep
+          status={shownStatus}
+          connectivityMessage={connectivityMessage}
+          onManualEntry={manualEntry}
+          onReplaceUpload={replaceUpload}
+          onReview={(importId) =>
+            window.location.assign(`/import-resume/${importId}/review`)
+          }
+        />
+      );
+    } else {
+      content = (
+        <UnknownImportRecovery
+          onReplaceUpload={replaceUpload}
+          onManualEntry={manualEntry}
+        />
+      );
+    }
   }
 
-  const shownStatus =
-    status ??
-    ("importId" in state ? initialProcessingStatus(state.importId) : undefined);
-
-  if (shownStatus !== undefined) {
-    return (
-      <ProcessingStep
-        status={shownStatus}
-        connectivityMessage={connectivityMessage}
-        onManualEntry={manualEntry}
-        onReplaceUpload={replaceUpload}
-        onReview={(importId) =>
-          window.location.assign(`/import-resume/${importId}/review`)
-        }
-      />
-    );
-  }
-
-  return <CreateResumeEntry onChooseImport={chooseImport} />;
+  return (
+    <>
+      {announcement === undefined ? null : (
+        <ImportStatusLiveRegion {...announcement} />
+      )}
+      {content}
+    </>
+  );
 }
 
 function applyStatusState(

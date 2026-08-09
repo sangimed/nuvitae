@@ -88,6 +88,8 @@ services:
       POSTGRES_STATEMENT_TIMEOUT_MS: 2000
     ports:
       - "3001:3001"
+      - "127.0.0.1:1455:3001"
+      - "[::1]:1455:3001"
     volumes:
       - private-storage:/var/lib/nuvitae/private
     depends_on:
@@ -126,6 +128,9 @@ services:
       QUEUE_PASSWORD: ${QUEUE_PASSWORD:-nuvitae_queue_password}
       WORKER_READY_FILE: /tmp/nuvitae-worker-ready
       PARSER_TMP_ROOT: /tmp/nuvitae-parser
+      NUVITAE_PROVIDER_SESSION_ROOT: /var/lib/nuvitae/private/provider-sessions
+      NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET: ${NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET:?NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET must be configured}
+      NUVITAE_PROVIDER_SESSION_MAX_BYTES: 65536
     volumes:
       - private-storage:/var/lib/nuvitae/private
     tmpfs:
@@ -224,6 +229,23 @@ services:
       - contracts-node-modules:/workspace/packages/contracts/node_modules
       - extraction-node-modules:/workspace/packages/extraction/node_modules
       - import-application-node-modules:/workspace/packages/import-application/node_modules
+    profiles:
+      - test
+
+  t201-authorization-test:
+    build:
+      context: .
+      dockerfile: docker/test/t201-authorization.Dockerfile
+      args:
+        USER_ID: ${LOCAL_UID:-1000}
+        GROUP_ID: ${LOCAL_GID:-1000}
+        PNPM_VERSION: 11.15.1
+    image: nuvitae-t201-authorization-test:0.1.0
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+      - pnpm-store:/pnpm/store
+      - root-node-modules:/workspace/node_modules
     profiles:
       - test
 

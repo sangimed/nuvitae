@@ -1,0 +1,725 @@
+{
+  "evidence_classification": "sanitized_t202_offline_remeasurement",
+  "evaluator": "spikes/codex-direct-oauth/lib/t202-evaluator.mjs",
+  "inputs": {
+    "t201_matrix": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-matrix.json",
+    "campaign_b_registry": "spikes/codex-direct-oauth/campaign-b-authorizations.json",
+    "t199_evidence": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t199-live.json",
+    "t200_evidence": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t200-invocation.json",
+    "legacy_c01_evidence": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+  },
+  "matrix": {
+    "matrix_pass": true,
+    "matrix_state": "all_cases_live_passed",
+    "mandatory_case_count": 6
+  },
+  "authoritative_attempts": {
+    "T201-C01": {
+      "evidence_path": "/home/sangimed/Repositories/nuvitae/spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json",
+      "invocation_succeeded": true,
+      "exact_http_status": 200,
+      "schema_valid": true,
+      "parsing_pass": true
+    },
+    "T201-C02": {
+      "evidence_path": "/home/sangimed/Repositories/nuvitae/spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+      "invocation_succeeded": true,
+      "exact_http_status": 200,
+      "schema_valid": true,
+      "parsing_pass": true
+    },
+    "T201-C03": {
+      "evidence_path": "/home/sangimed/Repositories/nuvitae/spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+      "invocation_succeeded": true,
+      "exact_http_status": 200,
+      "schema_valid": true,
+      "parsing_pass": true
+    },
+    "T201-C04": {
+      "evidence_path": "/home/sangimed/Repositories/nuvitae/spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+      "invocation_succeeded": true,
+      "exact_http_status": 200,
+      "schema_valid": true,
+      "parsing_pass": true
+    },
+    "T201-C05": {
+      "evidence_path": "/home/sangimed/Repositories/nuvitae/spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+      "invocation_succeeded": true,
+      "exact_http_status": 200,
+      "schema_valid": true,
+      "parsing_pass": true
+    },
+    "T201-C06": {
+      "evidence_path": "/home/sangimed/Repositories/nuvitae/spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+      "invocation_succeeded": true,
+      "exact_http_status": 200,
+      "schema_valid": true,
+      "parsing_pass": true
+    }
+  },
+  "metrics": [
+    {
+      "key": "authentication_success",
+      "label": "Authentication success (browser OAuth login + callback)",
+      "numerator": 2,
+      "denominator": 2,
+      "value": 1,
+      "required_threshold": "T203 gate: fresh live browser login with callback completion must succeed",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t199-live.json"
+      ]
+    },
+    {
+      "key": "credential_persistence",
+      "label": "Encrypted credential persistence (live encrypted record, no plaintext)",
+      "numerator": 1,
+      "denominator": 1,
+      "value": 1,
+      "required_threshold": "T203 gate: live encrypted store with no plaintext",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t199-live.json"
+      ],
+      "note": "No-plaintext claim is recorded in docs/research/codex-direct-oauth-credential-lifecycle.md and the deterministic suite; the sanitized T199 JSON exposes only record-creation booleans."
+    },
+    {
+      "key": "restart_recovery",
+      "label": "Restart recovery (credential usable after controlled restart)",
+      "numerator": 3,
+      "denominator": 3,
+      "value": 1,
+      "required_threshold": "T203 gate: credential usable after container restart",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t199-live.json"
+      ]
+    },
+    {
+      "key": "refresh_rotation",
+      "label": "Token refresh with rotation (single-flight)",
+      "numerator": 1,
+      "denominator": 1,
+      "value": 1,
+      "required_threshold": "T203 gate: live refresh with rotation",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t199-live.json"
+      ],
+      "note": "live_network_refresh_count=1 for two concurrent refresh requests (single-flight)."
+    },
+    {
+      "key": "invocation_success_rate",
+      "label": "Invocation success rate",
+      "numerator": 7,
+      "denominator": 7,
+      "value": 1,
+      "required_threshold": "T203 gate: live invocation with HTTP 200 and valid SSE (no numeric rate threshold documented)",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t200-invocation.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+      ]
+    },
+    {
+      "key": "protocol_validity",
+      "label": "Protocol validity (valid SSE/typed event framing)",
+      "numerator": 7,
+      "denominator": 7,
+      "value": 1,
+      "required_threshold": "T203 gate: valid SSE response framing on every live invocation",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t200-invocation.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+      ]
+    },
+    {
+      "key": "schema_valid_rate",
+      "label": "Schema-valid response rate",
+      "numerator": 6,
+      "denominator": 6,
+      "value": 1,
+      "required_threshold": "T201 mandatory: strict schema valid in every case (aggregate rate 1.0)",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+      ]
+    },
+    {
+      "key": "structured_output_validity",
+      "label": "Structured-output validity (model output received and evaluated)",
+      "numerator": 6,
+      "denominator": 6,
+      "value": 1,
+      "required_threshold": "T201 mandatory: structured output evaluated for every case",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+      ]
+    },
+    {
+      "key": "semantic_parsing_pass_rate",
+      "label": "Semantic parsing pass rate",
+      "numerator": 6,
+      "denominator": 6,
+      "value": 1,
+      "required_threshold": "T201 mandatory: parsing_pass true per case; aggregate passes only when all six pass",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+      ]
+    },
+    {
+      "key": "exact_fact_recall",
+      "label": "Exact fact recall",
+      "numerator": 92,
+      "denominator": 92,
+      "value": 1,
+      "required_threshold": "T201 mandatory: exact fact recall >= 0.9 per case",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+      ],
+      "note": "Countable denominators exist for v2 cases (C03-C06, 23 expected facts each). C01/C02 sanitized evidence records recall 1.0 without exposing per-fact counts."
+    },
+    {
+      "key": "high_priority_fact_recall",
+      "label": "High-priority fact recall",
+      "numerator": 68,
+      "denominator": 68,
+      "value": 1,
+      "required_threshold": "T201 mandatory: high-priority fact recall = 1.0 per case",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+      ],
+      "note": "Countable denominators exist for v2 cases (C03-C06, 17 high-priority facts each). C01/C02 sanitized evidence records recall 1.0 without exposing per-fact counts."
+    },
+    {
+      "key": "work_experience_grouping",
+      "label": "Work-experience grouping (section/item structure)",
+      "numerator": 6,
+      "denominator": 6,
+      "value": 1,
+      "required_threshold": "T201 mandatory: expected section recall = 1.0 and expected item recall = 1.0 per case",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+      ],
+      "note": "Sanitized evidence exposes expected_section_recall and expected_item_recall; per-grouping counts are not exposed."
+    },
+    {
+      "key": "valid_evidence_rate",
+      "label": "Valid-evidence rate (cases with zero missing/invalid evidence)",
+      "numerator": 6,
+      "denominator": 6,
+      "value": 1,
+      "required_threshold": "T201 mandatory: missing evidence count = 0 and invalid evidence count = 0 per case",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+      ],
+      "note": "missing_evidence_count total=0; invalid_evidence_count total=0."
+    },
+    {
+      "key": "invented_field_rate",
+      "label": "Invented-field rate (no-invention)",
+      "numerator": 0,
+      "denominator": 92,
+      "value": 0,
+      "required_threshold": "T201 mandatory: unsupported fact count = 0 per case",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+      ],
+      "note": "unsupported_fact_count total=0; forbidden_inference_count total=0; no_invention_pass in all six cases. Countable returned values (v2 cases): 92."
+    },
+    {
+      "key": "unsupported_fact_count",
+      "label": "Unsupported fact count",
+      "numerator": 0,
+      "denominator": 6,
+      "value": 0,
+      "required_threshold": "T201 mandatory: unsupported fact count = 0 per case",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+      ],
+      "note": "Total unsupported facts across the six authoritative cases."
+    },
+    {
+      "key": "unsupported_evidence_count",
+      "label": "Unsupported-evidence count (missing source references)",
+      "numerator": 0,
+      "denominator": 92,
+      "value": 0,
+      "required_threshold": "T201 mandatory: zero evidence references missing from the source representation",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+      ],
+      "note": "Countable evidence references (v2 cases): 92."
+    },
+    {
+      "key": "forbidden_inference_count",
+      "label": "Forbidden inference count",
+      "numerator": 0,
+      "denominator": 6,
+      "value": 0,
+      "required_threshold": "T201 mandatory: forbidden inference count = 0 per case",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+      ],
+      "note": "Total forbidden inferences across the six authoritative cases."
+    },
+    {
+      "key": "grounding_success",
+      "label": "Grounding success",
+      "numerator": 6,
+      "denominator": 6,
+      "value": 1,
+      "required_threshold": "T201 mandatory: grounding pass per case",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+      ]
+    },
+    {
+      "key": "no_invention_success",
+      "label": "No-invention success",
+      "numerator": 6,
+      "denominator": 6,
+      "value": 1,
+      "required_threshold": "T201 mandatory: no-invention pass per case",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+      ]
+    },
+    {
+      "key": "provider_transport_manifest_match",
+      "label": "Provider transport-manifest match vs T200 audited shape",
+      "numerator": 6,
+      "denominator": 6,
+      "value": 1,
+      "required_threshold": "T201 evidence gate: T201 request shape must match the T200 audited transport",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c02-b13-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c03-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c04-b03-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c05-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-c06-b01-semantic-parsing.json",
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-semantic-parsing.json"
+      ],
+      "note": "t201_transport_mismatches total=0."
+    },
+    {
+      "key": "deterministic_completeness",
+      "label": "Deterministic completeness across the matrix",
+      "numerator": 6,
+      "denominator": 6,
+      "value": 1,
+      "required_threshold": "T201 aggregate passes only when all six mandatory cases are present and pass",
+      "pass": true,
+      "sources": [
+        "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-matrix.json"
+      ]
+    }
+  ],
+  "historical_failed_attempts": {
+    "excluded_from_authoritative_denominators": true,
+    "exclusion_rule": "Authoritative-case selection per campaign-b-authorizations.json: only the single passing attempt per matrix case is authoritative; failed attempts remain immutable historical evidence.",
+    "source_note": "Inventory derived deterministically from checked-in sanitized evidence files with case_pass=false. For C02's A/B campaigns, the T201 matrix attempt_history/campaigns records remain the canonical historical classification where per-attempt files were later replaced by runner output.",
+    "failure_category_counts": {
+      "broker_crash": 5,
+      "entrypoint_resolution_failure": 1,
+      "infrastructure_pre_live_result_volume_initialization_failure": 1,
+      "pre_live_validation_failure": 2,
+      "repository_precondition_failure": 1,
+      "runner_failure": 2,
+      "safe_unknown_failure": 4,
+      "transport_failure": 5
+    },
+    "attempts": [
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-attempt-2-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "runner_failure",
+        "primary_failure_category": "broker_crash",
+        "invocation_attempted": false,
+        "parsing_pass": null,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": []
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-attempt-3-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "pre_live_gate_failed",
+        "primary_failure_category": "infrastructure_pre_live_result_volume_initialization_failure",
+        "invocation_attempted": false,
+        "parsing_pass": null,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": []
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-attempt-4-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "runner_failure",
+        "primary_failure_category": "broker_crash",
+        "invocation_attempted": false,
+        "parsing_pass": null,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": []
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-attempt-5-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "pre_live_gate_failed",
+        "primary_failure_category": "pre_live_validation_failure",
+        "invocation_attempted": false,
+        "parsing_pass": null,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": []
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-attempt-6-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "pre_live_gate_failed",
+        "primary_failure_category": "pre_live_validation_failure",
+        "invocation_attempted": false,
+        "parsing_pass": null,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": []
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-b01-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "pre_live_gate_failed",
+        "primary_failure_category": "repository_precondition_failure",
+        "invocation_attempted": false,
+        "parsing_pass": null,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": []
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-b02-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "pre_live_gate_failed",
+        "primary_failure_category": "entrypoint_resolution_failure",
+        "invocation_attempted": false,
+        "parsing_pass": null,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": []
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-b03-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "runner_failure",
+        "primary_failure_category": "broker_crash",
+        "invocation_attempted": false,
+        "parsing_pass": null,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": []
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-b04-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "runner_failure",
+        "primary_failure_category": "broker_crash",
+        "invocation_attempted": false,
+        "parsing_pass": null,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": []
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-b05-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "runner_failure",
+        "primary_failure_category": "broker_crash",
+        "invocation_attempted": false,
+        "parsing_pass": null,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": []
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-b06-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "runner_failure",
+        "primary_failure_category": "runner_failure",
+        "invocation_attempted": false,
+        "parsing_pass": null,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": []
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-b07-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "transport_failure",
+        "primary_failure_category": "transport_failure",
+        "invocation_attempted": false,
+        "parsing_pass": false,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": [
+          "transport_failure"
+        ]
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-b08-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "transport_failure",
+        "primary_failure_category": "transport_failure",
+        "invocation_attempted": false,
+        "parsing_pass": false,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": [
+          "transport_failure"
+        ]
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-b09-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "transport_failure",
+        "primary_failure_category": "transport_failure",
+        "invocation_attempted": false,
+        "parsing_pass": false,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": [
+          "transport_failure"
+        ]
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-b10-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "transport_failure",
+        "primary_failure_category": "transport_failure",
+        "invocation_attempted": true,
+        "parsing_pass": false,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": [
+          "transport_failure"
+        ]
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-b11-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "safe_unknown_failure",
+        "primary_failure_category": "safe_unknown_failure",
+        "invocation_attempted": true,
+        "parsing_pass": false,
+        "exact_fact_recall": 1,
+        "invalid_evidence_count": 0,
+        "unsupported_fact_count": 0,
+        "safe_error_categories": []
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c02-semantic-parsing.json",
+        "case_id": "T201-C02",
+        "safe_final_state": "runner_failure",
+        "primary_failure_category": "runner_failure",
+        "invocation_attempted": false,
+        "parsing_pass": null,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": []
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c03-b01-semantic-parsing.json",
+        "case_id": "T201-C03",
+        "safe_final_state": "safe_unknown_failure",
+        "primary_failure_category": "safe_unknown_failure",
+        "invocation_attempted": true,
+        "parsing_pass": false,
+        "exact_fact_recall": 0.875,
+        "invalid_evidence_count": 0,
+        "unsupported_fact_count": 0,
+        "safe_error_categories": []
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c03-b02-semantic-parsing.json",
+        "case_id": "T201-C03",
+        "safe_final_state": "safe_unknown_failure",
+        "primary_failure_category": "safe_unknown_failure",
+        "invocation_attempted": true,
+        "parsing_pass": false,
+        "exact_fact_recall": 0.9583,
+        "invalid_evidence_count": 0,
+        "unsupported_fact_count": 0,
+        "safe_error_categories": []
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c04-b01-semantic-parsing.json",
+        "case_id": "T201-C04",
+        "safe_final_state": "safe_unknown_failure",
+        "primary_failure_category": "safe_unknown_failure",
+        "invocation_attempted": true,
+        "parsing_pass": false,
+        "exact_fact_recall": 1,
+        "invalid_evidence_count": 23,
+        "unsupported_fact_count": 23,
+        "safe_error_categories": [
+          "evidence_coordinate_mismatch",
+          "unsupported_fact"
+        ]
+      },
+      {
+        "evidence_file": "codex-direct-oauth-t201-c04-b02-semantic-parsing.json",
+        "case_id": "T201-C04",
+        "safe_final_state": "transport_failure",
+        "primary_failure_category": "transport_failure",
+        "invocation_attempted": false,
+        "parsing_pass": false,
+        "exact_fact_recall": null,
+        "invalid_evidence_count": null,
+        "unsupported_fact_count": null,
+        "safe_error_categories": [
+          "transport_failure"
+        ]
+      }
+    ]
+  },
+  "unmeasured_metrics": [
+    {
+      "key": "turn_latency",
+      "reason": "No sanitized timing fields exist in the accepted live evidence; the 1.88ms deterministic baseline is provider-neutral, not Codex."
+    },
+    {
+      "key": "cancellation_latency",
+      "reason": "Cancellation was not exercised in any accepted live run; no evidence exists."
+    },
+    {
+      "key": "quota_behavior",
+      "reason": "No quota/rate-limit exercise exists in accepted live evidence; only safe failure mapping is proven."
+    },
+    {
+      "key": "non_technical_onboarding_feasibility",
+      "reason": "Requires live browser OAuth plus a real import flow in the supported deployment shape (T245/T246/T213-T215 pending)."
+    }
+  ],
+  "residual_risks": [
+    {
+      "key": "undocumented_backend_supportability",
+      "detail": "T196 classifies third-party direct Codex backend support as undocumented/unresolved; the audited transport shape matched in all runs but stability is not guaranteed."
+    },
+    {
+      "key": "real_document_live_semantic_quality",
+      "detail": "All six T201 cases used synthetic fixtures (fixture_classified_as_synthetic true). Live Codex evaluation over real PDF/DOCX documents (T246) is not executed."
+    }
+  ],
+  "summary": {
+    "t202_measurement_complete": true,
+    "all_evidence_supported_metrics_pass": true,
+    "measured_metric_count": 21,
+    "unmeasured_metric_count": 4,
+    "historical_failed_attempt_count": 21
+  },
+  "evidence_atomic_replace_succeeded": true
+}

@@ -1,0 +1,37 @@
+{
+  "evidence_classification": "t246_derived_acceptance",
+  "schema_version": 1,
+  "case_id": "T246-C01",
+  "attempt_id": "A01",
+  "derived_at": "2026-08-07T15:46:12.098Z",
+  "semantic_result": "PASS",
+  "runner_finalization": "FAIL",
+  "derived_case_pass": true,
+  "official_status": "semantic_pass_runner_finalization_failed_not_accepted",
+  "historical_evidence": {
+    "immutable": true,
+    "actual_path": "spikes/codex-direct-oauth/spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json",
+    "canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json",
+    "sha256": "dc96b2a42936d58e757c37bfb9b83708438dde603a1a8756ce420ca0afb903b9",
+    "size_bytes": 10530,
+    "evidence_classification": "live_t246_semantic_parsing",
+    "invocation_attempted": true
+  },
+  "note": "Derived offline from the immutable consumed A01 sanitized evidence using the canonical T246 complete gate. The historical A01 evidence and the T246 aggregate are not rewritten; T246 remains INCOMPLETE and T203 remains NO-GO.",
+  "checks": {
+    "historical_evidence_present": true,
+    "historical_evidence_sha256_matches_ledger": true,
+    "historical_evidence_size_matches_ledger": true,
+    "invocation_attempted": true,
+    "invocation_succeeded": true,
+    "exact_http_status": 200,
+    "broker_exit_status_category": "success",
+    "evidence_schema_valid": true,
+    "artifact_hashes_pinned": true,
+    "transport_manifest_matches_t200": true,
+    "secret_scans_passed": true,
+    "canonical_gate_passes": true,
+    "semantic_failure_category": null
+  },
+  "evidence_atomic_replace_succeeded": true
+}

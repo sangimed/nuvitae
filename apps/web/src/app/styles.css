@@ -186,10 +186,26 @@ input:focus-visible,
 }
 
 .primary-action:disabled,
+.secondary-action:disabled,
 .secondary-button:disabled,
 input:disabled {
   cursor: not-allowed;
   opacity: 0.65;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.modal-backdrop > [role="dialog"] {
+  width: min(100%, 32rem);
+  box-shadow: 0 1rem 3rem rgba(15, 23, 42, 0.2);
 }
 
 .upload-form {
@@ -389,6 +405,55 @@ legend {
   background: var(--panel);
   padding: 1.25rem;
   box-shadow: 0 24px 80px rgba(24, 33, 47, 0.24);
+}
+
+.dialog-warning-marker {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.75rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #b42318;
+  border-radius: 8px;
+  background: #fff4f2;
+  color: #8b1f16;
+  font-weight: 700;
+}
+
+.error-summary {
+  border: 1px solid #b42318;
+  border-left: 4px solid #b42318;
+  border-radius: 12px;
+  background: #fff4f2;
+  padding: 0.9rem 1rem;
+  color: var(--foreground);
+}
+
+.error-summary h2 {
+  margin-top: 0;
+  color: #8b1f16;
+}
+
+.error-summary ul {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.error-summary a {
+  color: #8b1f16;
+  font-weight: 700;
+}
+
+.import-status-live-region {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .move-actions,

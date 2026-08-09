@@ -45,7 +45,7 @@ const timestampColumn = { type: "timestamptz" as const };
 )
 @Check(
   "ck_imported_documents_processing_status",
-  "processing_status IN ('not_started', 'queued', 'processing', 'ready_for_review', 'timeout_partial', 'failed', 'cancelled', 'expired')",
+  "processing_status IN ('not_started', 'queued', 'processing', 'semantic_parsing_pending', 'semantic_parsing_running', 'provider_unavailable', 'semantic_response_invalid', 'semantic_validation_failed', 'ready_for_review', 'timeout_partial', 'failed', 'cancelled', 'expired')",
 )
 @Check(
   "ck_imported_documents_deletion_status",

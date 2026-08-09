@@ -1,0 +1,37 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - region [ref=e18]:
+      - paragraph [ref=e19]: Resume import
+      - heading "Choose the resume file to import" [level=1] [ref=e20]
+      - paragraph [ref=e21]: Your uploaded file is used only to prepare information for your review. You will review the extracted information before structured resume creation.
+      - generic [ref=e22]:
+        - heading "Before you upload" [level=2] [ref=e23]
+        - list [ref=e24]:
+          - listitem [ref=e25]: PDF and DOCX files only.
+          - listitem [ref=e26]: French, English, or bilingual French-English resumes.
+          - listitem [ref=e27]: 10 MB maximum file size.
+          - listitem [ref=e28]: 5 rendered pages maximum.
+          - listitem [ref=e29]: Selectable text is required.
+          - listitem [ref=e30]: Scanned or image-only documents are not supported.
+          - listitem [ref=e31]: Uploaded sources and source-reconstructing artifacts are retained for no more than seven days from upload.
+      - region [ref=e32]:
+        - heading "Codex connection" [level=2] [ref=e33]
+        - paragraph [ref=e34]: Connect Codex so Nuvitae can organize your resume. You will review the information before anything becomes part of your resume.
+        - button "Connect Codex" [ref=e35] [cursor=pointer]
+      - generic [ref=e36]:
+        - heading "AI analysis of your resume" [level=2] [ref=e37]
+        - list [ref=e38]:
+          - listitem [ref=e39]: Reliable analysis of your resume needs Codex to be connected.
+          - listitem [ref=e40]: Codex receives only the text extracted from your resume, not access to anything else in Nuvitae.
+          - listitem [ref=e41]: Suggested fields stay unconfirmed until you review them.
+          - listitem [ref=e42]: Before creating a draft, Nuvitae checks that suggestions follow the expected format, are backed by your document, and are not invented.
+          - listitem [ref=e43]: If Codex is not available, you can still use limited automatic extraction or enter your resume manually.
+          - listitem [ref=e44]: Limited automatic extraction is partial. It may miss information and does not provide a reliable complete analysis.
+      - generic [ref=e45]:
+        - generic [ref=e46]: Resume file
+        - button "Resume file" [ref=e47]
+        - paragraph [ref=e48]: No file selected.
+        - generic [ref=e49]:
+          - button "Back" [ref=e50] [cursor=pointer]
+          - button "Upload and start import" [ref=e51] [cursor=pointer]
+  - alert [ref=e17]

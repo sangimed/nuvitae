@@ -61,39 +61,82 @@ describe("project-local TypeORM migration workflow", () => {
     expect(after.stdout).toMatch(
       /\[X\]\s+\d+\s+ImportDraftReviewRevision1722340800000/,
     );
+    expect(after.stdout).toMatch(
+      /\[X\]\s+6\s+ProviderRuntimeConnections1722600000000/,
+    );
     const tables = await database.dataSource.query<{ table_name: string }[]>(
       `SELECT table_name FROM information_schema.tables
        WHERE table_schema = $1 AND table_name IN ('imported_documents', 'structured_resumes')`,
       [database.schema],
     );
     expect(tables).toHaveLength(2);
+    const semanticTables = await database.dataSource.query<
+      {
+        table_name: string;
+      }[]
+    >(
+      `SELECT table_name FROM information_schema.tables
+       WHERE table_schema = $1 AND table_name IN ('semantic_parse_attempts', 'nuvitae_extraction_responses', 'evidence_records', 'provider_capability_snapshots', 'semantic_parser_validation_statuses')`,
+      [database.schema],
+    );
+    expect(semanticTables).toHaveLength(5);
     const tracking = await database.dataSource.query<{ count: string }[]>(
       `SELECT count(*) FROM "${database.schema}"."typeorm_migrations"`,
     );
-    expect(tracking[0]?.count).toBe("3");
+    expect(tracking[0]?.count).toBe("7");
 
     await command("db:migration:revert");
     const reverted = await command("db:migration:show");
     expect(reverted.stdout).toContain("[X] 1 InitialImportResumePersistence");
-    expect(reverted.stdout).toContain("[ ] ImportDraftReviewRevision");
-    const removed = await database.dataSource.query<{ column_name: string }[]>(
-      `SELECT column_name FROM information_schema.columns
-       WHERE table_schema = $1
-       AND table_name = 'import_drafts'
-       AND column_name = 'review_revision'`,
+    expect(reverted.stdout).toContain(
+      "[X] 4 SemanticImportProcessingStates1722427200000",
+    );
+    expect(reverted.stdout).toContain("[ ] ImportLimitAttempts1785801600000");
+    await command("db:migration:revert");
+    const revertedTwice = await command("db:migration:show");
+    expect(revertedTwice.stdout).toContain(
+      "[ ] ProviderRuntimeConnections1722600000000",
+    );
+    const revertedRuntimeConnectionTables = await database.dataSource.query<
+      {
+        table_name: string;
+      }[]
+    >(
+      `SELECT table_name FROM information_schema.tables
+       WHERE table_schema = $1 AND table_name IN ('ai_provider_runtime_connections')`,
       [database.schema],
     );
-    expect(removed).toHaveLength(0);
+    expect(revertedRuntimeConnectionTables).toHaveLength(0);
 
     await command("db:migration:run");
     const restored = await command("db:migration:show");
     expect(restored.stdout).toMatch(
       /\[X\]\s+\d+\s+InitialImportResumePersistence1722168000000/,
     );
+    const restoredSemanticTables = await database.dataSource.query<
+      {
+        table_name: string;
+      }[]
+    >(
+      `SELECT table_name FROM information_schema.tables
+       WHERE table_schema = $1 AND table_name IN ('semantic_parse_attempts', 'nuvitae_extraction_responses', 'evidence_records', 'provider_capability_snapshots', 'semantic_parser_validation_statuses')`,
+      [database.schema],
+    );
+    expect(restoredSemanticTables).toHaveLength(5);
+    const restoredRuntimeConnectionTables = await database.dataSource.query<
+      {
+        table_name: string;
+      }[]
+    >(
+      `SELECT table_name FROM information_schema.tables
+       WHERE table_schema = $1 AND table_name IN ('ai_provider_runtime_connections')`,
+      [database.schema],
+    );
+    expect(restoredRuntimeConnectionTables).toHaveLength(1);
     const rerun = await database.dataSource.query<{ count: string }[]>(
       `SELECT count(*) FROM "${database.schema}"."typeorm_migrations"`,
     );
-    expect(rerun[0]?.count).toBe("3");
+    expect(rerun[0]?.count).toBe("7");
 
     const result = await command("db:migration:create");
     expect(result.stdout).toContain(".tmp/migrations/");

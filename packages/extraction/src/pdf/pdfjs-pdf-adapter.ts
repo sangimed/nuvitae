@@ -17,6 +17,17 @@ import {
   succeeded,
   throwIfAborted,
 } from "../extraction-failures.js";
+import { scanTextForHostileContent } from "../safety.js";
+
+const structuralDangerCategories = new Set([
+  "script",
+  "macro",
+  "ole_object",
+  "entity_expansion",
+  "path_traversal",
+  "launch_action",
+  "embedded_file",
+]);
 
 /**
  * PDF item indexes and global reading order are zero-based. Page numbers are
@@ -133,6 +144,15 @@ export class PdfJsPdfAdapter
           ) {
             throw new ExtractionOperationError("scanned_or_image_only");
           }
+
+          const allText = result
+            .flatMap((page) => page.items.map((item) => item.text))
+            .join(" ");
+          const hostile = scanTextForHostileContent(allText);
+          if (hostile.some((cat) => structuralDangerCategories.has(cat))) {
+            throw new ExtractionOperationError("unsupported");
+          }
+
           return Object.freeze(result);
         },
       );

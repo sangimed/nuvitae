@@ -1,0 +1,285 @@
+{
+  "schema_version": 1,
+  "t246_case": "T246-C02",
+  "fixture_id": "pdf-english-anonymous",
+  "fixture_classification": "real_document",
+  "fixture_path": "tests/fixtures/resumes/semantic-vertical-slice-jordan-avery.pdf",
+  "fixture_sha256": "9c9a9f91489b359270176d1f93824a51eceb965810f7eede9fcf821ca9183f95",
+  "transcript_sha256": "c1a4d9b366ef01c3a4c4fb25cbcf9fa90297772dad9b1ef760f12b41e1556195",
+  "expected_semantic_json_sha256": "9297043100acfeb86e758c9836dbe53b28d8462cf5daf14f389e5e3f6f41f08f",
+  "document_language": "English",
+  "language_category": "english",
+  "source_format_category": "pdf-derived-text",
+  "layout_category": "single-column",
+  "extraction_format": {
+    "kind": "deterministic_pdf_text",
+    "coordinate_system": "one_based_line_zero_based_utf8_offset",
+    "binary_extraction_performed": true,
+    "reading_order_artifact": "single_column",
+    "contract_version": 2
+  },
+  "expected_section_counts": {
+    "basics": 1,
+    "work_experiences": 2,
+    "education": 1,
+    "skills": 5,
+    "languages": 2,
+    "certifications": 0
+  },
+  "expected_item_counts": {
+    "work_experience_highlights": 2,
+    "warnings_or_ambiguities_minimum": 0
+  },
+  "exact_facts": [
+    {
+      "path": "basics.full_name",
+      "value": "Jordan Avery",
+      "priority": "high",
+      "line": 1,
+      "category": "basics"
+    },
+    {
+      "path": "basics.email",
+      "value": "jordan.avery@example.test",
+      "priority": "high",
+      "line": 2,
+      "category": "basics"
+    },
+    {
+      "path": "basics.location",
+      "value": "Paris, France",
+      "priority": "high",
+      "line": 3,
+      "category": "basics"
+    },
+    {
+      "path": "basics.phone",
+      "value": "+33 6 12 34 56 78",
+      "priority": "high",
+      "line": 4,
+      "category": "basics"
+    },
+    {
+      "path": "basics.headline",
+      "value": "Senior Software Engineer",
+      "priority": "high",
+      "line": 5,
+      "category": "basics"
+    },
+    {
+      "path": "basics.summary",
+      "value": "Backend engineer with six years of experience building distributed systems.",
+      "priority": "medium",
+      "line": 7,
+      "category": "basics"
+    },
+    {
+      "path": "work_experiences[0].employer",
+      "value": "Nova Systems",
+      "priority": "high",
+      "line": 9,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].job_title",
+      "value": "Senior Software Engineer",
+      "priority": "high",
+      "line": 10,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].start_date",
+      "value": "2021",
+      "priority": "high",
+      "line": 11,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].highlights[0]",
+      "value": "Lead the payments platform team of eight engineers.",
+      "priority": "medium",
+      "line": 12,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[1].job_title",
+      "value": "Software Engineer",
+      "priority": "high",
+      "line": 13,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[1].start_date",
+      "value": "2019",
+      "priority": "high",
+      "line": 14,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[1].end_date",
+      "value": "2021",
+      "priority": "high",
+      "line": 14,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[1].highlights[0]",
+      "value": "Built and operated the customer notification service.",
+      "priority": "medium",
+      "line": 15,
+      "category": "work"
+    },
+    {
+      "path": "education[0].school",
+      "value": "State University",
+      "priority": "high",
+      "line": 18,
+      "category": "education"
+    },
+    {
+      "path": "education[0].degree",
+      "value": "BSc Computer Science",
+      "priority": "high",
+      "line": 17,
+      "category": "education"
+    },
+    {
+      "path": "education[0].start_date",
+      "value": "2015",
+      "priority": "medium",
+      "line": 19,
+      "category": "education"
+    },
+    {
+      "path": "education[0].end_date",
+      "value": "2019",
+      "priority": "medium",
+      "line": 19,
+      "category": "education"
+    },
+    {
+      "path": "skills[0]",
+      "value": "TypeScript",
+      "priority": "high",
+      "line": 21,
+      "category": "skills"
+    },
+    {
+      "path": "skills[1]",
+      "value": "Go",
+      "priority": "high",
+      "line": 21,
+      "category": "skills"
+    },
+    {
+      "path": "skills[2]",
+      "value": "PostgreSQL",
+      "priority": "high",
+      "line": 21,
+      "category": "skills"
+    },
+    {
+      "path": "skills[3]",
+      "value": "Kubernetes",
+      "priority": "high",
+      "line": 21,
+      "category": "skills"
+    },
+    {
+      "path": "skills[4]",
+      "value": "AWS",
+      "priority": "high",
+      "line": 21,
+      "category": "skills"
+    },
+    {
+      "path": "languages[0].name",
+      "value": "English",
+      "priority": "high",
+      "line": 23,
+      "category": "languages"
+    },
+    {
+      "path": "languages[0].proficiency",
+      "value": "native",
+      "priority": "high",
+      "line": 23,
+      "category": "languages"
+    },
+    {
+      "path": "languages[1].name",
+      "value": "French",
+      "priority": "high",
+      "line": 23,
+      "category": "languages"
+    },
+    {
+      "path": "languages[1].proficiency",
+      "value": "fluent",
+      "priority": "high",
+      "line": 23,
+      "category": "languages"
+    }
+  ],
+  "high_priority_fact_paths": [
+    "basics.full_name",
+    "basics.email",
+    "basics.location",
+    "basics.phone",
+    "basics.headline",
+    "work_experiences[0].employer",
+    "work_experiences[0].job_title",
+    "work_experiences[0].start_date",
+    "work_experiences[1].job_title",
+    "work_experiences[1].start_date",
+    "work_experiences[1].end_date",
+    "education[0].school",
+    "education[0].degree",
+    "skills[0]",
+    "skills[1]",
+    "skills[2]",
+    "skills[3]",
+    "skills[4]",
+    "languages[0].name",
+    "languages[0].proficiency",
+    "languages[1].name",
+    "languages[1].proficiency"
+  ],
+  "intentionally_absent_fields": [
+    "basics.website",
+    "work_experiences[0].location",
+    "work_experiences[0].employment_type",
+    "work_experiences[0].end_date",
+    "work_experiences[1].location",
+    "work_experiences[1].employment_type",
+    "education[0].grade",
+    "education[0].field_of_study",
+    "education[0].location",
+    "projects",
+    "certifications",
+    "professional_links"
+  ],
+  "ambiguous_facts": [],
+  "forbidden_inferences": [
+    {
+      "id": "invented-english-contact-and-scope",
+      "forbidden_values": [
+        "https://",
+        "CDI",
+        "full-time",
+        "manager",
+        "honors",
+        "team lead"
+      ]
+    }
+  ],
+  "provenance_contract": {
+    "flattened_coordinates": "one_based_line_zero_based_utf8_offset",
+    "deterministic_enrichment": "pdf page/item/physical offsets via the T208 deterministic provenance enrichment path",
+    "model_physical_coordinates_rejected": true
+  },
+  "thresholds": {
+    "minimum_exact_fact_recall": 0.9,
+    "required_high_priority_fact_recall": 1
+  }
+}

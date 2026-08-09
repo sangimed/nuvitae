@@ -29,6 +29,9 @@ import type {
   ImportResumeRepository,
   PersistenceTransactionRunner,
 } from "@nuvitae/persistence";
+import type { ImportEventEmitter } from "./observability/import-events.js";
+import type { ImportProcessingCapacityPort } from "./import-capacity.js";
+import { ProcessingStartDeniedError } from "./import-capacity.js";
 
 export interface ProcessExtractionInput {
   readonly ownerUserId: string;
@@ -44,10 +47,7 @@ export interface ProcessExtractionIds {
   warningId(): string;
   requestId(): string;
 }
-export interface ProcessExtractionLogger {
-  info(event: string, metadata?: Readonly<Record<string, unknown>>): void;
-  warn(event: string, metadata?: Readonly<Record<string, unknown>>): void;
-}
+export type ProcessExtractionLogger = ImportEventEmitter;
 export interface DeterministicFieldExtractorPort {
   extract(
     fragments: readonly ResumeSourceFragment[],
@@ -65,12 +65,18 @@ export interface ProcessExtractionPorts {
   readonly clock: ProcessExtractionClock;
   readonly ids: ProcessExtractionIds;
   readonly logger: ProcessExtractionLogger;
+  /**
+   * Optional processing-start admission and capacity release boundary.
+   * Production wiring provides it; tests without it keep legacy behavior.
+   */
+  readonly capacity?: ImportProcessingCapacityPort;
 }
 
 type Begin =
   | { readonly kind: "started"; readonly document: ImportedDocument }
   | { readonly kind: "not_found" }
   | { readonly kind: "invalid" }
+  | { readonly kind: "capacity_denied" }
   | {
       readonly kind: "existing";
       readonly draft: NonNullable<
@@ -93,6 +99,9 @@ export class ProcessExtractionService {
         "terminal_failure",
         false,
       );
+    if (beginning.kind === "capacity_denied") {
+      throw new ProcessingStartDeniedError();
+    }
     if (beginning.kind === "infrastructure")
       return this.failure(
         requestId,
@@ -103,9 +112,22 @@ export class ProcessExtractionService {
     if (beginning.kind === "existing")
       return this.responseForDraft(requestId, beginning.draft);
     const document = beginning.document;
+    this.ports.logger.emit("extraction.started", {
+      importId: document.id,
+      documentFormat: storedFormat(document),
+    });
     try {
       const extracted = await this.extract(document, input.abortSignal);
       if (!extracted.ok) {
+        this.ports.logger.emit("extraction.failed", {
+          importId: document.id,
+          documentFormat: storedFormat(document),
+          extractionCategory: extracted.error.category,
+          retryable: extracted.error.retryable,
+          durationBucket: durationBucket(
+            Math.max(0, this.ports.clock.now().getTime() - started.getTime()),
+          ),
+        });
         await this.finishFailure(
           document,
           extracted.error.category === "cancelled" ? "cancelled" : "failed",
@@ -152,6 +174,7 @@ export class ProcessExtractionService {
         return this.responseForDraft(requestId, finalized.draft);
       if (finalized.kind !== "saved")
         return this.failure(requestId, document.id, "terminal_failure", true);
+      await this.releaseCapacity(document.id, document.ownerUserId);
       this.log(
         document,
         started,
@@ -168,6 +191,15 @@ export class ProcessExtractionService {
           )
         : this.ready(requestId, document.id, result.draft);
     } catch {
+      this.ports.logger.emit("extraction.failed", {
+        importId: document.id,
+        documentFormat: storedFormat(document),
+        extractionCategory: "unexpected",
+        retryable: true,
+        durationBucket: durationBucket(
+          Math.max(0, this.ports.clock.now().getTime() - started.getTime()),
+        ),
+      });
       await this.finishFailure(document, "failed");
       return this.failure(requestId, document.id, "terminal_failure", true);
     }
@@ -199,6 +231,16 @@ export class ProcessExtractionService {
         }
         if (!isProcessable(document, this.ports.clock.now()))
           return { kind: "invalid" as const };
+        if (this.ports.capacity !== undefined) {
+          const admission = await this.ports.capacity.admitToProcessing(
+            input.ownerUserId,
+            input.importedDocumentId,
+            this.ports.clock.now(),
+          );
+          if (admission.kind !== "allowed") {
+            return { kind: "capacity_denied" as const };
+          }
+        }
         const processing = {
           ...document,
           processingStatus: "processing" as const,
@@ -242,6 +284,7 @@ export class ProcessExtractionService {
       const fragments = fragmentsFromPdf(
         result.value as readonly PdfPageText[],
       );
+      this.emitTranscriptNormalized(document, fragments);
       return {
         ok: true as const,
         ...this.ports.fieldExtractor.extract(
@@ -261,6 +304,7 @@ export class ProcessExtractionService {
     const result = await this.ports.docxTextExtractor.extractText(request);
     if (!result.ok) return result;
     const fragments = fragmentsFromDocx(result.value);
+    this.emitTranscriptNormalized(document, fragments);
     return {
       ok: true as const,
       ...this.ports.fieldExtractor.extract(
@@ -312,6 +356,16 @@ export class ProcessExtractionService {
           { ...current.document, processingStatus: "ready_for_review" },
           manager,
         );
+        this.ports.logger.emit("review.draft_created", {
+          importId: current.document.id,
+          draftId: draft.id,
+          status:
+            draft.status === "ready_to_confirm"
+              ? "ready_to_confirm"
+              : "review_required",
+          fieldCountBucket: bucket(draft.fields.length),
+          warningCountBucket: bucket(draft.warnings.length),
+        });
         return { kind: "saved" as const };
       });
     } catch {
@@ -336,8 +390,28 @@ export class ProcessExtractionService {
             manager,
           );
       });
+      await this.releaseCapacity(document.id, document.ownerUserId);
     } catch {
       /* response remains privacy-safe and retryable */
+    }
+  }
+
+  private async releaseCapacity(
+    importId: string,
+    ownerUserId: string,
+  ): Promise<void> {
+    if (this.ports.capacity === undefined) return;
+    try {
+      await this.ports.capacity.releaseCapacity(
+        ownerUserId,
+        importId,
+        this.ports.clock.now(),
+      );
+    } catch {
+      this.ports.logger.emit("import.limit_release_failed", {
+        importId,
+        errorCategory: "limit_release_failed",
+      });
     }
   }
   private responseForDraft(
@@ -412,21 +486,39 @@ export class ProcessExtractionService {
   private log(
     document: ImportedDocument,
     started: Date,
-    category: string,
+    category: "complete" | "partial" | "no_supported_field",
     fields: number,
     warnings: number,
   ): void {
-    this.ports.logger.info("import_extraction_completed", {
+    this.ports.logger.emit("extraction.completed", {
       importId: document.id,
-      format: document.fileExtension,
+      documentFormat: storedFormat(document),
       extractionCategory: category,
       fieldCountBucket: bucket(fields),
       warningCountBucket: bucket(warnings),
-      durationBucket: bucket(
+      durationBucket: durationBucket(
         Math.max(0, this.ports.clock.now().getTime() - started.getTime()),
       ),
     });
   }
+
+  private emitTranscriptNormalized(
+    document: ImportedDocument,
+    fragments: readonly ResumeSourceFragment[],
+  ): void {
+    this.ports.logger.emit("extraction.transcript_normalized", {
+      importId: document.id,
+      documentFormat: storedFormat(document),
+      fragmentCountBucket: bucket(fragments.length),
+      lineCountBucket: bucket(
+        fragments.filter((fragment) => fragment.text.trim().length > 0).length,
+      ),
+    });
+  }
+}
+
+function storedFormat(document: ImportedDocument): "pdf" | "docx" {
+  return document.fileExtension === "docx" ? "docx" : "pdf";
 }
 
 function isProcessable(document: ImportedDocument, now: Date): boolean {
@@ -494,9 +586,18 @@ function mapFailure(
       return "terminal_failure";
   }
 }
-function bucket(value: number): string {
+function bucket(value: number): "0-4" | "5-19" | "20-99" | "100+" {
   if (value < 5) return "0-4";
   if (value < 20) return "5-19";
   if (value < 100) return "20-99";
   return "100+";
+}
+
+function durationBucket(
+  milliseconds: number,
+): "under_100ms" | "under_1s" | "under_10s" | "10s_or_more" {
+  if (milliseconds < 100) return "under_100ms";
+  if (milliseconds < 1_000) return "under_1s";
+  if (milliseconds < 10_000) return "under_10s";
+  return "10s_or_more";
 }

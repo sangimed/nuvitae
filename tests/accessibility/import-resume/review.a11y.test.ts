@@ -5,7 +5,7 @@ const fieldId = "44444444-4444-4444-8444-444444444444";
 const warningId = "55555555-5555-4555-8555-555555555555";
 
 test.describe("import review accessibility", () => {
-  test("supports keyboard review actions, warnings, provenance, and ready state without confirmation control", async ({
+  test("supports keyboard review actions, warnings, provenance, and ready state with confirmation control", async ({
     page,
   }) => {
     let revision = 0;
@@ -80,10 +80,10 @@ test.describe("import review accessibility", () => {
       .press("Enter");
 
     await expect(
-      page.getByText("Review requirements have been satisfied."),
+      page.getByRole("button", { name: "Create structured resume" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: /create resume/i }),
+      page.getByRole("heading", { name: "Confirmation is blocked" }),
     ).toHaveCount(0);
   });
 });

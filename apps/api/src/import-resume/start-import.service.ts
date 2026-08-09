@@ -23,8 +23,11 @@ import {
 } from "../persistence/api-persistence.module.js";
 import {
   StartImportHttpError,
+  type StartImportPublicErrorCode,
   StartImportResponseContractError,
 } from "./start-import.errors.js";
+import type { ImportLimitOutcome } from "../services/import-resume/import-limits.js";
+import { mapLimitOutcomeToHttpResponse } from "./limit-responses.js";
 import type {
   StartImportClock,
   StartImportIdGenerator,
@@ -84,7 +87,14 @@ export class StartImportService {
       createdAt,
     );
     if (!reservation.allowed) {
-      throw mapLimitDenial(reservation);
+      if (reservation.outcome.code === "limit_service_unavailable") {
+        this.logger.emit("import.limit_service_failed", {});
+      } else {
+        this.logger.emit("import.rate_limited", {
+          retryAfterSeconds: reservation.outcome.retryAfterSeconds ?? 1,
+        });
+      }
+      throw mapLimitDenial(reservation.outcome);
     }
 
     let upload: {
@@ -101,10 +111,29 @@ export class StartImportService {
         reservation.reservation.id,
         createdAt,
       );
+      this.logger.emit("import.upload_rejected", {
+        errorCategory: uploadRejectionCategory(error),
+      });
       throw error;
     }
 
     const importId = this.idGenerator.nextId();
+    const queueAdmission = await this.limits.admitToQueue(
+      input.ownerUserId,
+      reservation.reservation.id,
+      importId,
+      createdAt,
+    );
+    if (queueAdmission.kind !== "allowed") {
+      this.logger.emit(
+        queueAdmission.code === "queued_job_limit"
+          ? "import.queued_limit_reached"
+          : "import.limit_service_failed",
+        {},
+      );
+      throw mapLimitDenial(queueAdmission);
+    }
+
     const storageKey = generatePrivateImportStorageKey({
       ownerUserId: input.ownerUserId,
       importId,
@@ -133,6 +162,10 @@ export class StartImportService {
     try {
       await this.storage.writeObject(storageKey, input.content);
     } catch {
+      this.logger.emit("import.storage_write_failed", {
+        importId,
+        retryable: true,
+      });
       await this.rollbackFailedCreation(
         input.ownerUserId,
         reservation.reservation.id,
@@ -158,9 +191,9 @@ export class StartImportService {
         await this.storage.deleteObject(storageKey);
       } catch {
         compensationFailed = true;
-        this.logger.warn("import.storage_compensation_failed", {
+        this.logger.emit("import.storage_delete_failed", {
           importId,
-          errorCategory: "storage_compensation_failed",
+          retryable: true,
         });
       }
       await this.rollbackFailedCreation(
@@ -252,24 +285,26 @@ export class StartImportService {
           "Resume processing is temporarily unavailable. Try again later.",
         );
       }
-    }
-
-    try {
-      await this.limits.releaseReservation(
-        input.ownerUserId,
-        reservation.reservation.id,
-        createdAt,
-      );
-    } catch {
-      this.logger.warn("import.limit_release_failed", {
-        importId,
-        errorCategory: "limit_release_failed",
-      });
-      throw new StartImportHttpError(
-        500,
-        "internal_failure",
-        "The resume import could not be started.",
-      );
+    } else {
+      // No processing queue is configured, so no job will ever claim this
+      // import. Release the queued slot while retaining the attempt history.
+      try {
+        await this.limits.releaseReservation(
+          input.ownerUserId,
+          reservation.reservation.id,
+          createdAt,
+        );
+      } catch {
+        this.logger.emit("import.limit_release_failed", {
+          importId,
+          errorCategory: "limit_release_failed",
+        });
+        throw new StartImportHttpError(
+          500,
+          "internal_failure",
+          "The resume import could not be started.",
+        );
+      }
     }
 
     const candidate = {
@@ -285,14 +320,14 @@ export class StartImportService {
     };
     const parsed = importInitializationResponseSchema.safeParse(candidate);
     if (!parsed.success) {
-      this.logger.warn("import.response_contract_failed", {
+      this.logger.emit("import.response_contract_failed", {
         importId,
         errorCategory: "response_contract_failed",
       });
       throw new StartImportResponseContractError();
     }
 
-    this.logger.info("import.created", {
+    this.logger.emit("import.created", {
       importId,
       statusCode: 201,
       fileSizeBucket: sizeBucket(upload.sizeBytes),
@@ -319,9 +354,9 @@ export class StartImportService {
         }
       });
     } catch {
-      this.logger.warn("import.queue_publication_state_failed", {
+      this.logger.emit("import.queue_publication_failed", {
         importId,
-        errorCategory: "queue_publication_state_failed",
+        errorCategory: "queue_publication_failed",
       });
     }
   }
@@ -350,7 +385,7 @@ export class StartImportService {
     try {
       await this.limits.rollbackReservation(ownerUserId, reservationId, now);
     } catch {
-      this.logger.warn("import.limit_rollback_failed", {
+      this.logger.emit("import.limit_rollback_failed", {
         errorCategory: "limit_rollback_failed",
       });
       throw new StartImportHttpError(
@@ -481,27 +516,40 @@ function capVisibleFilename(filename: string): string {
   ].join("");
 }
 
-function mapLimitDenial(denial: {
-  readonly allowed: false;
-  readonly code: string;
-  readonly retryAfterSeconds: number;
-}): StartImportHttpError {
-  return denial.code === "IMPORT_LIMIT_STATE_UNAVAILABLE"
-    ? new StartImportHttpError(
-        503,
-        "import_limit_unavailable",
-        "Import capacity cannot be checked right now. Try again later.",
-      )
-    : new StartImportHttpError(
-        429,
-        "rate_limited",
-        "Too many resume imports were started. Try again later.",
-        denial.retryAfterSeconds,
-      );
+function mapLimitDenial(outcome: ImportLimitOutcome): StartImportHttpError {
+  const mapped = mapLimitOutcomeToHttpResponse(outcome);
+  return new StartImportHttpError(
+    mapped.statusCode,
+    mapped.code as StartImportPublicErrorCode,
+    mapped.message,
+    mapped.retryAfterSeconds,
+  );
 }
 
-function sizeBucket(sizeBytes: number): string {
+function sizeBucket(
+  sizeBytes: number,
+): "under_1_mib" | "1_to_5_mib" | "5_to_10_mib" {
   if (sizeBytes < 1024 * 1024) return "under_1_mib";
   if (sizeBytes < 5 * 1024 * 1024) return "1_to_5_mib";
   return "5_to_10_mib";
+}
+
+function uploadRejectionCategory(
+  error: unknown,
+):
+  | "unsupported_format"
+  | "empty_file"
+  | "oversized_file"
+  | "unsafe_upload_metadata" {
+  if (error instanceof StartImportHttpError) {
+    switch (error.code) {
+      case "unsupported_format":
+        return "unsupported_format";
+      case "empty_file":
+        return "empty_file";
+      case "oversized_file":
+        return "oversized_file";
+    }
+  }
+  return "unsafe_upload_metadata";
 }

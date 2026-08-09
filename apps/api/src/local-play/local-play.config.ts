@@ -15,6 +15,9 @@ export interface LocalPlayConfig {
   readonly privateStorageRoot: string;
   readonly privateStorageSigningSecret: string;
   readonly maxSignedReferenceTtlSeconds: number;
+  readonly providerSessionRoot: string;
+  readonly providerSessionEncryptionSecret: string;
+  readonly maxProviderSessionBytes: number;
 }
 
 export function isLocalPlayModeEnv(
@@ -42,6 +45,21 @@ export function readLocalPlayConfig(
           z.number().int().positive().max(3600),
         )
         .default(300),
+      NUVITAE_PROVIDER_SESSION_ROOT: z
+        .string()
+        .min(1)
+        .default("/var/lib/nuvitae/provider-sessions"),
+      NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET: z.string().min(32),
+      NUVITAE_PROVIDER_SESSION_MAX_BYTES: z
+        .preprocess(
+          (value) => (value === undefined ? 65_536 : Number(value)),
+          z
+            .number()
+            .int()
+            .positive()
+            .max(16 * 1024 * 1024),
+        )
+        .default(65_536),
     })
     .parse(env);
   return {
@@ -51,5 +69,9 @@ export function readLocalPlayConfig(
     privateStorageSigningSecret: parsed.NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET,
     maxSignedReferenceTtlSeconds:
       parsed.NUVITAE_PRIVATE_STORAGE_MAX_SIGNED_REFERENCE_TTL_SECONDS,
+    providerSessionRoot: parsed.NUVITAE_PROVIDER_SESSION_ROOT,
+    providerSessionEncryptionSecret:
+      parsed.NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET,
+    maxProviderSessionBytes: parsed.NUVITAE_PROVIDER_SESSION_MAX_BYTES,
   };
 }

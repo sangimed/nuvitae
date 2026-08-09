@@ -39,6 +39,7 @@ describe("resume or discard draft PostgreSQL integration", () => {
         nextRequestId: () =>
           `90000000-0000-4000-8000-${String(requestId++).padStart(12, "0")}`,
       },
+      { emit: () => undefined },
     );
   });
 
@@ -145,11 +146,17 @@ describe("resume or discard draft PostgreSQL integration", () => {
 
     expect(result).toMatchObject({
       ok: true,
-      response: {
-        status: "import_discarded",
-        deletionJobId: "80000000-0000-4000-8000-000000000001",
-      },
+      response: { status: "import_discarded" },
     });
+    if (!result.ok) return;
+    // The deletion job id is server-generated so a client-supplied operation
+    // id can never collide with or reparent another user's deletion row.
+    expect(result.response.deletionJobId).not.toBe(
+      "80000000-0000-4000-8000-000000000001",
+    );
+    expect(result.response.deletionJobId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
     const draft = await database.dataSource.manager.findOneByOrFail(
       ImportDraftEntity,
       { id: ids.draft },

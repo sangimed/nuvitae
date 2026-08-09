@@ -2,6 +2,10 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  oxc: false,
+  esbuild: {
+    jsx: "automatic",
+  },
   resolve: {
     alias: {
       "@nuvitae/contracts": fileURLToPath(
@@ -12,6 +16,12 @@ export default defineConfig({
       ),
       "@nuvitae/extraction": fileURLToPath(
         new URL("./packages/extraction/src/index.ts", import.meta.url),
+      ),
+      "@nuvitae/import-application/testing": fileURLToPath(
+        new URL(
+          "./packages/import-application/src/providers/testing/index.ts",
+          import.meta.url,
+        ),
       ),
       "@nuvitae/import-application": fileURLToPath(
         new URL("./packages/import-application/src/index.ts", import.meta.url),
@@ -33,8 +43,10 @@ export default defineConfig({
       "apps/**/*.test.ts",
       "apps/**/*.test.tsx",
       "packages/**/*.test.ts",
+      "tests/architecture/**/*.test.ts",
       "tests/contract/**/*.test.ts",
       "tests/integration/import-resume/**/*.test.ts",
+      "tests/security/**/*.test.ts",
     ],
     environment: "node",
   },

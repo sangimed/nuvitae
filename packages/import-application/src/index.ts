@@ -1,3 +1,35 @@
 export type { ImportProcessingLimits } from "./import-processing-limits.js";
+export * from "./import-capacity.js";
+export * from "./import-limits.js";
+export * from "./typeorm-import-limit-store.js";
+export * from "./observability/import-events.js";
 export * from "./process-extraction.js";
+export * from "./semantic-parser/provider-errors.js";
+export * from "./semantic-parser/provider-connections.js";
+export * from "./semantic-parser/limited-deterministic-partial-fallback.js";
+export * from "./semantic-parser/resume-semantic-parser-provider.js";
+export * from "./semantic-parser/semantic-candidates-to-draft.js";
+export * from "./semantic-parser/semantic-warning-generation.js";
+export * from "./semantic-parser/validate-semantic-response.js";
+export {
+  parseCodexSessionMaterial,
+  type CodexSessionMaterial,
+} from "./providers/codex-session.js";
+export {
+  CodexDirectProviderAdapter,
+  codexDirectProviderKind,
+  type CodexDirectProviderAdapterPorts,
+} from "./providers/codex-direct-provider-adapter.js";
+export {
+  CodexDirectTransport,
+  type CodexDirectHttpStatusCategory,
+  type CodexDirectTransportProtocolShape,
+  type CodexDirectTransportFailureCategory,
+  type CodexDirectTransportOptions,
+  type CodexDirectTransportRequest,
+  type CodexDirectTransportResult,
+  type CodexDirectTransportTiming,
+  type CodexDirectTransportTimingPhase,
+} from "./providers/codex-direct-transport.js";
+export * from "./validation/semantic-validation.js";
 export * from "./validate-document.js";

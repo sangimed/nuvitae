@@ -1,0 +1,53 @@
+{
+  "observation_timestamp": "2026-08-05T21:10:36.065Z",
+  "audited_upstream_revision_identifiers": {
+    "compatibilityImplementation": "4c331166c40cccb6e4d2da1136c921faed1cc8c1",
+    "hermesAgent": "5d6aae02bffa7714c4a94f3a0900b37774442dea",
+    "officialCodex": "3016671bb077c43448b8fa88f3edfa9772e17058"
+  },
+  "deployment_mode": "local-docker-desktop_same_host_browser",
+  "attempt": "second_automatic_callback_correction",
+  "redirect_metadata": {
+    "scheme": "http",
+    "hostname": "localhost",
+    "port": "1455",
+    "path": "/auth/callback",
+    "hostname_classification": "localhost"
+  },
+  "localhost_address_families": "ipv4_only",
+  "ipv4_preflight_result": "success",
+  "ipv6_preflight_result": "success",
+  "docker_ipv6_loopback_publication": "accepted",
+  "selected_redirect_hostname": "localhost",
+  "selected_host_bindings": [
+    "127.0.0.1:1455",
+    "[::1]:1455"
+  ],
+  "ipv4_host_loopback_published": true,
+  "ipv6_host_loopback_published": true,
+  "ipv6_host_loopback_safely_unsupported": false,
+  "no_wildcard_host_binding": true,
+  "relay_listener_ready": true,
+  "broker_callback_listener_ready": true,
+  "callback_host_port": 1455,
+  "container_relay_port": 2455,
+  "host_binding_loopback_only": true,
+  "authorization_url_validation": true,
+  "callback_listener_ready": true,
+  "callback_reachability": true,
+  "callback_received": true,
+  "browser_callback_result": "callback_received_unknown_family",
+  "callback_address_family": "unknown",
+  "state_validation": true,
+  "token_exchange_result": "succeeded",
+  "access_token_present": true,
+  "refresh_token_present": true,
+  "expiry_present": true,
+  "account_identifier_present": true,
+  "raw_credentials_exposed_to_probe": false,
+  "persistent_credential_artifact_found": false,
+  "relay_removed": true,
+  "host_callback_port_removed": true,
+  "secret_scan_result": "passed",
+  "safe_final_state": "success_credentials_destroyed"
+}

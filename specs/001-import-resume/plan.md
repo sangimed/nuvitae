@@ -6,17 +6,31 @@
 
 ## Summary
 
-Build Nuvitae's import-first onboarding feature for authenticated users who upload an existing PDF or DOCX resume. The feature validates the document deterministically, prepares a provider-ready source representation from physical PDF.js/DOCX extraction, uses a provider-independent AI semantic parser as the primary semantic mapping path whenever a usable provider is connected, creates a temporary review draft only from candidate values with required document evidence, flags uncertainty for review, and creates structured resume data only after explicit user confirmation. Source documents, provider-ready source artifacts, and source-reconstructing artifacts remain separate from the structured resume and are deleted no later than 7 days after the original upload.
+Build Nuvitae's import-first onboarding feature for authenticated users who upload an existing PDF or DOCX resume. The active V1 implementation validates the document with Nuvitae-owned deterministic PDF/DOCX extraction, prepares a normalized transcript and source evidence, uses a provider-independent AI semantic parser as the primary semantic mapping path whenever a usable provider is connected, creates a temporary review draft only from candidate values with required document evidence, flags uncertainty for review, and creates structured resume data only after explicit user confirmation. Source documents, extraction artifacts, and source-reconstructing artifacts remain separate from the structured resume and are deleted no later than 7 days after the original upload.
 
 The repository now contains implemented foundations for the Nuvitae-owned full-stack architecture. This plan preserves those foundations and extends them with the provider-independent AI semantic parsing boundary required by the amended specification, consistent with the accepted hybrid foundation ADR and [ADR 0002](../../docs/adr/0002-container-only-development.md).
 
 The implementation plan adopts a container-only workflow for development, build, test, database, queue, parsing, migration, and runtime commands. This is required for reproducibility, host independence, dependency isolation, parser security, CI parity, and easier self-hosting across Windows with WSL 2, Linux, and macOS.
 
+**Strategic direction (2026-08-05)**: The approved strategy is product-first. **Nuvitae Community** is the first MVP release: self-hosted, distributed through the existing Docker-first setup, free to use, and powered by the user's own Codex access connected through OAuth. Direct Codex OAuth is the production primary AI connection path and part of onboarding; hosted managed AI is deferred to a later commercial edition and is not on the Community critical path. The plan below delivers Community in vertical tranches: real Codex import → credible resume + PDF → visual editor → reversible Codex editing → Community alpha readiness. Existing completed foundations, historical spike evidence, and unresolved security gates are preserved.
+
+**Future direction (post-V1, not scheduled)**: The proposed **Grounded
+Multimodal Import (V2)** architecture is documented in
+[`docs/research/grounded-multimodal-import-v2.md`](../../docs/research/grounded-multimodal-import-v2.md).
+It is research-only and does not alter this plan or create implementation work.
+V1 remains **Grounded Text Import**, with the current deterministic PDF.js and
+OOXML extraction active and canonical Nuvitae-owned evidence authoritative for
+grounding. The proposed long-term boundary is a provider-neutral Document
+Understanding Layer producing canonical `NuvitaeDocument` data. Docling is the
+first candidate for a controlled benchmark, not a selected production engine.
+Any future V2 spike must first satisfy the documented V1 decision gate; no
+multimodal provider capability is assumed or selected.
+
 ## Technical Context
 
 **Language/Version**: TypeScript on pinned Node.js 20+ executed only inside Docker images for web, API, workers, domain packages, and extraction orchestration.
 
-**Primary Dependencies**: Next.js App Router, React, and strict TypeScript for `apps/web`; NestJS with the default Express platform for the REST-first `apps/api`; NestJS standalone application plus BullMQ for `apps/worker`; Zod runtime schemas in `packages/contracts`; TypeORM with `@nestjs/typeorm`, the PostgreSQL `pg` driver, TypeORM migrations, and the Data Mapper pattern in shared `packages/persistence`; PostgreSQL for relational domain state; private object storage for source documents and derived artifacts; Redis-compatible queue/rate-limit backend for processing jobs; PDF.js (`pdfjs-dist`) for deterministic PDF page counting and text extraction with page and coordinate provenance; a DOCX adapter using `yauzl` plus `fast-xml-parser` for Office Open XML text extraction with package/paragraph/run provenance; isolated LibreOffice headless conversion to PDF only for DOCX rendered-page-count validation; provider-independent `ResumeSemanticParserProvider` boundary with provider capability discovery, connection state, strict Zod validation for a versioned Nuvitae extraction response, evidence grounding validation, no-invention checks, warning generation, and provider failure mapping; a bounded Codex direct-OAuth compatibility spike using `CodexDirectProviderAdapter`, an isolated `CodexOAuthBroker`, OpenAI-hosted OAuth, and direct Codex ChatGPT transport as the candidate first self-hosted provider path. All application dependencies are installed and executed in containers.
+**Primary Dependencies**: Next.js App Router, React, and strict TypeScript for `apps/web`; NestJS with the default Express platform for the REST-first `apps/api`; NestJS standalone application plus BullMQ for `apps/worker`; Zod runtime schemas in `packages/contracts`; TypeORM with `@nestjs/typeorm`, the PostgreSQL `pg` driver, TypeORM migrations, and the Data Mapper pattern in shared `packages/persistence`; PostgreSQL for relational domain state; private object storage for source documents and derived artifacts; Redis-compatible queue/rate-limit backend for processing jobs; the active V1 PDF.js (`pdfjs-dist`) adapter for deterministic PDF page counting and selectable-text extraction with page/text-item provenance; the active V1 DOCX adapter using `yauzl` plus `fast-xml-parser` for Office Open XML extraction with package/paragraph/run provenance; isolated LibreOffice headless conversion to PDF only for DOCX rendered-page-count validation; provider-independent `ResumeSemanticParserProvider` boundary with provider capability discovery, connection state, strict Zod validation for a versioned Nuvitae extraction response, evidence grounding validation, no-invention checks, warning generation, and provider failure mapping; a proposed future provider-neutral Document Understanding Layer and canonical `NuvitaeDocument` representation (no implementation or production engine selected); the completed direct-Codex OAuth compatibility spike (`CodexDirectProviderAdapter`, isolated `CodexOAuthBroker`, OpenAI-hosted OAuth, direct Codex ChatGPT transport) whose T196-T200 evidence is reusable, whose T201 matrix is complete and all-passing, whose T245 lifecycle proof was accepted on 2026-08-07, and whose T202 is measured, while T203 was re-evaluated on 2026-08-08 as NO-GO, finalized T246 qualification is FAILED, T217 is complete, and T164/T165 remain incomplete or blocked; a Community application shell and lightweight design system; a clean visual resume editor with section reordering, visible save status, lightweight undo, and a minimal resume dashboard; at least one credible resume template with a shared preview/export renderer and ATS-friendly PDF generation; reversible contextual AI editing through the Codex path with before/after review, accept/reject/regenerate/undo, and fact-preservation checks; and minimal privacy-safe product metrics. All application dependencies are installed and executed in containers.
 
 **Storage**: PostgreSQL for users, imported documents, import drafts, warnings, extracted fields, structured resumes, deletion jobs, and audit events. PostgreSQL runs as a Compose service in development and test. Phase 1 uses a Docker-managed named volume as the local private storage implementation for uploaded files and temporary source-reconstructing artifacts, with keys scoped by user/import and retention deadline. The named private-storage volume is mounted only into services that require private source/artifact access. A managed-cloud S3-compatible storage adapter remains a later implementation boundary and is not introduced during bootstrap. The Redis-compatible queue/rate-limit backend runs as a Compose service.
 
@@ -36,11 +50,11 @@ The implementation plan adopts a container-only workflow for development, build,
 
 **Container Workflow**: The only supported host prerequisites are Docker, Git, GitHub CLI, and the chosen coding agent. Development uses a pinned `workspace` image with Node.js, Corepack, pnpm, and shared developer tools. Source code is mounted into `/workspace` inside development containers, while dependency caches, pnpm store, and `node_modules` live in Docker-managed volumes. Production uses separate non-root web, API, and worker images or stages. LibreOffice headless and parser dependencies run only in the worker image or an isolated parser image. Development and CI use the same Dockerfiles and Compose definitions wherever practical. Known trade-offs are slower cold builds, Docker Desktop file-watch behavior, cache and volume management, image maintenance, and WSL 2 integration considerations.
 
-**Scale/Scope**: First product feature for resume creation onboarding. Scope covers upload, validation, processing, AI-first semantic parsing through a provider boundary, review, confirmation, cancellation, retry, source deletion, expiry, and a real manual-entry route at `/resumes/new/manual`. It excludes training a Nuvitae-owned model, selecting the hosted commercial AI provider, OCR, job-description adaptation, AI rewriting, templates, final PDF generation, ATS scoring, cover letters, job tracking, payment/subscription product implementation, and automatic applications.
+**Scale/Scope**: First product feature for resume creation onboarding, delivered as the Nuvitae Community MVP. Scope covers Docker-first Community installation and first-run onboarding, Codex OAuth connection/reconnect/disconnect/status and provider-unavailable recovery, upload, validation, processing, Codex-backed AI-first semantic parsing through the provider boundary, bounded deterministic fallback, review, safe confirmation (all reviewed fields carry over), cancellation, retry, source deletion, expiry, a real manual-entry route at `/resumes/new/manual`, a clean visual editor with section reordering and visible save status, at least one credible template, live preview, ATS-friendly PDF export, save-and-reopen with a minimal resume dashboard, up to five reversible contextual AI actions with accept/reject/regenerate/undo and fact preservation, and minimal privacy-safe product metrics. It defers hosted managed AI, Nuvitae-managed usage credits, billing, subscriptions, provider marketplace, multiple production providers, enterprise controls, collaboration, exhaustive hardening, OCR, ATS scoring, cover letters, job tracking, and automatic applications to a later hosted commercial edition.
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - **Non-technical UX**: PASS. The user flow is visual, guided, and excludes JSON, YAML, prompts, model names, parser internals, credentials, session details, and provider configuration. It includes plain-language disclosure that resume content is sent to the configured AI provider when provider-backed semantic parsing is used.
 - **Import-first onboarding**: PASS. Import is the primary create-resume path while manual entry remains available.
@@ -50,7 +64,7 @@ The implementation plan adopts a container-only workflow for development, build,
 - **Protected templates**: PASS. Template source, template configuration, PDFs, and rendering components are out of scope.
 - **Human and ATS readability**: PASS. The plan preserves structured role, employer, date, location, education, skill, language, project, certification, and link relationships for later rendering.
 - **Security and privacy**: PASS. Authorization, upload validation, hostile document handling, private storage, isolation, rate limits, logging limits, retention, and deletion are first-class design requirements.
-- **Provider independence and no-AI usability**: PASS. Semantic parsing is expressed through `ResumeSemanticParserProvider` and a Nuvitae-owned extraction schema. Codex remains only the candidate first self-hosted provider through a separate direct-OAuth compatibility spike, with production adapter work blocked until a GO or qualifying CONDITIONAL GO; no provider SDK, provider-native JSON, provider token, Codex route, header, or OAuth detail enters the domain. Without a usable provider, upload, validation, retry, deletion, manual entry, and limited deterministic partial extraction where available remain usable, but the product does not claim reliable full semantic parsing.
+- **Provider independence and no-AI usability**: PASS. Semantic parsing is expressed through `ResumeSemanticParserProvider` and a Nuvitae-owned extraction schema. Direct Codex OAuth is the production primary path for the Community MVP, implemented only as an adapter behind that boundary; production adapter implementation remains gated on the direct-OAuth decision-gate conditions (T203 qualifying decision and the T164/T165 mandatory security conditions). No provider SDK, provider-native JSON, provider token, Codex route, header, or OAuth detail enters the domain. Without a usable provider, upload, validation, retry, deletion, manual entry, and limited deterministic partial extraction where available remain usable, and the bounded deterministic fallback plus provider-recovery actions are wired so accepted uploads do not silently dead-end; the product does not claim reliable full semantic parsing without a usable provider.
 - **Accessibility and recovery**: PASS. Upload, progress, review, warning, confirmation, cancellation, retry, deletion, and failure states include accessibility and recovery requirements.
 - **Quality gates**: PASS. Required tests, fixture evaluations, security checks, accessibility checks, documentation, and failure-state validation are identified in research and quickstart.
 
@@ -129,22 +143,51 @@ tests/
 └── security/
 ```
 
-**Structure Decision**: Use a Nuvitae-owned full-stack TypeScript monorepo with `apps/web` as a Next.js App Router application using `src/app`, `apps/api` as a NestJS REST API on Express, `apps/worker` as a separate NestJS standalone BullMQ worker, and separate contracts, domain, extraction, import-application, persistence, storage, and fixture packages. Product routes in the web app use `app/**/page.tsx`; `apps/web/src/main.tsx` is not part of the plan. The API bootstrap uses `apps/api/src/main.ts`, `apps/api/src/app.module.ts`, and NestJS controllers/services; `apps/api/src/server.ts` is not part of the plan. Shared TypeORM DataSource configuration, entities, repositories, mappers, and migrations live in `packages/persistence`, not `apps/api/src/db`, whenever API and worker access is required. The API uses `TypeOrmModule.forRootAsync` or an equivalent asynchronous configuration, `TypeOrmModule.forFeature` where appropriate, environment-validated PostgreSQL configuration, injectable repository abstractions or persistence services, and database health checks that do not expose secrets. The worker uses the same persistence package and compatible TypeORM DataSource configuration, does not import API implementation modules, and acknowledges queue jobs only after required persistence operations succeed. `packages/extraction` remains responsible for deterministic physical text/source extraction and parser isolation; `packages/import-application` orchestrates the upload-to-review pipeline, owns the provider-independent `ResumeSemanticParserProvider` boundary, validates provider output against contracts, performs grounding/no-invention checks, and maps failures to review/recovery states. The domain package must not depend on Next.js, NestJS, Zod transport schemas, TypeORM, PostgreSQL drivers, database decorators, BullMQ, Codex, OpenAI, ChatGPT, Claude, Ollama, provider SDKs, or provider-native JSON. TypeORM entities are persistence models, not business-domain entities; explicit mappers convert persistence rows before they enter the domain layer. Reactive Resume and Resuml remain references only, not imported runtime foundations.
+**Structure Decision**: Use a Nuvitae-owned full-stack TypeScript monorepo with `apps/web` as a Next.js App Router application using `src/app`, `apps/api` as a NestJS REST API on Express, `apps/worker` as a separate NestJS standalone BullMQ worker, and separate contracts, domain, extraction, import-application, persistence, storage, and fixture packages. Product routes in the web app use `app/**/page.tsx`; `apps/web/src/main.tsx` is not part of the plan. The API bootstrap uses `apps/api/src/main.ts`, `apps/api/src/app.module.ts`, and NestJS controllers/services; `apps/api/src/server.ts` is not part of the plan. Shared TypeORM DataSource configuration, entities, repositories, mappers, and migrations live in `packages/persistence`, not `apps/api/src/db`, whenever API and worker access is required. The API uses `TypeOrmModule.forRootAsync` or an equivalent asynchronous configuration, `TypeOrmModule.forFeature` where appropriate, environment-validated PostgreSQL configuration, injectable repository abstractions or persistence services, and database health checks that do not expose secrets. The worker uses the same persistence package and compatible TypeORM DataSource configuration, does not import API implementation modules, and acknowledges queue jobs only after required persistence operations succeed. `packages/extraction` remains the active V1 implementation of Nuvitae-owned deterministic physical document extraction and parser isolation. The future provider-neutral Document Understanding Layer remains a proposed boundary above parser-specific implementations and is not implemented by this plan. `packages/import-application` orchestrates the upload-to-review pipeline, owns the provider-independent `ResumeSemanticParserProvider` boundary, validates provider output against contracts, performs grounding/no-invention checks, and maps failures to review/recovery states. The domain package must not depend on Next.js, NestJS, Zod transport schemas, TypeORM, PostgreSQL drivers, database decorators, BullMQ, Codex, OpenAI, ChatGPT, Claude, Ollama, provider SDKs, provider-native JSON, or parser-native document schemas. TypeORM entities are persistence models, not business-domain entities; explicit mappers convert persistence rows before they enter the domain layer. Reactive Resume and Resuml remain references only, not imported runtime foundations.
 
 ## Preserved Architecture
 
-The AI-first plan extends, rather than replaces, the implemented foundations: Docker-only development and runtime commands; Next.js web application; NestJS REST API; NestJS BullMQ worker; PostgreSQL and TypeORM persistence; private source storage; PDF.js PDF extraction; Office Open XML DOCX extraction plus isolated LibreOffice rendered-page validation; upload validation; source provenance; review and confirmation flows; manual-entry fallback; retention/deletion boundaries; local playable stack; and Playwright/browser acceptance workflow.
+The AI-first plan extends, rather than replaces, the implemented foundations: Docker-only development and runtime commands; Next.js web application; NestJS REST API; NestJS BullMQ worker; PostgreSQL and TypeORM persistence; private source storage; active V1 PDF.js PDF extraction; active V1 Office Open XML DOCX extraction plus isolated LibreOffice rendered-page validation; upload validation; source provenance; review and confirmation flows; manual-entry fallback; retention/deletion boundaries; local playable stack; and Playwright/browser acceptance workflow.
 
-The existing deterministic extraction components remain necessary, but their role is clarified: they validate and safely prepare source text, page counts, language, source locations, and provider-ready evidence. They do not own semantic resume reconstruction when a connected provider is usable.
+The existing deterministic extraction components remain necessary and supported for V1. They validate and safely prepare source text, page counts, language, source locations, and provider-ready evidence. They do not own semantic resume reconstruction when a connected provider is usable, and they are not treated as the assumed long-term document-understanding engine. The future engine boundary is evaluated separately before any migration decision.
+
+## Proposed Document Understanding Layer
+
+The future architecture introduces a provider-neutral document boundary above
+format- and engine-specific extraction:
+
+```text
+validated born-digital PDF/DOCX
+→ DocumentUnderstandingProvider (proposed; interface not implemented)
+→ canonical NuvitaeDocument
+→ ResumeSemanticParserProvider
+→ nuvitae.semantic-extraction.v2
+→ Nuvitae canonicalization / grounding / review
+```
+
+`NuvitaeDocument` is the proposed import-scoped canonical runtime/document
+representation. It can contain document metadata, pages, stable Nuvitae-owned
+blocks/fragments, reading order, optional bounding boxes, sections, tables,
+optional style signals, retained assets, source provenance, and bounded engine
+quality metadata. It is not a persistence design and is distinct from temporary
+source-reconstructing artifacts and structured resume domain state.
+
+The import pipeline must not depend on `DoclingDocument`, PyMuPDF dictionaries,
+Azure `analyzeResult`, Unstructured elements, Apryse JSON, Google layout output,
+Adobe extraction JSON, or any equivalent provider-native schema. The current
+PDF.js/OOXML stack is the active V1 implementation and may later be adapted as
+one implementation of this boundary. No replacement or migration is scheduled
+before the controlled benchmark in
+[`docs/research/document-understanding-layer-2026-08-09.md`](../../docs/research/document-understanding-layer-2026-08-09.md).
 
 ## AI-First Semantic Parsing Architecture
 
-The import processing pipeline is:
+The active V1 import processing pipeline is:
 
 ```text
 Document upload
 → deterministic validation and safety checks
-→ provider-ready document or extracted source representation
+→ current V1 PDF.js/OOXML extraction and normalized source fragments
 → AI semantic parsing through ResumeSemanticParserProvider
 → versioned Nuvitae extraction response
 → strict Zod schema validation
@@ -156,17 +199,36 @@ Document upload
 → StructuredResume creation
 ```
 
+The future document-aware pipeline is the same semantic boundary with one
+additional canonical layer:
+
+```text
+PDF/DOCX
+→ Document Understanding Layer
+→ NuvitaeDocument
+→ Nuvitae-owned semantic source references
+→ ResumeSemanticParserProvider / nuvitae.semantic-extraction.v2
+→ deterministic canonicalization, grounding, identity, and review
+```
+
+The future provider may receive structured document data only, or structured
+data plus separately qualified visual context. Multimodality is optional; the
+provider boundary must continue to support text-only and local/self-hosted
+providers.
+
 New provider abstractions and contracts:
 
-- `ResumeSemanticParserProvider`: domain-independent application boundary implemented by provider adapters. It accepts a controlled extraction request and returns a provider-agnostic Nuvitae extraction response or a typed provider failure.
+- `ResumeSemanticParserProvider`: domain-independent application boundary implemented by provider adapters. It accepts a controlled extraction request built from the active V1 transcript or a future `NuvitaeDocument` projection and returns a provider-agnostic Nuvitae extraction response or a typed provider failure.
 - Provider capabilities: supported input modes, supported formats, max pages/size, evidence modes, structured-output support, non-interactive support, timeout behavior, and whether original files, rendered images, extracted text, or combinations are supported.
 - Provider runtime connection state: `not_configured`, `login_pending`, `connected`, `login_cancelled`, `disconnected`, `auth_expired`, `auth_revoked`, `unavailable`, `rate_limited`, `quota_exceeded`, `unsupported_capability`, `timeout`, `malformed_output`.
 - Versioned Nuvitae extraction response: candidate sections, field values, relationships, warnings, evidence records, explicit/inferred classification, confidence category, response schema version, and provider-neutral diagnostics.
 - Strict validation: Zod schemas reject malformed output, unknown fields, invalid relationships, unsupported values, provider-native schema leakage, missing evidence, invented facts, and confidence/category violations before data reaches import review.
-- Evidence contract: every AI-produced candidate includes document location, exact source text or source fragment identifier, explicit-versus-inferred classification, and confidence category. Unsupported or ungrounded values are rejected or marked unusable.
+- Evidence contract: current V1 retains its flattened transcript and deterministic native provenance. The future `nuvitae.semantic-extraction.v2` boundary uses Nuvitae-owned fragment/block `sourceRefs` with bounded exact quotes; Nuvitae resolves those refs and reconstructs authoritative evidence. Unsupported or ungrounded values are rejected or marked unusable.
 - Warning generation: missing, ambiguous, duplicate, conflicting, inferred, low-confidence, partial, invalid-provider-output, ungrounded, unsupported-provider, and provider-failure warnings are reviewable and block confirmation until addressed where applicable.
 
 The first self-hosted provider candidate is Codex through a separate direct-OAuth compatibility spike. It must use the user's existing ChatGPT/Codex subscription only through a dedicated infrastructure-level broker, must run non-interactively from Docker after login, and must remain outside the import domain. Future hosted commercial provider selection is out of scope and must not assume reuse of user ChatGPT subscription credentials.
+
+**Community provider decision (2026-08-05, T215 update 2026-08-08)**: For the Community MVP, direct Codex OAuth is the production primary AI connection path, not merely a candidate. The plan reuses the validated direct-OAuth spike evidence where it qualifies (T196 upstream audit, T197 security design, T198 browser OAuth login proof, T199 encrypted credential lifecycle, T200 minimal direct invocation, and the accepted T245 lifecycle proof) and keeps one authoritative semantic parsing path: `Nuvitae worker -> ResumeSemanticParserProvider -> CodexDirectProviderAdapter -> isolated CodexOAuthBroker -> OpenAI-hosted OAuth -> direct Codex ChatGPT transport`. The T201 semantic matrix is complete (six cases, all passing), T202 is measured, T213 entrypoint/browser handoff, T214 callback/status/ready-state UI, and T215 local lifecycle recovery are complete, and T245 is accepted (2026-08-07); production adapter implementation (T164/T165) remains incomplete and blocked because T203 remains NO-GO: finalized T246 qualification is FAILED, while live provider evidence and moderated human validation remain pending. The Community product decision does not by itself authorize or complete the production adapter. No OAuth spike task is marked complete merely because Community depends on it.
 
 ## Codex Direct-OAuth Compatibility Spike
 
@@ -184,6 +246,58 @@ Nuvitae worker
 ```
 
 Codex-specific OAuth, tokens, backend routes, request headers, response types, and transport details stay outside `packages/domain`, provider-independent contracts, import entities, and normal job payloads. The import domain consumes only the Nuvitae-owned provider-independent semantic extraction response.
+
+**Current spike status (2026-08-05, historical)**: T196 (upstream audit), T197 (security design), T198 (browser OAuth login proof, local Docker Desktop same-host mode), T199 (encrypted credential lifecycle: persistence, refresh, single-flight, logout, deletion), and T200 (minimal direct invocation, HTTP 200 + valid SSE) are complete and are reusable evidence for the Community path. The 2026-08-05 qualification run implemented the T208 deterministic-enrichment contract in the spike (deterministic offline matrix passes 6/6 under the corrected contract; historical evidence unchanged), registered C04-B02/B03, C05-B01, and C06-B01 Campaign-B attempts, and recorded the T203 gate decision as NO-GO for production adapter implementation at this time because no valid ChatGPT/Codex session existed on the host (C04-C06 live cases not executable; fresh browser login blocked). T201 was incomplete at that time: C01-C03 passed canonical live validation, C04 B01 remained a failed immutable attempt under its original physical-coordinate contract, and C05-C06 were unexecuted. T202 was recorded as BLOCKED. T164/T165 production adapter tasks remained incomplete and blocked by the T203 NO-GO. This block is preserved as historical context.
+
+**Historical spike status (2026-08-06)**: T196-T200 are complete and reusable. T243 executed the registered Campaign-B attempts: C04-B02 failed immutably at credential recovery (`transport_failure`); C04-B03 (corrected T208 contract), C05-B01, and C06-B01 passed canonical live validation. The T201 semantic matrix is complete and all-passing (`matrix_state: all_cases_live_passed`; authoritative aggregate `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t201-matrix.json`). T202 has been re-measured offline from the accepted evidence by the deterministic evaluator `spikes/codex-direct-oauth/lib/t202-evaluator.mjs`: every evidence-supported metric passes; latency, cancellation, quota behavior, and non-technical onboarding feasibility remain explicitly unmeasured (canonical record `docs/research/codex-direct-oauth-evaluation.md`, sanitized aggregate `codex-direct-oauth-t202-metrics.json`). The T203 gate was re-evaluated on 2026-08-06 and remains **NO-GO** for production adapter implementation: the mandatory real-document live Codex semantic gate (T246) was not yet run, bounded-fallback wiring (T217) was partial, and non-technical onboarding feasibility was unmeasured. T164/T165 remain incomplete and blocked by the NO-GO.
+
+The paragraph above is a dated historical snapshot. Current status is governed
+by the reconciliation in `research.md` and the 2026-08-08 sections below.
+
+**Historical spike status (2026-08-07)**: T245 completed and was accepted on
+2026-08-07: fresh browser OAuth login, callback completion,
+`connection_status_after_callback: connected`, encrypted persistence, restart
+recovery, successful invocation after restart (T200, exact HTTP 200), live
+refresh with rotation, explicit reconnect, disconnect/credential removal, and
+deterministic invalid-grant recovery — 9/9 mandatory criteria passing (8
+live-observed; 1 deterministic-only invalid-grant classification); provider-side
+remote revocation not exercised and not required (canonical T245 does not
+require it). Authoritative aggregate:
+`spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`.
+T245 satisfies T203 re-evaluation trigger 1 and unblocks T213-T215 Community
+connection-UI qualification. T213 is complete for the production
+entrypoint/browser handoff, T214 callback/status/ready-state, and T215 local
+lifecycle recovery. T216 production semantic-provider wiring is also complete
+offline/local; the T203 gate remains **NO-GO** for qualified live production
+use. The remaining blockers are T246 real-document live Codex semantic
+qualification failure, the separately pending real production OAuth/import
+proof, and moderated human onboarding validation.
+
+**Current spike status (2026-08-08)**: T216 production semantic-provider
+wiring and T217 bounded-fallback production
+wiring is complete. The worker now performs at most one primary provider call
+and one local deterministic fallback execution, classifies failures through the
+closed provider vocabulary, preserves semantic-quality failures as terminal,
+and atomically persists at most one threshold-qualified partial draft. Queue
+redelivery is limited to one delivery, and the API/UI expose a safe
+provider-neutral terminal state when recovery cannot produce a draft. Focused
+worker/application/UI tests, Docker-backed import persistence and security
+tests, and offline T246 regression tests pass. The T203 decision remains
+**NO-GO** because T246 is finalized as FAILED on semantic recall (C01/C04).
+Deterministic/local onboarding feasibility now passes: T213 provides the
+production Codex connection action and browser handoff, T214 provides the
+callback/status/ready-state UI, and T215 provides local lifecycle recovery.
+Live provider/import evidence and moderated human validation remain pending.
+Evidence is recorded in
+`docs/research/codex-direct-oauth-onboarding-feasibility.md`; no live OAuth or
+provider activity was used. T216 resolves the prior production preflight gap:
+the worker no longer registers an unconditional `undefined` semantic provider;
+it injects the TypeORM owner-bound connection repository and private encrypted
+session store, then resolves readiness and session material per import job.
+The offline/local preflight passes, but this is not live proof.
+The 2026-08-09 semantic-import recall correction is also validated offline only:
+the 68/68 offline regression suite passes, and one new live semantic smoke
+revalidation remains pending. This does not reopen or reinterpret T246.
 
 The spike order is mandatory:
 
@@ -240,29 +354,80 @@ The final decision records pinned upstream revisions; OAuth and transport facts;
 
 ## No-Provider Behavior
 
-When no provider is configured, disconnected, expired, unavailable, rate-limited, quota-exceeded, timed out, or returns invalid structured output, Nuvitae must not claim reliable full semantic parsing. The plan maps these states to retry, reconnect, choose another configured provider, limited deterministic partial extraction where available, or manual entry. Upload validation, source deletion, retention, manual entry, and review of already-created supported drafts remain available without a provider.
+When no provider is configured, disconnected, expired, unavailable, rate-limited, quota-exceeded, timed out, or returns invalid structured output, Nuvitae must not claim reliable full semantic parsing. The plan maps these states to retry, reconnect, choose another configured provider, limited deterministic partial extraction where available, or manual entry. Upload validation, source deletion, retention, manual entry, and review of already-created supported drafts remain available without a provider. For the Community MVP, the existing `runLimitedDeterministicPartialFallback` orchestration and `ProviderRecoveryActions` UI MUST be wired into the worker/`ImportFlow` failure path so an accepted upload with a failing Codex provider offers "Continue with limited extraction", retry, reconnect, and manual entry instead of a silent `provider_unavailable` dead end.
+
+## Document Understanding Engine Evaluation (future spike)
+
+The proposed document-engine work is deliberately separate from the current V1
+implementation and from Grounded Multimodal Import V2. The initial question is
+whether a richer provider-neutral document representation can replace or
+substantially simplify physical extraction and layout reconstruction while
+preserving Nuvitae-owned grounding.
+
+The initial comparison is limited to the current Nuvitae extractor versus
+Docling. Docling is the first controlled benchmark candidate, not a production
+selection. The spike is proposed, requires scheduling, and is non-blocking for
+V1. It must use a small 10–20 document corpus, compare textual and structural
+quality plus operational/privacy/licensing costs, and allow the outcomes
+“keep current extractor”, “replace most extraction”, “Docling for complex
+layouts”, “fast current path plus richer path”, or “benchmark another candidate”.
+
+No Docling dependency, parser routing, production migration, or V2 task is part
+of this plan. See the dedicated record at
+[`docs/research/document-understanding-layer-2026-08-09.md`](../../docs/research/document-understanding-layer-2026-08-09.md).
+
+## Community MVP Critical Path (Vertical Tranches)
+
+Each tranche includes backend behavior, UI behavior, error and recovery states, responsive behavior, Docker validation, and end-to-end demonstration criteria. See `tasks.md` for the concrete task mapping (existing IDs preserved; new T212-T242 tasks added, plus spike convergence tasks T243-T249 mapped to Tranche 1 and the direct-OAuth spike sequence).
+
+**Tranche 1 — Community setup and real Codex import.** Docker installation documented and reproducible; Codex OAuth connection works; connection status and recovery work; real semantic parsing wired through the one authoritative Codex path (gated on the T201/T203 conditions); bounded deterministic fallback wired; a real PDF/DOCX reaches review; confirmation does not lose untouched fields. Spike convergence tasks T243-T249 map to this tranche: T243/T244 complete (Campaign-B execution and T202 re-measurement), T245 accepted 2026-08-07 (lifecycle proof; unblocks T213-T215), T213 entrypoint/browser handoff, T214 callback/status/ready-state, and T215 local lifecycle recovery are complete 2026-08-08, T246 is finalized as FAILED and must not be rerun, T247 closes the T208 bookkeeping dependency used by T246, T248 (real French PDF fixture proof) is complete 2026-08-07, and T249 (2026-08-07) completes the T246 real-document corpus prerequisites offline without authorizing any live run.
+
+**Tranche 2 — First credible resume and PDF.** Clean application shell; simplified review language; one structured-resume screen; one credible template; live preview; ATS-friendly PDF export; import-to-PDF end-to-end test.
+
+**Tranche 3 — Usable visual editor.** Split-pane editor on desktop; tabbed editor/preview on mobile; manual editing; section reordering; visible save status; save and reopen; preview and export fidelity.
+
+**Tranche 4 — Reversible Codex editing.** No more than five contextual AI actions; fact-preserving proposals; original/proposed comparison; accept; reject; regenerate; undo; job-description adaptation if retained in MVP.
+
+**Tranche 5 — Community alpha readiness.** First-run onboarding; minimal dashboard; source privacy controls; polished loading, empty, success, and error states; documentation; privacy-safe metrics; controlled Community release checklist.
+
+**Deferred from the critical path (see spec.md Deferred Capabilities)**: hosted managed-AI infrastructure, billing and subscriptions, Nuvitae-managed usage credits, provider marketplace, multiple production AI providers, enterprise controls, collaboration, exhaustive retention races, advanced analytics, horizontal scaling, many templates, complete localization, and exhaustive rare-format support. These are not deleted from history.
 
 ## Migration Impact
 
-The existing persistence foundation remains valid. New persistence work is additive: provider runtime connection records, provider capability snapshots, semantic parse attempt records, Nuvitae extraction response version metadata, candidate evidence records, grounding validation status, provider failure state, and disconnect/revocation metadata. No migration should rewrite confirmed structured resume data created by earlier accepted flows. Normal Nuvitae persistence must not store raw provider access tokens, refresh tokens, provider auth files, or provider session material. Any future production broker credential store must be dedicated, encrypted, and outside resume-domain persistence unless credentials are explicitly encrypted and isolated by the broker boundary.
+The existing persistence foundation remains valid. New persistence work is additive: provider runtime connection records, provider capability snapshots, semantic parse attempt records, Nuvitae extraction response version metadata, candidate evidence records, grounding validation status, provider failure state, and disconnect/revocation metadata. No migration should rewrite confirmed structured resume data created by earlier accepted flows. Normal Nuvitae persistence must not store raw provider access tokens, refresh tokens, provider auth files, or provider session material. Any future production broker credential store must be dedicated, encrypted, and outside resume-domain persistence unless credentials are explicitly encrypted and isolated by the broker boundary. The proposed `NuvitaeDocument` is a runtime/document contract and does not authorize a persistence model in this task; source-reconstructing document artifacts remain subject to existing retention and deletion rules.
 
 ## Implementation Phases
 
+The implementation is organized as vertical slices (tranches), not infrastructure batches. Each tranche is independently implementable and demoable. Historical phases remain preserved in the task history and dependency notes; the execution order below is the Community critical path.
+
 1. Preserve and verify existing Docker, web, API, worker, persistence, private storage, parser, manual-entry, review, confirmation, retention, deletion, and Playwright foundations.
-2. Run the direct-OAuth Codex compatibility spike in the mandated order before building any production Codex adapter.
-3. Add provider-neutral runtime connection state, broker-scoped credential lifecycle, token-blind application surfaces, revocation boundaries, and provider capability reporting.
-4. Add `ResumeSemanticParserProvider`, Nuvitae extraction response schemas, strict Zod validation, evidence grounding validation, no-invention checks, and warning generation.
-5. Extend worker processing to run validation/source preparation, provider semantic parsing, response validation, review draft creation, and provider failure recovery.
-6. Extend API/web contracts for provider disclosure, provider connection/reconnect/disconnect, provider failure states, manual fallback, and review of grounded candidates.
-7. Add evaluations and tests for provider output quality, prompt injection, malformed output, invented facts, evidence quality, privacy-safe logging, timeout/quota/auth failures, accessibility, and end-to-end Playwright flows.
+2. Complete the Codex direct-OAuth production wiring on the Community critical path: reuse the validated spike evidence (T196-T200) where it qualifies, finish the T201 semantic matrix, satisfy the T203 decision gate and the T164/T165 mandatory conditions, then implement the `CodexDirectProviderAdapter` + response converter behind `ResumeSemanticParserProvider`; add provider-neutral runtime connection state, broker-scoped credential lifecycle, token-blind application surfaces, revocation boundaries, and provider capability reporting.
+3. Wire worker orchestration so the Codex provider is the one authoritative semantic parsing path and the bounded deterministic fallback plus `ProviderRecoveryActions` are integrated (no silent `provider_unavailable` dead end), then extend API/web contracts for provider disclosure, provider connection/reconnect/disconnect/status, provider failure states, manual fallback, and review of grounded candidates.
+4. Correct confirmation semantics so all reviewed fields carry into the structured resume and exclusion is explicit only.
+5. Build the Community application shell, lightweight design system, simplified review UX, one credible template, live preview, ATS-friendly PDF export, and the import-to-PDF end-to-end journey.
+6. Build the visual editor (split-pane desktop, tabbed mobile, section reordering, visible save status), lightweight undo, save-and-reopen, and the minimal resume dashboard.
+7. Build up to five reversible contextual Codex AI actions with before/after review, accept/reject/regenerate/undo, fact-preservation checks, and job-description adaptation if retained in MVP.
+8. Add Community alpha readiness: first-run onboarding, source privacy controls, designed loading/empty/success/error states, documentation, privacy-safe metrics, and a controlled Community release checklist.
+9. Run evaluations and tests for provider output quality, prompt injection, malformed output, invented facts, evidence quality, privacy-safe logging, timeout/quota/auth failures, accessibility, and end-to-end Playwright flows, plus the fact-preservation and fidelity regression gates.
+
+The Document Understanding Layer benchmark is not an implementation phase in
+this V1 plan. It may be scheduled separately as a future, non-blocking spike
+after the corpus and evaluation contract are reviewed.
 
 ## Dependency Rules
 
 - Provider-independent contracts, validation, grounding, persistence, review, confirmation, recovery, and fallback work may continue independently.
-- Codex-specific production adapter work remains blocked until the direct-OAuth compatibility spike records a GO or qualifying CONDITIONAL GO.
+- The Community product decision (2026-08-05) reclassifies direct Codex OAuth as the production primary AI path and MVP-critical, and the validated T196-T200 spike evidence is reusable for that path. The T201 semantic matrix is complete and T202 is measured. T216 now supplies the thin production adapter and worker wiring behind `ResumeSemanticParserProvider`; this offline implementation completion does not claim a GO or live qualification under T203.
+- T245 (credential lifecycle proof) is accepted as of 2026-08-07 and satisfies T203 re-evaluation trigger 1; T213-T215 are unblocked by T245. T213 is complete as the production connection entrypoint/browser handoff; T214 is complete as callback/status/ready-state; T215 is complete as local reconnect/disconnect/session-deletion/provider-unavailable recovery with mocked browser coverage. T216 production semantic-provider wiring and T217 bounded-fallback production wiring are complete as of 2026-08-08. T246 is finalized as FAILED / qualification not passed; its C01/C04 semantic failures remain terminal and must not be retried. Automated onboarding feasibility now passes the deterministic/local lifecycle coverage, while live production OAuth/import evidence and moderated human validation remain pending; evidence is `docs/research/codex-direct-oauth-onboarding-feasibility.md`.
+- T218 confirmation data preservation is complete as of 2026-08-09 and satisfies FR-034: reviewed fields carry into the structured resume unless explicitly excluded. The mapper correction and regressions are offline evidence only and do not alter the T203/T246 live-proof boundary.
+- The current T203 blocker list is limited to finalized T246 semantic failure, missing live provider/import evidence, and not-yet-performed moderated human onboarding validation. T214 callback/status/ready-state work, T215 recovery, T216 production wiring, and T217 fallback are complete; T248 and T249 are complete prerequisites.
 - Existing app-server production planning must not be implemented based on the completed T189-T195 result.
-- Direct-OAuth production Codex integration work requires a GO or qualifying CONDITIONAL GO from the new spike.
+- Direct-OAuth production Codex integration is wired under T216, but a GO or qualifying CONDITIONAL GO is still required before claiming qualified live Community use; the separately authorized real OAuth/import proof and moderated validation remain gated by T203.
 - The second spike does not implement production provider integration.
+- No OAuth task is marked complete merely because Community now depends on it.
+- The current PDF.js/OOXML extractor remains active for V1. The proposed
+  Document Understanding Layer and `NuvitaeDocument` do not select Docling,
+  change the runtime path, or create a T203 blocker.
 
 ## Unresolved Technical Decisions Requiring Spike Validation
 
@@ -276,6 +441,9 @@ The existing persistence foundation remains valid. New persistence work is addit
 - How quota, rate-limit, unauthorized, expired-token, revoked-token, and network failures are exposed and mapped to user-facing recovery states.
 - Whether Codex can reliably return strict structured output with stable evidence references from synthetic extracted text plus source identifiers.
 - Whether latency, cancellation, and evidence quality are good enough for the 3-minute foreground import expectation.
+- Community-specific: whether the Codex OAuth loopback-callback flow, proven only for local Docker Desktop with a same-host browser, can be made usable for Community self-hosters on remote hosts, VPS, NAS, or headless environments, and what the supported Community connection modes are.
+- Community-specific: the T201 matrix is closed (C04 under the corrected deterministic-enrichment contract, C05, and C06 all pass), T245 is accepted (2026-08-07), T246 is finalized as FAILED on C01/C04 semantic recall, T213 entrypoint/browser handoff, T214 callback/status/ready-state, T215 local lifecycle recovery, T216 production semantic-provider wiring, and T217 bounded-fallback production wiring are complete (2026-08-08). T203 remains NO-GO after the 2026-08-08 re-evaluation because the T246 qualification failed; live provider/import evidence and moderated human onboarding validation remain pending. T216 resolves the implementation blocker identified by the failed T213-T215 production preflight, but it does not convert T203 to GO or claim live qualification.
+- Community-specific: whether one authoritative semantic path through Codex meets the Community product quality bar and whether invocation latency and usage stay within the self-hosted user's own Codex/ChatGPT subscription and the 3-minute import window.
 
 ### Container Artifacts (repository root)
 
@@ -313,11 +481,11 @@ See [data-model.md](./data-model.md), [contracts/import-resume.md](./contracts/i
 - **Non-technical UX**: PASS. Contracts expose plain-language states and user actions, with technical details kept behind service boundaries.
 - **Import-first onboarding**: PASS. The first contract starts from resume creation and makes import the recommended path.
 - **Structured source of truth**: PASS. The data model separates `ImportedDocument`, `DerivedExtractionArtifact`, `AIProviderRuntimeConnection`, `SemanticParseAttempt`, `NuvitaeExtractionResponse`, `ImportDraft`, and `StructuredResume`.
-- **Deterministic rendering**: PASS. No rendering behavior is modified; structured output preserves relationships for later rendering.
+- **Deterministic rendering**: PASS. The Community MVP adds one credible template, live preview, and ATS-friendly PDF export through a single controlled renderer shared by preview and export, so generation is deterministic and preview↔export fidelity is structurally guaranteed (FR-037/FR-038); content changes regenerate the document through the controlled rendering engine.
 - **AI reviewability and provenance**: PASS. `NuvitaeExtractionResponse`, `EvidenceRecord`, `ExtractedField.sourceStatus`, `classificationStatus`, `inferenceStatus`, `reviewStatus`, and `ImportWarning` force reviewable provenance and prevent ungrounded provider output from silently reaching confirmation.
-- **Protected templates**: PASS. No template files, configuration, or PDF output contracts are introduced.
+- **Protected templates**: PASS. The Community MVP adds one credible template and a `ResumeTemplateChoice`; content and presentation remain separate, template choice never modifies resume content, AI content actions never modify template source or rendering components, and template changes remain product-development changes reviewed through the normal workflow.
 - **Human and ATS readability**: PASS. Work experience roles, dates, sections, and explicit source provenance are modeled.
 - **Security and privacy**: PASS. Ownership, retention, deletion, rate limiting, hostile document isolation, token-blind application surfaces, broker-scoped token ownership, revocation/deletion, provider capability verification, and log exclusions are in contracts and validation scenarios.
-- **Provider independence and no-AI usability**: PASS. Contracts require the `ResumeSemanticParserProvider` boundary, provider-neutral schemas, Codex only as the candidate first self-hosted provider after a direct-OAuth spike GO or qualifying CONDITIONAL GO, and no-provider/provider-failure recovery without claiming reliable full semantic parsing.
+- **Provider independence and no-AI usability**: PASS. Contracts require the `ResumeSemanticParserProvider` boundary and provider-neutral schemas. For the Community MVP, direct Codex OAuth is the production primary adapter, but it remains an adapter behind the boundary and production implementation stays gated on the direct-OAuth decision-gate conditions (T203); no-provider/provider-failure recovery, limited deterministic partial extraction, and manual entry remain usable without claiming reliable full semantic parsing.
 - **Accessibility and recovery**: PASS. UI contracts include accessible labels, live status announcements, keyboard operation, focus recovery, and recovery actions.
 - **Quality gates**: PASS. Quickstart defines validation scenarios for the direct-OAuth Codex spike, provider-backed happy path, no-provider/provider-failure recovery, strict output validation, evidence grounding, invented-field checks, security, privacy, retention, and accessibility.

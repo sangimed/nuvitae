@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
-  decideImportLimit,
+  decideCapacityLimit,
+  nextRetryAfterSeconds,
   type AtomicImportLimitStore,
   type ImportLimitReservation,
   type ImportLimitStoreCommand,
@@ -10,14 +11,14 @@ import {
 type ReservationIdGenerator = () => string;
 
 interface OwnerState {
-  readonly attemptTimestamps: Date[];
-  readonly reservations: Map<string, ImportLimitReservation>;
+  readonly attempts: ImportLimitReservation[];
 }
 
 /**
- * Local-play-only import limit state. It is atomic in one Node.js process
- * because each command mutates synchronously without an async gap, but it is
- * unsuitable for production or multiple API replicas.
+ * Local-play-only import limit state. Commands are atomic within one Node.js
+ * process because each mutates synchronously without an async gap, but it is
+ * unsuitable for production or multiple API replicas; production uses the
+ * PostgreSQL-backed store.
  */
 export class LocalAtomicImportLimitStore implements AtomicImportLimitStore {
   private readonly owners = new Map<string, OwnerState>();
@@ -28,97 +29,185 @@ export class LocalAtomicImportLimitStore implements AtomicImportLimitStore {
     command: ImportLimitStoreCommand,
   ): Promise<ImportLimitStoreResult> {
     const state = this.owner(command.ownerUserId);
-    if (command.kind === "reserve") {
-      pruneAttempts(
-        state,
-        command.now,
-        command.limits.rollingAttemptWindowSeconds,
-      );
-      const decision = decideImportLimit(
-        {
-          attemptTimestamps: state.attemptTimestamps,
-          activeJobCount: countByState(state, "active"),
-          queuedJobCount: countByState(state, "queued"),
-        },
-        { kind: "attempt", now: command.now },
-        command.limits,
-      );
-      if (!decision.allowed) return { kind: "denied", decision };
-      const reservation: ImportLimitReservation = {
-        id: this.ids(),
-        ownerUserId: command.ownerUserId,
-        attemptedAt: command.now,
-        state: "reserved",
-      };
-      state.attemptTimestamps.push(command.now);
-      state.reservations.set(reservation.id, reservation);
-      return { kind: "reserved", reservation };
-    }
 
-    const reservation = state.reservations.get(command.reservationId);
-    if (reservation === undefined) return { kind: "missing_reservation" };
-    if (command.kind === "release") {
-      state.reservations.delete(command.reservationId);
-      return { kind: "released" };
+    if (command.kind === "reserve") {
+      return this.reserve(state, command);
     }
     if (command.kind === "rollback") {
-      state.reservations.delete(command.reservationId);
-      removeAttempt(state, reservation.attemptedAt);
+      state.attempts.splice(
+        0,
+        state.attempts.length,
+        ...state.attempts.filter((attempt) => attempt.id !== command.attemptId),
+      );
       return { kind: "released" };
     }
+    if (command.kind === "release") {
+      const attempt = findAttempt(state, command.attemptId);
+      if (attempt === undefined) return { kind: "missing_reservation" };
+      replaceAttempt(state, { ...attempt, state: "released" });
+      return { kind: "released" };
+    }
+    if (command.kind === "release_import") {
+      replaceAttempts(
+        state,
+        state.attempts.map((attempt) =>
+          attempt.importId === command.importId &&
+          (attempt.state === "queued" || attempt.state === "active")
+            ? { ...attempt, state: "released" }
+            : attempt,
+        ),
+      );
+      return { kind: "released" };
+    }
+    if (command.kind === "claim") {
+      return this.claim(state, command);
+    }
+    return this.transitionToQueued(state, command);
+  }
 
-    const decision = decideImportLimit(
-      {
-        attemptTimestamps: state.attemptTimestamps,
-        activeJobCount: countByState(state, "active"),
-        queuedJobCount: countByState(state, "queued"),
-      },
-      { kind: command.to, now: command.now },
+  private reserve(
+    state: OwnerState,
+    command: Extract<ImportLimitStoreCommand, { readonly kind: "reserve" }>,
+  ): ImportLimitStoreResult {
+    const windowStart =
+      command.now.getTime() -
+      command.limits.rollingAttemptWindowSeconds * 1_000;
+    const inWindow = state.attempts
+      .map((attempt) => attempt.attemptedAt.getTime())
+      .filter((attemptedAt) => attemptedAt > windowStart);
+    if (inWindow.length >= command.limits.rollingAttemptLimit) {
+      return {
+        kind: "denied",
+        outcome: {
+          kind: "denied",
+          code: "upload_attempt_limit",
+          messageCategory: "upload_attempts",
+          retryable: true,
+          retryAfterSeconds: nextRetryAfterSeconds(
+            new Date(Math.min(...inWindow)),
+            command.now,
+            command.limits.rollingAttemptWindowSeconds,
+          ),
+        },
+      };
+    }
+    const reservation: ImportLimitReservation = {
+      id: this.ids(),
+      ownerUserId: command.ownerUserId,
+      attemptedAt: command.now,
+      importId: null,
+      state: "reserved",
+    };
+    state.attempts.push(reservation);
+    return { kind: "reserved", reservation };
+  }
+
+  private transitionToQueued(
+    state: OwnerState,
+    command: Extract<ImportLimitStoreCommand, { readonly kind: "transition" }>,
+  ): ImportLimitStoreResult {
+    const attempt = findAttempt(state, command.attemptId);
+    if (attempt === undefined) return { kind: "missing_reservation" };
+    if (attempt.state === "queued" && attempt.importId === command.importId) {
+      return { kind: "reserved", reservation: attempt };
+    }
+    if (attempt.state !== "reserved") return { kind: "missing_reservation" };
+    const queued = countByState(state, "queued");
+    const outcome = decideCapacityLimit(
+      { attemptTimestamps: [], activeJobCount: 0, queuedJobCount: queued },
+      "queued",
       command.limits,
     );
-    if (!decision.allowed) return { kind: "denied", decision };
-    const transitioned = { ...reservation, state: command.to };
-    state.reservations.set(command.reservationId, transitioned);
+    if (outcome.kind !== "allowed") return { kind: "denied", outcome };
+    const transitioned = {
+      ...attempt,
+      state: "queued" as const,
+      importId: command.importId,
+    };
+    replaceAttempt(state, transitioned);
+    return { kind: "reserved", reservation: transitioned };
+  }
+
+  private claim(
+    state: OwnerState,
+    command: Extract<ImportLimitStoreCommand, { readonly kind: "claim" }>,
+  ): ImportLimitStoreResult {
+    const attempt = state.attempts.find(
+      (candidate) =>
+        candidate.importId === command.importId &&
+        candidate.ownerUserId === command.ownerUserId,
+    );
+    if (attempt === undefined) {
+      return {
+        kind: "denied",
+        outcome: {
+          kind: "denied",
+          code: "processing_start_limit",
+          messageCategory: "processing_start",
+          retryable: true,
+        },
+      };
+    }
+    if (attempt.state === "active") {
+      return { kind: "reserved", reservation: attempt };
+    }
+    if (attempt.state !== "queued") return { kind: "missing_reservation" };
+    if (countByState(state, "active") >= command.limits.maxActiveJobsPerUser) {
+      return {
+        kind: "denied",
+        outcome: {
+          kind: "denied",
+          code: "processing_start_limit",
+          messageCategory: "processing_start",
+          retryable: true,
+        },
+      };
+    }
+    const transitioned = { ...attempt, state: "active" as const };
+    replaceAttempt(state, transitioned);
     return { kind: "reserved", reservation: transitioned };
   }
 
   private owner(ownerUserId: string): OwnerState {
     let state = this.owners.get(ownerUserId);
     if (state === undefined) {
-      state = { attemptTimestamps: [], reservations: new Map() };
+      state = { attempts: [] };
       this.owners.set(ownerUserId, state);
     }
     return state;
   }
 }
 
-function countByState(
+function findAttempt(
   state: OwnerState,
-  reservationState: ImportLimitReservation["state"],
-): number {
-  return [...state.reservations.values()].filter(
-    (reservation) => reservation.state === reservationState,
-  ).length;
+  attemptId: string,
+): ImportLimitReservation | undefined {
+  return state.attempts.find((attempt) => attempt.id === attemptId);
 }
 
-function pruneAttempts(
+function countByState(
   state: OwnerState,
-  now: Date,
-  windowSeconds: number,
+  reservationState: "queued" | "active",
+): number {
+  return state.attempts.filter((attempt) => attempt.state === reservationState)
+    .length;
+}
+
+function replaceAttempt(
+  state: OwnerState,
+  attempt: ImportLimitReservation,
 ): void {
-  const windowStart = now.getTime() - windowSeconds * 1_000;
-  state.attemptTimestamps.splice(
-    0,
-    state.attemptTimestamps.length,
-    ...state.attemptTimestamps.filter(
-      (attemptedAt) => attemptedAt.getTime() > windowStart,
+  replaceAttempts(
+    state,
+    state.attempts.map((candidate) =>
+      candidate.id === attempt.id ? attempt : candidate,
     ),
   );
 }
 
-function removeAttempt(state: OwnerState, attemptedAt: Date): void {
-  const index = state.attemptTimestamps.findIndex(
-    (candidate) => candidate.getTime() === attemptedAt.getTime(),
-  );
-  if (index >= 0) state.attemptTimestamps.splice(index, 1);
+function replaceAttempts(
+  state: OwnerState,
+  attempts: readonly ImportLimitReservation[],
+): void {
+  state.attempts.splice(0, state.attempts.length, ...attempts);
 }

@@ -6,7 +6,10 @@ import type {
 } from "@nuvitae/persistence";
 import { describe, expect, it, vi } from "vitest";
 import { documentedImportProcessingDefaults } from "../config/import-processing-limits.js";
-import type { ImportReservationResult } from "../services/import-resume/import-limits.js";
+import type {
+  ImportLimitOutcome,
+  ImportReservationResult,
+} from "../services/import-resume/import-limits.js";
 import { StartImportResponseContractError } from "./start-import.errors.js";
 import type {
   StartImportClock,
@@ -81,6 +84,12 @@ describe("StartImportService", () => {
       expect(harness.limits.releaseReservation).toHaveBeenCalledWith(
         ownerUserId,
         reservation.id,
+        reservation.attemptedAt,
+      );
+      expect(harness.limits.admitToQueue).toHaveBeenCalledWith(
+        ownerUserId,
+        reservation.id,
+        importId,
         reservation.attemptedAt,
       );
       expect(harness.limits.rollbackReservation).not.toHaveBeenCalled();
@@ -164,8 +173,13 @@ describe("StartImportService", () => {
   it("returns rate limiting with retry timing and fails closed on unavailable state", async () => {
     const denied: ImportReservationResult = {
       allowed: false,
-      code: "IMPORT_ATTEMPT_LIMIT_REACHED",
-      retryAfterSeconds: 47,
+      outcome: {
+        kind: "denied",
+        code: "upload_attempt_limit",
+        messageCategory: "upload_attempts",
+        retryable: true,
+        retryAfterSeconds: 47,
+      },
     };
     const rateLimited = createHarness({ reservationResult: denied });
     await expect(startPdf(rateLimited.service)).rejects.toMatchObject({
@@ -177,8 +191,12 @@ describe("StartImportService", () => {
     const unavailable = createHarness({
       reservationResult: {
         allowed: false,
-        code: "IMPORT_LIMIT_STATE_UNAVAILABLE",
-        retryAfterSeconds: 60,
+        outcome: {
+          kind: "denied",
+          code: "limit_service_unavailable",
+          messageCategory: "service_unavailable",
+          retryable: true,
+        },
       },
     });
     await expect(startPdf(unavailable.service)).rejects.toMatchObject({
@@ -186,6 +204,35 @@ describe("StartImportService", () => {
       code: "import_limit_unavailable",
     });
     expect(unavailable.storage.writeObject).not.toHaveBeenCalled();
+  });
+
+  it("rejects queue admission before creating imports or files and maps to 429", async () => {
+    const harness = createHarness({
+      queueAdmissionResult: {
+        kind: "denied",
+        code: "queued_job_limit",
+        messageCategory: "queued_processing",
+        retryable: true,
+      },
+    });
+    await expect(startPdf(harness.service)).rejects.toMatchObject({
+      status: 429,
+      code: "queued_job_limit_reached",
+    });
+    expect(harness.storage.writeObject).not.toHaveBeenCalled();
+    expect(harness.repository.createImportAggregate).not.toHaveBeenCalled();
+    expect(harness.limits.releaseReservation).not.toHaveBeenCalled();
+    expect(harness.limits.rollbackReservation).not.toHaveBeenCalled();
+  });
+
+  it("retains the queued slot after successful publication when a queue is configured", async () => {
+    const harness = createHarness({ withQueue: true });
+    const response = await startPdf(harness.service);
+    expect(response.importId).toBe(importId);
+    expect(harness.limits.admitToQueue).toHaveBeenCalledOnce();
+    expect(harness.limits.releaseReservation).not.toHaveBeenCalled();
+    expect(harness.limits.rollbackReservation).not.toHaveBeenCalled();
+    expect(harness.queuePublisher.addBulk).toHaveBeenCalledOnce();
   });
 
   it("rolls back without persistence when private storage fails", async () => {
@@ -225,9 +272,9 @@ describe("StartImportService", () => {
     expect(error).toMatchObject({ status: 500, code: "internal_failure" });
     expect(JSON.stringify(error)).not.toContain("database");
     expect(JSON.stringify(error)).not.toContain("filesystem");
-    expect(harness.logger.warn).toHaveBeenCalledWith(
-      "import.storage_compensation_failed",
-      expect.objectContaining({ importId }),
+    expect(harness.logger.emit).toHaveBeenCalledWith(
+      "import.storage_delete_failed",
+      expect.objectContaining({ importId, retryable: true }),
     );
     expect(harness.limits.rollbackReservation).toHaveBeenCalledOnce();
   });
@@ -300,6 +347,8 @@ function createHarness(
     readonly times?: readonly Date[];
     readonly importIds?: readonly string[];
     readonly requestIds?: readonly string[];
+    readonly queueAdmissionResult?: ImportLimitOutcome;
+    readonly withQueue?: boolean;
   } = {},
 ) {
   const times = [...(options.times ?? [new Date("2026-07-29T09:30:00.000Z")])];
@@ -334,6 +383,7 @@ function createHarness(
   };
   const limits: StartImportLimitPort & {
     reserveAttempt: ReturnType<typeof vi.fn>;
+    admitToQueue: ReturnType<typeof vi.fn>;
     releaseReservation: ReturnType<typeof vi.fn>;
     rollbackReservation: ReturnType<typeof vi.fn>;
   } = {
@@ -344,20 +394,34 @@ function createHarness(
           reservation,
         },
     ),
+    admitToQueue: vi.fn(
+      async () => options.queueAdmissionResult ?? { kind: "allowed" as const },
+    ),
     releaseReservation: vi.fn(async () => undefined),
     rollbackReservation: vi.fn(async () => undefined),
   };
+  const createdDocuments: ImportedDocument[] = [];
   const repository = {
     createImportAggregate: vi.fn(
       async (aggregate: ImportAggregate): Promise<ImportAggregate> => {
         if (options.persistenceFailure !== undefined) {
           throw new Error(options.persistenceFailure);
         }
+        createdDocuments.push(aggregate.document);
         return aggregate;
       },
     ),
+    findImportByOwner: vi.fn(async (): Promise<ImportAggregate | null> => {
+      const document = createdDocuments.at(-1);
+      return document === undefined ? null : { document, artifacts: [] };
+    }),
+    saveImportLifecycle: vi.fn(
+      async (document: ImportedDocument): Promise<ImportedDocument> => document,
+    ),
   } as unknown as ImportResumeRepository & {
     createImportAggregate: ReturnType<typeof vi.fn>;
+    findImportByOwner: ReturnType<typeof vi.fn>;
+    saveImportLifecycle: ReturnType<typeof vi.fn>;
   };
   const transactionRunner: PersistenceTransactionRunner & {
     transaction: ReturnType<typeof vi.fn>;
@@ -368,11 +432,12 @@ function createHarness(
   };
   const logRecords: unknown[] = [];
   const logger: StartImportPrivacyLogger & {
-    info: ReturnType<typeof vi.fn>;
-    warn: ReturnType<typeof vi.fn>;
+    emit: ReturnType<typeof vi.fn>;
   } = {
-    info: vi.fn((event, metadata) => logRecords.push({ event, metadata })),
-    warn: vi.fn((event, metadata) => logRecords.push({ event, metadata })),
+    emit: vi.fn((event, metadata) => logRecords.push({ event, metadata })),
+  };
+  const queuePublisher = {
+    addBulk: vi.fn(async () => undefined),
   };
   const service = new StartImportService(
     repository,
@@ -384,6 +449,7 @@ function createHarness(
     idGenerator,
     requestIdGenerator,
     logger,
+    options.withQueue === true ? queuePublisher : undefined,
   );
   return {
     service,
@@ -393,6 +459,7 @@ function createHarness(
     limits,
     logger,
     logRecords,
+    queuePublisher,
   };
 }
 

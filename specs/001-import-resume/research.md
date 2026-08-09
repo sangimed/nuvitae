@@ -1,5 +1,167 @@
 # Research: Import Existing Resume
 
+## Current status reconciliation (2026-08-09)
+
+This is the canonical cross-artifact status summary for the direct-OAuth and
+Community onboarding work. Evidence paths below are read-only references; this
+reconciliation does not reopen T246 or change the T203 decision. T213 and T214
+are complete at the entrypoint/callback/status boundaries; T215 is complete
+for local lifecycle recovery and mocked browser validation. T216 is complete
+for production semantic-provider wiring and offline/local preflight; this does
+not claim live OAuth or provider-import evidence. T217 and T218 are complete;
+the semantic-import recall correction is validated offline only, and one new
+live smoke revalidation remains pending.
+
+The transversal semantic-provider boundary redesign is recorded in
+[`docs/research/semantic-provider-boundary-redesign-2026-08-09.md`](../../docs/research/semantic-provider-boundary-redesign-2026-08-09.md).
+It recommends an explicit `nuvitae.semantic-extraction.v2` response boundary,
+deterministic Nuvitae canonicalization, and field-level fail-closed acceptance
+inside a valid response envelope. This is an offline architecture decision;
+it does not authorize a live retry, reopen T246, or activate Grounded
+Multimodal Import V2.
+
+### Candidate identity correction (offline, 2026-08-09)
+
+The latest real import (`51364b5a-18ff-4282-9831-7c9b30df3a5`) proved transport
+end-to-end — HTTP 2xx, SSE completion, EOF, and JSON parsing — but semantic
+validation rejected `candidateId` types in education, skills, and languages.
+The flattened-evidence blocker was therefore resolved enough to reach schema
+validation; the current blocker was a candidate-ID ownership mismatch.
+
+`candidateId` is an internal Nuvitae correlation key, not source information.
+The provider contract strips the legacy field before strict semantic validation,
+so omission, explicit `null`, wrong types, and arbitrary strings cannot reject
+or influence otherwise valid facts; the prompt explicitly says not to return
+it. The application mapper generates
+`candidate-{importId}-{structuralPath}` IDs, keeps them unique and stable for
+the import review lifecycle, and never uses provider strings as application
+identity. Evidence grounding, no-invention, T217 budgets, T246 status, and V2
+scope are unchanged. The live counts (1 education, 4 skills, 2 languages)
+match the smoke fixture and are structural recall encouragement only, not
+accepted real-provider recall. Exactly one separately authorized future smoke
+is warranted after this offline correction.
+
+The post-V1 architecture hypothesis **Grounded Multimodal Import (V2)** is
+recorded separately in
+[`docs/research/grounded-multimodal-import-v2.md`](../../docs/research/grounded-multimodal-import-v2.md).
+It is **PROPOSED / POST-V1 SPIKE / NOT IMPLEMENTED** and does not change this
+feature's V1 execution plan, T203, T246, or T217. V1 remains **Grounded Text
+Import**; the core principle for any future V2 work is **“LLM for
+understanding. Nuvitae for proof.”**
+
+| Task | Canonical title                                                             | Status                                     | Dependency/blocker                                                                                                                                                         | Evidence                                                                                                                                                | Document disagreement                                                        |
+| ---- | --------------------------------------------------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| T203 | Record direct-OAuth GO/CONDITIONAL GO/NO-GO decision                        | COMPLETE (decision recorded: NO-GO)        | T246 qualification failed; deterministic/local onboarding feasibility passes, while moderated human validation and live connection/import evidence are not complete        | `docs/research/codex-direct-oauth-go-no-go.md`, `docs/research/codex-direct-oauth-onboarding-feasibility.md`                                            | Historical 2026-08-05/06 snapshots are labeled and superseded.               |
+| T213 | Implement the Codex connection screen and executable “Connect Codex” action | COMPLETE (2026-08-08)                      | T162/T163 and the broker login boundary; entrypoint and browser handoff are implemented, while callback/status remain T214 scope                                           | `specs/001-import-resume/tasks.md` T213; `tests/browser/import-resume/onboarding-feasibility.spec.ts`; focused web/API tests                            | None in current sections.                                                    |
+| T214 | Implement OAuth callback handling and provider-neutral connection-state UI  | COMPLETE (2026-08-08)                      | T213; callback completion, encrypted session persistence, owner-bound status projection, and ready/expired/disconnected UI are implemented; T215 mutations remain separate | `specs/001-import-resume/tasks.md` T214; focused API/web/security tests; onboarding feasibility record                                                  | None in current sections.                                                    |
+| T215 | Implement reconnect/disconnect, local credential deletion, and recovery     | COMPLETE (2026-08-08)                      | T214; offline/local lifecycle operations are implemented and validated; live production OAuth/import proof and moderated human validation remain separate blockers         | `specs/001-import-resume/tasks.md` T215; provider connection/service, persistence/security, web, and onboarding tests                                   | None in current sections.                                                    |
+| T216 | Wire the production Codex semantic provider behind the parser boundary      | COMPLETE (2026-08-08)                      | Worker resolves the owner-bound ready connection and encrypted session per job; live OAuth/import proof remains pending                                                    | `specs/001-import-resume/tasks.md` T216; T216 adapter/transport/worker tests; `docs/research/codex-direct-oauth-t216-production-wiring-2026-08-08.json` | Historical T203/T164/T165 blocker wording is superseded for wiring only.     |
+| T217 | Wire bounded deterministic fallback and provider-neutral recovery           | COMPLETE                                   | T188; no T203/T246 blocker remains for this fallback scope                                                                                                                 | `specs/001-import-resume/tasks.md` T217; `docs/research/codex-direct-oauth-go-no-go.md`                                                                 | Historical partial-wiring wording is labeled/superseded.                     |
+| T218 | Preserve every reviewed confirmation field under FR-034                     | COMPLETE (2026-08-09)                      | Mapper and regression coverage preserve reviewed fields, including education degree/institution/year; explicit exclusion remains the only removal path                     | `specs/001-import-resume/tasks.md` T218; `specs/001-import-resume/spec.md` FR-034; mapper and confirmation regressions                                  | None in current sections.                                                    |
+| T246 | Execute and qualify real-document semantic matrix                           | COMPLETE (qualification finalized: FAILED) | Terminal C01/C04 semantic failures; all C01-C08 consumed; no retry or reopening                                                                                            | `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-aggregate.json`                                                                             | Historical preparation states are labeled; no current disagreement.          |
+| T248 | Prove the canonical real French PDF fixture                                 | COMPLETE                                   | No remaining dependency; satisfies the T246 French-PDF prerequisite                                                                                                        | `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t248-french-pdf.json`                                                                            | None in current sections.                                                    |
+| T249 | Complete the T246 real-document corpus offline                              | COMPLETE                                   | No remaining dependency; does not authorize new live work                                                                                                                  | `spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-corpus-offline.json`                                                                        | Historical NOT_AUTHORIZED wording is scoped to T249 preparation.             |
+| T164 | Implement the production Codex direct-OAuth adapter                         | HISTORICAL SCOPE SATISFIED BY T216 WIRING  | The thin production adapter and invocation boundary are implemented under T216; the T203 decision still prevents claiming qualified live production behavior               | `specs/001-import-resume/tasks.md` T164; T216 implementation/evidence; T203 decision                                                                    | Task checkbox intentionally unchanged; T216 is the current completion scope. |
+| T165 | Implement the direct-OAuth response converter                               | HISTORICAL SCOPE SATISFIED BY T216 WIRING  | Canonical response validation/mapping is implemented under T216; the T203 decision still prevents claiming qualified live production behavior                              | `specs/001-import-resume/tasks.md` T165; T216 implementation/evidence; T203 decision                                                                    | Task checkbox intentionally unchanged; T216 is the current completion scope. |
+
+The single current T203 blocker list is therefore:
+
+1. T246 semantic qualification is finalized as FAILED: C01 FAIL, C02 PASS,
+   C03 PASS, C04 FAIL, C05 PASS, C06 PASS, C07 PASS, C08 PASS.
+2. The supported real production OAuth/import flow has not been exercised in
+   the T213-T215 application path; no live provider proof is claimed.
+3. Moderated human onboarding/usability validation has not been performed and
+   remains required by SC-001, SC-003, SC-004, and SC-009.
+
+T217 is resolved and is not a current T203 blocker. T248 and T249 are complete
+prerequisites and are not blockers. T216 is complete and the previous missing
+production-provider-registration blocker is resolved. The remaining T203
+blockers are only the finalized T246 qualification failure, the unperformed
+real production OAuth/import proof, and moderated human onboarding validation.
+
+The document-extraction reconciliation is recorded in the dedicated
+[`Document Understanding Layer evaluation`](../../docs/research/document-understanding-layer-2026-08-09.md)
+research record. It is **PROPOSED / SPIKE REQUIRED / NOT IMPLEMENTED** and does
+not change the current status table above.
+
+## Architecture reconciliation: document understanding is a future boundary
+
+The current V1 truth is unchanged: `packages/extraction` owns deterministic
+PDF.js/pdfjs-dist selectable-text extraction and page/text-item provenance for
+PDF, Office Open XML extraction using `yauzl` and `fast-xml-parser` for DOCX,
+and isolated LibreOffice rendering only for DOCX rendered-page-count
+validation. The stack is active, supported, and test-covered. It remains
+required until a replacement decision is made.
+
+The research conclusion is that this physical extraction stack must not be
+treated as the assumed long-term document-understanding architecture. The
+harder future problem is document structure: reading order, sections and
+headings, lists, tables, spatial grouping, styles, figures/assets, bounding
+boxes, and provenance. A provider-neutral boundary is therefore proposed:
+
+```text
+validated born-digital PDF/DOCX
+→ DocumentUnderstandingProvider (proposed; not implemented)
+→ canonical NuvitaeDocument
+→ ResumeSemanticParserProvider
+→ nuvitae.semantic-extraction.v2
+→ Nuvitae canonicalization / grounding / identity / review
+```
+
+`NuvitaeDocument` is a canonical runtime/document representation, not a
+persistence design. It is expected to normalize document metadata, pages,
+stable Nuvitae-owned blocks/fragments, reading order, optional bounding boxes,
+sections, tables, optional style signals, retained assets, source provenance,
+and bounded engine/version/configuration quality metadata. It is distinct from
+source-reconstructing temporary artifacts and from structured resume domain
+state.
+
+The import and semantic domains must not depend on `DoclingDocument`, PyMuPDF
+dictionaries, Azure `analyzeResult`, Unstructured elements, Apryse JSON,
+Google DocumentLayout output, Adobe extraction JSON, or equivalent
+parser-native schemas. The current PDF.js/OOXML stack may later become one
+implementation behind the proposed boundary, but no migration is scheduled
+before the controlled benchmark.
+
+The semantic-provider redesign remains compatible with this boundary. A future
+provider receives Nuvitae-owned fragment/block references and returns semantic
+values plus bounded `sourceRefs`; Nuvitae resolves the references, verifies
+quotes and values, reconstructs exact evidence, derives application identity,
+and applies fail-closed acceptance. The governing principle remains
+**“LLM for understanding. Nuvitae for proof.”**
+
+## Decision: Keep the current physical extractor active for V1, without making it the long-term engine decision
+
+The existing PDF.js, OOXML, and LibreOffice decisions remain the active V1
+implementation record. They continue to own deterministic validation,
+selectable-text checks, rendered-page limits, native source provenance, parser
+isolation, and the V1 transcript/fragments used for grounding. They are not
+deprecated and are not removed from the plan or task history.
+
+Their architectural status is now explicitly bounded: they are one current
+implementation of the physical/document-understanding responsibility, not a
+commitment that Nuvitae will retain this parser model indefinitely. The future
+canonical contract is `NuvitaeDocument`, and the first replacement hypothesis
+must be tested before any migration or routing decision.
+
+## Decision: Benchmark the current extractor against Docling first
+
+Docling is the first candidate worth benchmarking because it offers PDF and
+DOCX support, structured document output, layout and reading-order
+reconstruction, bounding boxes/provenance, local or self-hosted execution,
+and provider-independent structured output. This is a benchmark hypothesis
+only. Docling has not been benchmarked against the Nuvitae corpus and is not
+selected as the production engine.
+
+The initial spike is intentionally limited to the current extractor versus
+Docling. It must answer whether Docling can replace or substantially simplify
+custom physical extraction/layout reconstruction while preserving the
+canonical grounding contract. The spike is non-blocking for V1, does not
+install dependencies or change runtime code in this reconciliation, and may
+conclude that Nuvitae should keep the current extractor, replace most
+extraction, use Docling only for complex layouts, retain the current fast path
+with a richer path, or benchmark another candidate.
+
 ## Decision: Build the feature in a Nuvitae-owned TypeScript full-stack architecture
 
 **Rationale**: The accepted foundation ADR selects a Nuvitae-owned hybrid architecture: Reactive Resume and Resuml are references, while Nuvitae owns the application shell, domain, import pipeline, persistence, AI boundary, and user experience. A TypeScript monorepo keeps domain types shared across web, API, workers, extraction adapters, and tests while matching the evaluated reference ecosystem.
@@ -40,9 +202,9 @@ The development workspace image contains pinned Node.js, Corepack, pnpm, and sha
 
 **Trade-offs**: Cold image builds can be slower than host installs. File watching under Docker Desktop can require polling or WSL 2 filesystem placement. Docker-managed caches and volumes need reset and cleanup guidance. Images require version pinning and maintenance. Windows support depends on correctly configured WSL 2 integration.
 
-## Decision: Preserve deterministic physical extraction as provider-ready source preparation
+## Decision (V1 active implementation): Preserve deterministic physical extraction as provider-ready source preparation
 
-**Rationale**: The amended specification makes AI-assisted semantic parsing the primary semantic extraction path whenever a usable provider is connected, but deterministic processing still owns validation, safety, parser isolation, storage, schema validation, evidence validation, provenance, no-invention enforcement, review, confirmation, retention, and deletion. Existing PDF.js and DOCX adapters remain necessary to validate supported files, enforce page/selectable-text limits, prepare source text and locations, and provide evidence anchors that provider output can be grounded against.
+**Rationale**: The amended specification makes AI-assisted semantic parsing the primary semantic extraction path whenever a usable provider is connected, but deterministic processing still owns validation, safety, parser isolation, storage, schema validation, evidence validation, provenance, no-invention enforcement, review, confirmation, retention, and deletion. Existing PDF.js and DOCX adapters remain necessary for V1 to validate supported files, enforce page/selectable-text limits, prepare source text and locations, and provide evidence anchors that provider output can be grounded against. This decision does not select the current physical extraction stack as the long-term document-understanding engine; that question is delegated to the controlled benchmark.
 
 **Alternatives considered**: Replacing deterministic validation/source preparation with provider-only file interpretation was rejected because uploaded documents are untrusted and evidence must be validated before review. Returning to deterministic semantic reconstruction as the primary path was rejected because it conflicts with the amended spec. OCR-first extraction was rejected for the initial release because selectable text is required and scanned/image-only documents are out of scope.
 
@@ -167,3 +329,111 @@ The development workspace image contains pinned Node.js, Corepack, pnpm, and sha
 **Rationale**: The riskiest behavior is not only extraction accuracy; it includes provider authentication, non-interactive invocation, strict output shape, evidence quality, invented-field rate, authorization, parser safety, source deletion, expiry, logging, rate limits, quota/subscription failures, timeout recovery, warning resolution, and accessible review. Fixtures must cover English, French, bilingual, one-column, multi-column, unsupported, hostile, partial, mixed-content, no-supported-field, and malformed documents.
 
 **Alternatives considered**: Happy-path-only upload tests were rejected because they would miss release-blocking privacy, safety, failure, and accessibility requirements.
+
+---
+
+# Community MVP Research Update (2026-08-05)
+
+The approved strategic direction is product-first: Nuvitae Community is the first MVP. The decisions below supersede the earlier architecture-first/hardening-first assumptions in this research file only where noted; earlier decisions remain valid except as amended.
+
+## Decision: Ship Nuvitae Community as the first MVP (product-first, not architecture-first)
+
+**Rationale**: The import→review→confirm journey is implemented and tested, but no real user can complete it today: production wiring registers no AI provider, so uploads terminate at `provider_unavailable`. The highest-value next move is one decisive vertical slice that makes the product promise real for a real user — not continued hardening. Community (self-hosted, Docker-first, free, user's own Codex access) proves the complete AI-powered resume experience with minimal business risk before a hosted commercial edition is built.
+
+**Alternatives considered**: A private hosted alpha with managed AI was rejected as the first release because it builds hosted infrastructure before the product promise is proven, and a hardening-first continuation was rejected because it does not produce a usable product. The hosted commercial edition remains the later product, not the MVP.
+
+## Decision: Make direct Codex OAuth the production primary AI path for the Community MVP
+
+**Rationale**: Community is powered by the user's own Codex access. Direct Codex OAuth (browser Authorization Code with PKCE through a dedicated broker) is the only path that lets a self-hoster use their existing ChatGPT subscription without pasting API keys, and the T196-T200 spike proved the essential mechanics in a bounded local mode. Codex OAuth is therefore MVP-critical and part of onboarding, not paused or optional.
+
+**Alternatives considered**: Managed hosted AI as the first provider path was rejected because it is the deferred commercial product. API-key onboarding as the primary journey was rejected because it is not viable for non-technical users and contradicts the Community promise. A provider marketplace before the Codex journey works was rejected as over-generalization.
+
+## Decision: Do not make API-key onboarding the primary Community journey
+
+**Rationale**: The Community promise is that a non-technical user can install Nuvitae, connect their own Codex, and create a resume. Requiring users to locate and paste API keys, subscriptions, or provider credentials is a developer-oriented onboarding that fails the target user.
+
+**Alternatives considered**: API-key provider onboarding remains a possible advanced/self-host option later but is not on the Community critical path.
+
+## Decision: Reuse the validated direct-OAuth spike evidence where it qualifies, preserving its honest limits
+
+**Rationale**: The T196-T200 spike is substantial reusable evidence for the Community path: T196 pinned upstream audit, T197 security design and broker topology, T198 browser OAuth login proof, T199 encrypted credential lifecycle (persistence, refresh, single-flight, logout, deletion), and T200 minimal direct invocation (HTTP 200 with valid SSE and the `NUVITAE_T200_OK` marker). These prove the OAuth mechanics and broker credential boundary in the supported local Docker Desktop, same-host-browser mode.
+
+The accepted direct-OAuth evidence set now also includes the T245 lifecycle
+proof (accepted 2026-08-07; aggregate
+`spikes/codex-direct-oauth/evidence/codex-direct-oauth-t245-lifecycle.json`):
+fresh browser OAuth login, callback completion,
+`connection_status_after_callback: connected`, encrypted persistence without
+plaintext, restart recovery, successful invocation after restart (T200, exact
+HTTP 200), live refresh with rotation, explicit reconnect, disconnect and
+credential removal, and deterministic invalid-grant recovery (9/9 mandatory
+criteria; 8 live-observed, 1 deterministic-only; provider-side revocation not
+exercised and not required). T245 satisfies T203 re-evaluation trigger 1 and
+unblocks T213-T215 Community connection-UI qualification. T213 is complete for
+the entrypoint/browser handoff boundary; T214 is complete for callback, status,
+and ready-state presentation; and T215 is complete for local lifecycle recovery.
+
+**Gaps that remain before production Community use (preserved honestly)**:
+
+- T201 is complete: C01-C03 passed canonical live validation; C04-B03 (corrected T208 deterministic-enrichment contract), C05-B01, and C06-B01 passed canonical live validation; C03 B01/B02 and C04 B01/B02 remain immutable failed historical attempts (C04 B01 failed under its original physical-coordinate contract; C04 B02 failed at credential recovery). T246 is finalized as FAILED / qualification not passed: C01 and C04 are semantic recall failures, while C02, C03, C05, C06, C07, and C08 pass. This result remains unchanged and is not converted by T217.
+- T202 (evaluation) was re-measured offline from the accepted evidence on 2026-08-06 (T244) and is recorded as MEASURED in `docs/research/codex-direct-oauth-evaluation.md` with a sanitized aggregate (`codex-direct-oauth-t202-metrics.json`): every evidence-supported metric passes; latency, cancellation, and quota behavior remain explicitly unmeasured. T216 production semantic-provider wiring and T217 bounded-fallback production wiring completed on 2026-08-08: one application-owned primary call, one local deterministic fallback execution, no hidden provider retry, closed failure classification, atomic/idempotent draft persistence, safe terminal failure, and provider-neutral UI/status recovery. T213-T216 local connection/onboarding/provider-wiring coverage is complete; the T203 gate remains NO-GO because finalized T246 qualification failed, live provider/import evidence is missing, and moderated human validation is pending. Re-evaluation triggers are defined in `docs/research/codex-direct-oauth-go-no-go.md`. No production GO exists.
+- The loopback OAuth callback is proven only for a local Docker host with a same-host browser. Remote, VPS, NAS, and headless self-hosting onboarding is unproven and is a significant open product question for the Docker-first Community distribution.
+- The direct `chatgpt.com/backend-api/codex` transport is undocumented or compatibility-sensitive for third-party use; upstream changes may break compatibility.
+- T216 is the explicitly authorized current wiring scope and is complete offline/local; this does not claim live qualification or change the T203 NO-GO.
+
+## Decision: Keep one authoritative semantic parsing path; do not over-generalize providers before the Codex Community journey works
+
+**Rationale**: The Community MVP must have exactly one production semantic path — the validated Codex direct-OAuth adapter behind `ResumeSemanticParserProvider` — plus a bounded deterministic fallback. Adding local models, OpenAI-compatible endpoints, a marketplace, or multiple production providers before the Codex journey works multiplies risk without Community value.
+
+**Alternatives considered**: A provider abstraction remains (the import domain depends only on the Nuvitae-owned boundary), but it is a boundary, not a mandate to ship many adapters in the MVP.
+
+## Decision: Defer hosted managed AI to a later commercial edition
+
+**Rationale**: Hosted managed AI is the commercial product's differentiator and a large infrastructure investment. Building it into the Community MVP makes the free self-hosted product depend on commercial infrastructure and delays the product promise. It is explicitly deferred and must not be added to the Community critical path.
+
+**Alternatives considered**: Running Community on hosted managed AI was rejected as a dependency inversion.
+
+## Decision: Treat visual maturity as necessary for valid product testing
+
+**Rationale**: A developer-looking prototype (bare status cards, raw enum text, 92-button review screens, no shell, no preview) cannot validate the Community product promise with non-technical users. The MVP must meet a FlowCV-calibre UI/UX standard (coherent shell, modern typography and spacing, clear navigation, designed states, preview/export fidelity, responsive behavior) before usability testing is meaningful. The T093/T097 non-technical-UX regressions and usability protocol depend on this.
+
+**Alternatives considered**: Shipping the functional prototype and polishing later was rejected because the usability evidence would be invalid and the product would fail the non-technical promise.
+
+## Decision: Use vertical slices instead of hardening-first sequencing
+
+**Rationale**: The previous task graph front-loaded deep US4/US6 hardening and a provider spike before any usable product existed. Community replaces that sequencing with five demoable vertical tranches (setup + real Codex import → credible resume + PDF → visual editor → reversible Codex editing → alpha readiness), each with backend, UI, recovery, responsive, Docker, and end-to-end demonstration criteria. Hardening tasks remain preserved but are deferred or scheduled after the visible product works.
+
+**Alternatives considered**: A hardening-first sequence was rejected because it produces no testable product for a non-technical user and delays the exact moment when the product promise becomes real.
+
+## Decision: Complete the T246 real-document corpus offline before any live authorization
+
+This decision records the offline-preparation state before the later T246 live
+campaign. Its `T246 remains incomplete` wording is historical; the current
+aggregate is finalized as FAILED and is governed by the reconciliation at the
+top of this document.
+
+**Rationale**: T246 (live real-document Codex semantic evaluation) requires
+deterministic extraction transcripts and provenance as the Codex input for
+eight scenario categories. Before any live authorization, the missing five
+mandatory real-document fixtures were completed fully offline (T249,
+2026-08-07): a bilingual PDF, a partial/sparse DOCX, a structurally ambiguous
+multi-column PDF, a prompt-instruction-like DOCX, and a malformed PDF
+recovery case, each with a deterministic generator, a pinned corpus
+transcript, expected semantic JSON, and a fail-closed manifest. Formats were
+chosen to exercise distinct production behavior per the canonical contract:
+PDF for bilingual classification and multi-column interleaving, DOCX for
+sparse absence semantics and prompt-instruction isolation, and PDF for the
+malformed recovery case. The dedicated T246 authorization registry,
+validator, offline-safe runner, and incomplete aggregator are implemented
+with every entry NOT_AUTHORIZED. C08 is a recovery-only case: it consumes
+zero Codex requests, so the exact future request budget is 7 semantic cases
+plus 1 non-semantic recovery case (total maximum future Codex requests: 7).
+No live execution, OAuth, provider, network, or credential access was
+performed, T246 remains incomplete, and T203 remains NO-GO.
+
+**Alternatives considered**: Running T246 against the synthetic T201 corpus
+or authorizing live requests before the real-document corpus was pinned was
+rejected because it would not measure real PDF/DOCX semantic quality and
+would bypass the mandatory fail-closed hash verification. Committing opaque
+manually-created binaries without reproducible generators was rejected
+because the repository convention requires deterministic generator sources
+for every fixture.

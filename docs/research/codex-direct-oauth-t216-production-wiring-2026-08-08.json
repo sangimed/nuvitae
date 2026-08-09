@@ -1,0 +1,59 @@
+{
+  "evidence_schema_version": 1,
+  "proof_id": "t216-production-semantic-provider-wiring-2026-08-08",
+  "observation_timestamp": "2026-08-08T22:55:00+02:00",
+  "app_revision": "working-tree-uncommitted",
+  "branch": "feat/import-resume-codex-direct-oauth-spike",
+  "scope": "offline/local production composition and provider-boundary validation only",
+  "production_wiring": {
+    "semantic_provider_registered": true,
+    "provider_kind": "codex",
+    "adapter": "CodexDirectProviderAdapter",
+    "owner_resolution": "worker ownerUserId -> provider connection repository -> codex connection -> encrypted session store",
+    "readiness_predicate": "isProviderConnectionReady",
+    "invocation_attempt_limit": 1,
+    "startup_requires_user_connection": false,
+    "credentials_in_queue_payload": false
+  },
+  "offline_preflight": {
+    "factory_returns_production_adapter": true,
+    "worker_composition_tests": "passed",
+    "owner_isolation_tests": "passed",
+    "session_lifecycle_and_recovery_tests": "passed",
+    "adapter_and_transport_tests": "passed",
+    "architecture_boundary_tests": "passed",
+    "typecheck": "passed",
+    "external_oauth_or_provider_call": false,
+    "real_import": false
+  },
+  "t217_budget": {
+    "maximum_primary_provider_attempts": 1,
+    "maximum_provider_calls": 1,
+    "maximum_deterministic_fallback_executions": 1,
+    "automatic_provider_retry": false
+  },
+  "qualification": {
+    "t216_status": "COMPLETE",
+    "live_production_proof": "READY_TO_BE_SEPARATELY_AUTHORIZED",
+    "t203_status": "NO-GO; unchanged",
+    "t246_rerun": false,
+    "t246_reopened": false,
+    "t246_reinterpreted": false,
+    "moderated_human_validation": false
+  },
+  "historical_preflight": {
+    "artifact": "docs/research/codex-direct-oauth-t213-t215-real-production-proof-2026-08-08.json",
+    "original_classification": "INFRASTRUCTURE_INVALID",
+    "preserved": true,
+    "blocker_resolved": "production worker semantic-provider registration"
+  },
+  "security_controls": {
+    "access_or_refresh_tokens_in_job_payload": false,
+    "tokens_in_application_logs": false,
+    "authorization_url_in_worker_logs": false,
+    "raw_provider_response_persisted": false,
+    "cross_owner_session_access": false,
+    "deleted_session_usable": false
+  },
+  "commit_or_push_performed": false
+}

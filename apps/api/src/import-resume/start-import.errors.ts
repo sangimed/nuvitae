@@ -1,6 +1,9 @@
 export type StartImportPublicErrorCode =
   | "authentication_required"
   | "rate_limited"
+  | "active_job_limit_reached"
+  | "queued_job_limit_reached"
+  | "processing_start_denied"
   | "unsupported_format"
   | "empty_file"
   | "unsafe_upload_metadata"

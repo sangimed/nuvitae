@@ -10,6 +10,11 @@ import {
   type DeterministicExtractionJobPayload,
 } from "@nuvitae/contracts";
 import type { ImportedDocument } from "@nuvitae/domain";
+import {
+  ProcessingStartDeniedError,
+  type ImportEventEmitter,
+  type ImportProcessingCapacityPort,
+} from "@nuvitae/import-application";
 import type {
   ImportResumeRepository,
   PersistenceTransactionRunner,
@@ -66,6 +71,12 @@ export const WORKER_IMPORT_VALIDATION_USE_CASE = Symbol(
 export const WORKER_IMPORT_EXTRACTION_USE_CASE = Symbol(
   "WORKER_IMPORT_EXTRACTION_USE_CASE",
 );
+export const WORKER_IMPORT_EVENT_EMITTER = Symbol(
+  "WORKER_IMPORT_EVENT_EMITTER",
+);
+export const WORKER_IMPORT_CAPACITY_PORT = Symbol(
+  "WORKER_IMPORT_CAPACITY_PORT",
+);
 
 @Injectable()
 @Processor(IMPORT_RESUME_PROCESSING_QUEUE, {
@@ -85,6 +96,13 @@ export class ImportProcessingProcessor extends WorkerHost {
     private readonly extraction: WorkerImportExtractionUseCase | undefined,
     @InjectQueue(IMPORT_RESUME_PROCESSING_QUEUE)
     private readonly queue: Queue,
+    @Optional()
+    @Inject(WORKER_IMPORT_EVENT_EMITTER)
+    private readonly events: ImportEventEmitter | undefined = undefined,
+    @Optional()
+    @Inject(WORKER_IMPORT_CAPACITY_PORT)
+    private readonly capacity:
+      ImportProcessingCapacityPort | undefined = undefined,
   ) {
     super();
   }
@@ -147,12 +165,17 @@ export class ImportProcessingProcessor extends WorkerHost {
         extractionPayload,
         {
           jobId: importResumeJobId(document.id, "extraction"),
-          attempts: 3,
-          backoff: { type: "exponential", delay: 500 },
+          // Semantic/provider budget is owned by SemanticImportProcessor.
+          // Queue redelivery must not silently create extra provider calls or
+          // rerun the bounded deterministic fallback.
+          attempts: 1,
           removeOnComplete: { age: 300, count: 100 },
           removeOnFail: { age: 900, count: 100 },
         },
       );
+    } catch (error) {
+      this.emitWorkerFailure(document.id, "validation", error);
+      throw error;
     } finally {
       deadline.controller.abort();
     }
@@ -193,6 +216,14 @@ export class ImportProcessingProcessor extends WorkerHost {
         importedDocumentId: document.id,
         abortSignal: signal,
       });
+    } catch (error) {
+      if (error instanceof ProcessingStartDeniedError) {
+        this.events?.emit("import.active_limit_reached", {});
+        this.events?.emit("import.processing_start_denied", {});
+        throw error;
+      }
+      this.emitWorkerFailure(document.id, "extraction", error);
+      throw error;
     } finally {
       deadline.controller.abort();
     }
@@ -201,35 +232,58 @@ export class ImportProcessingProcessor extends WorkerHost {
   private async processForegroundTimeout(job: Job<unknown>): Promise<void> {
     const payload = parsePayload(foregroundTimeoutJobPayloadSchema, job.data);
     if (new Date(payload.foregroundDeadline).getTime() > Date.now()) return;
-    await this.transactionRunner.transaction(async (manager) => {
-      const aggregate = await this.repository.findImportByOwner(
-        payload.importId,
-        payload.owner.ownerUserId,
-        manager,
-      );
-      if (aggregate === null) return;
-      const current = aggregate.document;
-      if (
-        current.validationStatus === "rejected" ||
-        [
-          "failed",
-          "cancelled",
-          "expired",
-          "timeout_partial",
-          "ready_for_review",
-        ].includes(current.processingStatus) ||
-        (await this.repository.findDraftByImportAndOwner(
-          current.id,
-          current.ownerUserId,
+    try {
+      await this.transactionRunner.transaction(async (manager) => {
+        const aggregate = await this.repository.findImportByOwner(
+          payload.importId,
+          payload.owner.ownerUserId,
           manager,
-        )) !== null
-      )
-        return;
-      if (current.retentionExpiresAt.getTime() <= Date.now()) return;
-      await this.repository.saveImportLifecycle(
-        { ...current, processingStatus: "timeout_partial" },
-        manager,
+        );
+        if (aggregate === null) return;
+        const current = aggregate.document;
+        if (
+          current.validationStatus === "rejected" ||
+          [
+            "failed",
+            "cancelled",
+            "expired",
+            "timeout_partial",
+            "ready_for_review",
+          ].includes(current.processingStatus) ||
+          (await this.repository.findDraftByImportAndOwner(
+            current.id,
+            current.ownerUserId,
+            manager,
+          )) !== null
+        )
+          return;
+        if (current.retentionExpiresAt.getTime() <= Date.now()) return;
+        await this.repository.saveImportLifecycle(
+          { ...current, processingStatus: "timeout_partial" },
+          manager,
+        );
+      });
+      await this.capacity?.releaseCapacity(
+        payload.owner.ownerUserId,
+        payload.importId,
+        new Date(),
       );
+    } catch (error) {
+      this.emitWorkerFailure(payload.importId, "foreground_timeout", error);
+      throw error;
+    }
+  }
+
+  private emitWorkerFailure(
+    importId: string,
+    jobType: "validation" | "extraction" | "foreground_timeout",
+    error: unknown,
+  ): void {
+    this.events?.emit("import.worker_failed", {
+      importId,
+      jobType,
+      errorCategory: "unexpected_failure",
+      retryable: !isUnrecoverable(error),
     });
   }
 
@@ -257,6 +311,10 @@ function parsePayload<T>(schema: z.ZodType<T>, value: unknown): T {
   if (!parsed.success)
     throw new UnrecoverableError("Invalid import processing payload.");
   return parsed.data;
+}
+
+function isUnrecoverable(error: unknown): boolean {
+  return error instanceof UnrecoverableError;
 }
 
 function eligibleForValidation(document: ImportedDocument): boolean {

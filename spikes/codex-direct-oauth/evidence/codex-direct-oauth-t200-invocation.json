@@ -1,0 +1,405 @@
+{
+  "evidence_classification": "live_t200_direct_invocation",
+  "observation_timestamp": "2026-08-06T22:36:35.514Z",
+  "audited_upstream_revisions": {
+    "compatibilityImplementation": "4c331166c40cccb6e4d2da1136c921faed1cc8c1",
+    "hermesAgent": "5d6aae02bffa7714c4a94f3a0900b37774442dea",
+    "officialCodex": "3016671bb077c43448b8fa88f3edfa9772e17058"
+  },
+  "deployment_mode": "local_macos_docker_desktop_single_user_spike",
+  "encrypted_state_recovered": true,
+  "credential_generation_before": 1,
+  "refresh_required": true,
+  "refresh_attempted": true,
+  "refresh_succeeded": true,
+  "credential_generation_after": 2,
+  "audited_backend_host_applied": true,
+  "audited_backend_path_applied": true,
+  "authorization_header_applied": true,
+  "account_header_applied": true,
+  "audited_originator_applied": true,
+  "openai_beta_header_applied": true,
+  "responses_lite_header_applied": false,
+  "session_metadata_applied": true,
+  "client_metadata_applied": true,
+  "invocation_attempted": true,
+  "invocation_succeeded": true,
+  "exact_http_status": 200,
+  "safe_http_status_category": "2xx",
+  "response_content_type_category": "empty",
+  "response_content_type_parameters_present": false,
+  "response_content_encoding_category": "absent",
+  "response_transfer_encoding_category": "chunked",
+  "response_content_length_present": false,
+  "response_body_present": true,
+  "response_body_presence": "present",
+  "response_body_framing_category": "sse",
+  "response_body_is_byte_stream": true,
+  "first_non_empty_body_chunk_length_category": "medium",
+  "first_non_empty_body_bytes_category": "sse_data",
+  "response_request_id_header_present": false,
+  "retry_after_header_present": false,
+  "response_protocol_valid": true,
+  "response_event_count": 15,
+  "unknown_event_type": null,
+  "unknown_event_index": null,
+  "unknown_event_assistant_output_phase": null,
+  "unknown_event_terminal_phase": null,
+  "unknown_event_top_level_fields": [],
+  "unknown_event_field_presence": {
+    "response_present": false,
+    "item_present": false,
+    "delta_present": false,
+    "error_present": false,
+    "sequence_number_present": false
+  },
+  "unknown_event_field_categories": {
+    "response": "absent",
+    "item": "absent",
+    "delta": "absent",
+    "error": "absent",
+    "sequence_number": "absent"
+  },
+  "unknown_event_contains_text_looking_field": false,
+  "unknown_event_followed_by_more_events": false,
+  "known_event_types_before_failure": [
+    "response.created",
+    "response.in_progress",
+    "response.output_item.added",
+    "response.content_part.added",
+    "response.output_text.delta",
+    "response.output_text.delta",
+    "response.output_text.delta",
+    "response.output_text.delta",
+    "response.output_text.delta",
+    "response.output_text.delta",
+    "response.output_text.delta",
+    "response.output_text.done",
+    "response.content_part.done",
+    "response.output_item.done",
+    "response.completed"
+  ],
+  "terminal_event_observed_before_failure": false,
+  "expected_synthetic_marker_present": true,
+  "response_length_category": "fixed_marker_only",
+  "normalized_response_sha256": "a81b46dbacedec9f82340e41a283ef7978780ca69f1f68ee96cb3a6b346dcfaa",
+  "safe_model_category": "official_bundled_codex_text_model",
+  "raw_credentials_exposed_to_parent": false,
+  "account_identifier_exposed_to_parent": false,
+  "raw_response_persisted": false,
+  "encrypted_state_preserved": true,
+  "callback_port_absent": true,
+  "credential_exposed_to_parent": false,
+  "secret_scan_result": "passed",
+  "no_resume_or_personal_data_transmitted": true,
+  "raw_request_persisted": false,
+  "complete_model_output_persisted": false,
+  "expected_request_manifest": {
+    "url_host_category": "chatgpt.com",
+    "url_path": "/backend-api/codex/responses",
+    "http_method": "POST",
+    "header_names": [
+      "accept",
+      "authorization",
+      "ChatGPT-Account-ID",
+      "content-length",
+      "content-type",
+      "OpenAI-Beta",
+      "originator",
+      "session-id",
+      "thread-id",
+      "User-Agent",
+      "x-client-request-id",
+      "x-codex-installation-id"
+    ],
+    "required_headers_present": {
+      "authorization": true,
+      "chatgpt_account_id": true,
+      "originator": true,
+      "accept": true,
+      "content_type": true,
+      "openai_beta": true,
+      "session_id": true,
+      "x_client_request_id": true
+    },
+    "content_encoding_category": "absent",
+    "accept_category": "event_stream",
+    "content_type_category": "json",
+    "body_field_names": [
+      "client_metadata",
+      "include",
+      "input",
+      "instructions",
+      "model",
+      "prompt_cache_key",
+      "reasoning",
+      "store",
+      "stream",
+      "text"
+    ],
+    "body_value_types": {
+      "client_metadata": "object",
+      "include": "array",
+      "input": "array",
+      "instructions": "string",
+      "model": "string",
+      "prompt_cache_key": "string",
+      "reasoning": "object",
+      "store": "boolean",
+      "stream": "boolean",
+      "text": "object"
+    },
+    "body_array_lengths": {
+      "include": 1,
+      "input": 1
+    },
+    "reasoning_effort_category": "low",
+    "reasoning_summary_present": true,
+    "include_category": "non_empty",
+    "text_verbosity_category": "low",
+    "tools_present": false,
+    "store_false": true,
+    "model_identifier_category": "audited_codex_text_model",
+    "input_item_categories": [
+      {
+        "type": "message",
+        "role": "user",
+        "content_part_types": [
+          "input_text"
+        ]
+      }
+    ],
+    "stream_boolean": true,
+    "serialized_body_byte_length": 813,
+    "harmless_marker_present": true
+  },
+  "previous_nuvitae_request_manifest": {
+    "url_host_category": "chatgpt.com",
+    "url_path": "/backend-api/codex/responses",
+    "http_method": "POST",
+    "header_names": [
+      "accept",
+      "authorization",
+      "ChatGPT-Account-ID",
+      "content-length",
+      "content-type",
+      "OpenAI-Beta",
+      "originator",
+      "session-id",
+      "thread-id",
+      "User-Agent",
+      "x-client-request-id",
+      "x-codex-installation-id",
+      "x-openai-internal-codex-responses-lite"
+    ],
+    "required_headers_present": {
+      "authorization": true,
+      "chatgpt_account_id": true,
+      "originator": true,
+      "accept": true,
+      "content_type": true,
+      "openai_beta": true,
+      "session_id": true,
+      "x_client_request_id": true
+    },
+    "content_encoding_category": "absent",
+    "accept_category": "event_stream",
+    "content_type_category": "json",
+    "body_field_names": [
+      "client_metadata",
+      "include",
+      "input",
+      "model",
+      "parallel_tool_calls",
+      "prompt_cache_key",
+      "reasoning",
+      "store",
+      "stream",
+      "text",
+      "tool_choice"
+    ],
+    "body_value_types": {
+      "client_metadata": "object",
+      "include": "array",
+      "input": "array",
+      "model": "string",
+      "parallel_tool_calls": "boolean",
+      "prompt_cache_key": "string",
+      "reasoning": "object",
+      "store": "boolean",
+      "stream": "boolean",
+      "text": "object",
+      "tool_choice": "string"
+    },
+    "body_array_lengths": {
+      "include": 1,
+      "input": 3
+    },
+    "reasoning_effort_category": "low",
+    "reasoning_summary_present": false,
+    "include_category": "non_empty",
+    "text_verbosity_category": "low",
+    "tools_present": false,
+    "store_false": true,
+    "model_identifier_category": "audited_codex_text_model",
+    "input_item_categories": [
+      {
+        "type": "additional_tools",
+        "role": "developer",
+        "content_part_types": [],
+        "tools_length": 0
+      },
+      {
+        "type": "message",
+        "role": "developer",
+        "content_part_types": [
+          "input_text"
+        ]
+      },
+      {
+        "type": "message",
+        "role": "user",
+        "content_part_types": [
+          "input_text"
+        ]
+      }
+    ],
+    "stream_boolean": true,
+    "serialized_body_byte_length": 693,
+    "harmless_marker_present": true
+  },
+  "corrected_request_manifest": {
+    "url_host_category": "chatgpt.com",
+    "url_path": "/backend-api/codex/responses",
+    "http_method": "POST",
+    "header_names": [
+      "accept",
+      "authorization",
+      "ChatGPT-Account-ID",
+      "content-length",
+      "content-type",
+      "OpenAI-Beta",
+      "originator",
+      "session-id",
+      "thread-id",
+      "User-Agent",
+      "x-client-request-id",
+      "x-codex-installation-id"
+    ],
+    "required_headers_present": {
+      "authorization": true,
+      "chatgpt_account_id": true,
+      "originator": true,
+      "accept": true,
+      "content_type": true,
+      "openai_beta": true,
+      "session_id": true,
+      "x_client_request_id": true
+    },
+    "content_encoding_category": "absent",
+    "accept_category": "event_stream",
+    "content_type_category": "json",
+    "body_field_names": [
+      "client_metadata",
+      "include",
+      "input",
+      "instructions",
+      "model",
+      "prompt_cache_key",
+      "reasoning",
+      "store",
+      "stream",
+      "text"
+    ],
+    "body_value_types": {
+      "client_metadata": "object",
+      "include": "array",
+      "input": "array",
+      "instructions": "string",
+      "model": "string",
+      "prompt_cache_key": "string",
+      "reasoning": "object",
+      "store": "boolean",
+      "stream": "boolean",
+      "text": "object"
+    },
+    "body_array_lengths": {
+      "include": 1,
+      "input": 1
+    },
+    "reasoning_effort_category": "low",
+    "reasoning_summary_present": true,
+    "include_category": "non_empty",
+    "text_verbosity_category": "low",
+    "tools_present": false,
+    "store_false": true,
+    "model_identifier_category": "audited_codex_text_model",
+    "input_item_categories": [
+      {
+        "type": "message",
+        "role": "user",
+        "content_part_types": [
+          "input_text"
+        ]
+      }
+    ],
+    "stream_boolean": true,
+    "serialized_body_byte_length": 813,
+    "harmless_marker_present": true,
+    "serialized_body_byte_category": "small"
+  },
+  "corrected_request_mismatches": [],
+  "previous_request_mismatches": [
+    {
+      "path": "body_value_types.instructions",
+      "expected": "string"
+    },
+    {
+      "path": "input_item_categories",
+      "expected": [
+        {
+          "type": "message",
+          "role": "user",
+          "content_part_types": [
+            "input_text"
+          ]
+        }
+      ],
+      "actual": [
+        {
+          "type": "additional_tools",
+          "role": "developer",
+          "content_part_types": [],
+          "tools_length": 0
+        },
+        {
+          "type": "message",
+          "role": "developer",
+          "content_part_types": [
+            "input_text"
+          ]
+        },
+        {
+          "type": "message",
+          "role": "user",
+          "content_part_types": [
+            "input_text"
+          ]
+        }
+      ]
+    }
+  ],
+  "broker_uid": 1000,
+  "broker_only_fields_present": {
+    "access_token_present": true,
+    "account_identifier_present": true
+  },
+  "audited_transport": {
+    "backend_host_category": "chatgpt.com_verified_official_source_undocumented_third_party_backend",
+    "backend_path_category": "backend_api_codex_responses_verified_official_source_compatibility_sensitive",
+    "model_category": "gpt-5.6-sol_official_bundled_model",
+    "originator_category": "compatibility_originator_observed_in_audited_implementation"
+  },
+  "safe_final_state": "complete",
+  "broker_removed": true
+}

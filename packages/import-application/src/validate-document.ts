@@ -26,6 +26,11 @@ import type {
 } from "@nuvitae/persistence";
 import type { EntityManager } from "typeorm";
 import type { ImportProcessingLimits } from "./import-processing-limits.js";
+import type { ImportProcessingCapacityPort } from "./import-capacity.js";
+import type {
+  ImportEventEmitter,
+  ImportEventMetadataFor,
+} from "./observability/import-events.js";
 
 const pdfContentType = "application/pdf";
 const docxContentType =
@@ -58,10 +63,7 @@ export interface ValidateDocumentClock {
   now(): Date;
 }
 
-export interface ValidateDocumentPrivacyLogger {
-  info(event: string, metadata?: Readonly<Record<string, unknown>>): void;
-  warn(event: string, metadata?: Readonly<Record<string, unknown>>): void;
-}
+export type ValidateDocumentPrivacyLogger = ImportEventEmitter;
 
 export interface ValidateDocumentPorts {
   readonly repository: ImportResumeRepository;
@@ -79,6 +81,7 @@ export interface ValidateDocumentPorts {
   readonly requestIdGenerator: ValidateDocumentRequestIdGenerator;
   readonly clock: ValidateDocumentClock;
   readonly logger: ValidateDocumentPrivacyLogger;
+  readonly capacity?: ImportProcessingCapacityPort;
 }
 
 interface SuccessfulValidation {
@@ -151,7 +154,7 @@ export class ValidateDocumentService {
     }
 
     if ("kind" in outcome && outcome.kind === "recoverable") {
-      await this.restoreRetryableState(document, outcome.code);
+      await this.restoreRetryableState(document);
       this.logCompletion(document.id, outcome.code, startedAt);
       return this.response({
         requestId,
@@ -169,6 +172,7 @@ export class ValidateDocumentService {
     if ("kind" in outcome && outcome.kind === "document_rejection") {
       const persisted = await this.persistFinalState(document, {
         validationStatus: "rejected",
+        processingStatus: "failed",
         ...(outcome.renderedPageCount === undefined
           ? {}
           : { renderedPageCount: outcome.renderedPageCount }),
@@ -179,6 +183,7 @@ export class ValidateDocumentService {
       if (!persisted) {
         return this.retryableInfrastructureResponse(requestId, document.id);
       }
+      await this.releaseCapacity(document.id, document.ownerUserId);
       this.logCompletion(document.id, outcome.code, startedAt, {
         ...(outcome.renderedPageCount === undefined
           ? {}
@@ -276,6 +281,10 @@ export class ValidateDocumentService {
         ...(abortSignal === undefined ? {} : { abortSignal }),
       });
     } catch {
+      this.ports.logger.emit("import.storage_read_failed", {
+        importId: document.id,
+        retryable: true,
+      });
       return infrastructureFailure();
     }
     if (source.byteLength > this.ports.processingLimits.maxUploadSizeBytes) {
@@ -388,6 +397,7 @@ export class ValidateDocumentService {
   private async persistFinalState(
     original: ImportedDocument,
     changes: Pick<ImportedDocument, "validationStatus"> &
+      Partial<Pick<ImportedDocument, "processingStatus">> &
       Partial<Pick<ImportedDocument, "renderedPageCount" | "detectedLanguage">>,
   ): Promise<boolean> {
     try {
@@ -400,14 +410,32 @@ export class ValidateDocumentService {
       });
       return true;
     } catch {
-      await this.restoreRetryableState(original, "terminal_failure");
+      await this.restoreRetryableState(original);
       return false;
+    }
+  }
+
+  private async releaseCapacity(
+    importId: string,
+    ownerUserId: string,
+  ): Promise<void> {
+    if (this.ports.capacity === undefined) return;
+    try {
+      await this.ports.capacity.releaseCapacity(
+        ownerUserId,
+        importId,
+        this.ports.clock.now(),
+      );
+    } catch {
+      this.ports.logger.emit("import.limit_release_failed", {
+        importId,
+        errorCategory: "limit_release_failed",
+      });
     }
   }
 
   private async restoreRetryableState(
     original: ImportedDocument,
-    errorCode: string,
   ): Promise<void> {
     try {
       await this.ports.transactionRunner.transaction(async (manager) => {
@@ -418,9 +446,9 @@ export class ValidateDocumentService {
         );
       });
     } catch {
-      this.ports.logger.warn("import.validation_state_recovery_failed", {
+      this.ports.logger.emit("validation.state_recovery_failed", {
         importId: original.id,
-        errorCategory: errorCode,
+        errorCategory: "state_recovery_failed",
       });
     }
   }
@@ -468,7 +496,7 @@ export class ValidateDocumentService {
 
   private logCompletion(
     importId: string,
-    errorCategory: string,
+    errorCategory: ImportEventMetadataFor<"validation.completed">["errorCategory"],
     startedAt: Date,
     details: {
       readonly renderedPageCount?: number;
@@ -479,10 +507,10 @@ export class ValidateDocumentService {
       0,
       this.ports.clock.now().getTime() - startedAt.getTime(),
     );
-    this.ports.logger.info("import.validation_completed", {
+    this.ports.logger.emit("validation.completed", {
       importId,
       errorCategory,
-      duration: durationBucket(duration),
+      durationBucket: durationBucket(duration),
       pageCountBucket: pageCountBucket(details.renderedPageCount),
       languageCategory: details.detectedLanguage ?? "not_known",
     });
@@ -654,14 +682,18 @@ function publicFailure(
   };
 }
 
-function durationBucket(milliseconds: number): string {
+function durationBucket(
+  milliseconds: number,
+): "under_100ms" | "under_1s" | "under_10s" | "10s_or_more" {
   if (milliseconds < 100) return "under_100ms";
   if (milliseconds < 1_000) return "under_1s";
   if (milliseconds < 10_000) return "under_10s";
   return "10s_or_more";
 }
 
-function pageCountBucket(value: number | undefined): string {
+function pageCountBucket(
+  value: number | undefined,
+): "not_known" | "one" | "two_to_five" | "over_limit" {
   if (value === undefined) return "not_known";
   if (value <= 1) return "one";
   if (value <= 5) return "two_to_five";

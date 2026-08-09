@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nuvitae.invalid/spikes/codex-direct-oauth/t246-fixture-manifest.schema.json",
+  "title": "T246 real-document fixture manifest",
+  "description": "Fail-closed per-case expectation manifest for the T246 real-document semantic corpus. Mirrors the T201 v2 manifest shape with a T246-compatible case/fixture vocabulary. Every hash is pinned so a mismatch fails before credential recovery or any Codex request.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "t246_case",
+    "fixture_id",
+    "fixture_classification",
+    "fixture_path",
+    "fixture_sha256",
+    "transcript_sha256",
+    "expected_semantic_json_sha256",
+    "document_language",
+    "language_category",
+    "source_format_category",
+    "layout_category",
+    "extraction_format",
+    "expected_section_counts",
+    "expected_item_counts",
+    "exact_facts",
+    "high_priority_fact_paths",
+    "intentionally_absent_fields",
+    "ambiguous_facts",
+    "forbidden_inferences",
+    "provenance_contract",
+    "thresholds"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "t246_case": {
+      "type": "string",
+      "pattern": "^T246-C0[1-7]$"
+    },
+    "fixture_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fixture_classification": {
+      "const": "real_document"
+    },
+    "fixture_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fixture_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "transcript_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "expected_semantic_json_sha256": {
+      "description": "SHA-256 of the canonical expected semantic JSON for this corpus fixture, computed by the offline verifier from the deterministic corpus entry.",
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "document_language": {
+      "description": "Expected document-level language classification; not an exact source fact.",
+      "enum": [
+        "English",
+        "French",
+        "French/English",
+        "bilingual_french_english",
+        "french",
+        "english"
+      ]
+    },
+    "language_category": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_format_category": {
+      "type": "string",
+      "minLength": 1
+    },
+    "layout_category": {
+      "type": "string",
+      "minLength": 1
+    },
+    "extraction_format": {
+      "type": "object",
+      "required": ["kind", "coordinate_system", "binary_extraction_performed"]
+    },
+    "expected_section_counts": {
+      "type": "object",
+      "required": [
+        "basics",
+        "work_experiences",
+        "education",
+        "skills",
+        "languages",
+        "certifications"
+      ]
+    },
+    "expected_item_counts": {
+      "type": "object",
+      "required": [
+        "work_experience_highlights",
+        "warnings_or_ambiguities_minimum"
+      ]
+    },
+    "exact_facts": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["path", "value", "priority", "line", "category"],
+        "properties": {
+          "category": {
+            "enum": [
+              "basics",
+              "work",
+              "education",
+              "skills",
+              "languages",
+              "certifications"
+            ]
+          }
+        }
+      }
+    },
+    "high_priority_fact_paths": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "intentionally_absent_fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "ambiguous_facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "source_line",
+          "text",
+          "expected_handling",
+          "category"
+        ],
+        "properties": {
+          "category": {
+            "const": "ambiguity"
+          }
+        }
+      }
+    },
+    "forbidden_inferences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "forbidden_values"]
+      }
+    },
+    "absence_evidence": {
+      "type": "object",
+      "required": ["line", "fragment", "category"],
+      "properties": {
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fragment": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "const": "absence"
+        }
+      }
+    },
+    "provenance_contract": {
+      "type": "object",
+      "required": [
+        "flattened_coordinates",
+        "deterministic_enrichment",
+        "model_physical_coordinates_rejected"
+      ]
+    },
+    "thresholds": {
+      "type": "object",
+      "required": [
+        "minimum_exact_fact_recall",
+        "required_high_priority_fact_recall"
+      ]
+    }
+  }
+}

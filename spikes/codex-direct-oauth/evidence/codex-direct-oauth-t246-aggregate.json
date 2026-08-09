@@ -1,0 +1,585 @@
+{
+  "evidence_classification": "t246_aggregate",
+  "status": "FAILED",
+  "qualification_result": "FAILED",
+  "all_cases_consumed": true,
+  "all_cases_passed": false,
+  "accepted_live_evidence_count": 5,
+  "accepted_live_attempts": [
+    {
+      "campaign": "T246-C02",
+      "attempt": "A01",
+      "semantic_case": "T246-C02",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c02-a01-semantic-parsing.json",
+      "evidence_sha256": "32ad15cfd528b2eee915899d2f3d7c2609558672d40b733ebc59fc9938211cb6",
+      "evidence_size_bytes": 13202,
+      "case_pass": true,
+      "safe_final_state": "complete"
+    },
+    {
+      "campaign": "T246-C03",
+      "attempt": "A01",
+      "semantic_case": "T246-C03",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c03-a01-semantic-parsing.json",
+      "evidence_sha256": "f03a9c94ae582634587e2c7b65065d5795078f107a7d3a84208c01c557088ac4",
+      "evidence_size_bytes": 12880,
+      "case_pass": true,
+      "safe_final_state": "complete"
+    },
+    {
+      "campaign": "T246-C05",
+      "attempt": "A01",
+      "semantic_case": "T246-C05",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c05-a01-semantic-parsing.json",
+      "evidence_sha256": "ea5d13138a3c17fda6e2548ba0cebebbca3fd24ffede3b5ca92114a540741e84",
+      "evidence_size_bytes": 12740,
+      "case_pass": true,
+      "safe_final_state": "complete"
+    },
+    {
+      "campaign": "T246-C06",
+      "attempt": "A01",
+      "semantic_case": "T246-C06",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c06-a01-semantic-parsing.json",
+      "evidence_sha256": "21611140539114711d0094fee51076d28e6ee4882e22b82fd9dfb2a1eccb6b32",
+      "evidence_size_bytes": 12337,
+      "case_pass": true,
+      "safe_final_state": "complete"
+    },
+    {
+      "campaign": "T246-C07",
+      "attempt": "A01",
+      "semantic_case": "T246-C07",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c07-a01-semantic-parsing.json",
+      "evidence_sha256": "b350ee1dc70a73869558c87e4c67f298704195e9d14d8a5aa6ef97a8204d5d4b",
+      "evidence_size_bytes": 14021,
+      "case_pass": true,
+      "safe_final_state": "complete"
+    }
+  ],
+  "consumed_attempts": [
+    {
+      "campaign": "T246-C01",
+      "attempt": "A01",
+      "semantic_case": "T246-C01",
+      "consumed": true,
+      "accepted": false,
+      "invocation_attempted": true,
+      "invocation_succeeded": true,
+      "semantic_metrics_passed": true,
+      "exact_fact_recall": null,
+      "high_priority_fact_recall": null,
+      "unsupported_fact_count": null,
+      "forbidden_inference_count": null,
+      "missing_evidence_count": null,
+      "invalid_evidence_count": null,
+      "grounding": null,
+      "no_invention": null,
+      "parsing": null,
+      "runner_finalization": "failed",
+      "evidence_actual_path": "spikes/codex-direct-oauth/spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json",
+      "evidence_sha256": "dc96b2a42936d58e757c37bfb9b83708438dde603a1a8756ce420ca0afb903b9",
+      "evidence_size_bytes": 10530,
+      "primary_failure_phase": null,
+      "primary_failure_category": null,
+      "safe_final_state": "safe_unknown_failure",
+      "case_pass": null
+    },
+    {
+      "campaign": "T246-C01",
+      "attempt": "A02",
+      "semantic_case": "T246-C01",
+      "consumed": true,
+      "accepted": false,
+      "invocation_attempted": true,
+      "invocation_succeeded": true,
+      "semantic_metrics_passed": false,
+      "exact_fact_recall": 0.9583,
+      "high_priority_fact_recall": 0.9444,
+      "unsupported_fact_count": 0,
+      "forbidden_inference_count": 0,
+      "missing_evidence_count": 0,
+      "invalid_evidence_count": 0,
+      "grounding": null,
+      "no_invention": null,
+      "parsing": null,
+      "runner_finalization": "passed",
+      "evidence_actual_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a02-semantic-parsing.json",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a02-semantic-parsing.json",
+      "evidence_sha256": "1164187ab0bb9a2d333482b54f12333cb7bce1c38e1464e8a9069cda7e21fe6d",
+      "evidence_size_bytes": 10679,
+      "primary_failure_phase": "response_semantic_evaluation",
+      "primary_failure_category": "expected_fact_missing",
+      "safe_final_state": "expected_fact_missing",
+      "case_pass": false
+    },
+    {
+      "campaign": "T246-C02",
+      "attempt": "A01",
+      "semantic_case": "T246-C02",
+      "consumed": true,
+      "accepted": true,
+      "invocation_attempted": true,
+      "invocation_succeeded": true,
+      "semantic_metrics_passed": true,
+      "exact_fact_recall": 1,
+      "high_priority_fact_recall": 1,
+      "unsupported_fact_count": 0,
+      "forbidden_inference_count": 0,
+      "missing_evidence_count": 0,
+      "invalid_evidence_count": 0,
+      "grounding": null,
+      "no_invention": null,
+      "parsing": null,
+      "runner_finalization": "passed",
+      "evidence_actual_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c02-a01-semantic-parsing.json",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c02-a01-semantic-parsing.json",
+      "evidence_sha256": "32ad15cfd528b2eee915899d2f3d7c2609558672d40b733ebc59fc9938211cb6",
+      "evidence_size_bytes": 13202,
+      "primary_failure_phase": "none",
+      "primary_failure_category": "none",
+      "safe_final_state": "complete",
+      "case_pass": true
+    },
+    {
+      "campaign": "T246-C03",
+      "attempt": "A01",
+      "semantic_case": "T246-C03",
+      "consumed": true,
+      "accepted": true,
+      "invocation_attempted": true,
+      "invocation_succeeded": true,
+      "semantic_metrics_passed": true,
+      "exact_fact_recall": 1,
+      "high_priority_fact_recall": 1,
+      "unsupported_fact_count": 0,
+      "forbidden_inference_count": 0,
+      "missing_evidence_count": 0,
+      "invalid_evidence_count": 0,
+      "grounding": null,
+      "no_invention": null,
+      "parsing": null,
+      "runner_finalization": "passed",
+      "evidence_actual_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c03-a01-semantic-parsing.json",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c03-a01-semantic-parsing.json",
+      "evidence_sha256": "f03a9c94ae582634587e2c7b65065d5795078f107a7d3a84208c01c557088ac4",
+      "evidence_size_bytes": 12880,
+      "primary_failure_phase": "none",
+      "primary_failure_category": "none",
+      "safe_final_state": "complete",
+      "case_pass": true
+    },
+    {
+      "campaign": "T246-C04",
+      "attempt": "A01",
+      "semantic_case": "T246-C04",
+      "consumed": true,
+      "accepted": false,
+      "invocation_attempted": true,
+      "invocation_succeeded": true,
+      "semantic_metrics_passed": false,
+      "exact_fact_recall": 0.75,
+      "high_priority_fact_recall": 0.6842,
+      "unsupported_fact_count": 0,
+      "forbidden_inference_count": 0,
+      "missing_evidence_count": 0,
+      "invalid_evidence_count": 0,
+      "grounding": true,
+      "no_invention": true,
+      "parsing": false,
+      "runner_finalization": "passed",
+      "evidence_actual_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c04-a01-semantic-parsing.json",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c04-a01-semantic-parsing.json",
+      "evidence_sha256": "0f75a00b6b8bc72207852a57f4b3806cdca8b0ac31299f9c822b28631a7bf2f8",
+      "evidence_size_bytes": 13555,
+      "primary_failure_phase": "response_semantic_evaluation",
+      "primary_failure_category": "expected_fact_missing",
+      "safe_final_state": "expected_fact_missing",
+      "case_pass": false
+    },
+    {
+      "campaign": "T246-C05",
+      "attempt": "A01",
+      "semantic_case": "T246-C05",
+      "consumed": true,
+      "accepted": true,
+      "invocation_attempted": true,
+      "invocation_succeeded": true,
+      "semantic_metrics_passed": true,
+      "exact_fact_recall": 1,
+      "high_priority_fact_recall": 1,
+      "unsupported_fact_count": 0,
+      "forbidden_inference_count": 0,
+      "missing_evidence_count": 0,
+      "invalid_evidence_count": 0,
+      "grounding": true,
+      "no_invention": true,
+      "parsing": true,
+      "runner_finalization": "passed",
+      "evidence_actual_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c05-a01-semantic-parsing.json",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c05-a01-semantic-parsing.json",
+      "evidence_sha256": "ea5d13138a3c17fda6e2548ba0cebebbca3fd24ffede3b5ca92114a540741e84",
+      "evidence_size_bytes": 12740,
+      "primary_failure_phase": "none",
+      "primary_failure_category": "none",
+      "safe_final_state": "complete",
+      "case_pass": true
+    },
+    {
+      "campaign": "T246-C06",
+      "attempt": "A01",
+      "semantic_case": "T246-C06",
+      "consumed": true,
+      "accepted": true,
+      "invocation_attempted": true,
+      "invocation_succeeded": true,
+      "semantic_metrics_passed": true,
+      "exact_fact_recall": 1,
+      "high_priority_fact_recall": 1,
+      "unsupported_fact_count": 0,
+      "forbidden_inference_count": 0,
+      "missing_evidence_count": 0,
+      "invalid_evidence_count": 0,
+      "grounding": true,
+      "no_invention": true,
+      "parsing": true,
+      "runner_finalization": "passed",
+      "evidence_actual_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c06-a01-semantic-parsing.json",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c06-a01-semantic-parsing.json",
+      "evidence_sha256": "21611140539114711d0094fee51076d28e6ee4882e22b82fd9dfb2a1eccb6b32",
+      "evidence_size_bytes": 12337,
+      "primary_failure_phase": "none",
+      "primary_failure_category": "none",
+      "safe_final_state": "complete",
+      "case_pass": true
+    },
+    {
+      "campaign": "T246-C07",
+      "attempt": "A01",
+      "semantic_case": "T246-C07",
+      "consumed": true,
+      "accepted": true,
+      "invocation_attempted": true,
+      "invocation_succeeded": true,
+      "semantic_metrics_passed": true,
+      "exact_fact_recall": 1,
+      "high_priority_fact_recall": 1,
+      "unsupported_fact_count": 0,
+      "forbidden_inference_count": 0,
+      "missing_evidence_count": 0,
+      "invalid_evidence_count": 0,
+      "grounding": true,
+      "no_invention": true,
+      "parsing": true,
+      "runner_finalization": "passed",
+      "evidence_actual_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c07-a01-semantic-parsing.json",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c07-a01-semantic-parsing.json",
+      "evidence_sha256": "b350ee1dc70a73869558c87e4c67f298704195e9d14d8a5aa6ef97a8204d5d4b",
+      "evidence_size_bytes": 14021,
+      "primary_failure_phase": "none",
+      "primary_failure_category": "none",
+      "safe_final_state": "complete",
+      "case_pass": true
+    },
+    {
+      "campaign": "T246-C08",
+      "attempt": "A01",
+      "semantic_case": "T246-C08",
+      "consumed": true,
+      "accepted": true,
+      "invocation_attempted": false,
+      "invocation_succeeded": false,
+      "semantic_metrics_passed": null,
+      "exact_fact_recall": null,
+      "high_priority_fact_recall": null,
+      "unsupported_fact_count": null,
+      "forbidden_inference_count": null,
+      "missing_evidence_count": null,
+      "invalid_evidence_count": null,
+      "grounding": null,
+      "no_invention": null,
+      "parsing": null,
+      "runner_finalization": "passed",
+      "evidence_actual_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c08-a01-recovery.json",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c08-a01-recovery.json",
+      "evidence_sha256": "cd4882eeffcc00977ade5276f97a6a8327e1478b63301b9372c8a7fb0b6f924e",
+      "evidence_size_bytes": 1997,
+      "primary_failure_phase": "none",
+      "primary_failure_category": "none",
+      "safe_final_state": "complete",
+      "case_pass": true
+    }
+  ],
+  "passed_case_count": 6,
+  "failed_case_count": 2,
+  "harness_invalid_attempts": [
+    {
+      "campaign": "T246-C01",
+      "attempt": "A01",
+      "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c01-a01-semantic-parsing.json"
+    }
+  ],
+  "harness_invalid_attempt_count": 1,
+  "semantic_recall_results": [
+    {
+      "campaign": "T246-C01",
+      "attempt": "A01",
+      "exact_fact_recall": null,
+      "high_priority_fact_recall": null,
+      "case_pass": null
+    },
+    {
+      "campaign": "T246-C01",
+      "attempt": "A02",
+      "exact_fact_recall": 0.9583,
+      "high_priority_fact_recall": 0.9444,
+      "case_pass": false
+    },
+    {
+      "campaign": "T246-C02",
+      "attempt": "A01",
+      "exact_fact_recall": 1,
+      "high_priority_fact_recall": 1,
+      "case_pass": true
+    },
+    {
+      "campaign": "T246-C03",
+      "attempt": "A01",
+      "exact_fact_recall": 1,
+      "high_priority_fact_recall": 1,
+      "case_pass": true
+    },
+    {
+      "campaign": "T246-C04",
+      "attempt": "A01",
+      "exact_fact_recall": 0.75,
+      "high_priority_fact_recall": 0.6842,
+      "case_pass": false
+    },
+    {
+      "campaign": "T246-C05",
+      "attempt": "A01",
+      "exact_fact_recall": 1,
+      "high_priority_fact_recall": 1,
+      "case_pass": true
+    },
+    {
+      "campaign": "T246-C06",
+      "attempt": "A01",
+      "exact_fact_recall": 1,
+      "high_priority_fact_recall": 1,
+      "case_pass": true
+    },
+    {
+      "campaign": "T246-C07",
+      "attempt": "A01",
+      "exact_fact_recall": 1,
+      "high_priority_fact_recall": 1,
+      "case_pass": true
+    }
+  ],
+  "aggregate_hallucination_unsupported_fact_results": {
+    "total_unsupported_fact_count": 0,
+    "total_forbidden_inference_count": 0,
+    "pass": true
+  },
+  "grounding_no_invention_results": {
+    "all_grounding_pass": true,
+    "all_no_invention_pass": true
+  },
+  "prompt_isolation_result": {
+    "contract_validated": true,
+    "embedded_instruction_line_count": 7,
+    "document_content_treated_as_untrusted": true,
+    "system_developer_instructions_controlled": true,
+    "semantic_schema_fixed": true,
+    "provider_target_fixed": true,
+    "authorization_fixed": true,
+    "evidence_path_fixed": true,
+    "retries_and_request_budget_fixed": true,
+    "credential_handling_fixed": true,
+    "network_and_tools_unavailable": true,
+    "grounding_rules_fixed": true,
+    "no_invention_rules_fixed": true,
+    "raw_instruction_text_persisted": false
+  },
+  "malformed_recovery_result": {
+    "case_id": "T246-C08",
+    "attempt": "A01",
+    "malformed_detection": true,
+    "safe_recovery_category": "malformed_or_corrupted",
+    "invocation_attempted": false,
+    "semantic_backend_requests": 0,
+    "credential_recovery_attempted": false,
+    "broker_runs": 0,
+    "recovery_behavior_pass": true,
+    "case_pass": true,
+    "secret_scan_result": "passed"
+  },
+  "semantic_cases": [
+    {
+      "case_id": "T246-C01",
+      "accepted": false,
+      "consumed": true
+    },
+    {
+      "case_id": "T246-C02",
+      "accepted": true,
+      "consumed": true
+    },
+    {
+      "case_id": "T246-C03",
+      "accepted": true,
+      "consumed": true
+    },
+    {
+      "case_id": "T246-C04",
+      "accepted": false,
+      "consumed": true
+    },
+    {
+      "case_id": "T246-C05",
+      "accepted": true,
+      "consumed": true
+    },
+    {
+      "case_id": "T246-C06",
+      "accepted": true,
+      "consumed": true
+    },
+    {
+      "case_id": "T246-C07",
+      "accepted": true,
+      "consumed": true
+    }
+  ],
+  "recovery_case": {
+    "case_id": "T246-C08",
+    "accepted": true,
+    "consumed": true,
+    "evidence_canonical_path": "spikes/codex-direct-oauth/evidence/codex-direct-oauth-t246-c08-a01-recovery.json"
+  },
+  "case_matrix": [
+    {
+      "case_id": "T246-C01",
+      "result": "FAIL",
+      "consumed": true,
+      "attempts": [
+        {
+          "attempt": "A01",
+          "case_pass": null,
+          "runner_finalization": "failed",
+          "exact_fact_recall": null,
+          "high_priority_fact_recall": null
+        },
+        {
+          "attempt": "A02",
+          "case_pass": false,
+          "runner_finalization": "passed",
+          "exact_fact_recall": 0.9583,
+          "high_priority_fact_recall": 0.9444
+        }
+      ]
+    },
+    {
+      "case_id": "T246-C02",
+      "result": "PASS",
+      "consumed": true,
+      "attempts": [
+        {
+          "attempt": "A01",
+          "case_pass": true,
+          "runner_finalization": "passed",
+          "exact_fact_recall": 1,
+          "high_priority_fact_recall": 1
+        }
+      ]
+    },
+    {
+      "case_id": "T246-C03",
+      "result": "PASS",
+      "consumed": true,
+      "attempts": [
+        {
+          "attempt": "A01",
+          "case_pass": true,
+          "runner_finalization": "passed",
+          "exact_fact_recall": 1,
+          "high_priority_fact_recall": 1
+        }
+      ]
+    },
+    {
+      "case_id": "T246-C04",
+      "result": "FAIL",
+      "consumed": true,
+      "attempts": [
+        {
+          "attempt": "A01",
+          "case_pass": false,
+          "runner_finalization": "passed",
+          "exact_fact_recall": 0.75,
+          "high_priority_fact_recall": 0.6842
+        }
+      ]
+    },
+    {
+      "case_id": "T246-C05",
+      "result": "PASS",
+      "consumed": true,
+      "attempts": [
+        {
+          "attempt": "A01",
+          "case_pass": true,
+          "runner_finalization": "passed",
+          "exact_fact_recall": 1,
+          "high_priority_fact_recall": 1
+        }
+      ]
+    },
+    {
+      "case_id": "T246-C06",
+      "result": "PASS",
+      "consumed": true,
+      "attempts": [
+        {
+          "attempt": "A01",
+          "case_pass": true,
+          "runner_finalization": "passed",
+          "exact_fact_recall": 1,
+          "high_priority_fact_recall": 1
+        }
+      ]
+    },
+    {
+      "case_id": "T246-C07",
+      "result": "PASS",
+      "consumed": true,
+      "attempts": [
+        {
+          "attempt": "A01",
+          "case_pass": true,
+          "runner_finalization": "passed",
+          "exact_fact_recall": 1,
+          "high_priority_fact_recall": 1
+        }
+      ]
+    },
+    {
+      "case_id": "T246-C08",
+      "result": "PASS",
+      "consumed": true,
+      "attempts": [
+        {
+          "attempt": "A01",
+          "case_pass": true,
+          "runner_finalization": "passed",
+          "exact_fact_recall": null,
+          "high_priority_fact_recall": null
+        }
+      ]
+    }
+  ],
+  "note": "Final T246 qualification preserves the consumed canonical results: C01-A01 is harness-invalid, C01-A02 is a semantic FAIL at 23/24 exact facts and 17/18 high-priority facts, C04-A01 is a semantic FAIL at 18/24 exact facts and 13/19 high-priority facts, C02/C03/C05/C06/C07 are PASS, and C08 is PASS through the offline malformed-recovery contract. All C01-C08 attempts are consumed; no replacement attempt is created. The qualification result is FAILED because the all-case contract requires every case to pass."
+}

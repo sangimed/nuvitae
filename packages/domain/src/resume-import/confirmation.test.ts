@@ -91,6 +91,53 @@ describe("structured resume confirmation mapper", () => {
     );
   });
 
+  it("groups education fields and preserves an explicit year without inventing a start date", () => {
+    const result = mapReviewedImportDraftToStructuredResume({
+      draft: draft({
+        fields: [
+          field({
+            section: "education",
+            fieldPath: "education.0.institution",
+            value: { kind: "text", value: "Example University" },
+            reviewStatus: "confirmed",
+          }),
+          field({
+            id: id(3),
+            section: "education",
+            fieldPath: "education.0.credential",
+            value: { kind: "text", value: "MSc Systems Engineering" },
+            reviewStatus: "confirmed",
+          }),
+          field({
+            id: id(4),
+            section: "education",
+            fieldPath: "education.0.end_date",
+            value: {
+              kind: "date",
+              value: { year: 2024, precision: "year" },
+            },
+            reviewStatus: "confirmed",
+          }),
+        ],
+      }),
+      corrections: [],
+      structuredResumeId: id(9),
+      childIds: ids(),
+      confirmedAt: now,
+      now,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.resume.content.education).toHaveLength(1);
+    expect(result.resume.content.education[0]).toMatchObject({
+      institution: { value: "Example University" },
+      credential: { value: "MSc Systems Engineering" },
+      endDate: { year: 2024, precision: "year" },
+    });
+    expect(result.resume.content.education[0]?.startDate).toBeUndefined();
+  });
+
   it("does not mutate input and reduces source provenance without deleting content", () => {
     const original = draft({
       fields: [field({ reviewStatus: "confirmed" })],

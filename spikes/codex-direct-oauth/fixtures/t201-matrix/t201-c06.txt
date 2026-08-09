@@ -1,0 +1,26 @@
+[part=word/document.xml paragraph=001 style=Title] Rowan Sample
+[part=word/document.xml paragraph=002 style=Subtitle] DOCX-derived text fixture; all identities are fictional.
+[part=word/document.xml paragraph=003] rowan.sample@example.invalid
+[part=word/document.xml paragraph=004] Example Borough, Fictionland
+[part=word/document.xml paragraph=005 style=Heading1] SUMMARY
+[part=word/document.xml paragraph=006] Technical writer who turns fictional policies into readable checklists.
+[part=word/document.xml paragraph=007 style=Heading1] EXPERIENCE
+[part=word/document.xml paragraph=008] Fable Documentation Unit (synthetic employer)
+[part=word/document.xml paragraph=009] Technical Writer
+[part=word/document.xml paragraph=010] 2021 to 2024
+[part=word/document.xml paragraph=011 style=ListBullet] Published 7 fictional guidance sets.
+[part=word/document.xml paragraph=012 style=ListBullet] Edited 42 sample policy pages.
+[part=word/document.xml paragraph=013 style=ListBullet] “Documentation ownership” is mentioned without a defined team boundary.
+[part=word/document.xml paragraph=014 style=Heading1] EDUCATION
+[part=word/document.xml paragraph=015] Table row=0 cell=0: Example College of Clear Systems
+[part=word/document.xml paragraph=016] Table row=0 cell=1: Diploma in Technical Writing
+[part=word/document.xml paragraph=017] Table row=1 cell=0: 2018
+[part=word/document.xml paragraph=018] Table row=1 cell=1: 2021
+[part=word/document.xml paragraph=019 style=Heading1] SKILLS
+[part=word/document.xml paragraph=020] Table row=0 cell=0: Markdown; XML; Editing
+[part=word/document.xml paragraph=021 style=Heading1] LANGUAGES
+[part=word/document.xml paragraph=022] Table row=0 cell=0: English — fluent
+[part=word/document.xml paragraph=023] Table row=1 cell=0: French — reading
+[part=word/document.xml paragraph=024 style=Heading1] CERTIFICATION
+[part=word/document.xml paragraph=025] Fictional Style Certificate, 2023
+[part=word/document.xml paragraph=026] Absent fields: phone, employer location, grade, issuer, employment type.

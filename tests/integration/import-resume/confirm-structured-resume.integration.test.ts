@@ -40,6 +40,7 @@ describe("confirm structured resume PostgreSQL integration", () => {
         nextRequestId: () =>
           `90000000-0000-4000-8000-${String(requestId++).padStart(12, "0")}`,
       },
+      { emit: () => undefined },
     );
   });
 

@@ -1,0 +1,284 @@
+{
+  "schema_version": 1,
+  "fixture_id": "t201-synthetic-resume-v1",
+  "fixture_file": "t201-synthetic-resume.txt",
+  "fixture_classification": "synthetic",
+  "document_language": "English",
+  "expected_section_counts": {
+    "basics": 1,
+    "work_experiences": 2,
+    "education": 1,
+    "skills": 6,
+    "languages": 2,
+    "certifications": 1
+  },
+  "expected_item_counts": {
+    "work_experience_highlights": 5,
+    "warnings_or_ambiguities_minimum": 1
+  },
+  "exact_facts": [
+    {
+      "path": "basics.full_name",
+      "value": "Alex Exemple",
+      "priority": "high",
+      "line": 1
+    },
+    {
+      "path": "basics.email",
+      "value": "alex.exemple@example.invalid",
+      "priority": "high",
+      "line": 3
+    },
+    {
+      "path": "basics.location",
+      "value": "Synthetic City, Exampleland",
+      "priority": "high",
+      "line": 4
+    },
+    {
+      "path": "basics.summary",
+      "value": "Product-minded software generalist who builds privacy-respecting workflow tools for small teams.",
+      "priority": "medium",
+      "line": 8
+    },
+    {
+      "path": "work_experiences[0].employer",
+      "value": "Northstar Example Labs",
+      "priority": "high",
+      "line": 12
+    },
+    {
+      "path": "work_experiences[0].job_title",
+      "value": "Senior Workflow Engineer",
+      "priority": "high",
+      "line": 13
+    },
+    {
+      "path": "work_experiences[0].start_date",
+      "value": "March 2022",
+      "priority": "high",
+      "line": 14
+    },
+    {
+      "path": "work_experiences[0].end_date",
+      "value": "Present",
+      "priority": "high",
+      "line": 14
+    },
+    {
+      "path": "work_experiences[0].highlights[0]",
+      "value": "Led redesign of a resume intake dashboard that cut synthetic review steps from 9 to 5.",
+      "priority": "medium",
+      "line": 15
+    },
+    {
+      "path": "work_experiences[0].highlights[1]",
+      "value": "Built TypeScript validation scripts for 1,200 demonstration records with zero unsupported field writes.",
+      "priority": "medium",
+      "line": 16
+    },
+    {
+      "path": "work_experiences[0].highlights[2]",
+      "value": "Coordinated with two product partners; no direct people-management role is stated.",
+      "priority": "medium",
+      "line": 17
+    },
+    {
+      "path": "work_experiences[1].employer",
+      "value": "Acme Demonstration Systems",
+      "priority": "high",
+      "line": 20
+    },
+    {
+      "path": "work_experiences[1].job_title",
+      "value": "Automation Analyst",
+      "priority": "high",
+      "line": 21
+    },
+    {
+      "path": "work_experiences[1].start_date",
+      "value": "2019",
+      "priority": "high",
+      "line": 22
+    },
+    {
+      "path": "work_experiences[1].end_date",
+      "value": "Feb. 2022",
+      "priority": "high",
+      "line": 22
+    },
+    {
+      "path": "work_experiences[1].highlights[0]",
+      "value": "Created Docker-based test fixtures that reduced local setup time by 35%.",
+      "priority": "medium",
+      "line": 23
+    },
+    {
+      "path": "work_experiences[1].highlights[1]",
+      "value": "Maintained PostgreSQL reports and React review screens for a fictional hiring workflow.",
+      "priority": "medium",
+      "line": 24
+    },
+    {
+      "path": "education[0].school",
+      "value": "Example Institute of Technology",
+      "priority": "high",
+      "line": 28
+    },
+    {
+      "path": "education[0].degree",
+      "value": "Bachelor of Applied Computer Systems",
+      "priority": "high",
+      "line": 29
+    },
+    {
+      "path": "education[0].start_date",
+      "value": "2015",
+      "priority": "medium",
+      "line": 30
+    },
+    {
+      "path": "education[0].end_date",
+      "value": "2019",
+      "priority": "medium",
+      "line": 30
+    },
+    {
+      "path": "skills[0]",
+      "value": "TypeScript",
+      "priority": "high",
+      "line": 34
+    },
+    { "path": "skills[1]", "value": "React", "priority": "high", "line": 34 },
+    { "path": "skills[2]", "value": "Docker", "priority": "high", "line": 34 },
+    {
+      "path": "skills[3]",
+      "value": "PostgreSQL",
+      "priority": "high",
+      "line": 34
+    },
+    {
+      "path": "skills[4]",
+      "value": "PDF.js",
+      "priority": "medium",
+      "line": 34
+    },
+    { "path": "skills[5]", "value": "Zod", "priority": "medium", "line": 34 },
+    {
+      "path": "languages[0].name",
+      "value": "English",
+      "priority": "high",
+      "line": 37
+    },
+    {
+      "path": "languages[0].proficiency",
+      "value": "fluent",
+      "priority": "high",
+      "line": 37
+    },
+    {
+      "path": "languages[1].name",
+      "value": "French",
+      "priority": "high",
+      "line": 38
+    },
+    {
+      "path": "languages[1].proficiency",
+      "value": "professional working proficiency",
+      "priority": "high",
+      "line": 38
+    },
+    {
+      "path": "certifications[0].name",
+      "value": "Synthetic Privacy Engineering Certificate",
+      "priority": "high",
+      "line": 41
+    },
+    {
+      "path": "certifications[0].date",
+      "value": "2023",
+      "priority": "medium",
+      "line": 41
+    }
+  ],
+  "intentionally_absent_fields": [
+    "basics.phone",
+    "work_experiences[0].location",
+    "work_experiences[1].location",
+    "work_experiences[0].employment_type",
+    "work_experiences[1].employment_type",
+    "education[0].grade",
+    "certifications[0].issuer"
+  ],
+  "ambiguous_facts": [
+    {
+      "id": "ambiguous-platform-reliability",
+      "source_line": 18,
+      "text": "supported \"platform reliability\" across onboarding and analytics",
+      "expected_handling": "Record under ambiguities or warnings; do not convert into a concrete reliability ownership achievement."
+    }
+  ],
+  "forbidden_inferences": [
+    {
+      "id": "invented-phone",
+      "path": "basics.phone",
+      "forbidden_values": ["phone number", "+", "555", "000"]
+    },
+    {
+      "id": "employer-location-from-client-visit",
+      "path": "work_experiences[1].location",
+      "forbidden_values": ["Example Harbor"]
+    },
+    {
+      "id": "management-responsibility",
+      "path": "work_experiences[*].management_responsibility",
+      "forbidden_values": ["managed", "people manager", "direct reports"]
+    },
+    {
+      "id": "employment-type",
+      "path": "work_experiences[*].employment_type",
+      "forbidden_values": ["full-time", "part-time", "contract"]
+    },
+    {
+      "id": "degree-grade",
+      "path": "education[0].grade",
+      "forbidden_values": ["honors", "gpa", "distinction"]
+    },
+    {
+      "id": "certification-issuer",
+      "path": "certifications[0].issuer",
+      "forbidden_values": ["Example Institute", "Northstar", "Acme"]
+    },
+    {
+      "id": "invented-skill",
+      "path": "skills[*]",
+      "allowed_values": [
+        "TypeScript",
+        "React",
+        "Docker",
+        "PostgreSQL",
+        "PDF.js",
+        "Zod"
+      ]
+    },
+    {
+      "id": "ambiguous-platform-reliability-asserted",
+      "path": "work_experiences[0].highlights[*]",
+      "forbidden_values": [
+        "owned platform reliability",
+        "led platform reliability",
+        "improved platform reliability"
+      ]
+    }
+  ],
+  "thresholds": {
+    "minimum_expected_section_recall": 1,
+    "minimum_expected_item_recall": 1,
+    "minimum_exact_fact_recall": 0.9,
+    "required_high_priority_fact_recall": 1,
+    "unsupported_fact_count": 0,
+    "forbidden_inference_count": 0,
+    "missing_evidence_count": 0,
+    "invalid_evidence_count": 0
+  }
+}

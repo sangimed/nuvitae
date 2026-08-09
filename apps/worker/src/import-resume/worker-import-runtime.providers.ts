@@ -2,7 +2,6 @@ import { randomUUID } from "node:crypto";
 import type { Provider } from "@nestjs/common";
 import {
   DeterministicLanguageDetector,
-  DeterministicResumeFieldExtractor,
   IsolatedParserRunner,
   LibreOfficeRenderedPageCounter,
   OoxmlDocxAdapter,
@@ -10,19 +9,38 @@ import {
   type ExtractionSourceReader,
 } from "@nuvitae/extraction";
 import {
-  ProcessExtractionService,
+  ImportLimitService,
+  TypeOrmImportLimitStore,
+  CodexDirectProviderAdapter,
+  type ProviderSessionStore,
+  type ResumeSemanticParserProvider,
   ValidateDocumentService,
+  createImportEventEmitter,
+  type ImportProcessingCapacityPort,
   type ImportProcessingLimits,
+  type ImportEventEmitter,
 } from "@nuvitae/import-application";
 import type {
+  AIProviderRuntimeConnectionsRepository,
   ImportResumeRepository,
   PersistenceTransactionRunner,
 } from "@nuvitae/persistence";
-import { LocalPrivateImportStorage } from "@nuvitae/storage";
 import {
+  TypeOrmAIProviderRuntimeConnectionsRepository,
+  TypeOrmImportLimitAttemptsRepository,
+} from "@nuvitae/persistence";
+import { DataSource } from "typeorm";
+import {
+  LocalPrivateImportStorage,
+  LocalProviderSessionStorage,
+} from "@nuvitae/storage";
+import {
+  WORKER_IMPORT_EVENT_EMITTER,
+  WORKER_IMPORT_CAPACITY_PORT,
   WORKER_IMPORT_EXTRACTION_USE_CASE,
   WORKER_IMPORT_VALIDATION_USE_CASE,
 } from "./import-processing.processor.js";
+import { SemanticImportProcessor } from "./semantic-import.processor.js";
 import { parseWorkerImportProcessingLimits } from "./import-processing-limits.js";
 import {
   WORKER_IMPORT_RESUME_REPOSITORY,
@@ -38,6 +56,41 @@ export const WORKER_PRIVATE_IMPORT_STORAGE = Symbol(
 export const WORKER_PRIVATE_SOURCE_READER = Symbol(
   "WORKER_PRIVATE_SOURCE_READER",
 );
+export const WORKER_SEMANTIC_PARSER_PROVIDER = Symbol(
+  "WORKER_SEMANTIC_PARSER_PROVIDER",
+);
+export const WORKER_PROVIDER_CONNECTION_REPOSITORY = Symbol(
+  "WORKER_PROVIDER_CONNECTION_REPOSITORY",
+);
+export const WORKER_PROVIDER_SESSION_STORE = Symbol(
+  "WORKER_PROVIDER_SESSION_STORE",
+);
+
+/**
+ * Production semantic-provider registration boundary.
+ *
+ * Production provider construction is dependency-only. It does not inspect a
+ * user or contact Codex at startup; owner/session resolution happens on each
+ * semantic invocation.
+ */
+export function createProductionSemanticParserProvider(
+  repository: AIProviderRuntimeConnectionsRepository,
+  sessionStore: ProviderSessionStore,
+  logger?: ImportEventEmitter,
+): ResumeSemanticParserProvider {
+  return new CodexDirectProviderAdapter({
+    repository,
+    sessionStore,
+    ...(logger === undefined
+      ? {}
+      : {
+          onTransportTiming: (timing) =>
+            logger.emit("semantic.provider_transport_timing", timing),
+          onTransportProtocolShape: (shape) =>
+            logger.emit("semantic.provider_protocol_shape", shape),
+        }),
+  });
+}
 
 class PrivateStorageSourceReader implements ExtractionSourceReader {
   constructor(private readonly storage: LocalPrivateImportStorage) {}
@@ -55,23 +108,43 @@ class PrivateStorageSourceReader implements ExtractionSourceReader {
   }
 }
 
-const logger = {
-  info: (event: string, metadata?: Readonly<Record<string, unknown>>) => {
-    console.log(
-      JSON.stringify({ level: "info", event, metadata: metadata ?? {} }),
-    );
+const importEventEmitter = createImportEventEmitter({
+  write: (record) => {
+    console.log(JSON.stringify(record));
   },
-  warn: (event: string, metadata?: Readonly<Record<string, unknown>>) => {
-    console.warn(
-      JSON.stringify({ level: "warn", event, metadata: metadata ?? {} }),
-    );
-  },
-};
+});
+
+const logger = importEventEmitter;
 
 export const workerImportRuntimeProviders: Provider[] = [
   {
+    provide: WORKER_IMPORT_EVENT_EMITTER,
+    useValue: importEventEmitter,
+  },
+  {
     provide: WORKER_IMPORT_PROCESSING_LIMITS,
     useFactory: () => parseWorkerImportProcessingLimits(),
+  },
+  {
+    provide: WORKER_IMPORT_CAPACITY_PORT,
+    useFactory: (
+      dataSource: DataSource,
+      limits: ImportProcessingLimits,
+    ): ImportProcessingCapacityPort => {
+      const service = new ImportLimitService(
+        new TypeOrmImportLimitStore(
+          new TypeOrmImportLimitAttemptsRepository(dataSource),
+        ),
+        limits,
+      );
+      return {
+        admitToProcessing: (ownerUserId, importId, now) =>
+          service.admitToProcessing(ownerUserId, importId, now),
+        releaseCapacity: (ownerUserId, importId, now) =>
+          service.releaseCapacityForImport(ownerUserId, importId, now),
+      };
+    },
+    inject: [DataSource, WORKER_IMPORT_PROCESSING_LIMITS],
   },
   {
     provide: WORKER_PRIVATE_IMPORT_STORAGE,
@@ -98,6 +171,7 @@ export const workerImportRuntimeProviders: Provider[] = [
       transactionRunner: PersistenceTransactionRunner,
       sourceReader: ExtractionSourceReader,
       limits: ImportProcessingLimits,
+      capacity: ImportProcessingCapacityPort,
     ) => {
       const pdf = new PdfJsPdfAdapter(sourceReader, {
         maximumFileSizeBytes: limits.maxUploadSizeBytes + 1,
@@ -137,6 +211,7 @@ export const workerImportRuntimeProviders: Provider[] = [
         requestIdGenerator: { nextRequestId: () => randomUUID() },
         clock: { now: () => new Date() },
         logger,
+        capacity,
       });
     },
     inject: [
@@ -144,7 +219,36 @@ export const workerImportRuntimeProviders: Provider[] = [
       WORKER_PERSISTENCE_TRANSACTION_RUNNER,
       WORKER_PRIVATE_SOURCE_READER,
       WORKER_IMPORT_PROCESSING_LIMITS,
+      WORKER_IMPORT_CAPACITY_PORT,
     ],
+  },
+  {
+    provide: WORKER_SEMANTIC_PARSER_PROVIDER,
+    useFactory: createProductionSemanticParserProvider,
+    inject: [
+      WORKER_PROVIDER_CONNECTION_REPOSITORY,
+      WORKER_PROVIDER_SESSION_STORE,
+      WORKER_IMPORT_EVENT_EMITTER,
+    ],
+  },
+  {
+    provide: WORKER_PROVIDER_CONNECTION_REPOSITORY,
+    useFactory: (dataSource: DataSource) =>
+      new TypeOrmAIProviderRuntimeConnectionsRepository(dataSource),
+    inject: [DataSource],
+  },
+  {
+    provide: WORKER_PROVIDER_SESSION_STORE,
+    useFactory: async () =>
+      await LocalProviderSessionStorage.create({
+        root: requireEnv("NUVITAE_PROVIDER_SESSION_ROOT"),
+        encryptionSecret: requireEnv(
+          "NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET",
+        ),
+        maxSessionBytes: Number(
+          process.env.NUVITAE_PROVIDER_SESSION_MAX_BYTES ?? "65536",
+        ),
+      }),
   },
   {
     provide: WORKER_IMPORT_EXTRACTION_USE_CASE,
@@ -153,6 +257,8 @@ export const workerImportRuntimeProviders: Provider[] = [
       transactionRunner: PersistenceTransactionRunner,
       sourceReader: ExtractionSourceReader,
       limits: ImportProcessingLimits,
+      provider: ResumeSemanticParserProvider | undefined,
+      capacity: ImportProcessingCapacityPort,
     ) => {
       const pdf = new PdfJsPdfAdapter(sourceReader, {
         maximumFileSizeBytes: limits.maxUploadSizeBytes + 1,
@@ -162,21 +268,16 @@ export const workerImportRuntimeProviders: Provider[] = [
         sourceReader,
         docxValidationLimits(limits),
       );
-      return new ProcessExtractionService({
+      return new SemanticImportProcessor({
         repository,
         transactionRunner,
         sourceReader,
         pdfTextExtractor: pdf,
         docxTextExtractor: docx,
-        fieldExtractor: new DeterministicResumeFieldExtractor(),
+        provider,
         clock: { now: () => new Date() },
-        ids: {
-          draftId: () => randomUUID(),
-          fieldId: () => randomUUID(),
-          warningId: () => randomUUID(),
-          requestId: () => randomUUID(),
-        },
         logger,
+        capacity,
       });
     },
     inject: [
@@ -184,6 +285,8 @@ export const workerImportRuntimeProviders: Provider[] = [
       WORKER_PERSISTENCE_TRANSACTION_RUNNER,
       WORKER_PRIVATE_SOURCE_READER,
       WORKER_IMPORT_PROCESSING_LIMITS,
+      WORKER_SEMANTIC_PARSER_PROVIDER,
+      WORKER_IMPORT_CAPACITY_PORT,
     ],
   },
 ];

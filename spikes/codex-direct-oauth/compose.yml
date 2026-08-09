@@ -1,0 +1,218 @@
+services:
+  lifecycle-t199:
+    build:
+      context: .
+    init: true
+    command: ["node", "t199-lifecycle.mjs"]
+    read_only: true
+    user: "1000:1000"
+    volumes:
+      - t199-credentials:/spike/credentials
+      - type: bind
+        source: ${CODEX_DIRECT_OAUTH_T199_KEY_FILE:-${TMPDIR:-/tmp}/nuvitae-codex-direct-oauth-t199/master.key}
+        target: /run/secrets/codex-direct-oauth-t199-master-key
+        read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 192m
+    cpus: "0.5"
+    environment:
+      CODEX_DIRECT_OAUTH_T199_CONTAINER: "1"
+
+  lifecycle:
+    build:
+      context: .
+    init: true
+    read_only: true
+    user: "${CODEX_DIRECT_OAUTH_HOST_UID:-1000}:${CODEX_DIRECT_OAUTH_HOST_GID:-1000}"
+    volumes:
+      - ./evidence:/spike/evidence
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    environment:
+      CODEX_DIRECT_OAUTH_DEPLOYMENT_MODE: local-docker-desktop
+      CODEX_DIRECT_OAUTH_HOST_BINDING: "127.0.0.1"
+      CODEX_DIRECT_OAUTH_HOST_BINDINGS: "${CODEX_DIRECT_OAUTH_HOST_BINDINGS:-127.0.0.1:1455}"
+      CODEX_DIRECT_OAUTH_HOST_PORT: "1455"
+      CODEX_DIRECT_OAUTH_CONTAINER_RELAY_PORT: "2455"
+      CODEX_DIRECT_OAUTH_REDIRECT_HOST: "${CODEX_DIRECT_OAUTH_REDIRECT_HOST:-localhost}"
+      CODEX_DIRECT_OAUTH_WAIT_MS: "${CODEX_DIRECT_OAUTH_WAIT_MS:-300000}"
+    ports:
+      - "127.0.0.1:1455:2455"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 192m
+    cpus: "0.5"
+
+  lifecycle-dual:
+    build:
+      context: .
+    init: true
+    read_only: true
+    user: "${CODEX_DIRECT_OAUTH_HOST_UID:-1000}:${CODEX_DIRECT_OAUTH_HOST_GID:-1000}"
+    volumes:
+      - ./evidence:/spike/evidence
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    environment:
+      CODEX_DIRECT_OAUTH_DEPLOYMENT_MODE: local-docker-desktop
+      CODEX_DIRECT_OAUTH_HOST_BINDING: "127.0.0.1"
+      CODEX_DIRECT_OAUTH_HOST_BINDINGS: "127.0.0.1:1455,[::1]:1455"
+      CODEX_DIRECT_OAUTH_HOST_PORT: "1455"
+      CODEX_DIRECT_OAUTH_CONTAINER_RELAY_PORT: "2455"
+      CODEX_DIRECT_OAUTH_REDIRECT_HOST: "${CODEX_DIRECT_OAUTH_REDIRECT_HOST:-localhost}"
+      CODEX_DIRECT_OAUTH_WAIT_MS: "${CODEX_DIRECT_OAUTH_WAIT_MS:-300000}"
+    ports:
+      - "127.0.0.1:1455:2455"
+      - "[::1]:1455:2455"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 192m
+    cpus: "0.5"
+
+  preflight-ipv4:
+    build:
+      context: .
+    init: true
+    read_only: true
+    command: ["node", "preflight-listener.mjs"]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    ports:
+      - "127.0.0.1:1455:2455"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 96m
+    cpus: "0.25"
+
+  preflight-dual:
+    build:
+      context: .
+    init: true
+    read_only: true
+    command: ["node", "preflight-listener.mjs"]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    ports:
+      - "127.0.0.1:1455:2455"
+      - "[::1]:1455:2455"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 192m
+    cpus: "0.5"
+
+  t201-semantic:
+    image: ${NUVITAE_T201_IMMUTABLE_IMAGE:?NUVITAE_T201_IMMUTABLE_IMAGE is required for T201 Campaign B}
+    pull_policy: never
+    init: true
+    command: ["node", "t201-semantic-broker.mjs"]
+    read_only: true
+    user: "1000:1000"
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,mode=0700
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 192m
+    cpus: "0.5"
+
+  t201-result-channel-offline:
+    build:
+      context: .
+    init: true
+    command: ["node", "t201-result-channel-offline-broker.mjs"]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,mode=0700
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 96m
+    cpus: "0.25"
+
+  t201-result-channel-topology-offline:
+    build:
+      context: .
+    init: true
+    command: ["node", "t201-result-channel-topology-offline-broker.mjs"]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,mode=0700
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 96m
+    cpus: "0.25"
+
+  t201-result-reader:
+    image: ${NUVITAE_T201_IMMUTABLE_IMAGE:?NUVITAE_T201_IMMUTABLE_IMAGE is required for T201 Campaign B}
+    pull_policy: never
+    network_mode: none
+    init: true
+    command: ["node", "t201-result-reader.mjs"]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,mode=0700
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 96m
+    cpus: "0.25"
+
+  t201-credential-recovery-diagnostic:
+    image: ${NUVITAE_T201_IMMUTABLE_IMAGE:?NUVITAE_T201_IMMUTABLE_IMAGE is required for T201 credential recovery diagnostics}
+    pull_policy: never
+    build:
+      context: .
+    init: true
+    command: ["node", "t201-credential-recovery-diagnostic.mjs"]
+    user: "100:101"
+    read_only: true
+    network_mode: none
+    volumes:
+      - t199-key-live:/run/t199-key:ro
+      - t199-credentials-live:/spike/credentials:ro
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m,mode=0700
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 96m
+    cpus: "0.25"
+
+volumes:
+  t199-credentials:
+    name: nuvitae-codex-direct-oauth-t199-credentials
+  t199-key-live:
+    external: true
+    name: nuvitae-codex-direct-oauth-t199-key-live
+  t199-credentials-live:
+    external: true
+    name: nuvitae-codex-direct-oauth-t199-credentials-live

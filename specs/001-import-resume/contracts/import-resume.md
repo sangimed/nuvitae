@@ -48,13 +48,15 @@ This contract describes the user-facing flow and service boundaries for the init
 
 ### AI Provider Connection
 
-**Required Behavior**: Self-hosted users can connect, inspect availability, disconnect, revoke local state, delete locally stored provider credentials, and reconnect the configured semantic parser provider. Codex through the direct-OAuth compatibility spike is the candidate first self-hosted provider, but production Codex adapter behavior remains blocked until that spike records a GO or qualifying CONDITIONAL GO.
+**Required Behavior**: Community users connect their own Codex access through a browser OAuth flow from the normal UI, verify the connection works, and manage it (reconnect, disconnect) with plain-language status and recovery. Direct Codex OAuth is the production primary AI path for the Community MVP and part of onboarding; production Codex adapter behavior remains gated on the direct-OAuth compatibility spike recording a GO or qualifying CONDITIONAL GO with its mandatory conditions satisfied, and no OAuth task is marked complete merely because Community depends on it.
 
 **Required States**: not configured, login pending, connected, login cancelled, disconnected, authentication expired, authentication revoked, provider unavailable, rate limited, quota exceeded, unsupported capability.
 
 **Required Operations**: provider-neutral connection status, login initiation, login progress, login completion, login cancellation where supported, logout, reconnect, local credential deletion, expired or revoked authentication handling, quota state, and provider availability state.
 
-**Rules**: The standard import flow does not expose provider configuration details, prompts, model names, credentials, session material, provider-native JSON, tokens, auth files, OAuth endpoint paths, backend routes, headers, or SDK details. For the Codex direct-OAuth candidate, only the isolated `CodexOAuthBroker` may own encrypted access and refresh tokens. The web application, browser storage, import domain, API controllers, regular worker jobs, database domain entities, semantic extraction contracts, logs, diagnostics, ordinary API responses, and import review remain token-blind.
+**Required Plain-Language UX**: The normal UI exposes only plain actions — "Connect Codex", "Reconnect Codex", "Codex is ready", "Codex connection expired", and "Disconnect". OAuth implementation details, authorization URLs, tokens, account identifiers, app-server details, provider-runtime vocabulary, and model internals are never shown in the normal UI.
+
+**Rules**: The standard import flow does not expose provider configuration details, prompts, model names, credentials, session material, provider-native JSON, tokens, auth files, OAuth endpoint paths, backend routes, headers, or SDK details. For the Codex direct-OAuth candidate, only the isolated `CodexOAuthBroker` may own encrypted access and refresh tokens. The web application, browser storage, import domain, API controllers, regular worker jobs, database domain entities, semantic extraction contracts, logs, diagnostics, ordinary API responses, and import review remain token-blind. Connection state stores only a broker-owned opaque credential reference, never credential material.
 
 ### Codex Direct-OAuth Broker Validation Boundary
 
@@ -92,6 +94,33 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Limit Behavior**: Rate and concurrency rejections use an appropriate response such as HTTP 429, include `Retry-After` where applicable, and include a plain-language recovery message.
 
+### Document Understanding Layer (future boundary)
+
+**Status**: Proposed / spike required / not implemented. This boundary is not a
+runtime contract for the current V1 path and does not authorize a Docling
+dependency, parser replacement, routing, or multimodal provider call.
+
+**Conceptual Input**: A validated, born-digital PDF or DOCX plus import-scoped
+ownership and resource limits.
+
+**Conceptual Output**: A canonical `NuvitaeDocument` containing Nuvitae-owned
+document metadata, pages, stable blocks/fragments, reading order, optional
+bounding boxes, sections, tables, optional style signals, retained assets,
+source provenance, and bounded engine/version/configuration quality metadata.
+
+**Rules**: The import domain must not depend on `DoclingDocument`, PyMuPDF
+dictionaries, Azure `analyzeResult`, Unstructured elements, Apryse JSON, Google
+DocumentLayout output, Adobe extraction JSON, or any other parser-native
+schema. Canonical block/fragment IDs and provenance are owned by Nuvitae. The
+active V1 PDF.js/OOXML/LibreOffice stack remains supported and is the only
+current runtime path; it may later be adapted behind this boundary after the
+controlled Current Extractor versus Docling benchmark.
+
+**Representation Distinction**: `NuvitaeDocument` is a canonical runtime/document
+representation. It is not structured resume state and does not define
+persistence. Source-reconstructing inputs and temporary artifacts remain under
+the existing retention and deletion contract.
+
 ### Validate Document
 
 **Input**: `ImportedDocument` id owned by user.
@@ -108,7 +137,7 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Output**: processing state, partial/complete extraction summary, draft id when threshold is met, provider failure state if any, warnings, recovery actions.
 
-**Rules**: Deterministic validation and source preparation run through concrete PDF and DOCX extraction adapters before semantic parsing. PDF extraction must include page and text-item source-location provenance. DOCX extraction must include package part, paragraph/table/cell/run, and character-offset provenance. When a usable AI provider is connected, semantic parsing runs through `ResumeSemanticParserProvider` as the primary semantic mapping and grouping path. The worker submits only a controlled extraction request. Foreground processing times out after 3 minutes and returns threshold-qualified partial results when available. A parser memory-limit breach terminates the isolated parser process, creates no review draft from abruptly terminated partial output, cleans up files and source-reconstructing artifacts for the failed attempt, and returns retry, replacement-upload, provider recovery where applicable, and manual-entry recovery actions.
+**Rules**: The active V1 path performs deterministic validation and source preparation through the concrete PDF.js and DOCX extraction adapters before semantic parsing. PDF extraction includes page and text-item source-location provenance. DOCX extraction includes package part, paragraph/table/cell/run, and character-offset provenance, with isolated LibreOffice used only for rendered-page-count validation. A future path may normalize the validated input through the proposed Document Understanding Layer into `NuvitaeDocument`; that migration is not scheduled by this contract. When a usable AI provider is connected, semantic parsing runs through `ResumeSemanticParserProvider` as the primary semantic mapping and grouping path. The worker submits only a controlled extraction request. Foreground processing times out after 3 minutes and returns threshold-qualified partial results when available. A parser memory-limit breach terminates the isolated parser process, creates no review draft from abruptly terminated partial output, cleans up files and source-reconstructing artifacts for the failed attempt, and returns retry, replacement-upload, provider recovery where applicable, and manual-entry recovery actions.
 
 ### Validate Semantic Parser Output
 
@@ -116,7 +145,7 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Output**: versioned Nuvitae extraction response, accepted candidate fields and relationships, rejected/unusable candidates, grounding results, warnings.
 
-**Rules**: Provider adapters translate provider-native output into a versioned Nuvitae-owned response before the import domain consumes it. Strict Zod validation rejects malformed output, unknown fields, invalid relationships, unsupported values, provider-native schema leakage, invalid confidence categories, and missing required fields. Evidence grounding validation requires source page or document location, exact source text or source fragment identifier, explicit-versus-inferred classification, and confidence category for every AI-produced candidate. Ungrounded or invented values are rejected or marked unusable; they are never silently accepted.
+**Rules**: Provider adapters translate provider-native output into a versioned Nuvitae-owned response before the import domain consumes it. The active V1 contract retains flattened transcript coordinates and deterministic native provenance. The future `nuvitae.semantic-extraction.v2` response instead provides semantic values, logical grouping, and bounded `sourceRefs` containing Nuvitae-owned fragment/block ids plus exact quote hints; Nuvitae resolves and verifies those hints and reconstructs canonical evidence, identity, and policy metadata. Strict validation rejects malformed output, unknown fields, invalid relationships, unsupported values, provider-native schema leakage, invalid confidence/classification metadata, and missing required source references. Ungrounded or invented values are rejected or marked unusable; they are never silently accepted.
 
 ### Provider Failure Recovery
 
@@ -166,6 +195,8 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Errors**: forbidden, expired, unresolved warnings, no user-confirmed supported field, source unsafe/deleted state prevents confirmation, concurrent confirmation conflict.
 
+**Rules**: Every reviewed field is carried into the structured resume. A field is dropped only when the user explicitly excluded it; confirming a subset of fields must never silently discard the remaining reviewed fields (FR-034). The response reports which sections were carried over and which were explicitly excluded so the UI can show a plain-language confirmation summary.
+
 ### Retry or Replace Upload
 
 **Input**: authenticated user, import id or draft id, retry/replacement action.
@@ -213,6 +244,124 @@ This contract describes the user-facing flow and service boundaries for the init
 **Output**: current deletion state and verification summary.
 
 **Rules**: Repeated deletion, cancellation, discard, expiry, or retention actions return the current state, do not recreate artifacts, do not extend retention, and do not delete a separately confirmed structured resume.
+
+## Community MVP Contract Additions
+
+These service boundaries add the Community MVP surface (Codex connection, visual editing, live preview, ATS PDF export, reversible AI editing, save/reopen, and safe confirmation). All responses are plain public responses: they expose no tokens, model identifiers, provider-runtime state, queues, workers, internal schemas, prompts, or provider configuration.
+
+### Begin Codex OAuth
+
+**Input**: authenticated user, explicit "Connect Codex" or "Reconnect Codex" action.
+
+**Output**: provider-neutral connection state (`login_pending`), an opaque login reference, and the user-facing authorization URL to open in the browser (the URL is returned only to the server-rendered/top-level context that presents it; it must never be persisted in domain entities, logs, or evidence).
+
+**Errors**: already connected, connection limit, broker unavailable, unsupported capability.
+
+**Rules**: Starts browser OAuth Authorization Code with PKCE through the isolated broker. The response contains no client identifier, endpoints, scopes, PKCE, state, or token material.
+
+### Codex OAuth Callback Completion
+
+**Input**: the loopback callback event handled by the broker, plus the opaque login reference from Begin Codex OAuth.
+
+**Output**: provider-neutral connection state (`connected` or `login_cancelled`, `auth_expired`, `unavailable`), connection status for the UI.
+
+**Errors**: state mismatch, authorization declined, exchange failure, callback timeout.
+
+**Rules**: The broker validates state, exchanges the authorization code, and persists encrypted credentials. The application records only provider-neutral connection state and a broker-owned credential reference. No authorization code, access token, refresh token, or account identifier appears in any application response, log, or diagnostic.
+
+### Codex Connection Status
+
+**Input**: authenticated user, optional connection id.
+
+**Output**: provider-neutral status category and plain-language label ("Codex is ready", "Codex connection expired", "Not connected", "Disconnected", "Provider unavailable", "Rate limited", "Quota exceeded").
+
+**Rules**: Read-only and privacy-safe. It exposes no expiry timestamps beyond the coarse status category where useful for the "expired" label, and no token or account details.
+
+### Reconnect Codex
+
+**Input**: authenticated user, explicit "Reconnect Codex" action.
+
+**Output**: a new `login_pending` state and a fresh opaque login reference; on success, `connected` with a refreshed broker credential reference.
+
+**Rules**: Reauthorization replaces the broker credential reference. Existing resumes, drafts, and structured resumes are unaffected.
+
+### Disconnect Codex
+
+**Input**: authenticated user, explicit "Disconnect" action.
+
+**Output**: `disconnected` state and broker logout/local credential-deletion status.
+
+**Rules**: Does not delete uploaded resumes, import drafts, structured resumes, or source-retention records (FR-031b). Future AI parsing and editing require reconnect.
+
+### Semantic Import (Codex Path)
+
+**Input**: accepted imported document, active Codex connection, provider capability snapshot, and the active V1 transcript/source fragments or a future canonical `NuvitaeDocument` projection.
+
+**Output**: processing state, partial/complete extraction summary, draft id when the threshold is met, provider failure state if any, warnings, recovery actions.
+
+**Rules**: Codex direct OAuth is the one authoritative semantic parsing path behind `ResumeSemanticParserProvider` (FR-032). When the provider is unavailable, disconnected, expired, rate-limited, quota-exceeded, or returns invalid output, the bounded deterministic fallback and provider-recovery actions are offered so accepted uploads never silently dead-end at `provider_unavailable` (FR-033).
+
+### AI Proposal Generation
+
+**Input**: authenticated user, structured resume id, selected field or section scope, one of up to five AI actions.
+
+**Output**: an `AIChangeProposal` with `proposed` status, original and proposed values, and a privacy-safe proposal reference.
+
+**Errors**: not connected, authentication expired, provider unavailable, quota exceeded, action unsupported, fact-preservation rejection, invalid scope.
+
+**Rules**: The proposal is generated through the Codex provider path with the grounded source content and a no-invented-facts instruction; a post-check rejects proposals that add new names, dates, companies, metrics, or unsupported facts. Nothing is written until accepted. The response exposes no prompts, model identifiers, tokens, or provider-runtime state.
+
+### Accept / Reject / Regenerate AI Proposal
+
+**Input**: authenticated user, proposal reference, action (`accept`, `reject`, `regenerate`).
+
+**Output**: updated proposal status (`accepted`, `rejected`, `superseded`) and, on accept, the updated resume value plus a save status; on regenerate, a new `proposed` proposal that supersedes the previous one.
+
+**Rules**: Accept applies the proposed value through the same transaction boundary as manual edits with the same save/conflict semantics. Reject discards without modifying content. Regenerate produces a new variant and never silently applies either variant.
+
+### Undo Edit
+
+**Input**: authenticated user, structured resume id, optional undo target (last saved state).
+
+**Output**: resume restored to the last saved state, save status, and an undo confirmation.
+
+**Rules**: Lightweight undo covers AI and manual edits; undo returns to the last saved state without data loss (FR-040). Full version history is deferred.
+
+### Editor Read / Update Resume
+
+**Input**: authenticated user, structured resume id; update payload contains edited sections, reordered sections, or a title change.
+
+**Output**: current editable structured resume state and save status (`saving`, `saved`, `save_error`, `stale_conflict`).
+
+**Errors**: not found, forbidden, stale conflict, invalid content.
+
+**Rules**: The response is the plain structured resume content; it contains no source snippets (after source deletion), no tokens, and no provider material. Updates go through optimistic local state with a stale-conflict guard and a visible save indicator. localStorage is not the source of truth.
+
+### Preview Resume
+
+**Input**: authenticated user, structured resume id, template id.
+
+**Output**: a preview render (HTML snapshot or server-rendered markup) of the resume in the chosen template.
+
+**Rules**: Preview uses the same template renderer as PDF export so preview↔export fidelity is structurally guaranteed (FR-037, FR-038).
+
+### Export ATS-Friendly PDF
+
+**Input**: authenticated user, structured resume id, template id.
+
+**Output**: export job status and, on success, a downloadable ATS-friendly PDF plus a `ResumeExportRecord` reference.
+
+**Errors**: forbidden, template unavailable, export failure, rate limited.
+
+**Rules**: The PDF is generated from the same renderer as preview, is ATS-friendly (single column, standard fonts, semantic order), and the record stores only export metadata, never resume content or provider material.
+
+### Confirm Structured Resume (Community carry-over)
+
+**Input**: authenticated user, import draft id, explicit confirmation action.
+
+**Output**: structured resume id, confirmation status, provenance label, and a plain-language summary of carried-over and explicitly excluded sections.
+
+**Rules**: All reviewed fields carry into the structured resume; only explicitly excluded fields are dropped (FR-034). See the Confirm Structured Resume contract above.
 
 ## Authorization Contract
 

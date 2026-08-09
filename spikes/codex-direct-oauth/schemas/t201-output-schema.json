@@ -1,0 +1,341 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nuvitae.invalid/spikes/codex-direct-oauth/t201-output-schema.json",
+  "title": "Nuvitae T201 Synthetic Semantic Parsing Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_language",
+    "basics",
+    "work_experiences",
+    "education",
+    "skills",
+    "languages",
+    "certifications",
+    "ambiguities",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "enum": [1, 2]
+    },
+    "document_language": {
+      "description": "Document-level language classification, derived from the complete document without source-line evidence.",
+      "enum": ["English", "French", "French/English"]
+    },
+    "basics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["full_name", "email", "phone", "location", "summary"],
+      "properties": {
+        "full_name": {
+          "$ref": "#/$defs/value_with_evidence"
+        },
+        "email": {
+          "$ref": "#/$defs/value_with_evidence"
+        },
+        "phone": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/value_with_evidence"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "location": {
+          "$ref": "#/$defs/value_with_evidence"
+        },
+        "summary": {
+          "$ref": "#/$defs/value_with_evidence"
+        }
+      }
+    },
+    "work_experiences": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "employer",
+          "job_title",
+          "start_date",
+          "end_date",
+          "location",
+          "highlights"
+        ],
+        "properties": {
+          "employer": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "job_title": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "start_date": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "end_date": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/value_with_evidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "highlights": {
+            "type": "array",
+            "minItems": 0,
+            "maxItems": 8,
+            "items": {
+              "$ref": "#/$defs/value_with_evidence"
+            }
+          },
+          "employment_type": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/value_with_evidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "education": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["school", "degree", "start_date", "end_date", "grade"],
+        "properties": {
+          "school": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "degree": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "start_date": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "end_date": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/value_with_evidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "skills": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 20,
+      "items": {
+        "$ref": "#/$defs/value_with_evidence"
+      }
+    },
+    "languages": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "proficiency"],
+        "properties": {
+          "name": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "proficiency": {
+            "$ref": "#/$defs/value_with_evidence"
+          }
+        }
+      }
+    },
+    "certifications": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "date", "issuer"],
+        "properties": {
+          "name": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "date": {
+            "$ref": "#/$defs/value_with_evidence"
+          },
+          "issuer": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/value_with_evidence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "ambiguities": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 10,
+      "items": {
+        "$ref": "#/$defs/diagnostic_with_evidence"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 10,
+      "items": {
+        "$ref": "#/$defs/diagnostic_with_evidence"
+      }
+    }
+  },
+  "$defs": {
+    "value_with_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "evidence"],
+      "properties": {
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        }
+      }
+    },
+    "diagnostic_with_evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "evidence"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 400
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "items": {
+            "$ref": "#/$defs/evidence"
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line", "start", "end", "fragment_hash", "category"],
+      "properties": {
+        "line": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200
+        },
+        "start": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2000
+        },
+        "end": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2000
+        },
+        "fragment_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "identity",
+            "summary",
+            "work",
+            "education",
+            "skill",
+            "language",
+            "certification",
+            "warning",
+            "basics",
+            "skills",
+            "languages",
+            "certifications",
+            "ambiguity",
+            "absence"
+          ]
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "schema_version": {
+            "const": 2
+          }
+        },
+        "required": ["schema_version"]
+      },
+      "then": {
+        "properties": {
+          "work_experiences": {
+            "items": {
+              "required": [
+                "employer",
+                "job_title",
+                "start_date",
+                "end_date",
+                "location",
+                "employment_type",
+                "highlights"
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}

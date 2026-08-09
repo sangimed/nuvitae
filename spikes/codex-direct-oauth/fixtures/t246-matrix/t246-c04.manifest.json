@@ -1,0 +1,262 @@
+{
+  "schema_version": 1,
+  "t246_case": "T246-C04",
+  "fixture_id": "pdf-bilingual-canonical-anonymous",
+  "fixture_classification": "real_document",
+  "fixture_path": "tests/fixtures/resumes/anonymous-bilingual-resume.pdf",
+  "fixture_sha256": "3dbc163ecaa84231246c04e9c6a00779fc3c3e6960f261b04e46e8f5868b5e24",
+  "transcript_sha256": "518eb6272a9f4e4fd1ad37a10fa5124a17484b11e0ca6ffd1b83aee8f5c7c76b",
+  "expected_semantic_json_sha256": "f5596c2d221cc2a834b8a778615bda90a4609d2aa5b78b93c61ccd300cc2757f",
+  "document_language": "French/English",
+  "language_category": "bilingual_french_english",
+  "source_format_category": "pdf-derived-text",
+  "layout_category": "single-column",
+  "extraction_format": {
+    "kind": "deterministic_pdf_text",
+    "coordinate_system": "one_based_line_zero_based_utf8_offset",
+    "binary_extraction_performed": true,
+    "reading_order_artifact": "single_column",
+    "contract_version": 2
+  },
+  "expected_section_counts": {
+    "basics": 1,
+    "work_experiences": 1,
+    "education": 1,
+    "skills": 4,
+    "languages": 2,
+    "certifications": 0
+  },
+  "expected_item_counts": {
+    "work_experience_highlights": 2,
+    "warnings_or_ambiguities_minimum": 0
+  },
+  "exact_facts": [
+    {
+      "path": "basics.full_name",
+      "value": "Anaïs Moreau-Exemple",
+      "priority": "high",
+      "line": 1,
+      "category": "basics"
+    },
+    {
+      "path": "basics.email",
+      "value": "anais.moreau@example.invalid",
+      "priority": "high",
+      "line": 2,
+      "category": "basics"
+    },
+    {
+      "path": "basics.location",
+      "value": "Paris, France",
+      "priority": "high",
+      "line": 3,
+      "category": "basics"
+    },
+    {
+      "path": "basics.phone",
+      "value": "+33 6 45 67 89 01",
+      "priority": "high",
+      "line": 4,
+      "category": "basics"
+    },
+    {
+      "path": "basics.headline",
+      "value": "Chef de projet produit bilingue / Bilingual Product Manager",
+      "priority": "high",
+      "line": 5,
+      "category": "basics"
+    },
+    {
+      "path": "basics.summary",
+      "value": "Chef de projet avec dix ans d'expérience. / Product manager with ten years of experience.",
+      "priority": "medium",
+      "line": 7,
+      "category": "basics"
+    },
+    {
+      "path": "work_experiences[0].employer",
+      "value": "Maison Exemple Nord (employeur fictif)",
+      "priority": "high",
+      "line": 9,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].job_title",
+      "value": "Chef de projet produit / Product Manager",
+      "priority": "high",
+      "line": 10,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].start_date",
+      "value": "mars 2020",
+      "priority": "high",
+      "line": 11,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].end_date",
+      "value": "aujourd'hui",
+      "priority": "high",
+      "line": 11,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].highlights[0]",
+      "value": "Coordonne trois équipes produit. / Coordinates three product teams.",
+      "priority": "medium",
+      "line": 12,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].highlights[1]",
+      "value": "Construit la roadmap annuelle. / Builds the annual roadmap with the teams.",
+      "priority": "medium",
+      "line": 13,
+      "category": "work"
+    },
+    {
+      "path": "education[0].school",
+      "value": "Université Exemple du Nord",
+      "priority": "high",
+      "line": 16,
+      "category": "education"
+    },
+    {
+      "path": "education[0].degree",
+      "value": "Master en gestion de projet / Master of Science in Project Management",
+      "priority": "high",
+      "line": 15,
+      "category": "education"
+    },
+    {
+      "path": "education[0].start_date",
+      "value": "2014",
+      "priority": "medium",
+      "line": 17,
+      "category": "education"
+    },
+    {
+      "path": "education[0].end_date",
+      "value": "2018",
+      "priority": "medium",
+      "line": 17,
+      "category": "education"
+    },
+    {
+      "path": "skills[0]",
+      "value": "Gestion de produit",
+      "priority": "high",
+      "line": 19,
+      "category": "skills"
+    },
+    {
+      "path": "skills[1]",
+      "value": "SQL",
+      "priority": "high",
+      "line": 19,
+      "category": "skills"
+    },
+    {
+      "path": "skills[2]",
+      "value": "Documentation",
+      "priority": "high",
+      "line": 19,
+      "category": "skills"
+    },
+    {
+      "path": "skills[3]",
+      "value": "Tests",
+      "priority": "high",
+      "line": 19,
+      "category": "skills"
+    },
+    {
+      "path": "languages[0].name",
+      "value": "Français",
+      "priority": "high",
+      "line": 21,
+      "category": "languages"
+    },
+    {
+      "path": "languages[0].proficiency",
+      "value": "natif",
+      "priority": "high",
+      "line": 21,
+      "category": "languages"
+    },
+    {
+      "path": "languages[1].name",
+      "value": "Anglais",
+      "priority": "high",
+      "line": 21,
+      "category": "languages"
+    },
+    {
+      "path": "languages[1].proficiency",
+      "value": "bilingue",
+      "priority": "high",
+      "line": 21,
+      "category": "languages"
+    }
+  ],
+  "high_priority_fact_paths": [
+    "basics.full_name",
+    "basics.email",
+    "basics.location",
+    "basics.phone",
+    "basics.headline",
+    "work_experiences[0].employer",
+    "work_experiences[0].job_title",
+    "work_experiences[0].start_date",
+    "work_experiences[0].end_date",
+    "education[0].school",
+    "education[0].degree",
+    "skills[0]",
+    "skills[1]",
+    "skills[2]",
+    "skills[3]",
+    "languages[0].name",
+    "languages[0].proficiency",
+    "languages[1].name",
+    "languages[1].proficiency"
+  ],
+  "intentionally_absent_fields": [
+    "basics.website",
+    "work_experiences[0].location",
+    "work_experiences[0].employment_type",
+    "education[0].grade",
+    "education[0].field_of_study",
+    "education[0].location",
+    "certifications",
+    "professional_links"
+  ],
+  "absence_evidence": {
+    "line": 24,
+    "fragment": "ABSENT : site web, type d'emploi, certifications. / ABSENT: website, employment type, certifications.",
+    "category": "absence"
+  },
+  "ambiguous_facts": [],
+  "forbidden_inferences": [
+    {
+      "id": "invented-bilingual-contact-and-scope",
+      "forbidden_values": [
+        "https://",
+        "CDI",
+        "full-time",
+        "manager",
+        "honors",
+        "certification"
+      ]
+    }
+  ],
+  "provenance_contract": {
+    "flattened_coordinates": "one_based_line_zero_based_utf8_offset",
+    "deterministic_enrichment": "pdf page/item/physical offsets via the T208 deterministic provenance enrichment path",
+    "model_physical_coordinates_rejected": true
+  },
+  "thresholds": {
+    "minimum_exact_fact_recall": 0.9,
+    "required_high_priority_fact_recall": 1
+  }
+}

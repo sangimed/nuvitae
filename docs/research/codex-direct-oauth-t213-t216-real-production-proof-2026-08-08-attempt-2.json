@@ -1,0 +1,121 @@
+{
+  "evidence_schema_version": 1,
+  "proof_id": "t213-t216-real-production-flow-2026-08-08-attempt-2",
+  "observation_timestamp": "2026-08-08T23:12:57+02:00",
+  "app_revision": "87eddef87a740bba37e9c4d868d97b1d25618493",
+  "branch": "feat/import-resume-codex-direct-oauth-spike",
+  "deployment_shape": "local-self-hosted-production-like-docker-compose",
+  "compose_files": ["compose.yml", "compose.local.yml"],
+  "preflight": {
+    "worktree_and_branch_valid": true,
+    "t216_production_semantic_provider_factory_active": true,
+    "worker_semantic_provider_mode": "production",
+    "application_services_healthy": {
+      "web": true,
+      "api": true,
+      "worker": true,
+      "postgres": true,
+      "queue": true
+    },
+    "health_endpoints_http_status": {
+      "web": 200,
+      "api": 200,
+      "api_live": 200
+    },
+    "callback_projection": {
+      "same_host_browser_routing_verified": true,
+      "browser_host": "localhost",
+      "browser_port": 3000,
+      "callback_host": "localhost",
+      "callback_port": 3001,
+      "callback_path": "/import-resume/provider-connections/codex/oauth/callback",
+      "callback_host_allowlisted": true
+    },
+    "session_storage": {
+      "encryption_configuration_present": true,
+      "root_directory_mode": "0700",
+      "session_directory_mode": "0700",
+      "owner": "app:app",
+      "api_session_directory_read_write": true,
+      "worker_session_directory_read_write": true,
+      "raw_contents_inspected": false
+    },
+    "current_connection_state": {
+      "connection_status": "not_configured",
+      "authentication_status": "unauthenticated",
+      "availability_status": "unknown",
+      "ready": false
+    },
+    "stale_pending_oauth": {
+      "active_pending_records": 0,
+      "contamination_observed": false
+    },
+    "t246_live_authorization_active": false,
+    "t246_live_opt_in_environment_present": false,
+    "t246_registry_or_evidence_mutated": false
+  },
+  "fixture": {
+    "selected": true,
+    "path": "tests/fixtures/resumes/anonymous-selectable-resume.pdf",
+    "identifier": "anonymous-selectable-resume-pdf",
+    "outside_t246_c01_c08_corpus": true,
+    "raw_content_persisted_in_evidence": false
+  },
+  "live_flow": {
+    "connect_codex": "FAIL: normal UI handoff started; provider authorization page returned safe HTTP status 403 before operator authorization",
+    "oauth_callback": "not_reached",
+    "server_proven_readiness": "not_attempted_after_callback",
+    "fixture_upload": "not_attempted",
+    "production_worker_provider_resolution": "not_invoked",
+    "real_semantic_provider_invocation": "not_invoked",
+    "review": "not_attempted",
+    "confirmation": "not_attempted",
+    "disconnect": "not_attempted",
+    "import_data_preservation": "not_attempted",
+    "reconnect": "not_attempted",
+    "automatic_live_retry": false
+  },
+  "failure": {
+    "classification": "OAuth initiation",
+    "safe_reason": "The real authorization page was rejected with HTTP 403 in the automated browser context before operator interaction; callback and downstream product steps were not started.",
+    "operator_authorization_completed": false,
+    "replacement_attempt_safe_without_review": false,
+    "post_failure_server_state": {
+      "connection_status": "login_pending",
+      "authentication_status": "pending",
+      "availability_status": "unknown",
+      "ready": false,
+      "active_pending_records": 1,
+      "direct_cleanup_performed": false,
+      "reviewed_recovery_required_before_any_replacement_attempt": true
+    }
+  },
+  "final_classification": "FAIL_REAL_PRODUCTION_FLOW",
+  "t203_status": "NO-GO; unchanged",
+  "t203_remaining_blockers": [
+    "finalized T246 qualification failure",
+    "moderated human onboarding validation pending",
+    "real production OAuth/import flow proof remains pending after OAuth-boundary failure"
+  ],
+  "historical_proof_controls": {
+    "t246_rerun": false,
+    "t246_reopened": false,
+    "t246_reinterpreted": false,
+    "t246_evidence_changed": false,
+    "moderated_human_validation_performed": false
+  },
+  "secret_controls": {
+    "credentials_tokens_codes_pkce_or_raw_callback_material_persisted": false,
+    "raw_authorization_url_persisted": false,
+    "raw_provider_response_persisted": false,
+    "raw_resume_content_persisted_in_evidence": false,
+    "evidence_contains_secret_material": false
+  },
+  "repository_changes": [
+    "docs/research/codex-direct-oauth-t213-t216-real-production-proof-2026-08-08-attempt-2.json",
+    ".playwright-mcp/page-2026-08-08T21-11-54-466Z.yml",
+    ".playwright-mcp/page-2026-08-08T21-12-00-719Z.yml"
+  ],
+  "code_or_configuration_changed": false,
+  "commit_or_push_performed": false
+}

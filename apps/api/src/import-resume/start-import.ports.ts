@@ -5,9 +5,11 @@ import type {
   DeterministicExtractionJobPayload,
 } from "@nuvitae/contracts";
 import type {
+  ImportLimitOutcome,
   ImportLimitReservation,
   ImportReservationResult,
 } from "../services/import-resume/import-limits.js";
+import type { ImportEventEmitter } from "../observability/import-events.js";
 
 export interface StartImportClock {
   now(): Date;
@@ -45,6 +47,12 @@ export interface StartImportLimitPort {
     ownerUserId: string,
     now: Date,
   ): Promise<ImportReservationResult>;
+  admitToQueue(
+    ownerUserId: string,
+    attemptId: string,
+    importId: string,
+    now: Date,
+  ): Promise<ImportLimitOutcome>;
   releaseReservation(
     ownerUserId: string,
     reservationId: string,
@@ -57,10 +65,7 @@ export interface StartImportLimitPort {
   ): Promise<void>;
 }
 
-export interface StartImportPrivacyLogger {
-  info(event: string, metadata?: Readonly<Record<string, unknown>>): void;
-  warn(event: string, metadata?: Readonly<Record<string, unknown>>): void;
-}
+export type StartImportPrivacyLogger = ImportEventEmitter;
 
 export interface BufferedResumeUpload {
   readonly originalname: string;

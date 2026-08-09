@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Test } from "@nestjs/testing";
+import { CodexDirectProviderAdapter } from "@nuvitae/import-application";
 import { TypeOrmImportResumeRepository } from "@nuvitae/persistence";
 import { DataSource } from "typeorm";
 import { describe, expect, it, vi } from "vitest";
@@ -13,6 +14,11 @@ import {
   createWorkerTypeOrmModuleOptions,
   workerPersistenceRepositoryProviders,
 } from "./persistence/worker-persistence.module";
+import {
+  WORKER_SEMANTIC_PARSER_PROVIDER,
+  createProductionSemanticParserProvider,
+  workerImportRuntimeProviders,
+} from "./import-resume/worker-import-runtime.providers";
 import {
   removeWorkerReadinessFile,
   writeWorkerReadinessFile,
@@ -83,5 +89,32 @@ describe("worker persistence providers", () => {
     expect(transactionRunner).toBe(repository);
     await execution.execute(async (value) => value);
     expect(managedDataSource.transaction).toHaveBeenCalledOnce();
+  });
+});
+
+describe("production semantic provider isolation", () => {
+  it("activates the production Codex adapter through injected dependencies", () => {
+    const provider = createProductionSemanticParserProvider(
+      { findConnectionByProviderAndOwner: async () => null } as never,
+      { readSession: async () => new Uint8Array() } as never,
+    );
+    expect(provider).toBeInstanceOf(CodexDirectProviderAdapter);
+    const registration = workerImportRuntimeProviders.find((entry) => {
+      if (
+        typeof entry !== "object" ||
+        entry === null ||
+        !("provide" in entry)
+      ) {
+        return false;
+      }
+      return (
+        (entry as { provide?: unknown }).provide ===
+        WORKER_SEMANTIC_PARSER_PROVIDER
+      );
+    });
+    expect(registration).toBeDefined();
+    const factory = (registration as { useFactory?: () => unknown }).useFactory;
+    expect(typeof factory).toBe("function");
+    expect(factory).toBe(createProductionSemanticParserProvider);
   });
 });

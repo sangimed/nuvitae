@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nuvitae.invalid/spikes/codex-direct-oauth/t246-recovery-manifest.schema.json",
+  "title": "T246 recovery-case manifest",
+  "description": "Fail-closed manifest for T246-C08 (malformed/unsupported recovery). The case must stop before any semantic model invocation or credential recovery.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "t246_case",
+    "recovery_classification",
+    "fixture_path",
+    "fixture_sha256",
+    "recovery_input_sha256",
+    "failure_category",
+    "user_facing_recovery_category",
+    "semantic_request_required",
+    "credential_recovery_required",
+    "maximum_semantic_backend_requests",
+    "maximum_live_broker_runs",
+    "automatic_retries",
+    "evidence_path",
+    "expected_behavior",
+    "sanitized_evidence_contract"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "t246_case": {
+      "type": "string",
+      "const": "T246-C08"
+    },
+    "recovery_classification": {
+      "enum": ["malformed_unsupported"]
+    },
+    "fixture_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fixture_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "recovery_input_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "failure_category": {
+      "type": "string",
+      "minLength": 1
+    },
+    "user_facing_recovery_category": {
+      "type": "string",
+      "minLength": 1
+    },
+    "semantic_request_required": {
+      "const": false
+    },
+    "credential_recovery_required": {
+      "const": false
+    },
+    "maximum_semantic_backend_requests": {
+      "const": 0
+    },
+    "maximum_live_broker_runs": {
+      "const": 0
+    },
+    "automatic_retries": {
+      "const": 0
+    },
+    "evidence_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_behavior": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sanitized_evidence_contract": {
+      "type": "object"
+    }
+  }
+}

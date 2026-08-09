@@ -1,0 +1,83 @@
+{
+  "evidence_classification": "sanitized_t203_qualification_run",
+  "observation_timestamp": "2026-08-05T17:55:00.000Z",
+  "deployment_mode": "local_docker_desktop_wsl2_single_host_browser_topology",
+  "callback_topology": {
+    "selected_redirect_hostname": "localhost",
+    "host_bindings": ["127.0.0.1:1455->2455", "[::1]:1455->2455"],
+    "ipv4_preflight_result": "success",
+    "ipv6_preflight_result": "success",
+    "preflight_port_absent_after_cleanup": true,
+    "no_wildcard_host_binding": true
+  },
+  "versions": {
+    "codex_cli": "0.146.0",
+    "docker": "29.6.2",
+    "node": "24.14.1",
+    "upstream_revisions": {
+      "compatibilityImplementation": "4c331166c40cccb6e4d2da1136c921faed1cc8c1",
+      "hermesAgent": "5d6aae02bffa7714c4a94f3a0900b37774442dea",
+      "officialCodex": "3016671bb077c43448b8fa88f3edfa9772e17058"
+    }
+  },
+  "oauth_lifecycle": {
+    "fresh_browser_login": "blocked",
+    "fresh_login_blocker": "no interactive ChatGPT credentials or browser session available on this host; headless browser blocked by Cloudflare bot verification (HTTP 403); broker callback listener and loopback relay verified reachable (preflight HTTP 204)",
+    "callback_completion": "not_completed",
+    "broker_login_result_category": "callback_timeout",
+    "connection_status_after_callback": "not_applicable",
+    "encrypted_credential_persistence": "proven",
+    "encrypted_record_contains_plaintext": false,
+    "restart_recovery": "proven",
+    "real_restart_recovery_succeeded": true,
+    "live_refresh": "failed_authentication_required",
+    "refresh_failure_category": "authentication_required",
+    "refresh_root_cause": "stored refresh token rejected by auth.openai.com (401); session expired 2026-05-05",
+    "invocation_after_restart": "not_run_no_valid_session",
+    "expired_invalid_credential_recovery": "safe_category_mapping_proven",
+    "explicit_reconnect": "not_run_requires_fresh_login",
+    "disconnect_and_credential_removal": "proven",
+    "real_record_deletion_succeeded": true,
+    "disconnected_restart": "proven",
+    "real_disconnected_restart_succeeded": true,
+    "raw_token_leakage_observed": false,
+    "secret_scan_result": "passed"
+  },
+  "semantic_qualification": {
+    "t201_matrix_deterministic_offline": {
+      "contract": "v2 with T208 deterministic provenance enrichment",
+      "all_six_cases_pass": true,
+      "enrichment": {
+        "T201-C01": "none",
+        "T201-C02": "none",
+        "T201-C03": "none",
+        "T201-C04": "pdf_mapped",
+        "T201-C05": "pdf_mapped",
+        "T201-C06": "docx_mapped"
+      }
+    },
+    "live_cases": {
+      "T201-C01": "passed_canonical_live_2026-07-31/08-01",
+      "T201-C02": "passed_canonical_live",
+      "T201-C03": "passed_canonical_live_b03",
+      "T201-C04_B01": "failed_immutable_original_contract",
+      "T201-C04_B02": "not_run_no_valid_session",
+      "T201-C04_B03": "not_run_no_valid_session",
+      "T201-C05_B01": "not_run_no_valid_session",
+      "T201-C06_B01": "not_run_no_valid_session"
+    },
+    "real_document_extraction": {
+      "french_pdf": "deterministic_extraction_ok",
+      "english_pdf": "deterministic_extraction_ok",
+      "docx": "deterministic_extraction_ok"
+    }
+  },
+  "downstream_status": {
+    "T201": "incomplete",
+    "T202": "blocked",
+    "T203": "no_go_recorded",
+    "T164": "blocked",
+    "T165": "blocked",
+    "T208": "incomplete_task_box_preserved_contract_implemented_as_t201_blocker_resolution"
+  }
+}

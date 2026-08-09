@@ -11,14 +11,22 @@
       "@nuvitae/contracts": ["packages/contracts/src/index.ts"],
       "@nuvitae/domain": ["packages/domain/src/index.ts"],
       "@nuvitae/extraction": ["packages/extraction/src/index.ts"],
+      "@nuvitae/import-application": [
+        "packages/import-application/src/index.ts"
+      ],
+      "@nuvitae/import-application/testing": [
+        "packages/import-application/src/providers/testing/index.ts"
+      ],
       "@nuvitae/persistence": ["packages/persistence/src/index.ts"],
       "@nuvitae/storage": ["packages/storage/src/index.ts"],
       "@nuvitae/test-fixtures": ["packages/test-fixtures/src/index.ts"]
     }
   },
   "include": [
+    "tests/architecture/**/*.ts",
     "tests/contract/**/*.ts",
     "tests/integration/import-resume/**/*.ts",
-    "tests/integration/persistence/**/*.ts"
+    "tests/integration/persistence/**/*.ts",
+    "tests/security/**/*.ts"
   ]
 }

@@ -33,11 +33,12 @@ import {
   mapStructuredResume,
   mapUserCorrection,
 } from "../mappers/import-resume.mapper.js";
-import type {
-  ImportAggregate,
-  ImportResumeRepository,
-  ManualResumeDraftRepository,
-  PersistenceTransactionRunner,
+import {
+  ReviewCorrectionOperationIdConflictError,
+  type ImportAggregate,
+  type ImportResumeRepository,
+  type ManualResumeDraftRepository,
+  type PersistenceTransactionRunner,
 } from "./import-resume.repository.js";
 
 function importedDocumentEntity(
@@ -384,14 +385,21 @@ export class TypeOrmImportResumeRepository
         }),
       ),
     );
-    await manager.insert(
-      UserCorrectionEntity,
-      Object.assign(new UserCorrectionEntity(), {
-        ...input.correction,
-        previousValue: input.correction.previousValue ?? null,
-        newValue: input.correction.newValue ?? null,
-      }),
-    );
+    try {
+      await manager.insert(
+        UserCorrectionEntity,
+        Object.assign(new UserCorrectionEntity(), {
+          ...input.correction,
+          previousValue: input.correction.previousValue ?? null,
+          newValue: input.correction.newValue ?? null,
+        }),
+      );
+    } catch (error) {
+      if (isDuplicateKeyError(error)) {
+        throw new ReviewCorrectionOperationIdConflictError();
+      }
+      throw error;
+    }
     const saved = await this.findDraftByOwner(
       input.draft.id,
       input.draft.ownerUserId,
@@ -848,4 +856,11 @@ export class TypeOrmImportResumeRepository
     );
     return mapManualStructuredResumeDraft(entity);
   }
+}
+
+function isDuplicateKeyError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  const driverError = (error as { driverError?: { code?: unknown } })
+    .driverError;
+  return driverError?.code === "23505";
 }

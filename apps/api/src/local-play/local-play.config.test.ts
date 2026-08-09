@@ -13,6 +13,8 @@ describe("local play configuration", () => {
         NUVITAE_PRIVATE_STORAGE_ROOT: "/tmp/nuvitae-private",
         NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET:
           "local-play-storage-signing-secret-not-for-production",
+        NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET:
+          "local-play-provider-session-encryption-secret-not-for-production",
       } as NodeJS.ProcessEnv),
     ).toThrow();
     expect(() =>
@@ -23,6 +25,8 @@ describe("local play configuration", () => {
         NUVITAE_PRIVATE_STORAGE_ROOT: "/tmp/nuvitae-private",
         NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET:
           "local-play-storage-signing-secret-not-for-production",
+        NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET:
+          "local-play-provider-session-encryption-secret-not-for-production",
       } as NodeJS.ProcessEnv),
     ).toThrow();
   });
@@ -37,6 +41,8 @@ describe("local play configuration", () => {
       NUVITAE_PRIVATE_STORAGE_ROOT: "/tmp/nuvitae-private",
       NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET:
         "local-play-storage-signing-secret-not-for-production",
+      NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET:
+        "local-play-provider-session-encryption-secret-not-for-production",
     };
     try {
       const request = {

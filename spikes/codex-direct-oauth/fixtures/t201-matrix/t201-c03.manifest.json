@@ -1,0 +1,220 @@
+{
+  "schema_version": 2,
+  "fixture_id": "T201-C03",
+  "fixture_classification": "synthetic",
+  "document_language": "French/English",
+  "language_category": "bilingual",
+  "source_format_category": "plain-text",
+  "layout_category": "single-column",
+  "extraction_format": {
+    "kind": "plain_text",
+    "coordinate_system": "one_based_line_zero_based_utf8_offset",
+    "contract_version": 2
+  },
+  "expected_section_counts": {
+    "basics": 1,
+    "work_experiences": 1,
+    "education": 1,
+    "skills": 3,
+    "languages": 2,
+    "certifications": 1
+  },
+  "expected_item_counts": {
+    "work_experience_highlights": 2,
+    "warnings_or_ambiguities_minimum": 1
+  },
+  "exact_facts": [
+    {
+      "path": "basics.full_name",
+      "value": "Dana Example",
+      "priority": "high",
+      "line": 1,
+      "category": "basics"
+    },
+    {
+      "path": "basics.email",
+      "value": "dana.example@example.invalid",
+      "priority": "high",
+      "line": 3,
+      "category": "basics"
+    },
+    {
+      "path": "basics.location",
+      "value": "Ville Exemple, France",
+      "priority": "high",
+      "line": 4,
+      "category": "basics"
+    },
+    {
+      "path": "basics.summary",
+      "value": "Product analyst who documents careful workflows / Analyste produit qui documente des flux prudents.",
+      "priority": "medium",
+      "line": 7,
+      "category": "basics"
+    },
+    {
+      "path": "work_experiences[0].employer",
+      "value": "Maison Bilingue Fictive",
+      "priority": "high",
+      "line": 10,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].job_title",
+      "value": "Analyste de flux / Workflow Analyst",
+      "priority": "high",
+      "line": 11,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].start_date",
+      "value": "2020",
+      "priority": "high",
+      "line": 12,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].end_date",
+      "value": "Present / Présent",
+      "priority": "high",
+      "line": 12,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].highlights[0]",
+      "value": "Built a review checklist for 12 demonstration cases / Créé une checklist pour 12 cas de démonstration.",
+      "priority": "medium",
+      "line": 13,
+      "category": "work"
+    },
+    {
+      "path": "work_experiences[0].highlights[1]",
+      "value": "Maintained fictional data dictionaries / Maintenu des dictionnaires de données fictifs.",
+      "priority": "medium",
+      "line": 14,
+      "category": "work"
+    },
+    {
+      "path": "education[0].school",
+      "value": "Example School of Applied Systems",
+      "priority": "high",
+      "line": 18,
+      "category": "education"
+    },
+    {
+      "path": "education[0].degree",
+      "value": "Certificate in Workflow Studies / Certificat d’études des flux",
+      "priority": "high",
+      "line": 19,
+      "category": "education"
+    },
+    {
+      "path": "education[0].start_date",
+      "value": "2018",
+      "priority": "medium",
+      "line": 20,
+      "category": "education"
+    },
+    {
+      "path": "education[0].end_date",
+      "value": "2020",
+      "priority": "medium",
+      "line": 20,
+      "category": "education"
+    },
+    {
+      "path": "skills[0]",
+      "value": "SQL",
+      "priority": "high",
+      "line": 23,
+      "category": "skills"
+    },
+    {
+      "path": "skills[1]",
+      "value": "Documentation",
+      "priority": "high",
+      "line": 23,
+      "category": "skills"
+    },
+    {
+      "path": "skills[2]",
+      "value": "Testing",
+      "priority": "high",
+      "line": 23,
+      "category": "skills"
+    },
+    {
+      "path": "languages[0].name",
+      "value": "French / Français",
+      "priority": "high",
+      "line": 26,
+      "category": "languages"
+    },
+    {
+      "path": "languages[0].proficiency",
+      "value": "fluent / courant",
+      "priority": "high",
+      "line": 26,
+      "category": "languages"
+    },
+    {
+      "path": "languages[1].name",
+      "value": "English / Anglais",
+      "priority": "high",
+      "line": 27,
+      "category": "languages"
+    },
+    {
+      "path": "languages[1].proficiency",
+      "value": "working / professionnel",
+      "priority": "high",
+      "line": 27,
+      "category": "languages"
+    },
+    {
+      "path": "certifications[0].name",
+      "value": "Fictional Review Safety Badge",
+      "priority": "high",
+      "line": 30,
+      "category": "certifications"
+    },
+    {
+      "path": "certifications[0].date",
+      "value": "2022",
+      "priority": "medium",
+      "line": 30,
+      "category": "certifications"
+    }
+  ],
+  "intentionally_absent_fields": [
+    "basics.phone",
+    "work_experiences[0].location",
+    "work_experiences[0].employment_type",
+    "education[0].grade",
+    "certifications[0].issuer"
+  ],
+  "absence_evidence": {
+    "line": 33,
+    "fragment": "Phone, employer location, grade, issuer, and employment type are absent / absents.",
+    "category": "absence"
+  },
+  "ambiguous_facts": [
+    {
+      "id": "ambiguous-seasonal-support",
+      "source_line": 15,
+      "text": "seasonal support",
+      "expected_handling": "The bilingual statement is ambiguous and does not establish a contract type.",
+      "category": "ambiguity"
+    }
+  ],
+  "forbidden_inferences": [
+    {
+      "id": "invented-bilingual-contact",
+      "forbidden_values": ["+33", "06", "CDI", "full-time", "manager", "honors"]
+    }
+  ],
+  "thresholds": {
+    "minimum_exact_fact_recall": 0.9,
+    "required_high_priority_fact_recall": 1
+  }
+}
