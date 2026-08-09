@@ -186,6 +186,39 @@ const semanticTransportHttpStatusCategories = [
   "4xx",
   "5xx",
 ] as const;
+const semanticTransportContentEncodingCategories = [
+  "absent",
+  "identity",
+  "gzip",
+  "deflate",
+  "br",
+  "unsupported",
+] as const;
+const semanticTransportTransferEncodingCategories = [
+  "absent",
+  "identity",
+  "chunked",
+  "other",
+] as const;
+const semanticTransportByteCountBuckets = [
+  "none",
+  "small",
+  "medium",
+  "large",
+] as const;
+const semanticTransportStructuralTokenCategories = [
+  "sse_data",
+  "sse_event",
+  "json_object",
+  "whitespace",
+  "unknown",
+] as const;
+const semanticTransportNewlineCountBuckets = [
+  "none",
+  "1-4",
+  "5-19",
+  "20+",
+] as const;
 
 const validationDiagnosticCategories = [
   "schema",
@@ -613,6 +646,16 @@ export const importEventSchemas = {
         kind: "string",
         max: 256,
       },
+      contentTypePresent: bool(),
+      contentEncoding: enumOf(semanticTransportContentEncodingCategories),
+      transferEncoding: enumOf(semanticTransportTransferEncodingCategories),
+      firstChunkByteCountBucket: enumOf(semanticTransportByteCountBuckets),
+      firstStructuralTokenCategory: enumOf(
+        semanticTransportStructuralTokenCategories,
+      ),
+      newlineCountBucket: enumOf(semanticTransportNewlineCountBuckets),
+      additionalBytesAfterFirstByte: bool(),
+      inactivityDurationMs: int(0, 86_400_000),
       eventLinesObserved: bool(),
       eventNames: tokenList(64),
       eventTypes: tokenList(64),
@@ -836,6 +879,14 @@ export interface ImportEventMetadataMap {
   "semantic.provider_protocol_shape": {
     readonly importId: string;
     readonly contentType: string;
+    readonly contentTypePresent: boolean;
+    readonly contentEncoding: (typeof semanticTransportContentEncodingCategories)[number];
+    readonly transferEncoding: (typeof semanticTransportTransferEncodingCategories)[number];
+    readonly firstChunkByteCountBucket: (typeof semanticTransportByteCountBuckets)[number];
+    readonly firstStructuralTokenCategory: (typeof semanticTransportStructuralTokenCategories)[number];
+    readonly newlineCountBucket: (typeof semanticTransportNewlineCountBuckets)[number];
+    readonly additionalBytesAfterFirstByte: boolean;
+    readonly inactivityDurationMs: number;
     readonly eventLinesObserved: boolean;
     readonly eventNames: readonly string[];
     readonly eventTypes: readonly string[];

@@ -72,6 +72,26 @@ function completeSse(): string {
   );
 }
 
+function streamResponse(
+  chunks: readonly Uint8Array[] | readonly string[],
+  headers: Record<string, string> = {},
+): Response {
+  const encoder = new TextEncoder();
+  return new Response(
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of chunks) {
+          controller.enqueue(
+            typeof chunk === "string" ? encoder.encode(chunk) : chunk,
+          );
+        }
+        controller.close();
+      },
+    }),
+    { status: 200, headers },
+  );
+}
+
 describe("CodexDirectTransport", () => {
   it("preserves the qualified SSE response contract and assembles output", async () => {
     const fetcher = vi.fn(
@@ -165,6 +185,107 @@ describe("CodexDirectTransport", () => {
         ],
       }),
     );
+  });
+
+  it.each([
+    [
+      "A. data-first SSE",
+      sse(
+        '{"type":"response.created","response":{}}',
+        '{"type":"response.completed","response":{"id":"response-1"}}',
+      ),
+      { ok: true, normalizedOutput: "" },
+      "sse_data",
+    ],
+    [
+      "B. event-first SSE",
+      eventSse(
+        '{"type":"response.created","response":{}}',
+        '{"type":"response.completed","response":{"id":"response-1"}}',
+      ),
+      { ok: true, normalizedOutput: "" },
+      "sse_event",
+    ],
+    [
+      "C. JSON object",
+      jsonResponse(),
+      { ok: true, normalizedOutput: '{"ok":true}' },
+      "json_object",
+    ],
+    [
+      "D. whitespace then SSE",
+      ` \n\t${sse(
+        '{"type":"response.created","response":{}}',
+        '{"type":"response.completed","response":{"id":"response-1"}}',
+      )}`,
+      { ok: true, normalizedOutput: "" },
+      "sse_data",
+    ],
+    [
+      "E. unknown text fails closed",
+      "not-sse",
+      { ok: false, category: "protocol_invalid" },
+      "unknown",
+    ],
+  ] as const)(
+    "accepts only bounded headerless structure: %s",
+    async (_name, body, expected, category) => {
+      const shape: unknown[] = [];
+      const result = await new CodexDirectTransport({
+        fetch: vi.fn(async () => streamResponse([body])),
+      }).invoke({ ...input, onProtocolShape: (value) => shape.push(value) });
+      expect(result).toEqual(expected);
+      expect(shape).toContainEqual(
+        expect.objectContaining({
+          contentType: "",
+          contentTypePresent: false,
+          contentEncoding: "absent",
+          transferEncoding: "absent",
+          firstStructuralTokenCategory: category,
+        }),
+      );
+    },
+  );
+
+  it("fails closed for headerless binary-looking bytes", async () => {
+    const shape: unknown[] = [];
+    const result = await new CodexDirectTransport({
+      fetch: vi.fn(async () =>
+        streamResponse([new Uint8Array([0x00, 0xff, 0x10])]),
+      ),
+    }).invoke({ ...input, onProtocolShape: (value) => shape.push(value) });
+    expect(result).toEqual({ ok: false, category: "protocol_invalid" });
+    expect(shape).toContainEqual(
+      expect.objectContaining({ firstStructuralTokenCategory: "unknown" }),
+    );
+  });
+
+  it("records bounded structural diagnostics without response content", async () => {
+    const shape: unknown[] = [];
+    const result = await new CodexDirectTransport({
+      fetch: vi.fn(async () =>
+        streamResponse(
+          [
+            'data: {"type":"response.created","response":{}}\n\n',
+            'data: {"type":"response.completed","response":{"id":"response-1"}}\n\n',
+          ],
+          {
+            "content-encoding": "identity",
+            "transfer-encoding": "chunked",
+          },
+        ),
+      ),
+    }).invoke({ ...input, onProtocolShape: (value) => shape.push(value) });
+    expect(result).toEqual({ ok: true, normalizedOutput: "" });
+    expect(shape).toContainEqual(
+      expect.objectContaining({
+        firstChunkByteCountBucket: "small",
+        newlineCountBucket: "1-4",
+        additionalBytesAfterFirstByte: true,
+        inactivityDurationMs: 0,
+      }),
+    );
+    expect(JSON.stringify(shape)).not.toContain("response-1");
   });
 
   it("C. accepts CRLF framing", async () => {
@@ -458,6 +579,86 @@ describe("CodexDirectTransport", () => {
         firstByteReceived: false,
         sseStarted: false,
       }),
+    );
+  });
+
+  it("returns a timeout after the first byte and settles reader cancellation", async () => {
+    const unhandledRejections: unknown[] = [];
+    const onUnhandledRejection = (reason: unknown) => {
+      unhandledRejections.push(reason);
+    };
+    process.on("unhandledRejection", onUnhandledRejection);
+    const shape: unknown[] = [];
+    const fetcher = vi.fn(
+      async () =>
+        new Response(
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode("data: "));
+            },
+            cancel() {
+              return Promise.reject("stream_timeout");
+            },
+          }),
+          { status: 200 },
+        ),
+    );
+    try {
+      const result = await new CodexDirectTransport({
+        fetch: fetcher,
+        streamIdleTimeoutMs: 10,
+      }).invoke({ ...input, onProtocolShape: (value) => shape.push(value) });
+      expect(result).toEqual({ ok: false, category: "timeout" });
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(shape).toContainEqual(
+        expect.objectContaining({
+          firstStructuralTokenCategory: "sse_data",
+          inactivityDurationMs: 10,
+        }),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(unhandledRejections).toEqual([]);
+      await expect(Promise.resolve("caller-alive")).resolves.toBe(
+        "caller-alive",
+      );
+    } finally {
+      process.off("unhandledRejection", onUnhandledRejection);
+    }
+  });
+
+  it("times out after progress resets the inactivity window", async () => {
+    const fetcher = vi.fn(async (_url: string, init: RequestInit) => {
+      const signal = init.signal as AbortSignal;
+      return new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            const encoder = new TextEncoder();
+            controller.enqueue(encoder.encode(": keepalive\n\n"));
+            const timer = setTimeout(
+              () => controller.enqueue(encoder.encode(": progress\n\n")),
+              6,
+            );
+            signal.addEventListener(
+              "abort",
+              () => {
+                clearTimeout(timer);
+                controller.error(new DOMException("aborted", "AbortError"));
+              },
+              { once: true },
+            );
+          },
+        }),
+        { status: 200, headers: { "content-type": "text/event-stream" } },
+      );
+    });
+    const timing: unknown[] = [];
+    const result = await new CodexDirectTransport({
+      fetch: fetcher,
+      streamIdleTimeoutMs: 10,
+    }).invoke({ ...input, onTiming: (event) => timing.push(event) });
+    expect(result).toEqual({ ok: false, category: "timeout" });
+    expect(timing).toContainEqual(
+      expect.objectContaining({ phase: "stream_inactivity_timeout" }),
     );
   });
 

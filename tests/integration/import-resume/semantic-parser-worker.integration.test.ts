@@ -198,31 +198,36 @@ describe("semantic parser worker integration", () => {
     expect(drafts.length).toBe(1);
   });
 
-  it("runs the bounded fallback when the provider reports an eligible error, with privacy-safe provider-neutral logging", async () => {
-    const harness = createHarness(dataSource, {
-      provider: failingProvider("provider_unavailable"),
-    });
-    const importId = nextImportId();
-    await seedImport(harness.repository, "pdf", importId);
+  it.each(["provider_unavailable", "timeout"] as const)(
+    "runs the bounded fallback after one %s provider failure, with privacy-safe provider-neutral logging",
+    async (code) => {
+      const parseCalls = { value: 0 };
+      const harness = createHarness(dataSource, {
+        provider: failingProvider(code, parseCalls),
+      });
+      const importId = nextImportId();
+      await seedImport(harness.repository, "pdf", importId);
 
-    await harness.processor.process({
-      ownerUserId,
-      importedDocumentId: importId,
-    });
+      await harness.processor.process({
+        ownerUserId,
+        importedDocumentId: importId,
+      });
 
-    await expectStatus(importId, "ready_for_review");
-    await expectDraftCount(importId, 1);
-    await expectStructuredResumeCount(importId, 0);
-    const serialized = JSON.stringify(harness.logs);
-    expect(serialized).not.toContain("Jordan Avery");
-    expect(serialized).not.toContain("jordan.avery@example.test");
-    expect(serialized).not.toContain("Nova Systems");
-    expect(serialized).not.toContain("TypeScript");
-    expect(serialized).not.toContain("users/");
-    expect(serialized).not.toContain("controlled-failing-test");
-    expect(serialized).not.toContain("schemaVersion");
-    expect(serialized).not.toContain("sections");
-  });
+      expect(parseCalls.value).toBe(1);
+      await expectStatus(importId, "ready_for_review");
+      await expectDraftCount(importId, 1);
+      await expectStructuredResumeCount(importId, 0);
+      const serialized = JSON.stringify(harness.logs);
+      expect(serialized).not.toContain("Jordan Avery");
+      expect(serialized).not.toContain("jordan.avery@example.test");
+      expect(serialized).not.toContain("Nova Systems");
+      expect(serialized).not.toContain("TypeScript");
+      expect(serialized).not.toContain("users/");
+      expect(serialized).not.toContain("controlled-failing-test");
+      expect(serialized).not.toContain("schemaVersion");
+      expect(serialized).not.toContain("sections");
+    },
+  );
 
   it("uses the bounded fallback when no provider is configured", async () => {
     const harness = createHarness(dataSource, { provider: undefined });
@@ -476,6 +481,7 @@ function recordingProvider(
 
 function failingProvider(
   code: SemanticProviderErrorCode,
+  parseCalls: { value: number } = { value: 0 },
 ): ResumeSemanticParserProvider {
   return {
     providerKind: "controlled-failing-test",
@@ -489,6 +495,7 @@ function failingProvider(
       };
     },
     async parse() {
+      parseCalls.value += 1;
       return { ok: false, error: createPrivacySafeSemanticProviderError(code) };
     },
   };

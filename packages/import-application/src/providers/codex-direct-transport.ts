@@ -9,6 +9,7 @@ const MAX_RESPONSE_BYTES = 1_048_576;
 const MAX_EVENT_BYTES = 262_144;
 const MAX_EVENT_COUNT = 4_096;
 const MAX_OUTPUT_BYTES = 65_536;
+const MAX_PROTOCOL_SNIFF_BYTES = 4_096;
 const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 15_000;
 
 export interface CodexDirectTransportRequest {
@@ -49,6 +50,14 @@ export interface CodexDirectTransportTiming {
 
 export interface CodexDirectTransportProtocolShape {
   readonly contentType: string;
+  readonly contentTypePresent: boolean;
+  readonly contentEncoding: CodexDirectTransportContentEncodingCategory;
+  readonly transferEncoding: CodexDirectTransportTransferEncodingCategory;
+  readonly firstChunkByteCountBucket: CodexDirectTransportByteCountBucket;
+  readonly firstStructuralTokenCategory: CodexDirectTransportStructuralTokenCategory;
+  readonly newlineCountBucket: CodexDirectTransportNewlineCountBucket;
+  readonly additionalBytesAfterFirstByte: boolean;
+  readonly inactivityDurationMs: number;
   readonly eventLinesObserved: boolean;
   readonly eventNames: readonly string[];
   readonly eventTypes: readonly string[];
@@ -61,6 +70,21 @@ export interface CodexDirectTransportProtocolShape {
   readonly jsonTopLevelKeys: readonly string[];
   readonly finalRecognizedEventType?: string;
 }
+
+export type CodexDirectTransportContentEncodingCategory =
+  "absent" | "identity" | "gzip" | "deflate" | "br" | "unsupported";
+
+export type CodexDirectTransportTransferEncodingCategory =
+  "absent" | "identity" | "chunked" | "other";
+
+export type CodexDirectTransportByteCountBucket =
+  "none" | "small" | "medium" | "large";
+
+export type CodexDirectTransportStructuralTokenCategory =
+  "sse_data" | "sse_event" | "json_object" | "whitespace" | "unknown";
+
+export type CodexDirectTransportNewlineCountBucket =
+  "none" | "1-4" | "5-19" | "20+";
 
 export type CodexDirectTransportFailureCategory =
   | "request_too_large"
@@ -184,7 +208,11 @@ export class CodexDirectTransport {
       clearTimeout(requestTimeout);
       timingState.httpStatusCategory = httpStatusCategory(response.status);
       emitTiming(input, timingState, startedAt, "response_headers");
-      protocolShape = createProtocolShape(response.headers.get("content-type"));
+      protocolShape = createProtocolShape(
+        response.headers.get("content-type"),
+        response.headers.get("content-encoding"),
+        response.headers.get("transfer-encoding"),
+      );
 
       if (response.status === 401)
         return { ok: false, category: "authentication_expired" };
@@ -203,29 +231,21 @@ export class CodexDirectTransport {
         return { ok: false, category: "protocol_invalid" };
       }
 
-      const parser = (
+      const contentType = (
         response.headers.get("content-type")?.toLowerCase() ?? ""
-      ).startsWith("text/event-stream")
-        ? new BoundedSseParser({
-            protocolShape,
-            onStarted: () => {
-              if (timingState.sseStarted) return;
-              timingState.sseStarted = true;
-              emitTiming(input, timingState, startedAt, "sse_started");
-            },
-            onCompleted: () => {
-              if (timingState.completionEventReceived) return;
-              timingState.completionEventReceived = true;
-              emitTiming(input, timingState, startedAt, "completion_event");
-            },
-          })
-        : undefined;
+      ).trim();
+      let protocol = protocolForContentType(contentType);
+      let parser =
+        protocol === "sse"
+          ? createSseParser(protocolShape, input, timingState, startedAt)
+          : undefined;
+      let sniffedBytes: Uint8Array<ArrayBufferLike> = new Uint8Array();
       const resetStreamIdleTimer = () => {
         if (streamIdleTimer !== undefined) clearTimeout(streamIdleTimer);
-        streamIdleTimer = setTimeout(
-          () => controller.abort("stream_timeout"),
-          this.streamIdleTimeoutMs,
-        );
+        streamIdleTimer = setTimeout(() => {
+          protocolShape!.inactivityDurationMs = this.streamIdleTimeoutMs;
+          controller.abort("stream_timeout");
+        }, this.streamIdleTimeoutMs);
       };
       resetStreamIdleTimer();
       const bodyBytes = await readBoundedBody(
@@ -234,11 +254,36 @@ export class CodexDirectTransport {
         controller.signal,
         (chunk) => {
           resetStreamIdleTimer();
+          observeProtocolBytes(protocolShape!, chunk);
+          if (chunk.byteLength > 0) {
+            sniffedBytes = appendSniffBytes(sniffedBytes, chunk);
+            protocolShape!.firstStructuralTokenCategory =
+              classifyStructuralToken(sniffedBytes);
+          }
           if (!timingState.firstByteReceived && chunk.byteLength > 0) {
             timingState.firstByteReceived = true;
             emitTiming(input, timingState, startedAt, "first_byte");
           }
-          parser?.consume(chunk);
+          if (protocol === undefined && chunk.byteLength > 0) {
+            const structuralCategory = classifyStructuralToken(sniffedBytes);
+            if (
+              structuralCategory === "sse_data" ||
+              structuralCategory === "sse_event"
+            ) {
+              protocol = "sse";
+              parser = createSseParser(
+                protocolShape!,
+                input,
+                timingState,
+                startedAt,
+              );
+              parser.consume(sniffedBytes);
+            } else if (structuralCategory === "json_object") {
+              protocol = "json";
+            }
+          } else if (protocol === "sse") {
+            parser?.consume(chunk);
+          }
         },
       );
       if (streamIdleTimer !== undefined) clearTimeout(streamIdleTimer);
@@ -246,15 +291,25 @@ export class CodexDirectTransport {
         return { ok: false, category: "response_too_large" };
       protocolShape.eofObserved = true;
       emitTiming(input, timingState, startedAt, "response_eof");
-      const contentType =
-        response.headers.get("content-type")?.toLowerCase() ?? "";
-      if (contentType.startsWith("application/json")) {
+      if (protocol === undefined) {
+        protocolShape.firstStructuralTokenCategory =
+          classifyStructuralToken(sniffedBytes);
+        const structuralCategory = protocolShape.firstStructuralTokenCategory;
+        if (
+          structuralCategory === "sse_data" ||
+          structuralCategory === "sse_event"
+        )
+          protocol = "sse";
+        else if (structuralCategory === "json_object") protocol = "json";
+      }
+      if (protocol === "json") {
         return parseJsonResponse(bodyBytes, protocolShape);
       }
-      if (!contentType.startsWith("text/event-stream")) {
+      if (protocol !== "sse") {
         return { ok: false, category: "protocol_invalid" };
       }
-      const result = parser?.finish() ?? parseSseResponse(bodyBytes);
+      const result =
+        parser?.finish() ?? parseSseResponse(bodyBytes, protocolShape);
       if (result.ok) emitTiming(input, timingState, startedAt, "completed");
       return result;
     } catch (error) {
@@ -305,6 +360,14 @@ interface TransportTimingState {
 
 interface MutableProtocolShape {
   contentType: string;
+  contentTypePresent: boolean;
+  contentEncoding: CodexDirectTransportContentEncodingCategory;
+  transferEncoding: CodexDirectTransportTransferEncodingCategory;
+  firstChunkByteCountBucket: CodexDirectTransportByteCountBucket;
+  firstStructuralTokenCategory: CodexDirectTransportStructuralTokenCategory;
+  newlineCountBucket: CodexDirectTransportNewlineCountBucket;
+  additionalBytesAfterFirstByte: boolean;
+  inactivityDurationMs: number;
   eventLinesObserved: boolean;
   eventNames: string[];
   eventTypes: string[];
@@ -322,9 +385,21 @@ const MAX_PROTOCOL_SHAPE_STRINGS = 64;
 const MAX_PROTOCOL_SHAPE_KEYS = 64;
 const SAFE_PROTOCOL_SHAPE_TOKEN = /^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$/u;
 
-function createProtocolShape(contentType: string | null): MutableProtocolShape {
+function createProtocolShape(
+  contentType: string | null,
+  contentEncoding: string | null,
+  transferEncoding: string | null,
+): MutableProtocolShape {
   return {
     contentType: safeContentType(contentType),
+    contentTypePresent: contentType !== null && contentType.trim() !== "",
+    contentEncoding: contentEncodingCategory(contentEncoding),
+    transferEncoding: transferEncodingCategory(transferEncoding),
+    firstChunkByteCountBucket: "none",
+    firstStructuralTokenCategory: "unknown",
+    newlineCountBucket: "none",
+    additionalBytesAfterFirstByte: false,
+    inactivityDurationMs: 0,
     eventLinesObserved: false,
     eventNames: [],
     eventTypes: [],
@@ -336,6 +411,144 @@ function createProtocolShape(contentType: string | null): MutableProtocolShape {
     jsonObjectParsed: false,
     jsonTopLevelKeys: [],
   };
+}
+
+function contentEncodingCategory(
+  value: string | null,
+): CodexDirectTransportContentEncodingCategory {
+  const encoding = value?.trim().toLowerCase() ?? "";
+  if (encoding === "") return "absent";
+  if (encoding === "identity") return "identity";
+  if (encoding === "gzip" || encoding === "x-gzip") return "gzip";
+  if (encoding === "deflate") return "deflate";
+  if (encoding === "br") return "br";
+  return "unsupported";
+}
+
+function transferEncodingCategory(
+  value: string | null,
+): CodexDirectTransportTransferEncodingCategory {
+  const encoding = value?.trim().toLowerCase() ?? "";
+  if (encoding === "") return "absent";
+  if (encoding === "identity") return "identity";
+  if (encoding.split(",").some((part) => part.trim() === "chunked"))
+    return "chunked";
+  return "other";
+}
+
+function byteCountBucket(bytes: number): CodexDirectTransportByteCountBucket {
+  if (bytes <= 0) return "none";
+  if (bytes <= 512) return "small";
+  if (bytes <= 8_192) return "medium";
+  return "large";
+}
+
+function newlineCountBucket(
+  count: number,
+): CodexDirectTransportNewlineCountBucket {
+  if (count <= 0) return "none";
+  if (count <= 4) return "1-4";
+  if (count <= 19) return "5-19";
+  return "20+";
+}
+
+function observeProtocolBytes(
+  shape: MutableProtocolShape,
+  chunk: Uint8Array,
+): void {
+  if (chunk.byteLength === 0) return;
+  if (shape.firstChunkByteCountBucket === "none") {
+    shape.firstChunkByteCountBucket = byteCountBucket(chunk.byteLength);
+    shape.additionalBytesAfterFirstByte = chunk.byteLength > 1;
+  } else {
+    shape.additionalBytesAfterFirstByte = true;
+  }
+  let newlineCount = newlineCountForBucket(shape.newlineCountBucket);
+  for (const byte of chunk) {
+    if (byte === 0x0a && newlineCount < 20) newlineCount += 1;
+  }
+  shape.newlineCountBucket = newlineCountBucket(newlineCount);
+}
+
+function newlineCountForBucket(
+  bucket: CodexDirectTransportNewlineCountBucket,
+): number {
+  switch (bucket) {
+    case "1-4":
+      return 1;
+    case "5-19":
+      return 5;
+    case "20+":
+      return 20;
+    case "none":
+      return 0;
+  }
+}
+
+function appendSniffBytes(existing: Uint8Array, chunk: Uint8Array): Uint8Array {
+  if (existing.byteLength >= MAX_PROTOCOL_SNIFF_BYTES) return existing;
+  const remaining = MAX_PROTOCOL_SNIFF_BYTES - existing.byteLength;
+  const addition = chunk.subarray(0, remaining);
+  const result = new Uint8Array(existing.byteLength + addition.byteLength);
+  result.set(existing);
+  result.set(addition, existing.byteLength);
+  return result;
+}
+
+function classifyStructuralToken(
+  bytes: Uint8Array,
+): CodexDirectTransportStructuralTokenCategory {
+  if (bytes.byteLength === 0) return "unknown";
+  let offset = 0;
+  while (offset < bytes.byteLength && isAsciiWhitespace(bytes[offset]!))
+    offset += 1;
+  if (offset === bytes.byteLength) return "whitespace";
+  const prefix = new TextDecoder("utf-8", { fatal: false })
+    .decode(bytes.subarray(offset, Math.min(bytes.byteLength, offset + 32)))
+    .replace(/^\uFEFF/u, "");
+  if (prefix.startsWith("data:")) return "sse_data";
+  if (prefix.startsWith("event:")) return "sse_event";
+  if (prefix.startsWith("{")) return "json_object";
+  return "unknown";
+}
+
+function isAsciiWhitespace(byte: number): boolean {
+  return (
+    byte === 0x09 ||
+    byte === 0x0a ||
+    byte === 0x0c ||
+    byte === 0x0d ||
+    byte === 0x20
+  );
+}
+
+function protocolForContentType(
+  contentType: string,
+): "sse" | "json" | undefined {
+  if (contentType.startsWith("text/event-stream")) return "sse";
+  if (contentType.startsWith("application/json")) return "json";
+  return undefined;
+}
+
+function createSseParser(
+  protocolShape: MutableProtocolShape,
+  input: CodexDirectTransportRequest,
+  timingState: TransportTimingState,
+  startedAt: number,
+): BoundedSseParser {
+  return new BoundedSseParser({
+    protocolShape,
+    onStarted: () => {
+      if (timingState.sseStarted) return;
+      timingState.sseStarted = true;
+      emitTiming(input, timingState, startedAt, "sse_started");
+    },
+    onCompleted: () => {
+      if (timingState.completionEventReceived) return;
+      timingState.completionEventReceived = true;
+      emitTiming(input, timingState, startedAt, "completion_event");
+    },
+  });
 }
 
 function emitProtocolShape(
@@ -463,10 +676,19 @@ async function readBoundedBody(
   const chunks: Uint8Array[] = [];
   let total = 0;
   let removeAbortListener: (() => void) | undefined;
+  let readerCancellation: Promise<void> | undefined;
+  const cancelReader = (): Promise<void> => {
+    if (readerCancellation !== undefined) return readerCancellation;
+    readerCancellation = reader
+      .cancel(abortSignal.reason)
+      .then(() => undefined)
+      .catch(() => undefined);
+    return readerCancellation;
+  };
   const abortPromise = new Promise<never>((_, reject) => {
     const onAbort = () => {
       reject(new DOMException("aborted", "AbortError"));
-      void reader.cancel();
+      void cancelReader();
     };
     abortSignal.addEventListener("abort", onAbort, { once: true });
     removeAbortListener = () =>
@@ -479,17 +701,18 @@ async function readBoundedBody(
       if (next.done) break;
       total += next.value.byteLength;
       if (total > maximumBytes) {
-        await reader.cancel();
+        await cancelReader();
         return null;
       }
       onChunk?.(next.value);
       chunks.push(next.value);
     }
   } catch (error) {
-    await reader.cancel().catch(() => undefined);
+    await cancelReader();
     throw error;
   } finally {
     removeAbortListener?.();
+    await readerCancellation;
     reader.releaseLock();
   }
   const result = new Uint8Array(total);
@@ -705,8 +928,13 @@ class SseParseError extends Error {
   }
 }
 
-function parseSseResponse(bytes: Uint8Array): CodexDirectTransportResult {
-  const parser = new BoundedSseParser();
+function parseSseResponse(
+  bytes: Uint8Array,
+  protocolShape?: MutableProtocolShape,
+): CodexDirectTransportResult {
+  const parser = new BoundedSseParser(
+    protocolShape === undefined ? {} : { protocolShape },
+  );
   try {
     parser.consume(bytes);
   } catch (error) {

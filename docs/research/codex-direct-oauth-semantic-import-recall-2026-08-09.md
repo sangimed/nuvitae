@@ -357,3 +357,65 @@ semantic schema/mapping/recall behavior, and provider qualification evidence
 were not changed. A future single live smoke is warranted only after an
 operator authorizes it to collect this new shape record; no such smoke was
 performed here.
+
+## Latest real smoke: timeout crash and headerless framing evidence
+
+The latest already-observed real smoke was import
+`8fcb868a-5764-4d64-889f-d412292da1be`. It is recorded here without another
+provider or OAuth call and without retrying the import.
+
+Sanitized sequence:
+
+```text
+validation.completed
+extraction.transcript_normalized
+semantic.provider_invocation_started
+request_started: 0 ms
+response_headers: 496 ms, HTTP category 2xx
+first_byte: 497 ms
+stream_inactivity_timeout: 15007 ms
+semantic.outcome: timeout
+UnhandledPromiseRejection: "stream_timeout"
+```
+
+The response had no observable `Content-Type`, but the first byte had arrived.
+No recognized SSE line or frame was observed before the 15-second inactivity
+deadline: `eventLinesObserved=false`, `eventNames=[]`, `eventTypes=[]`,
+`sseFrameCount=0`, `dataFieldCount=0`, `multilineDataObserved=false`,
+`doneSentinelObserved=false`, `eofObserved=false`, `jsonObjectParsed=false`,
+and `jsonTopLevelKeys=[]`. This is safe evidence of a successful HTTP response
+whose usable protocol framing was not established before inactivity; it is not
+evidence of provider semantic recall failure.
+
+The worker then terminated because the transport's abort listener launched a
+reader-cancellation Promise without observing or settling it. The normal
+`invoke()` timeout result was returned through the awaited read/abort race, but
+the detached `reader.cancel()` Promise rejected later with the stream abort
+reason `"stream_timeout"`, producing `ERR_UNHANDLED_REJECTION` and preventing
+T217's bounded fallback from completing. The real run therefore established:
+
+- the real Codex endpoint returned HTTP 2xx;
+- first bytes arrived rapidly;
+- no observable Content-Type was available;
+- no recognized SSE frame arrived before 15 seconds of inactivity;
+- timeout classification succeeded;
+- the worker subsequently crashed from an unhandled `"stream_timeout"`
+  rejection;
+- semantic recall remains **UNVERIFIED**;
+- this run was not retried before the crash defect was fixed.
+
+The qualified T200 evidence remains the repository basis for bounded
+headerless sniffing: the same Codex backend returned HTTP 200 with no
+Content-Type and a valid SSE body that was parsed successfully. The production
+transport now classifies only bounded structural prefixes after successful
+HTTP responses with missing or ambiguous Content-Type. It accepts a prefix
+starting with `data:` or `event:` as SSE, `{` as a strict JSON-object path,
+allows leading ASCII whitespace, and fails closed for unknown text or binary
+bytes. It never logs or persists the inspected bytes.
+
+The latest smoke remains a timeout before protocol classification and is not
+reinterpreted as provider recall failure. Real-provider recall is still
+**UNVERIFIED**. T203 remains **NO-GO**. T246 remains finalized **FAILED** and
+untouched. Another single live smoke is considered only after the offline
+timeout lifecycle and process-survival gates pass and a separate operator
+authorization is provided; none was performed in this change.
