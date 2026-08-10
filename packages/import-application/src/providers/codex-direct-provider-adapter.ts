@@ -14,6 +14,10 @@ import {
   type SemanticProviderErrorCode,
 } from "../semantic-parser/provider-errors.js";
 import { canonicalizeSemanticExtractionV2 } from "../semantic-parser/semantic-extraction-v2-canonicalizer.js";
+import {
+  diagnoseSemanticExtractionV2Envelope,
+  type SemanticExtractionV2EnvelopeDiagnostic,
+} from "../semantic-parser/semantic-extraction-v2-envelope-diagnostics.js";
 import { createSourceRegistryFromSemanticParseRequest } from "../semantic-parser/source-registry.js";
 import type {
   ResumeSemanticParserCapabilities,
@@ -64,6 +68,12 @@ export interface CodexDirectProviderAdapterPorts {
   ) => void;
   readonly onTransportProtocolShape?: (
     shape: CodexDirectTransportProtocolShape & {
+      readonly importId: string;
+      readonly correlationId?: string;
+    },
+  ) => void;
+  readonly onV2EnvelopeDiagnostic?: (
+    diagnostic: SemanticExtractionV2EnvelopeDiagnostic & {
       readonly importId: string;
       readonly correlationId?: string;
     },
@@ -221,6 +231,12 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
     try {
       candidate = JSON.parse(transportResult.normalizedOutput);
     } catch {
+      emitV2EnvelopeDiagnostic(this.ports, request, {
+        response: undefined,
+        semanticJsonParseSucceeded: false,
+        canonicalizerReached: false,
+        failureStage: "semantic_json_parse",
+      });
       return failure("invalid_provider_response", "v2_invalid_envelope");
     }
     let canonical;
@@ -236,9 +252,23 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
           "unbound-import",
       });
     } catch {
+      emitV2EnvelopeDiagnostic(this.ports, request, {
+        response: candidate,
+        semanticJsonParseSucceeded: true,
+        canonicalizerReached: true,
+        failureStage: "v2_canonicalizer",
+      });
       return failure("schema_violation", "v2_invalid_envelope");
     }
-    if (!canonical.ok) return failureForV2WholeResponse(canonical.reason);
+    if (!canonical.ok) {
+      emitV2EnvelopeDiagnostic(this.ports, request, {
+        response: candidate,
+        semanticJsonParseSucceeded: true,
+        canonicalizerReached: true,
+        failureStage: "v2_envelope",
+      });
+      return failureForV2WholeResponse(canonical.reason);
+    }
     return {
       ok: true,
       contractVersion: "nuvitae.semantic-extraction.v2",
@@ -295,6 +325,25 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
     } catch {
       return snapshotForError("authentication_revoked", checkedAt);
     }
+  }
+}
+
+function emitV2EnvelopeDiagnostic(
+  ports: CodexDirectProviderAdapterPorts,
+  request: ResumeSemanticParseRequest,
+  input: Parameters<typeof diagnoseSemanticExtractionV2Envelope>[0],
+): void {
+  if (request.importId === null) return;
+  try {
+    ports.onV2EnvelopeDiagnostic?.({
+      ...diagnoseSemanticExtractionV2Envelope(input),
+      importId: request.importId,
+      ...(request.correlationId === null || request.correlationId === undefined
+        ? {}
+        : { correlationId: request.correlationId }),
+    });
+  } catch {
+    // Envelope diagnostics must never change provider behavior.
   }
 }
 

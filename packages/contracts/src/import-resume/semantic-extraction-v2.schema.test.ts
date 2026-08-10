@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  nuvitaeSemanticExtractionV2EnvelopeSchema,
   nuvitaeSemanticExtractionV2ResponseSchema,
   nuvitaeSemanticExtractionV2ResponseVersion,
 } from "./semantic-extraction-v2.js";
@@ -71,6 +72,48 @@ describe("semantic-extraction.v2 contract", () => {
           skills: [{ name: atom, category: null }],
         },
       }).success,
+    ).toBe(false);
+  });
+
+  it("keeps the envelope boundary shallow so malformed atoms reach field parsing", () => {
+    const malformedHeadline = {
+      ...response(),
+      sections: {
+        ...response().sections,
+        headline: { value: 42, sourceRefs: [] },
+      },
+    };
+
+    expect(
+      nuvitaeSemanticExtractionV2EnvelopeSchema.safeParse(malformedHeadline)
+        .success,
+    ).toBe(true);
+    expect(
+      nuvitaeSemanticExtractionV2ResponseSchema.safeParse(malformedHeadline)
+        .success,
+    ).toBe(false);
+  });
+
+  it.each([
+    ["missing collection", { relationships: undefined }],
+    ["null collection", { relationships: null }],
+    [
+      "section array/object mismatch",
+      { sections: { ...response().sections, skills: {} } },
+    ],
+    ["extra top-level key", { providerWrapper: {} }],
+  ])("rejects %s at the envelope boundary", (_name, override) => {
+    const candidate = { ...response(), ...override };
+    expect(
+      nuvitaeSemanticExtractionV2EnvelopeSchema.safeParse(candidate).success,
+    ).toBe(false);
+  });
+
+  it("rejects a missing required section key at the envelope boundary", () => {
+    const candidate = response();
+    delete (candidate.sections as { summary?: unknown }).summary;
+    expect(
+      nuvitaeSemanticExtractionV2EnvelopeSchema.safeParse(candidate).success,
     ).toBe(false);
   });
 });

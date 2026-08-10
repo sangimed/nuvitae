@@ -220,6 +220,53 @@ describe("privacy-safe import events (T075)", () => {
     ]);
   });
 
+  it("accepts bounded V2 envelope diagnostics without semantic values or raw output", () => {
+    const sink = new RecordingSink();
+    const emitter = createImportEventEmitter(sink);
+
+    emitter.emit("semantic.provider_v2_envelope_diagnostics", {
+      importId,
+      responseContractVersion: "nuvitae.semantic-extraction.v2",
+      semanticJsonParseSucceeded: true,
+      canonicalizerReached: true,
+      failureStage: "v2_envelope",
+      topLevelValueCategory: "object",
+      schemaVersionCategory: "other_string",
+      topLevelKeys: ["schemaVersion", "sections"],
+      missingTopLevelKeys: ["relationships"],
+      unexpectedTopLevelKeys: ["response"],
+      unrecognizedTopLevelKeyPresent: false,
+      sectionsValueCategory: "object",
+      sectionKeys: ["contact", "headline"],
+      missingSectionKeys: ["summary"],
+      unexpectedSectionKeys: [],
+      unrecognizedSectionKeyPresent: false,
+      relationshipsValueCategory: "missing",
+      ambiguitiesValueCategory: "array",
+      conflictsValueCategory: "array",
+      firstZodIssueCode: "invalid_type",
+      firstZodPath: ["sections", "headline"],
+      issueCountBucket: "0-4",
+      resumeValue: "PRIVLOG-RESUME-VALUE",
+      rawProviderResponse: "PRIVLOG-RAW-RESPONSE",
+      prompt: "PRIVLOG-PROMPT",
+      sourceText: "PRIVLOG-SOURCE",
+    } as never);
+
+    expect(sink.records).toHaveLength(1);
+    expect(sink.records[0]?.metadata).toMatchObject({
+      responseContractVersion: "nuvitae.semantic-extraction.v2",
+      topLevelKeys: ["schemaVersion", "sections"],
+      unexpectedTopLevelKeys: ["response"],
+      firstZodPath: ["sections", "headline"],
+    });
+    const serialized = JSON.stringify(sink.records);
+    expect(serialized).not.toContain("PRIVLOG-RESUME-VALUE");
+    expect(serialized).not.toContain("PRIVLOG-RAW-RESPONSE");
+    expect(serialized).not.toContain("PRIVLOG-PROMPT");
+    expect(serialized).not.toContain("PRIVLOG-SOURCE");
+  });
+
   it("drops provider, model, and error metadata for every registered event without leaking", () => {
     const sink = new RecordingSink();
     const emitter: ImportEventEmitter = createImportEventEmitter(sink);

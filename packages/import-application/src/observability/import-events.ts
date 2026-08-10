@@ -223,6 +223,30 @@ const semanticTransportNewlineCountBuckets = [
   "5-19",
   "20+",
 ] as const;
+const semanticV2EnvelopeFailureStages = [
+  "semantic_json_parse",
+  "v2_envelope",
+  "v2_canonicalizer",
+] as const;
+const semanticV2EnvelopeValueCategories = [
+  "not_observed",
+  "unparseable",
+  "missing",
+  "object",
+  "array",
+  "string",
+  "number",
+  "boolean",
+  "null",
+  "other",
+] as const;
+const semanticV2EnvelopeSchemaVersionCategories = [
+  "not_observed",
+  "exact_v2",
+  "missing",
+  "other_string",
+  "wrong_type",
+] as const;
 
 const validationDiagnosticCategories = [
   "schema",
@@ -626,6 +650,8 @@ export const importEventSchemas = {
     fields: {
       importId: id(),
       contractVersion: token(),
+      requestContractVersion: token(true),
+      responseContractVersion: token(true),
       correlationId: id(true),
     },
   },
@@ -671,6 +697,34 @@ export const importEventSchemas = {
       jsonObjectParsed: bool(),
       jsonTopLevelKeys: tokenList(64),
       finalRecognizedEventType: token(true),
+      correlationId: id(true),
+    },
+  },
+  "semantic.provider_v2_envelope_diagnostics": {
+    level: "warn",
+    fields: {
+      importId: id(),
+      responseContractVersion: token(),
+      semanticJsonParseSucceeded: bool(),
+      canonicalizerReached: bool(),
+      failureStage: enumOf(semanticV2EnvelopeFailureStages),
+      topLevelValueCategory: enumOf(semanticV2EnvelopeValueCategories),
+      schemaVersionCategory: enumOf(semanticV2EnvelopeSchemaVersionCategories),
+      topLevelKeys: tokenList(5),
+      missingTopLevelKeys: tokenList(5),
+      unexpectedTopLevelKeys: tokenList(14),
+      unrecognizedTopLevelKeyPresent: bool(),
+      sectionsValueCategory: enumOf(semanticV2EnvelopeValueCategories),
+      sectionKeys: tokenList(10),
+      missingSectionKeys: tokenList(10),
+      unexpectedSectionKeys: tokenList(11),
+      unrecognizedSectionKeyPresent: bool(),
+      relationshipsValueCategory: enumOf(semanticV2EnvelopeValueCategories),
+      ambiguitiesValueCategory: enumOf(semanticV2EnvelopeValueCategories),
+      conflictsValueCategory: enumOf(semanticV2EnvelopeValueCategories),
+      firstZodIssueCode: token(true),
+      firstZodPath: tokenList(8),
+      issueCountBucket: enumOf(countBuckets),
       correlationId: id(true),
     },
   },
@@ -868,6 +922,8 @@ export interface ImportEventMetadataMap {
   "semantic.provider_invocation_started": {
     readonly importId: string;
     readonly contractVersion: string;
+    readonly requestContractVersion?: string;
+    readonly responseContractVersion?: string;
     readonly correlationId?: string;
   };
   "semantic.provider_transport_timing": {
@@ -902,6 +958,31 @@ export interface ImportEventMetadataMap {
     readonly jsonObjectParsed: boolean;
     readonly jsonTopLevelKeys: readonly string[];
     readonly finalRecognizedEventType?: string;
+    readonly correlationId?: string;
+  };
+  "semantic.provider_v2_envelope_diagnostics": {
+    readonly importId: string;
+    readonly responseContractVersion: string;
+    readonly semanticJsonParseSucceeded: boolean;
+    readonly canonicalizerReached: boolean;
+    readonly failureStage: (typeof semanticV2EnvelopeFailureStages)[number];
+    readonly topLevelValueCategory: (typeof semanticV2EnvelopeValueCategories)[number];
+    readonly schemaVersionCategory: (typeof semanticV2EnvelopeSchemaVersionCategories)[number];
+    readonly topLevelKeys: readonly string[];
+    readonly missingTopLevelKeys: readonly string[];
+    readonly unexpectedTopLevelKeys: readonly string[];
+    readonly unrecognizedTopLevelKeyPresent: boolean;
+    readonly sectionsValueCategory: (typeof semanticV2EnvelopeValueCategories)[number];
+    readonly sectionKeys: readonly string[];
+    readonly missingSectionKeys: readonly string[];
+    readonly unexpectedSectionKeys: readonly string[];
+    readonly unrecognizedSectionKeyPresent: boolean;
+    readonly relationshipsValueCategory: (typeof semanticV2EnvelopeValueCategories)[number];
+    readonly ambiguitiesValueCategory: (typeof semanticV2EnvelopeValueCategories)[number];
+    readonly conflictsValueCategory: (typeof semanticV2EnvelopeValueCategories)[number];
+    readonly firstZodIssueCode?: string;
+    readonly firstZodPath: readonly string[];
+    readonly issueCountBucket: (typeof countBuckets)[number];
     readonly correlationId?: string;
   };
   "semantic.outcome": {

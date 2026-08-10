@@ -180,6 +180,8 @@ export class SemanticImportProcessor {
       this.logger.emit("semantic.provider_invocation_started", {
         importId: document.id,
         contractVersion: resumeSemanticParserContractVersion,
+        requestContractVersion: resumeSemanticParserContractVersion,
+        responseContractVersion: "nuvitae.semantic-extraction.v2",
         ...(requestResult.data.correlationId === null ||
         requestResult.data.correlationId === undefined
           ? {}

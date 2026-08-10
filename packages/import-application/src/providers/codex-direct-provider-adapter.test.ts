@@ -156,6 +156,7 @@ function setup(
   },
 ) {
   const transport = { invoke: vi.fn(async () => transportResult) };
+  const onV2EnvelopeDiagnostic = vi.fn();
   const repository = {
     findConnectionByProviderAndOwner: vi.fn(
       async (_provider: string, owner: string) =>
@@ -184,16 +185,117 @@ function setup(
     sessionStore,
     transport,
     now: () => now,
+    onV2EnvelopeDiagnostic,
   } as unknown as CodexDirectProviderAdapterPorts;
   return {
     provider: new CodexDirectProviderAdapter(ports),
     repository,
     sessionStore,
     transport,
+    onV2EnvelopeDiagnostic,
   };
 }
 
 describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
+  it("diagnoses semantic JSON parse failure without reaching the canonicalizer", async () => {
+    const harness = setup(connection(), {
+      ok: true,
+      normalizedOutput: "not-json",
+    });
+
+    const result = await harness.provider.parseV2(request(), {
+      timeoutMs: 30000,
+      ownerUserId: ownerA,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "invalid_provider_response" },
+    });
+    expect(harness.onV2EnvelopeDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        semanticJsonParseSucceeded: false,
+        canonicalizerReached: false,
+        failureStage: "semantic_json_parse",
+        topLevelValueCategory: "unparseable",
+      }),
+    );
+  });
+
+  it("does not strip a markdown wrapper before semantic JSON parsing", async () => {
+    const harness = setup(connection(), {
+      ok: true,
+      normalizedOutput: `\`\`\`json\n${JSON.stringify(response())}\n\`\`\``,
+    });
+
+    const result = await harness.provider.parseV2(request(), {
+      timeoutMs: 30000,
+      ownerUserId: ownerA,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "invalid_provider_response" },
+    });
+    expect(harness.onV2EnvelopeDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        semanticJsonParseSucceeded: false,
+        failureStage: "semantic_json_parse",
+      }),
+    );
+  });
+
+  it("diagnoses a parsed wrong-version envelope after the canonicalizer is reached", async () => {
+    const harness = setup(connection(), {
+      ok: true,
+      normalizedOutput: JSON.stringify({
+        ...response(),
+        schemaVersion: "nuvitae.semantic-extraction.v1",
+      }),
+    });
+
+    await harness.provider.parseV2(request(), {
+      timeoutMs: 30000,
+      ownerUserId: ownerA,
+    });
+
+    expect(harness.onV2EnvelopeDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        semanticJsonParseSucceeded: true,
+        canonicalizerReached: true,
+        failureStage: "v2_envelope",
+        topLevelValueCategory: "object",
+        schemaVersionCategory: "other_string",
+        firstZodPath: ["schemaVersion"],
+      }),
+    );
+  });
+
+  it("does not emit envelope diagnostics for a valid envelope with a malformed atom", async () => {
+    const candidate = response();
+    candidate.sections.headline = { value: 42, sourceRefs: [] } as never;
+    const harness = setup(connection(), {
+      ok: true,
+      normalizedOutput: JSON.stringify(candidate),
+    });
+
+    const result = await harness.provider.parseV2(request(), {
+      timeoutMs: 30000,
+      ownerUserId: ownerA,
+    });
+
+    expect(result).toMatchObject({ ok: true });
+    if (result.ok) {
+      expect(result.canonical.candidates).toHaveLength(1);
+      expect(
+        result.canonical.candidates.some(
+          (candidate) => candidate.fieldPath === "headline",
+        ),
+      ).toBe(false);
+    }
+    expect(harness.onV2EnvelopeDiagnostic).not.toHaveBeenCalled();
+  });
+
   it("returns Nuvitae-canonical V2 candidates without provider-owned metadata", async () => {
     const harness = setup(connection(), {
       ok: true,
