@@ -1,6 +1,7 @@
 import {
   buildDocx,
   buildPdf,
+  buildStructuralPdf,
   documentXml,
   paragraphXml,
 } from "../../../packages/extraction/src/testing/test-document-builders.js";
@@ -15,6 +16,60 @@ import {
 } from "./validation-test-harness.js";
 
 describe("malformed and protected document validation", () => {
+  it("passes passive URI links through page, text, and language validation", async () => {
+    const source = buildStructuralPdf({ cases: ["uri", "uri", "uri"] });
+    const harness = createValidationHarness();
+    const document = importedDocument({
+      id: "00000000-0000-4000-8000-000000000300",
+      source,
+      format: "pdf",
+    });
+    addDocument(harness, document, source);
+
+    const response = await validateOwned(harness, document.id);
+
+    expect(response).toMatchObject({
+      accepted: true,
+      renderedPageCount: 1,
+    });
+    expect(harness.logs.at(-1)).toMatchObject({
+      event: "validation.completed",
+      metadata: {
+        errorCategory: "accepted",
+        pageCountBucket: "one",
+      },
+    });
+    expect(JSON.stringify(harness.logs)).not.toContain("professional.example");
+  });
+
+  it("stops active PDF content before page/language validation and logs only its reason code", async () => {
+    const source = buildStructuralPdf({ cases: ["javascript"] });
+    const harness = createValidationHarness();
+    const document = importedDocument({
+      id: "00000000-0000-4000-8000-000000000309",
+      source,
+      format: "pdf",
+    });
+    addDocument(harness, document, source);
+
+    const response = await validateOwned(harness, document.id);
+
+    expect(response).toMatchObject({
+      accepted: false,
+      failure: { code: "unsafe_content" },
+    });
+    expect(harness.logs.at(-1)).toMatchObject({
+      event: "validation.completed",
+      metadata: {
+        errorCategory: "unsafe_content",
+        pageCountBucket: "not_known",
+        languageCategory: "not_known",
+        pdfSafetyReason: "pdf_javascript_action",
+      },
+    });
+    expect(JSON.stringify(harness.logs)).not.toContain("synthetic");
+  });
+
   it.each([
     ["malformed PDF", new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])],
     ["corrupted PDF", new Uint8Array([1, 2, 3, 4, 5, 6])],
