@@ -559,7 +559,10 @@ function validateExtractedValue(
         ? { ok: true }
         : failure("invalid_field_value", "Enter valid list items.");
     case "date":
-      return value.value.year >= 1900 && value.value.year <= 2100
+      return value.value.precision === "present" ||
+        (value.value.year !== undefined &&
+          value.value.year >= 1900 &&
+          value.value.year <= 2100)
         ? { ok: true }
         : failure("invalid_field_value", "Enter a valid date.");
     case "date_range":

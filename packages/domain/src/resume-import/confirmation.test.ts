@@ -138,6 +138,112 @@ describe("structured resume confirmation mapper", () => {
     expect(result.resume.content.education[0]?.startDate).toBeUndefined();
   });
 
+  it("groups every repeated structured section by source index", () => {
+    const result = mapReviewedImportDraftToStructuredResume({
+      draft: draft({
+        fields: [
+          field({
+            section: "languages",
+            fieldPath: "languages.0.name",
+            value: { kind: "language", name: "English" },
+            reviewStatus: "confirmed",
+          }),
+          field({
+            id: id(3),
+            section: "languages",
+            fieldPath: "languages.0.proficiency",
+            value: { kind: "text", value: "Fluent" },
+            reviewStatus: "confirmed",
+          }),
+          field({
+            id: id(4),
+            section: "projects",
+            fieldPath: "projects.0.name",
+            value: { kind: "text", value: "Control Plane" },
+            reviewStatus: "confirmed",
+          }),
+          field({
+            id: id(5),
+            section: "projects",
+            fieldPath: "projects.0.description",
+            value: {
+              kind: "text",
+              value: "Automated safe deployment workflows.",
+            },
+            reviewStatus: "confirmed",
+          }),
+          field({
+            id: id(6),
+            section: "certifications",
+            fieldPath: "certifications.0.name",
+            value: { kind: "text", value: "Cloud Architect" },
+            reviewStatus: "confirmed",
+          }),
+          field({
+            id: id(7),
+            section: "certifications",
+            fieldPath: "certifications.0.issuer",
+            value: { kind: "text", value: "Example Board" },
+            reviewStatus: "confirmed",
+          }),
+          field({
+            id: id(8),
+            section: "work_experience",
+            fieldPath: "work_experience.0.employer",
+            value: { kind: "text", value: "Example Employer" },
+            reviewStatus: "confirmed",
+          }),
+          field({
+            id: id(9),
+            section: "work_experience",
+            fieldPath: "work_experience.0.roles.0.title",
+            value: { kind: "text", value: "Platform Engineer" },
+            reviewStatus: "confirmed",
+          }),
+          field({
+            id: id(10),
+            section: "work_experience",
+            fieldPath: "work_experience.0.roles.0.date_range",
+            value: {
+              kind: "date_range",
+              startDate: { year: 2021, month: 3, precision: "month" },
+              endDate: { precision: "present", originalText: "Present" },
+              isOngoing: true,
+            },
+            reviewStatus: "confirmed",
+          }),
+        ],
+      }),
+      corrections: [],
+      structuredResumeId: id(9),
+      childIds: ids(),
+      confirmedAt: now,
+      now,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.resume.content.languages).toHaveLength(1);
+    expect(result.resume.content.languages[0]).toMatchObject({
+      name: { value: "English" },
+      proficiency: { value: "Fluent" },
+    });
+    expect(result.resume.content.projects).toHaveLength(1);
+    expect(result.resume.content.projects[0]).toMatchObject({
+      name: { value: "Control Plane" },
+      description: { value: "Automated safe deployment workflows." },
+    });
+    expect(result.resume.content.certifications).toHaveLength(1);
+    expect(result.resume.content.certifications[0]).toMatchObject({
+      name: { value: "Cloud Architect" },
+      issuer: { value: "Example Board" },
+    });
+    expect(result.resume.content.workExperiences[0]?.roles[0]).toMatchObject({
+      startDate: { year: 2021, month: 3, precision: "month" },
+      endDate: { precision: "present", originalText: "Present" },
+      isOngoing: true,
+    });
+  });
+
   it("does not mutate input and reduces source provenance without deleting content", () => {
     const original = draft({
       fields: [field({ reviewStatus: "confirmed" })],

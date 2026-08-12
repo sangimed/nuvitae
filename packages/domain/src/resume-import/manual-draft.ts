@@ -126,7 +126,8 @@ export function normalizeManualContent(
             ...(role.startDate === undefined
               ? {}
               : { startDate: role.startDate }),
-            ...(role.isOngoing || role.endDate === undefined
+            ...(role.endDate === undefined ||
+            (role.isOngoing && role.endDate.precision !== "present")
               ? {}
               : { endDate: role.endDate }),
             isOngoing: role.isOngoing,
@@ -280,7 +281,11 @@ export function validateManualContent(
         role.achievements,
         manualDraftLimits.roleDetails,
       );
-      if (role.isOngoing && role.endDate !== undefined) {
+      if (
+        role.isOngoing &&
+        role.endDate !== undefined &&
+        role.endDate.precision !== "present"
+      ) {
         issues.push({
           code: "ongoing_role_has_end_date",
           path: `workExperiences.${index}.roles.${roleIndex}.endDate`,

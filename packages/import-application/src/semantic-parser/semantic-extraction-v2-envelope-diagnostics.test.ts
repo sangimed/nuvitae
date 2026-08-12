@@ -128,4 +128,83 @@ describe("semantic-extraction.v2 envelope diagnostics", () => {
     expect(result.firstZodPath).toEqual(["schemaVersion"]);
     expect(result.issueCountBucket).toBe("0-4");
   });
+
+  it.each([
+    [
+      "response_size_limit",
+      () => ({
+        ...validEnvelope(),
+        oversizedStructuralValue: "x".repeat(300_000),
+      }),
+    ],
+    [
+      "response_depth_limit",
+      () => {
+        let nested: unknown = null;
+        for (let index = 0; index < 12; index += 1) nested = { nested };
+        return {
+          ...validEnvelope(),
+          sections: { ...validEnvelope().sections, headline: nested },
+        };
+      },
+    ],
+    [
+      "total_atom_limit",
+      () => ({
+        ...validEnvelope(),
+        sections: {
+          ...validEnvelope().sections,
+          skills: Array.from({ length: 601 }, (_, index) => ({
+            name: { value: `v${index}`, sourceRefs: [] },
+          })),
+        },
+      }),
+    ],
+    [
+      "total_node_limit",
+      () => ({
+        ...validEnvelope(),
+        structuralPadding: Array.from({ length: 12_001 }, () => null),
+      }),
+    ],
+    [
+      "section_cardinality_limit",
+      () => ({
+        ...validEnvelope(),
+        sections: {
+          ...validEnvelope().sections,
+          skills: Array.from({ length: 121 }, () => ({})),
+        },
+      }),
+    ],
+    [
+      "relationship_cardinality_limit",
+      () => ({
+        ...validEnvelope(),
+        relationships: Array.from({ length: 121 }, () => ({})),
+      }),
+    ],
+    [
+      "aggregate_collection_limit",
+      () => ({
+        ...validEnvelope(),
+        ambiguities: Array.from({ length: 51 }, () => ({})),
+      }),
+    ],
+  ] as const)("identifies %s without content", (reason, make) => {
+    const result = diagnostic(make());
+
+    expect(result.structuralReason).toBe(reason);
+    expect(result.totalAtomCountBucket).toBeDefined();
+    expect(result.totalNodeCountBucket).toBeDefined();
+    expect(result.maxDepthObserved).toBeGreaterThanOrEqual(0);
+    expect(result.skillsCountBucket).toBeDefined();
+    expect(result.configuredLimits).toEqual({
+      responseJsonBytes: 256_000,
+      objectDepth: 10,
+      totalAtoms: 600,
+      totalNodes: 12_000,
+    });
+    expect(JSON.stringify(result)).not.toContain("oversizedStructuralValue");
+  });
 });

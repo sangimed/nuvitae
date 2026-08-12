@@ -194,12 +194,23 @@ export type ExtractedValue =
       readonly proficiency?: string;
     };
 
-export interface ResumeDate {
-  readonly year: number;
-  readonly month?: number;
-  readonly precision: "year" | "month" | "day";
-  readonly originalText?: string;
-}
+export type ResumeDate =
+  | {
+      readonly year: number;
+      readonly precision: "year";
+      readonly originalText?: string;
+    }
+  | {
+      readonly year: number;
+      readonly month: number;
+      readonly precision: "month";
+      readonly originalText?: string;
+    }
+  | {
+      /** Explicit source value such as “present/current”; no fake date parts. */
+      readonly precision: "present";
+      readonly originalText?: string;
+    };
 
 export interface ImportedDocument {
   readonly id: ImportId;
