@@ -36,3 +36,5 @@ Thumbs.db
 /generated/
 /storage/
 *.local.pdf
+
+.turbo/
