@@ -97,7 +97,7 @@ function toRoleDateRange(
       kind: "date_range",
       ...(start === undefined ? {} : { startDate: dateValue(start) }),
       ...(end === undefined ? {} : { endDate: dateValue(end) }),
-      isOngoing: false,
+      isOngoing: end?.normalizedValue === "current",
     },
     sourceLocation: minimalLocation(document),
     confidence: "high",
@@ -115,7 +115,13 @@ function extractedValue(
     case "date":
       return { kind: "date", value: dateValue(candidate) };
     case "link":
-      return { kind: "link", url: candidate.normalizedValue };
+      return {
+        kind: "link",
+        url: candidate.normalizedValue,
+        ...(candidate.linkLabel === undefined
+          ? {}
+          : { label: candidate.linkLabel }),
+      };
     case "language":
       return { kind: "language", name: candidate.value };
     case "text":
@@ -124,6 +130,21 @@ function extractedValue(
 }
 
 function dateValue(candidate: V2CanonicalSemanticCandidate) {
+  if (candidate.normalizedValue === "current") {
+    return {
+      precision: "present" as const,
+      originalText: candidate.value,
+    };
+  }
+  const monthMatch = /^(\d{4})-(\d{2})$/u.exec(candidate.normalizedValue);
+  if (monthMatch !== null) {
+    return {
+      year: Number(monthMatch[1]),
+      month: Number(monthMatch[2]),
+      precision: "month" as const,
+      originalText: candidate.value,
+    };
+  }
   return {
     year: Number(candidate.normalizedValue),
     precision: "year" as const,
@@ -147,7 +168,10 @@ function draftFieldPath(fieldPath: string): string {
     .replace(/\.endDate$/u, ".end_date")
     .replace(/\.employerName$/u, ".employer")
     .replace(/\.employerLocation$/u, ".employer_location")
-    .replace(/\.fieldOfStudy$/u, ".field_of_study");
+    .replace(/\.fieldOfStudy$/u, ".field_of_study")
+    .replace(/\.degree$/u, ".credential")
+    .replace(/\.responsibilities\.\d+$/u, ".responsibility")
+    .replace(/\.achievements\.\d+$/u, ".achievement");
   if (normalized.startsWith("professional_links."))
     return "professional_links.url";
   return normalized;

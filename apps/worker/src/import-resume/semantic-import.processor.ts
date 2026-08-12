@@ -155,6 +155,18 @@ export class SemanticImportProcessor {
         );
         return;
       }
+      this.emitSourceFidelity(
+        document,
+        "source_extraction",
+        {
+          sourceCoverageCategory: "unknown",
+          sourceRefCount: undefined,
+          sourceCharacterCount: undefined,
+          acceptedCharacterCount: undefined,
+          truncationDetected: false,
+        },
+        input.correlationId,
+      );
 
       if (!this.ports.provider) {
         this.emitSemanticOutcome(
@@ -284,6 +296,25 @@ export class SemanticImportProcessor {
       }
       if ("canonical" in providerResult) {
         const canonical = providerResult.canonical;
+        const summaryCandidate = canonical.candidates.find(
+          (candidate) => candidate.fieldPath === "summary",
+        );
+        this.emitSourceFidelity(
+          document,
+          "provider_response",
+          {
+            sourceCoverageCategory:
+              summaryCandidate === undefined ? "unknown" : "grounded",
+            sourceRefCount: summaryCandidate?.evidence.length,
+            sourceCharacterCount:
+              summaryCandidate === undefined
+                ? undefined
+                : evidenceCharacterCount(summaryCandidate.evidence),
+            acceptedCharacterCount: summaryCandidate?.value.length,
+            truncationDetected: false,
+          },
+          input.correlationId,
+        );
         if (canonical.candidates.length === 0) {
           this.emitSemanticOutcome(
             document,
@@ -337,6 +368,12 @@ export class SemanticImportProcessor {
           },
           now: this.clock.now(),
         });
+        this.emitSourceFidelityForCandidates(
+          document,
+          canonical.candidates,
+          mapping.fields,
+          input.correlationId,
+        );
         this.emitSemanticOutcome(
           document,
           started,
@@ -762,6 +799,143 @@ export class SemanticImportProcessor {
       ...(correlationId === undefined ? {} : { correlationId }),
     });
   }
+
+  private emitSourceFidelity(
+    document: ImportedDocument,
+    stage: "source_extraction" | "provider_response",
+    measurements: {
+      readonly sourceCoverageCategory: "unknown" | "grounded";
+      readonly sourceRefCount: number | undefined;
+      readonly sourceCharacterCount: number | undefined;
+      readonly acceptedCharacterCount: number | undefined;
+      readonly truncationDetected: boolean;
+    },
+    correlationId?: string,
+  ): void {
+    this.logger.emit("semantic.source_fidelity", {
+      importId: document.id,
+      stage,
+      longFormFieldCategory: "summary",
+      sourceCoverageCategory: measurements.sourceCoverageCategory,
+      sourceRefCountBucket:
+        measurements.sourceRefCount === undefined
+          ? "unknown"
+          : countBucket(measurements.sourceRefCount),
+      sourceCharacterCountBucket: characterBucket(
+        measurements.sourceCharacterCount,
+      ),
+      acceptedCharacterCountBucket: characterBucket(
+        measurements.acceptedCharacterCount,
+      ),
+      truncationDetected: measurements.truncationDetected,
+      ...(correlationId === undefined ? {} : { correlationId }),
+    });
+  }
+
+  private emitSourceFidelityForCandidates(
+    document: ImportedDocument,
+    candidates: readonly {
+      readonly fieldPath: string;
+      readonly value: string;
+      readonly evidence: readonly { readonly quote: string }[];
+    }[],
+    fields: readonly DeterministicResumeFieldCandidate[],
+    correlationId?: string,
+  ): void {
+    for (const candidate of candidates) {
+      const category = longFormCategory(candidate.fieldPath);
+      if (category === undefined) continue;
+      const draftField = fields.find(
+        (field) => field.fieldPath === draftFieldPath(candidate.fieldPath),
+      );
+      this.logger.emit("semantic.source_fidelity", {
+        importId: document.id,
+        stage: "canonical_candidate",
+        longFormFieldCategory: category,
+        sourceCoverageCategory: "grounded",
+        sourceRefCountBucket: countBucket(candidate.evidence.length),
+        sourceCharacterCountBucket: characterBucket(
+          evidenceCharacterCount(candidate.evidence),
+        ),
+        acceptedCharacterCountBucket: characterBucket(candidate.value.length),
+        truncationDetected: false,
+        ...(correlationId === undefined ? {} : { correlationId }),
+      });
+      if (draftField !== undefined) {
+        const accepted =
+          draftField.value.kind === "text"
+            ? draftField.value.value.length
+            : draftField.value.kind === "link"
+              ? draftField.value.url.length
+              : 0;
+        this.logger.emit("semantic.source_fidelity", {
+          importId: document.id,
+          stage: "draft_field",
+          longFormFieldCategory: category,
+          sourceCoverageCategory: "grounded",
+          sourceRefCountBucket: countBucket(candidate.evidence.length),
+          sourceCharacterCountBucket: characterBucket(
+            evidenceCharacterCount(candidate.evidence),
+          ),
+          acceptedCharacterCountBucket: characterBucket(accepted),
+          truncationDetected: accepted !== candidate.value.length,
+          ...(correlationId === undefined ? {} : { correlationId }),
+        });
+      }
+    }
+  }
+}
+
+function longFormCategory(
+  fieldPath: string,
+): "summary" | "work_bullet" | "project_description" | undefined {
+  if (fieldPath === "summary") return "summary";
+  if (/\.responsibilities\.\d+$/u.test(fieldPath)) return "work_bullet";
+  if (/\.achievements\.\d+$/u.test(fieldPath)) return "work_bullet";
+  if (/^projects\.\d+\.description$/u.test(fieldPath))
+    return "project_description";
+  return undefined;
+}
+
+function draftFieldPath(fieldPath: string): string {
+  return fieldPath
+    .replace(/^workExperience/u, "work_experience")
+    .replace(/^professionalLinks/u, "professional_links")
+    .replace(/\.startDate$/u, ".start_date")
+    .replace(/\.endDate$/u, ".end_date")
+    .replace(/\.employerName$/u, ".employer")
+    .replace(/\.employerLocation$/u, ".employer_location")
+    .replace(/\.fieldOfStudy$/u, ".field_of_study");
+}
+
+function countBucket(value: number): "0-4" | "5-19" | "20-99" | "100+" {
+  if (value < 5) return "0-4";
+  if (value < 20) return "5-19";
+  if (value < 100) return "20-99";
+  return "100+";
+}
+
+function characterBucket(
+  value: number | undefined,
+):
+  | "unknown"
+  | "none"
+  | "under_256"
+  | "256_to_999"
+  | "1000_to_3999"
+  | "4000_plus" {
+  if (value === undefined) return "unknown";
+  if (value === 0) return "none";
+  if (value < 256) return "under_256";
+  if (value < 1_000) return "256_to_999";
+  if (value < 4_000) return "1000_to_3999";
+  return "4000_plus";
+}
+
+function evidenceCharacterCount(
+  evidence: readonly { readonly quote: string }[],
+): number {
+  return evidence.reduce((total, item) => total + item.quote.length, 0);
 }
 
 const fallbackMissingSections = [

@@ -1,7 +1,8 @@
 import {
-  maxSemanticExtractionV2ArrayItems,
   maxSemanticExtractionV2ObjectDepth,
   maxSemanticExtractionV2ResponseJsonBytes,
+  maxSemanticExtractionV2TotalAtoms,
+  maxSemanticExtractionV2TotalNodes,
   nuvitaeSemanticExtractionV2EnvelopeSchema,
   semanticExtractionV2AtomSchema,
   semanticExtractionV2RelationshipSchema,
@@ -11,6 +12,7 @@ import {
 
 import {
   normalizeSourceText,
+  type SourceReferenceFailureReason,
   type SourceReferenceResolution,
   type SourceRegistry,
 } from "./source-registry.js";
@@ -39,6 +41,7 @@ export interface V2CanonicalSemanticCandidate {
   readonly inferenceStatus: "not_inferred";
   readonly reviewStatus: "unreviewed";
   readonly evidence: readonly V2CanonicalEvidence[];
+  readonly linkLabel?: string;
 }
 
 export interface V2CanonicalSignal {
@@ -51,10 +54,7 @@ export interface V2RejectedField {
   readonly code:
     | "malformed_atom"
     | "missing_source_refs"
-    | "empty_quote"
-    | "unknown_fragment"
-    | "quote_not_found"
-    | "quote_ambiguous"
+    | SourceReferenceFailureReason
     | "ambiguous_source_refs"
     | "duplicate_source_ref"
     | "overlapping_source_refs"
@@ -82,7 +82,9 @@ export type V2CanonicalizationResult =
       readonly reason:
         | "malformed_json"
         | "response_too_large"
-        | "unsafe_structure"
+        | "response_depth_limit"
+        | "total_atom_limit"
+        | "total_node_limit"
         | "unsupported_contract_version"
         | "invalid_top_level_envelope";
       readonly rejected: readonly V2RejectedField[];
@@ -92,15 +94,28 @@ interface GroundedAtom {
   readonly value: string;
   readonly normalizedValue: string;
   readonly valueKind: V2CanonicalValueKind;
-  readonly evidence: V2CanonicalEvidence;
+  readonly evidence: readonly V2CanonicalEvidence[];
+  readonly linkLabel?: string;
 }
 
 type WholeResponseReason =
   | "malformed_json"
   | "response_too_large"
-  | "unsafe_structure"
+  | "response_depth_limit"
+  | "total_atom_limit"
+  | "total_node_limit"
   | "unsupported_contract_version"
   | "invalid_top_level_envelope";
+
+export interface V2StructuralInspection {
+  readonly serializedBytes: number;
+  readonly nodeCount: number;
+  readonly maxDepth: number;
+  readonly atomCount: number;
+  readonly depthLimitExceeded: boolean;
+  readonly atomLimitExceeded: boolean;
+  readonly nodeLimitExceeded: boolean;
+}
 
 const groupKeys = {
   work: ["employerName", "employerLocation", "roles"],
@@ -131,15 +146,21 @@ export function canonicalizeSemanticExtractionV2(input: {
   readonly sourceRegistry: SourceRegistry;
   readonly importId: string;
 }): V2CanonicalizationResult {
-  const size = jsonSize(input.response);
-  if (size > maxSemanticExtractionV2ResponseJsonBytes) {
+  const structure = inspectSemanticExtractionV2Structure(input.response);
+  if (structure.serializedBytes > maxSemanticExtractionV2ResponseJsonBytes) {
     return wholeResponseFailure("response_too_large");
   }
   if (!isRecord(input.response)) {
     return wholeResponseFailure("malformed_json");
   }
-  if (maxDepthAndNodes(input.response).unsafe) {
-    return wholeResponseFailure("unsafe_structure");
+  if (structure.depthLimitExceeded) {
+    return wholeResponseFailure("response_depth_limit");
+  }
+  if (structure.atomLimitExceeded) {
+    return wholeResponseFailure("total_atom_limit");
+  }
+  if (structure.nodeLimitExceeded) {
+    return wholeResponseFailure("total_node_limit");
   }
 
   const version = input.response.schemaVersion;
@@ -339,7 +360,20 @@ export function canonicalizeSemanticExtractionV2(input: {
     if (!isRecord(raw)) return;
     const groupPath = `projects.${index}`;
     const name = accept(raw.name, [...path, "name"], groupPath);
-    accept(raw.description, [...path, "description"], groupPath);
+    const description = accept(
+      raw.description,
+      [...path, "description"],
+      groupPath,
+    );
+    if (
+      name !== undefined &&
+      description === undefined &&
+      looksLikeProjectSectionHeading(name.value)
+    ) {
+      candidates.splice(groupStart);
+      rejected.push({ path, code: "missing_required_group_field" });
+      return;
+    }
     if (name === undefined) {
       candidates.splice(groupStart);
       rejected.push({ path, code: "missing_required_group_field" });
@@ -371,11 +405,7 @@ export function canonicalizeSemanticExtractionV2(input: {
   });
 
   sections.professionalLinks.forEach((raw, index) => {
-    accept(
-      raw,
-      ["sections", "professionalLinks", index],
-      `professionalLinks.${index}`,
-    );
+    acceptProfessionalLink(raw, index, input, candidates, rejected);
   });
 
   envelope.data.relationships.forEach((raw, index) => {
@@ -455,24 +485,39 @@ function groundAtom(
     rejected.push({ path, code: "malformed_atom" });
     return undefined;
   }
-  if (parsed.data.sourceRefs.length !== 1) {
+  const longForm = isLongFormFieldPath(path);
+  if (parsed.data.sourceRefs.length !== 1 && !longForm) {
     rejected.push({
       path,
       code: classifyMultipleRefs(parsed.data.sourceRefs, registry),
     });
     return undefined;
   }
-  const reference = parsed.data.sourceRefs[0];
+  const references = parsed.data.sourceRefs;
+  const reference = references[0];
   if (reference === undefined) {
     rejected.push({ path, code: "missing_source_refs" });
     return undefined;
+  }
+  const valueKind = valueKindForPath(path);
+  if (longForm) {
+    const longFormResult = resolveLongFormAtom(
+      parsed.data.value,
+      references,
+      valueKind,
+      registry,
+    );
+    if (!longFormResult.ok) {
+      rejected.push({ path, code: longFormResult.code });
+      return undefined;
+    }
+    return longFormResult.atom;
   }
   const resolution = registry.resolve(reference);
   if (!resolution.ok) {
     rejected.push({ path, code: resolution.reason });
     return undefined;
   }
-  const valueKind = valueKindForPath(path);
   const valueOffset = findValueOffset(resolution, parsed.data.value, valueKind);
   if (valueOffset === undefined) {
     rejected.push({ path, code: "value_not_grounded" });
@@ -500,31 +545,106 @@ function groundAtom(
         valueOffset,
       ),
   );
-  const normalizedValue = normalizeTypedValue(value, valueKind);
-  if (normalizedValue === undefined) {
+  const normalized = normalizeTypedValue(value, valueKind);
+  if (normalized === undefined) {
     rejected.push({ path, code: "unsupported_typed_value" });
     return undefined;
   }
   return {
     value,
-    normalizedValue,
+    normalizedValue: normalized.value,
     valueKind,
-    evidence: {
-      fragmentId: resolution.fragment.fragmentId,
-      fragmentHash: resolution.fragment.hash,
-      line: resolution.fragment.line,
-      start: resolution.fragment.start + resolution.start + valueOffset,
-      end:
-        resolution.fragment.start +
-        resolution.start +
-        valueOffset +
-        normalizedMatchLength(
-          parsed.data.value,
-          valueKind,
-          resolution.quote,
-          valueOffset,
-        ),
-      quote: resolution.quote,
+    ...(normalized.linkLabel === undefined
+      ? {}
+      : { linkLabel: normalized.linkLabel }),
+    evidence: [
+      {
+        fragmentId: resolution.fragment.fragmentId,
+        fragmentHash: resolution.fragment.hash,
+        line: resolution.fragment.line,
+        start: resolution.fragment.start + resolution.start + valueOffset,
+        end:
+          resolution.fragment.start +
+          resolution.start +
+          valueOffset +
+          normalizedMatchLength(
+            parsed.data.value,
+            valueKind,
+            resolution.quote,
+            valueOffset,
+          ),
+        quote: resolution.quote,
+      },
+    ],
+  };
+}
+
+function resolveLongFormAtom(
+  value: string,
+  references: readonly Parameters<SourceRegistry["resolve"]>[0][],
+  kind: V2CanonicalValueKind,
+  registry: SourceRegistry,
+):
+  | { readonly ok: true; readonly atom: GroundedAtom }
+  | {
+      readonly ok: false;
+      readonly code:
+        | SourceReferenceFailureReason
+        | "ambiguous_source_refs"
+        | "duplicate_source_ref"
+        | "overlapping_source_refs"
+        | "value_not_grounded"
+        | "unsupported_typed_value";
+    } {
+  if (kind !== "text") return { ok: false, code: "unsupported_typed_value" };
+  const resolved: Array<
+    Extract<SourceReferenceResolution, { readonly ok: true }>
+  > = [];
+  const seen = new Set<string>();
+  for (const reference of references) {
+    const key = `${reference.fragmentId}\u0000${normalizeSourceText(reference.quote)}`;
+    if (seen.has(key)) return { ok: false, code: "duplicate_source_ref" };
+    seen.add(key);
+    const result = registry.resolve(reference);
+    if (!result.ok) return { ok: false, code: result.reason };
+    resolved.push(result);
+  }
+  for (let index = 1; index < resolved.length; index += 1) {
+    const previous = resolved[index - 1];
+    const current = resolved[index];
+    if (previous === undefined || current === undefined) continue;
+    if (
+      current.fragment.order < previous.fragment.order ||
+      (current.fragment.fragmentId === previous.fragment.fragmentId &&
+        current.start < previous.start)
+    ) {
+      return { ok: false, code: "ambiguous_source_refs" };
+    }
+    if (
+      current.fragment.fragmentId === previous.fragment.fragmentId &&
+      current.start < previous.end
+    ) {
+      return { ok: false, code: "overlapping_source_refs" };
+    }
+  }
+  const reconstructed = resolved.map((item) => item.quote).join(" ");
+  if (normalizeSourceText(value) !== normalizeSourceText(reconstructed)) {
+    return { ok: false, code: "value_not_grounded" };
+  }
+  return {
+    ok: true,
+    atom: {
+      value: reconstructed,
+      normalizedValue: normalizeSourceText(reconstructed),
+      valueKind: kind,
+      evidence: resolved.map((result) => ({
+        fragmentId: result.fragment.fragmentId,
+        fragmentHash: result.fragment.hash,
+        line: result.fragment.line,
+        start: result.fragment.start + result.start,
+        end: result.fragment.start + result.end,
+        quote: result.quote,
+      })),
     },
   };
 }
@@ -562,31 +682,125 @@ function normalizedMatchLength(
 function normalizeTypedValue(
   value: string,
   kind: V2CanonicalValueKind,
-): string | undefined {
+): { readonly value: string; readonly linkLabel?: string } | undefined {
   const normalized = normalizeSourceText(value);
   if (kind === "date") {
-    const year = /^(?:19|20)\d{2}$/u.exec(normalized)?.[0];
-    return year;
+    return normalizePartialDate(normalized);
   }
   if (kind === "link") {
+    const urlMatch = /https?:\/\/[^\s<>]+/iu.exec(normalized);
+    if (urlMatch === null) return undefined;
     try {
-      const url = new URL(normalized);
+      const url = new URL(urlMatch[0]);
       if (url.protocol !== "http:" && url.protocol !== "https:")
         return undefined;
-      return url.toString();
+      const label = normalizeSourceText(
+        normalized.slice(0, urlMatch.index).replace(/[|:,-]+$/u, ""),
+      );
+      return {
+        value: url.toString(),
+        ...(label.length === 0 ? {} : { linkLabel: label }),
+      };
     } catch {
       return undefined;
     }
   }
-  if (kind === "text" && normalized.length === 0) return undefined;
-  if (kind === "language") return normalized;
-  return normalized.toLocaleLowerCase();
+  if (normalized.length === 0) return undefined;
+  if (kind === "language") return { value: normalized };
+  return { value: normalized.toLocaleLowerCase() };
+}
+
+function normalizePartialDate(
+  value: string,
+): { readonly value: string } | undefined {
+  const lowered = value.toLocaleLowerCase();
+  if (
+    /^(?:present|current|now|ongoing|en cours|présent|present|actuel)$/iu.test(
+      lowered,
+    )
+  )
+    return { value: "current" };
+  const year = /^(?:19|20)\d{2}$/u.exec(value)?.[0];
+  if (year !== undefined) return { value: year };
+  const yearMonth = /^(?:(\d{1,2})[/-](\d{4})|(\d{4})-(\d{1,2}))$/u.exec(value);
+  if (yearMonth !== null) {
+    const month = Number(yearMonth[1] ?? yearMonth[4]);
+    const parsedYear = Number(yearMonth[2] ?? yearMonth[3]);
+    if (month >= 1 && month <= 12) {
+      return { value: `${parsedYear}-${String(month).padStart(2, "0")}` };
+    }
+    return undefined;
+  }
+  const monthNames: Record<string, number> = {
+    january: 1,
+    jan: 1,
+    february: 2,
+    feb: 2,
+    march: 3,
+    mar: 3,
+    april: 4,
+    apr: 4,
+    may: 5,
+    june: 6,
+    jun: 6,
+    july: 7,
+    jul: 7,
+    august: 8,
+    aug: 8,
+    september: 9,
+    sep: 9,
+    sept: 9,
+    october: 10,
+    oct: 10,
+    november: 11,
+    nov: 11,
+    december: 12,
+    dec: 12,
+    janvier: 1,
+    février: 2,
+    fevrier: 2,
+    mars: 3,
+    avril: 4,
+    mai: 5,
+    juin: 6,
+    juillet: 7,
+    août: 8,
+    aout: 8,
+    septembre: 9,
+    octobre: 10,
+    novembre: 11,
+    décembre: 12,
+    decembre: 12,
+  };
+  const monthYear = /^([\p{L}.]+)[ ,/-]+((?:19|20)\d{2})$/u.exec(lowered);
+  if (monthYear !== null) {
+    const month = monthNames[monthYear[1]?.replace(/\.$/u, "") ?? ""];
+    if (month !== undefined)
+      return { value: `${monthYear[2]}-${String(month).padStart(2, "0")}` };
+  }
+  return undefined;
+}
+
+function isLongFormFieldPath(path: readonly (string | number)[]): boolean {
+  return (
+    path.includes("summary") ||
+    path.includes("responsibilities") ||
+    path.includes("achievements") ||
+    (path.includes("projects") && path.at(-1) === "description")
+  );
+}
+
+function looksLikeProjectSectionHeading(value: string): boolean {
+  return /^(?:open\s+source\s*(?:&|and)\s*)?personal\s+projects?$|^open\s+source\s*(?:&|and)\s*personal\s+projects?$|^projects?$/iu.test(
+    normalizeSourceText(value),
+  );
 }
 
 function valueKindForPath(
   path: readonly (string | number)[],
 ): V2CanonicalValueKind {
   const leaf = path.at(-1);
+  if (leaf === "label") return "text";
   if (leaf === "startDate" || leaf === "endDate") return "date";
   if (leaf === "website" || path.includes("professionalLinks")) return "link";
   if (leaf === "name" && path.includes("languages")) return "language";
@@ -614,8 +828,60 @@ function toCandidate(
     confidence: "high",
     inferenceStatus: "not_inferred",
     reviewStatus: "unreviewed",
-    evidence: [grounded.evidence],
+    evidence: grounded.evidence,
+    ...(grounded.linkLabel === undefined
+      ? {}
+      : { linkLabel: grounded.linkLabel }),
   };
+}
+
+function acceptProfessionalLink(
+  raw: unknown,
+  index: number,
+  input: {
+    readonly sourceRegistry: SourceRegistry;
+    readonly importId: string;
+  },
+  candidates: V2CanonicalSemanticCandidate[],
+  rejected: V2RejectedField[],
+): void {
+  const path = ["sections", "professionalLinks", index] as const;
+  const groupPath = `professionalLinks.${index}`;
+  if (!isRecord(raw) || !Object.prototype.hasOwnProperty.call(raw, "url")) {
+    const grounded = groundAtom(raw, path, input.sourceRegistry, rejected);
+    if (grounded !== undefined) {
+      candidates.push(toCandidate(grounded, path, groupPath, input.importId));
+    }
+    return;
+  }
+  const keys = Object.keys(raw);
+  if (
+    keys.some((key) => key !== "label" && key !== "url") ||
+    !Object.prototype.hasOwnProperty.call(raw, "label")
+  ) {
+    rejected.push({ path, code: "malformed_group" });
+    return;
+  }
+  const url = groundAtom(
+    raw.url,
+    [...path, "url"],
+    input.sourceRegistry,
+    rejected,
+  );
+  if (url === undefined) return;
+  const label = groundAtom(
+    raw.label,
+    [...path, "label"],
+    input.sourceRegistry,
+    rejected,
+  );
+  const merged = {
+    ...url,
+    ...(label === undefined ? {} : { linkLabel: label.value }),
+    evidence:
+      label === undefined ? url.evidence : [...url.evidence, ...label.evidence],
+  } satisfies GroundedAtom;
+  candidates.push(toCandidate(merged, path, groupPath, input.importId));
 }
 
 function acceptArray(
@@ -698,7 +964,10 @@ function classifyMultipleRefs(
   references: readonly Parameters<SourceRegistry["resolve"]>[0][],
   registry: SourceRegistry,
 ):
-  "duplicate_source_ref" | "overlapping_source_refs" | "ambiguous_source_refs" {
+  | SourceReferenceFailureReason
+  | "duplicate_source_ref"
+  | "overlapping_source_refs"
+  | "ambiguous_source_refs" {
   const seen = new Set<string>();
   const resolved: Array<
     Extract<SourceReferenceResolution, { readonly ok: true }>
@@ -708,7 +977,7 @@ function classifyMultipleRefs(
     if (seen.has(key)) return "duplicate_source_ref";
     seen.add(key);
     const result = registry.resolve(reference);
-    if (!result.ok) return "ambiguous_source_refs";
+    if (!result.ok) return result.reason;
     resolved.push(result);
   }
   for (let index = 0; index < resolved.length; index += 1) {
@@ -735,6 +1004,50 @@ function wholeResponseFailure(
   return { ok: false, reason, rejected: [] };
 }
 
+export function inspectSemanticExtractionV2Structure(
+  value: unknown,
+): V2StructuralInspection {
+  const serializedBytes = jsonSize(value);
+  let nodeCount = 0;
+  let maxDepth = 0;
+  let atomCount = 0;
+  let depthLimitExceeded = false;
+
+  const visit = (current: unknown, depth: number): void => {
+    nodeCount += 1;
+    maxDepth = Math.max(maxDepth, depth);
+    if (depth > maxSemanticExtractionV2ObjectDepth) {
+      depthLimitExceeded = true;
+      return;
+    }
+    if (isRecord(current)) {
+      if (
+        Object.prototype.hasOwnProperty.call(current, "value") &&
+        Object.prototype.hasOwnProperty.call(current, "sourceRefs")
+      ) {
+        atomCount += 1;
+      }
+      for (const child of Object.values(current)) visit(child, depth + 1);
+      return;
+    }
+    if (Array.isArray(current)) {
+      for (const child of current) visit(child, depth + 1);
+    }
+  };
+
+  if (value !== undefined) visit(value, 0);
+
+  return {
+    serializedBytes,
+    nodeCount,
+    maxDepth,
+    atomCount,
+    depthLimitExceeded,
+    atomLimitExceeded: atomCount > maxSemanticExtractionV2TotalAtoms,
+    nodeLimitExceeded: nodeCount > maxSemanticExtractionV2TotalNodes,
+  };
+}
+
 function jsonSize(value: unknown): number {
   try {
     const serialized = JSON.stringify(value);
@@ -743,23 +1056,6 @@ function jsonSize(value: unknown): number {
   } catch {
     return Number.POSITIVE_INFINITY;
   }
-}
-
-function maxDepthAndNodes(value: unknown): {
-  readonly unsafe: boolean;
-} {
-  let nodes = 0;
-  const visit = (current: unknown, depth: number): boolean => {
-    nodes += 1;
-    if (nodes > maxSemanticExtractionV2ArrayItems * 50) return true;
-    if (!isRecord(current) && !Array.isArray(current)) return false;
-    if (depth > maxSemanticExtractionV2ObjectDepth) return true;
-    if (Array.isArray(current)) {
-      return current.some((item) => visit(item, depth + 1));
-    }
-    return Object.values(current).some((item) => visit(item, depth + 1));
-  };
-  return { unsafe: visit(value, 0) };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

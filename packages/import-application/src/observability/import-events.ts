@@ -45,6 +45,36 @@ const maxPathItems = 8;
 
 const documentFormats = ["pdf", "docx"] as const;
 const countBuckets = ["0-4", "5-19", "20-99", "100+"] as const;
+const sourceFidelityStages = [
+  "source_extraction",
+  "provider_response",
+  "canonical_candidate",
+  "draft_field",
+  "persisted_field",
+  "api_response",
+  "rendered_review",
+] as const;
+const longFormFieldCategories = [
+  "summary",
+  "work_bullet",
+  "project_description",
+  "other_descriptive_prose",
+] as const;
+const sourceCoverageCategories = [
+  "unknown",
+  "grounded",
+  "complete",
+  "partial",
+  "lost",
+] as const;
+const sourceFidelityCountBuckets = [
+  "unknown",
+  "none",
+  "under_256",
+  "256_to_999",
+  "1000_to_3999",
+  "4000_plus",
+] as const;
 const durationBuckets = [
   "under_100ms",
   "under_1s",
@@ -66,6 +96,15 @@ const languageCategories = [
   "not_known",
 ] as const;
 const fileSizeBuckets = ["under_1_mib", "1_to_5_mib", "5_to_10_mib"] as const;
+const pdfSafetyReasonCodes = [
+  "pdf_javascript_action",
+  "pdf_launch_action",
+  "pdf_embedded_file",
+  "pdf_rich_media",
+  "pdf_unsupported_active_content",
+  "pdf_unclassified_action",
+  "pdf_malformed_active_content",
+] as const;
 
 const importResourceOperations = [
   "status",
@@ -178,7 +217,9 @@ const semanticTransportTimingPhases = [
   "completion_event",
   "response_eof",
   "request_timeout",
+  "first_output_timeout",
   "stream_inactivity_timeout",
+  "generation_timeout",
   "cancelled",
   "completed",
   "transport_error",
@@ -223,6 +264,34 @@ const semanticTransportNewlineCountBuckets = [
   "5-19",
   "20+",
 ] as const;
+const semanticProviderErrorCategories = [
+  "authentication_expired",
+  "authentication_revoked",
+  "rate_limited",
+  "quota_exhausted",
+  "timeout",
+  "provider_unavailable",
+  "malformed_provider_output",
+  "unknown",
+] as const;
+const semanticProviderErrorCodeCategories = [
+  "expired",
+  "revoked",
+  "rate_limit",
+  "quota",
+  "timeout",
+  "temporary",
+  "internal",
+  "unknown",
+  "not_present",
+] as const;
+const semanticProviderErrorShapeCategories = [
+  "nested_error_object",
+  "flat_error_object",
+  "nested_response_error",
+  "missing_error_object",
+  "malformed_error_object",
+] as const;
 const semanticV2EnvelopeFailureStages = [
   "semantic_json_parse",
   "v2_envelope",
@@ -246,6 +315,36 @@ const semanticV2EnvelopeSchemaVersionCategories = [
   "missing",
   "other_string",
   "wrong_type",
+] as const;
+const semanticV2EnvelopeStructuralReasons = [
+  "none",
+  "semantic_json_parse",
+  "response_size_limit",
+  "response_depth_limit",
+  "total_atom_limit",
+  "total_node_limit",
+  "section_cardinality_limit",
+  "relationship_cardinality_limit",
+  "aggregate_collection_limit",
+  "schema_version",
+  "top_level_envelope",
+  "canonicalizer_exception",
+] as const;
+const semanticV2EnvelopeSerializedBytesBuckets = [
+  "not_observed",
+  "0-64k",
+  "64k-128k",
+  "128k-256k",
+  "over_256k",
+] as const;
+const semanticV2EnvelopeCountBuckets = [
+  "0-4",
+  "5-19",
+  "20-99",
+  "100-199",
+  "200-499",
+  "500-999",
+  "1000+",
 ] as const;
 
 const validationDiagnosticCategories = [
@@ -554,6 +653,7 @@ export const importEventSchemas = {
       durationBucket: enumOf(durationBuckets),
       pageCountBucket: enumOf(pageCountBuckets),
       languageCategory: enumOf(languageCategories),
+      pdfSafetyReason: enumOf(pdfSafetyReasonCodes, true),
       correlationId: id(true),
     },
   },
@@ -700,6 +800,17 @@ export const importEventSchemas = {
       correlationId: id(true),
     },
   },
+  "semantic.provider_sse_error": {
+    level: "warn",
+    fields: {
+      importId: id(),
+      providerErrorCategory: enumOf(semanticProviderErrorCategories),
+      providerErrorCodeCategory: enumOf(semanticProviderErrorCodeCategories),
+      retryable: bool(),
+      eventShapeCategory: enumOf(semanticProviderErrorShapeCategories),
+      correlationId: id(true),
+    },
+  },
   "semantic.provider_v2_envelope_diagnostics": {
     level: "warn",
     fields: {
@@ -722,6 +833,28 @@ export const importEventSchemas = {
       relationshipsValueCategory: enumOf(semanticV2EnvelopeValueCategories),
       ambiguitiesValueCategory: enumOf(semanticV2EnvelopeValueCategories),
       conflictsValueCategory: enumOf(semanticV2EnvelopeValueCategories),
+      structuralReason: enumOf(semanticV2EnvelopeStructuralReasons),
+      serializedResponseBytesBucket: enumOf(
+        semanticV2EnvelopeSerializedBytesBuckets,
+      ),
+      totalAtomCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      totalNodeCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      maxDepthBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      maxDepthObserved: int(0, 128),
+      workExperienceCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      educationCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      skillsCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      languagesCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      projectsCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      certificationsCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      professionalLinksCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      relationshipCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      ambiguityCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      conflictCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      responseJsonByteLimit: int(1, 10_000_000),
+      objectDepthLimit: int(1, 128),
+      totalAtomLimit: int(1, 1_000_000),
+      totalNodeLimit: int(1, 10_000_000),
       firstZodIssueCode: token(true),
       firstZodPath: tokenList(8),
       issueCountBucket: enumOf(countBuckets),
@@ -737,6 +870,20 @@ export const importEventSchemas = {
       valueCountBucket: enumOf(countBuckets),
       diagnosticCountBucket: enumOf(countBuckets),
       durationBucket: enumOf(durationBuckets),
+      correlationId: id(true),
+    },
+  },
+  "semantic.source_fidelity": {
+    level: "info",
+    fields: {
+      importId: id(),
+      stage: enumOf(sourceFidelityStages),
+      longFormFieldCategory: enumOf(longFormFieldCategories),
+      sourceCoverageCategory: enumOf(sourceCoverageCategories),
+      sourceRefCountBucket: enumOf([...countBuckets, "unknown"] as const),
+      sourceCharacterCountBucket: enumOf(sourceFidelityCountBuckets),
+      acceptedCharacterCountBucket: enumOf(sourceFidelityCountBuckets),
+      truncationDetected: bool(),
       correlationId: id(true),
     },
   },
@@ -856,6 +1003,7 @@ export interface ImportEventMetadataMap {
     readonly durationBucket: (typeof durationBuckets)[number];
     readonly pageCountBucket: (typeof pageCountBuckets)[number];
     readonly languageCategory: (typeof languageCategories)[number];
+    readonly pdfSafetyReason?: (typeof pdfSafetyReasonCodes)[number];
     readonly correlationId?: string;
   };
   "validation.state_recovery_failed": {
@@ -960,6 +1108,14 @@ export interface ImportEventMetadataMap {
     readonly finalRecognizedEventType?: string;
     readonly correlationId?: string;
   };
+  "semantic.provider_sse_error": {
+    readonly importId: string;
+    readonly providerErrorCategory: (typeof semanticProviderErrorCategories)[number];
+    readonly providerErrorCodeCategory: (typeof semanticProviderErrorCodeCategories)[number];
+    readonly retryable: boolean;
+    readonly eventShapeCategory: (typeof semanticProviderErrorShapeCategories)[number];
+    readonly correlationId?: string;
+  };
   "semantic.provider_v2_envelope_diagnostics": {
     readonly importId: string;
     readonly responseContractVersion: string;
@@ -980,6 +1136,26 @@ export interface ImportEventMetadataMap {
     readonly relationshipsValueCategory: (typeof semanticV2EnvelopeValueCategories)[number];
     readonly ambiguitiesValueCategory: (typeof semanticV2EnvelopeValueCategories)[number];
     readonly conflictsValueCategory: (typeof semanticV2EnvelopeValueCategories)[number];
+    readonly structuralReason: (typeof semanticV2EnvelopeStructuralReasons)[number];
+    readonly serializedResponseBytesBucket: (typeof semanticV2EnvelopeSerializedBytesBuckets)[number];
+    readonly totalAtomCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly totalNodeCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly maxDepthBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly maxDepthObserved: number;
+    readonly workExperienceCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly educationCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly skillsCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly languagesCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly projectsCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly certificationsCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly professionalLinksCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly relationshipCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly ambiguityCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly conflictCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly responseJsonByteLimit: number;
+    readonly objectDepthLimit: number;
+    readonly totalAtomLimit: number;
+    readonly totalNodeLimit: number;
     readonly firstZodIssueCode?: string;
     readonly firstZodPath: readonly string[];
     readonly issueCountBucket: (typeof countBuckets)[number];
@@ -992,6 +1168,17 @@ export interface ImportEventMetadataMap {
     readonly valueCountBucket: (typeof countBuckets)[number];
     readonly diagnosticCountBucket: (typeof countBuckets)[number];
     readonly durationBucket: (typeof durationBuckets)[number];
+    readonly correlationId?: string;
+  };
+  "semantic.source_fidelity": {
+    readonly importId: string;
+    readonly stage: (typeof sourceFidelityStages)[number];
+    readonly longFormFieldCategory: (typeof longFormFieldCategories)[number];
+    readonly sourceCoverageCategory: (typeof sourceCoverageCategories)[number];
+    readonly sourceRefCountBucket: (typeof countBuckets)[number] | "unknown";
+    readonly sourceCharacterCountBucket: (typeof sourceFidelityCountBuckets)[number];
+    readonly acceptedCharacterCountBucket: (typeof sourceFidelityCountBuckets)[number];
+    readonly truncationDetected: boolean;
     readonly correlationId?: string;
   };
   "semantic.validation_diagnostics": {

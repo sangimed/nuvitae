@@ -28,6 +28,13 @@ export interface CanonicalSourceFragment {
   readonly hash: string;
 }
 
+export type SourceReferenceFailureReason =
+  | "malformed_source_ref"
+  | "source_fragment_not_found"
+  | "empty_quote"
+  | "quote_not_found_in_fragment"
+  | "quote_ambiguous_within_fragment";
+
 export type SourceReferenceResolution =
   | {
       readonly ok: true;
@@ -38,11 +45,7 @@ export type SourceReferenceResolution =
     }
   | {
       readonly ok: false;
-      readonly reason:
-        | "unknown_fragment"
-        | "empty_quote"
-        | "quote_not_found"
-        | "quote_ambiguous";
+      readonly reason: SourceReferenceFailureReason;
     };
 
 export interface SourceRegistry {
@@ -170,22 +173,37 @@ function resolveReference(
   fragments: ReadonlyMap<string, CanonicalSourceFragment>,
   reference: SemanticExtractionV2SourceRef,
 ): SourceReferenceResolution {
+  // fragmentId is the authority. Quote matching is intentionally performed
+  // only after this lookup and never by scanning `fragments` globally.
+  if (
+    reference === null ||
+    typeof reference !== "object" ||
+    typeof reference.fragmentId !== "string" ||
+    typeof reference.quote !== "string"
+  ) {
+    return { ok: false, reason: "malformed_source_ref" };
+  }
   const fragment = fragments.get(reference.fragmentId);
-  if (fragment === undefined) return { ok: false, reason: "unknown_fragment" };
+  if (fragment === undefined) {
+    return { ok: false, reason: "source_fragment_not_found" };
+  }
   const quote = normalizeSourceText(reference.quote);
   if (quote.length === 0) return { ok: false, reason: "empty_quote" };
 
   const first = fragment.text.indexOf(quote);
-  if (first < 0) return { ok: false, reason: "quote_not_found" };
-  if (fragment.text.indexOf(quote, first + 1) >= 0) {
-    return { ok: false, reason: "quote_ambiguous" };
+  if (first < 0) {
+    return { ok: false, reason: "quote_not_found_in_fragment" };
   }
+  if (fragment.text.indexOf(quote, first + 1) >= 0) {
+    return { ok: false, reason: "quote_ambiguous_within_fragment" };
+  }
+  const canonicalQuote = fragment.text.slice(first, first + quote.length);
   return {
     ok: true,
     fragment,
-    quote,
+    quote: canonicalQuote,
     start: first,
-    end: first + quote.length,
+    end: first + canonicalQuote.length,
   };
 }
 

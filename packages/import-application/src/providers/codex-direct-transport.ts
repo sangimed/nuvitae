@@ -10,17 +10,31 @@ const MAX_EVENT_BYTES = 262_144;
 const MAX_EVENT_COUNT = 4_096;
 const MAX_OUTPUT_BYTES = 65_536;
 const MAX_PROTOCOL_SNIFF_BYTES = 4_096;
-const DEFAULT_STREAM_IDLE_TIMEOUT_MS = 15_000;
+
+/**
+ * Independent transport bounds. The header deadline is supplied per request;
+ * the remaining limits bound provider generation after headers arrive.
+ */
+export const CODEX_DIRECT_TRANSPORT_DEADLINES = {
+  headerTimeoutMs: 30_000,
+  firstOutputTimeoutMs: 60_000,
+  activeStreamInactivityTimeoutMs: 15_000,
+  totalGenerationTimeoutMs: 90_000,
+} as const;
 
 export interface CodexDirectTransportRequest {
   readonly accessToken: string;
   readonly accountIdentifier: string;
   readonly instructions: string;
   readonly inputText: string;
+  /** Connection and response-header deadline; it stops when fetch resolves. */
   readonly timeoutMs: number;
   readonly abortSignal?: AbortSignal;
   readonly onTiming?: (timing: CodexDirectTransportTiming) => void;
   readonly onProtocolShape?: (shape: CodexDirectTransportProtocolShape) => void;
+  readonly onProviderSseError?: (
+    diagnostic: CodexDirectTransportSseErrorDiagnostic,
+  ) => void;
 }
 
 export type CodexDirectTransportTimingPhase =
@@ -31,7 +45,9 @@ export type CodexDirectTransportTimingPhase =
   | "completion_event"
   | "response_eof"
   | "request_timeout"
+  | "first_output_timeout"
   | "stream_inactivity_timeout"
+  | "generation_timeout"
   | "cancelled"
   | "completed"
   | "transport_error";
@@ -99,6 +115,46 @@ export type CodexDirectTransportFailureCategory =
   | "protocol_invalid"
   | "unknown_provider_failure";
 
+/**
+ * Provider error diagnostics deliberately expose categories only. The
+ * provider's code and message are never returned, logged, or copied into a
+ * diagnostic field.
+ */
+export type CodexDirectTransportProviderErrorCategory =
+  | "authentication_expired"
+  | "authentication_revoked"
+  | "rate_limited"
+  | "quota_exhausted"
+  | "timeout"
+  | "provider_unavailable"
+  | "malformed_provider_output"
+  | "unknown";
+
+export type CodexDirectTransportProviderErrorCodeCategory =
+  | "expired"
+  | "revoked"
+  | "rate_limit"
+  | "quota"
+  | "timeout"
+  | "temporary"
+  | "internal"
+  | "unknown"
+  | "not_present";
+
+export type CodexDirectTransportProviderErrorShapeCategory =
+  | "nested_error_object"
+  | "flat_error_object"
+  | "nested_response_error"
+  | "missing_error_object"
+  | "malformed_error_object";
+
+export interface CodexDirectTransportSseErrorDiagnostic {
+  readonly providerErrorCategory: CodexDirectTransportProviderErrorCategory;
+  readonly providerErrorCodeCategory: CodexDirectTransportProviderErrorCodeCategory;
+  readonly retryable: boolean;
+  readonly eventShapeCategory: CodexDirectTransportProviderErrorShapeCategory;
+}
+
 export type CodexDirectTransportResult =
   | { readonly ok: true; readonly normalizedOutput: string }
   | {
@@ -108,8 +164,12 @@ export type CodexDirectTransportResult =
 
 export interface CodexDirectTransportOptions {
   readonly fetch?: typeof globalThis.fetch;
-  /** Test-only seam; production uses the audited 15-second idle limit. */
+  /** Test-only seam; production uses the bounded active-stream limit. */
   readonly streamIdleTimeoutMs?: number;
+  /** Test-only seam; production uses the bounded pre-output grace period. */
+  readonly firstOutputTimeoutMs?: number;
+  /** Test-only seam; production uses the bounded generation deadline. */
+  readonly totalGenerationTimeoutMs?: number;
 }
 
 /**
@@ -120,12 +180,22 @@ export interface CodexDirectTransportOptions {
 export class CodexDirectTransport {
   private readonly fetcher: typeof globalThis.fetch;
   private readonly streamIdleTimeoutMs: number;
+  private readonly firstOutputTimeoutMs: number;
+  private readonly totalGenerationTimeoutMs: number;
 
   constructor(options: CodexDirectTransportOptions = {}) {
     this.fetcher = options.fetch ?? globalThis.fetch;
     this.streamIdleTimeoutMs = positiveIntegerOrDefault(
       options.streamIdleTimeoutMs,
-      DEFAULT_STREAM_IDLE_TIMEOUT_MS,
+      CODEX_DIRECT_TRANSPORT_DEADLINES.activeStreamInactivityTimeoutMs,
+    );
+    this.firstOutputTimeoutMs = positiveIntegerOrDefault(
+      options.firstOutputTimeoutMs,
+      CODEX_DIRECT_TRANSPORT_DEADLINES.firstOutputTimeoutMs,
+    );
+    this.totalGenerationTimeoutMs = positiveIntegerOrDefault(
+      options.totalGenerationTimeoutMs,
+      CODEX_DIRECT_TRANSPORT_DEADLINES.totalGenerationTimeoutMs,
     );
   }
 
@@ -177,12 +247,23 @@ export class CodexDirectTransport {
 
     const controller = new AbortController();
     let streamIdleTimer: ReturnType<typeof setTimeout> | undefined;
+    let firstOutputTimer: ReturnType<typeof setTimeout> | undefined;
+    let generationTimer: ReturnType<typeof setTimeout> | undefined;
     let protocolShape: MutableProtocolShape | undefined;
+    let abortReason: TransportAbortReason | undefined;
+    const abortWithReason = (reason: TransportAbortReason) => {
+      if (controller.signal.aborted) return;
+      abortReason = reason;
+      controller.abort(reason);
+    };
     const requestTimeout = setTimeout(
-      () => controller.abort("request_timeout"),
-      positiveIntegerOrDefault(input.timeoutMs, 1),
+      () => abortWithReason("request_timeout"),
+      positiveIntegerOrDefault(
+        input.timeoutMs,
+        CODEX_DIRECT_TRANSPORT_DEADLINES.headerTimeoutMs,
+      ),
     );
-    const abort = () => controller.abort("cancelled");
+    const abort = () => abortWithReason("cancelled");
     input.abortSignal?.addEventListener("abort", abort, { once: true });
     try {
       const response = await this.fetcher(CODEX_ENDPOINT, {
@@ -231,29 +312,50 @@ export class CodexDirectTransport {
         return { ok: false, category: "protocol_invalid" };
       }
 
+      generationTimer = setTimeout(
+        () => abortWithReason("generation_timeout"),
+        this.totalGenerationTimeoutMs,
+      );
+
       const contentType = (
         response.headers.get("content-type")?.toLowerCase() ?? ""
       ).trim();
       let protocol = protocolForContentType(contentType);
-      let parser =
-        protocol === "sse"
-          ? createSseParser(protocolShape, input, timingState, startedAt)
-          : undefined;
+      let parser = undefined as BoundedSseParser | undefined;
       let sniffedBytes: Uint8Array<ArrayBufferLike> = new Uint8Array();
       const resetStreamIdleTimer = () => {
         if (streamIdleTimer !== undefined) clearTimeout(streamIdleTimer);
         streamIdleTimer = setTimeout(() => {
           protocolShape!.inactivityDurationMs = this.streamIdleTimeoutMs;
-          controller.abort("stream_timeout");
+          abortWithReason("stream_timeout");
         }, this.streamIdleTimeoutMs);
       };
-      resetStreamIdleTimer();
+      let firstSemanticOutputSeen = false;
+      const markFirstSemanticOutput = () => {
+        if (firstSemanticOutputSeen) return;
+        firstSemanticOutputSeen = true;
+        if (firstOutputTimer !== undefined) clearTimeout(firstOutputTimer);
+        resetStreamIdleTimer();
+      };
+      if (protocol === "sse") {
+        parser = createSseParser(
+          protocolShape,
+          input,
+          timingState,
+          startedAt,
+          markFirstSemanticOutput,
+        );
+      }
+      firstOutputTimer = setTimeout(() => {
+        abortWithReason("first_output_timeout");
+      }, this.firstOutputTimeoutMs);
       const bodyBytes = await readBoundedBody(
         response,
         MAX_RESPONSE_BYTES,
         controller.signal,
         (chunk) => {
-          resetStreamIdleTimer();
+          if (chunk.byteLength === 0) return;
+          if (firstSemanticOutputSeen) resetStreamIdleTimer();
           observeProtocolBytes(protocolShape!, chunk);
           if (chunk.byteLength > 0) {
             sniffedBytes = appendSniffBytes(sniffedBytes, chunk);
@@ -276,17 +378,22 @@ export class CodexDirectTransport {
                 input,
                 timingState,
                 startedAt,
+                markFirstSemanticOutput,
               );
               parser.consume(sniffedBytes);
             } else if (structuralCategory === "json_object") {
               protocol = "json";
+              markFirstSemanticOutput();
             }
           } else if (protocol === "sse") {
             parser?.consume(chunk);
+          } else if (protocol === "json") {
+            markFirstSemanticOutput();
           }
         },
       );
       if (streamIdleTimer !== undefined) clearTimeout(streamIdleTimer);
+      if (firstOutputTimer !== undefined) clearTimeout(firstOutputTimer);
       if (bodyBytes === null)
         return { ok: false, category: "response_too_large" };
       protocolShape.eofObserved = true;
@@ -324,17 +431,23 @@ export class CodexDirectTransport {
         return { ok: false, category: "cancelled" };
       }
       if (
-        controller.signal.reason === "request_timeout" ||
-        controller.signal.reason === "stream_timeout" ||
+        abortReason === "request_timeout" ||
+        abortReason === "first_output_timeout" ||
+        abortReason === "stream_timeout" ||
+        abortReason === "generation_timeout" ||
         isAbortError(error)
       ) {
         emitTiming(
           input,
           timingState,
           startedAt,
-          controller.signal.reason === "stream_timeout"
-            ? "stream_inactivity_timeout"
-            : "request_timeout",
+          abortReason === "first_output_timeout"
+            ? "first_output_timeout"
+            : abortReason === "stream_timeout"
+              ? "stream_inactivity_timeout"
+              : abortReason === "generation_timeout"
+                ? "generation_timeout"
+                : "request_timeout",
         );
         return { ok: false, category: "timeout" };
       }
@@ -342,6 +455,8 @@ export class CodexDirectTransport {
       return { ok: false, category: "provider_unavailable" };
     } finally {
       clearTimeout(requestTimeout);
+      if (generationTimer !== undefined) clearTimeout(generationTimer);
+      if (firstOutputTimer !== undefined) clearTimeout(firstOutputTimer);
       if (streamIdleTimer !== undefined) clearTimeout(streamIdleTimer);
       input.abortSignal?.removeEventListener("abort", abort);
       if (protocolShape !== undefined) {
@@ -350,6 +465,13 @@ export class CodexDirectTransport {
     }
   }
 }
+
+type TransportAbortReason =
+  | "request_timeout"
+  | "first_output_timeout"
+  | "stream_timeout"
+  | "generation_timeout"
+  | "cancelled";
 
 interface TransportTimingState {
   httpStatusCategory: CodexDirectHttpStatusCategory;
@@ -535,6 +657,7 @@ function createSseParser(
   input: CodexDirectTransportRequest,
   timingState: TransportTimingState,
   startedAt: number,
+  onOutputText: () => void,
 ): BoundedSseParser {
   return new BoundedSseParser({
     protocolShape,
@@ -548,6 +671,10 @@ function createSseParser(
       timingState.completionEventReceived = true;
       emitTiming(input, timingState, startedAt, "completion_event");
     },
+    onOutputText,
+    ...(input.onProviderSseError === undefined
+      ? {}
+      : { onProviderSseError: input.onProviderSseError }),
   });
 }
 
@@ -764,6 +891,10 @@ class BoundedSseParser {
     private readonly callbacks: {
       readonly onStarted?: () => void;
       readonly onCompleted?: () => void;
+      readonly onOutputText?: () => void;
+      readonly onProviderSseError?: (
+        diagnostic: CodexDirectTransportSseErrorDiagnostic,
+      ) => void;
       readonly protocolShape?: MutableProtocolShape;
     } = {},
   ) {}
@@ -872,11 +1003,13 @@ class BoundedSseParser {
       case "response.output_text.delta":
         if (typeof event.delta !== "string")
           throw new SseParseError("protocol_invalid");
+        if (event.delta.length > 0) this.callbacks.onOutputText?.();
         this.output += event.delta;
         break;
       case "response.output_text.done":
         if (typeof event.text !== "string")
           throw new SseParseError("protocol_invalid");
+        if (event.text.length > 0) this.callbacks.onOutputText?.();
         this.output = event.text;
         break;
       case "response.output_item.done":
@@ -886,8 +1019,10 @@ class BoundedSseParser {
           Array.isArray(event.item.content)
         ) {
           const itemOutput = outputTextFromItems([event.item]);
-          if (itemOutput.length > 0 && this.output.length === 0)
-            this.output = itemOutput;
+          if (itemOutput.length > 0) {
+            this.callbacks.onOutputText?.();
+            if (this.output.length === 0) this.output = itemOutput;
+          }
         }
         break;
       case "response.completed":
@@ -910,7 +1045,7 @@ class BoundedSseParser {
       case "response.failed":
       case "response.incomplete":
       case "error":
-        throw new SseParseError("provider_unavailable");
+        return throwProviderSseError(event, this.callbacks);
       default:
         throw new SseParseError("protocol_invalid");
     }
@@ -919,11 +1054,252 @@ class BoundedSseParser {
   }
 }
 
+/**
+ * Supported provider error envelopes are intentionally narrow:
+ * - `error` events with an `error` object containing a string `code`, `type`,
+ *   or `category`;
+ * - `error` events with those fields directly on the event; and
+ * - `response.failed`/`response.incomplete` events with the same fields under
+ *   `response.error`.
+ *
+ * Messages, arbitrary details, request identifiers, and all other payload
+ * fields are ignored. An object with an unknown but well-formed code fails
+ * closed to provider_unavailable; a missing or malformed error envelope is a
+ * protocol-invalid provider response.
+ */
+function throwProviderSseError(
+  event: Record<string, unknown>,
+  callbacks: {
+    readonly onProviderSseError?: (
+      diagnostic: CodexDirectTransportSseErrorDiagnostic,
+    ) => void;
+  },
+): never {
+  const classification = classifyProviderSseError(event);
+  try {
+    callbacks.onProviderSseError?.(classification.diagnostic);
+  } catch {
+    // Provider diagnostics must never change provider behavior.
+  }
+  throw new SseParseError(classification.transportCategory);
+}
+
+function classifyProviderSseError(event: Record<string, unknown>): {
+  readonly transportCategory: CodexDirectTransportFailureCategory;
+  readonly diagnostic: CodexDirectTransportSseErrorDiagnostic;
+} {
+  const nestedError = event.error;
+  let errorObject: Record<string, unknown> | undefined;
+  let shape: CodexDirectTransportProviderErrorShapeCategory;
+
+  if (event.type === "error") {
+    if (isRecord(nestedError)) {
+      errorObject = nestedError;
+      shape = "nested_error_object";
+    } else if (nestedError !== undefined) {
+      return malformedProviderSseError("malformed_error_object");
+    } else if (hasProviderErrorField(event)) {
+      errorObject = event;
+      shape = "flat_error_object";
+    } else {
+      return malformedProviderSseError("missing_error_object");
+    }
+  } else {
+    const response = event.response;
+    const responseError = isRecord(response) ? response.error : undefined;
+    if (isRecord(responseError)) {
+      errorObject = responseError;
+      shape = "nested_response_error";
+    } else if (responseError !== undefined) {
+      return malformedProviderSseError("malformed_error_object");
+    } else if (hasProviderErrorField(event)) {
+      errorObject = event;
+      shape = "flat_error_object";
+    } else {
+      return malformedProviderSseError("missing_error_object");
+    }
+  }
+
+  const code = providerErrorCode(errorObject);
+  if (code === "malformed")
+    return malformedProviderSseError("malformed_error_object");
+  if (code === undefined) return malformedProviderSseError(shape);
+
+  const mapped = mapProviderErrorCode(code);
+  return {
+    transportCategory: mapped.transportCategory,
+    diagnostic: {
+      providerErrorCategory: mapped.providerErrorCategory,
+      providerErrorCodeCategory: mapped.providerErrorCodeCategory,
+      retryable: mapped.retryable,
+      eventShapeCategory: shape,
+    },
+  };
+}
+
+function malformedProviderSseError(
+  shape: CodexDirectTransportProviderErrorShapeCategory,
+): {
+  readonly transportCategory: "protocol_invalid";
+  readonly diagnostic: CodexDirectTransportSseErrorDiagnostic;
+} {
+  return {
+    transportCategory: "protocol_invalid",
+    diagnostic: {
+      providerErrorCategory: "malformed_provider_output",
+      providerErrorCodeCategory: "not_present",
+      retryable: true,
+      eventShapeCategory: shape,
+    },
+  };
+}
+
+function hasProviderErrorField(value: Record<string, unknown>): boolean {
+  return (
+    Object.prototype.hasOwnProperty.call(value, "code") ||
+    Object.prototype.hasOwnProperty.call(value, "category")
+  );
+}
+
+function providerErrorCode(
+  value: Record<string, unknown>,
+): string | "malformed" | undefined {
+  const candidates = [value.code, value.category, value.type];
+  let present = false;
+  for (const candidate of candidates) {
+    if (candidate === undefined || candidate === null) continue;
+    present = true;
+    if (typeof candidate !== "string") return "malformed";
+    const normalized = normalizeProviderErrorToken(candidate);
+    if (normalized !== "") return normalized;
+  }
+  return present ? "malformed" : undefined;
+}
+
+function normalizeProviderErrorToken(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  return /^[a-z0-9][a-z0-9._:-]{0,63}$/u.test(normalized) ? normalized : "";
+}
+
+function mapProviderErrorCode(code: string): {
+  readonly transportCategory: CodexDirectTransportFailureCategory;
+  readonly providerErrorCategory: CodexDirectTransportProviderErrorCategory;
+  readonly providerErrorCodeCategory: CodexDirectTransportProviderErrorCodeCategory;
+  readonly retryable: boolean;
+} {
+  if (
+    [
+      "token_expired",
+      "access_token_expired",
+      "expired_token",
+      "authentication_expired",
+      "auth_expired",
+    ].includes(code)
+  )
+    return {
+      transportCategory: "authentication_expired",
+      providerErrorCategory: "authentication_expired",
+      providerErrorCodeCategory: "expired",
+      retryable: false,
+    };
+  if (
+    [
+      "invalid_token",
+      "invalid_grant",
+      "refresh_token_reused",
+      "token_revoked",
+      "authentication_revoked",
+      "auth_revoked",
+      "authentication_required",
+      "unauthorized",
+      "forbidden",
+    ].includes(code)
+  )
+    return {
+      transportCategory: "authentication_revoked",
+      providerErrorCategory: "authentication_revoked",
+      providerErrorCodeCategory: "revoked",
+      retryable: false,
+    };
+  if (
+    [
+      "rate_limit_exceeded",
+      "rate_limited",
+      "rate_limit",
+      "too_many_requests",
+    ].includes(code)
+  )
+    return {
+      transportCategory: "rate_limited",
+      providerErrorCategory: "rate_limited",
+      providerErrorCodeCategory: "rate_limit",
+      retryable: true,
+    };
+  if (
+    [
+      "usage_limit_reached",
+      "usage_not_included",
+      "quota_exceeded",
+      "quota_exhausted",
+      "insufficient_quota",
+      "billing_hard_limit_reached",
+    ].includes(code)
+  )
+    return {
+      transportCategory: "quota_exceeded",
+      providerErrorCategory: "quota_exhausted",
+      providerErrorCodeCategory: "quota",
+      retryable: false,
+    };
+  if (["timeout", "deadline_exceeded", "upstream_timeout"].includes(code))
+    return {
+      transportCategory: "timeout",
+      providerErrorCategory: "timeout",
+      providerErrorCodeCategory: "timeout",
+      retryable: true,
+    };
+  if (
+    [
+      "service_unavailable",
+      "temporarily_unavailable",
+      "overloaded",
+      "overload",
+      "upstream_error",
+      "backend_unavailable",
+      "connection_error",
+    ].includes(code)
+  )
+    return {
+      transportCategory: "provider_unavailable",
+      providerErrorCategory: "provider_unavailable",
+      providerErrorCodeCategory: "temporary",
+      retryable: true,
+    };
+  if (
+    [
+      "internal_error",
+      "internal_server_error",
+      "server_error",
+      "provider_error",
+      "unknown_error",
+    ].includes(code)
+  )
+    return {
+      transportCategory: "provider_unavailable",
+      providerErrorCategory: "provider_unavailable",
+      providerErrorCodeCategory: "internal",
+      retryable: true,
+    };
+  return {
+    transportCategory: "provider_unavailable",
+    providerErrorCategory: "unknown",
+    providerErrorCodeCategory: "unknown",
+    retryable: true,
+  };
+}
+
 class SseParseError extends Error {
-  constructor(
-    readonly category:
-      "response_too_large" | "protocol_invalid" | "provider_unavailable",
-  ) {
+  constructor(readonly category: CodexDirectTransportFailureCategory) {
     super(category);
   }
 }

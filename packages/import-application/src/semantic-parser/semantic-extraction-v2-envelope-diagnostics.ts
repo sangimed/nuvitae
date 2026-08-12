@@ -1,7 +1,16 @@
 import {
+  maxSemanticExtractionV2ObjectDepth,
+  maxSemanticExtractionV2ResponseJsonBytes,
+  maxSemanticExtractionV2TotalAtoms,
+  maxSemanticExtractionV2TotalNodes,
   nuvitaeSemanticExtractionV2EnvelopeSchema,
   nuvitaeSemanticExtractionV2ResponseVersion,
 } from "@nuvitae/contracts";
+
+import {
+  inspectSemanticExtractionV2Structure,
+  type V2StructuralInspection,
+} from "./semantic-extraction-v2-canonicalizer.js";
 
 export type SemanticExtractionV2EnvelopeFailureStage =
   "semantic_json_parse" | "v2_envelope" | "v2_canonicalizer";
@@ -20,6 +29,26 @@ export type SemanticExtractionV2ValueCategory =
 
 export type SemanticExtractionV2SchemaVersionCategory =
   "not_observed" | "exact_v2" | "missing" | "other_string" | "wrong_type";
+
+export type SemanticExtractionV2EnvelopeStructuralReason =
+  | "none"
+  | "semantic_json_parse"
+  | "response_size_limit"
+  | "response_depth_limit"
+  | "total_atom_limit"
+  | "total_node_limit"
+  | "section_cardinality_limit"
+  | "relationship_cardinality_limit"
+  | "aggregate_collection_limit"
+  | "schema_version"
+  | "top_level_envelope"
+  | "canonicalizer_exception";
+
+export type SemanticExtractionV2CountBucket =
+  "0-4" | "5-19" | "20-99" | "100-199" | "200-499" | "500-999" | "1000+";
+
+export type SemanticExtractionV2SerializedBytesBucket =
+  "not_observed" | "0-64k" | "64k-128k" | "128k-256k" | "over_256k";
 
 export interface SemanticExtractionV2EnvelopeDiagnostic {
   readonly responseContractVersion: typeof nuvitaeSemanticExtractionV2ResponseVersion;
@@ -40,6 +69,32 @@ export interface SemanticExtractionV2EnvelopeDiagnostic {
   readonly relationshipsValueCategory: SemanticExtractionV2ValueCategory;
   readonly ambiguitiesValueCategory: SemanticExtractionV2ValueCategory;
   readonly conflictsValueCategory: SemanticExtractionV2ValueCategory;
+  readonly structuralReason: SemanticExtractionV2EnvelopeStructuralReason;
+  readonly serializedResponseBytesBucket: SemanticExtractionV2SerializedBytesBucket;
+  readonly totalAtomCountBucket: SemanticExtractionV2CountBucket;
+  readonly totalNodeCountBucket: SemanticExtractionV2CountBucket;
+  readonly maxDepthBucket: SemanticExtractionV2CountBucket;
+  readonly maxDepthObserved: number;
+  readonly workExperienceCountBucket: SemanticExtractionV2CountBucket;
+  readonly educationCountBucket: SemanticExtractionV2CountBucket;
+  readonly skillsCountBucket: SemanticExtractionV2CountBucket;
+  readonly languagesCountBucket: SemanticExtractionV2CountBucket;
+  readonly projectsCountBucket: SemanticExtractionV2CountBucket;
+  readonly certificationsCountBucket: SemanticExtractionV2CountBucket;
+  readonly professionalLinksCountBucket: SemanticExtractionV2CountBucket;
+  readonly relationshipCountBucket: SemanticExtractionV2CountBucket;
+  readonly ambiguityCountBucket: SemanticExtractionV2CountBucket;
+  readonly conflictCountBucket: SemanticExtractionV2CountBucket;
+  readonly configuredLimits: {
+    readonly responseJsonBytes: number;
+    readonly objectDepth: number;
+    readonly totalAtoms: number;
+    readonly totalNodes: number;
+  };
+  readonly responseJsonByteLimit: number;
+  readonly objectDepthLimit: number;
+  readonly totalAtomLimit: number;
+  readonly totalNodeLimit: number;
   readonly firstZodIssueCode?: string;
   readonly firstZodPath: readonly string[];
   readonly issueCountBucket: "0-4" | "5-19" | "20-99" | "100+";
@@ -158,6 +213,7 @@ export function diagnoseSemanticExtractionV2Envelope(input: {
   );
   const firstIssue =
     parsed?.success === false ? parsed.error.issues[0] : undefined;
+  const structure = inspectSemanticExtractionV2Structure(input.response);
 
   return {
     responseContractVersion: nuvitaeSemanticExtractionV2ResponseVersion,
@@ -180,12 +236,116 @@ export function diagnoseSemanticExtractionV2Envelope(input: {
     relationshipsValueCategory: valueCategoryOrMissing(record, "relationships"),
     ambiguitiesValueCategory: valueCategoryOrMissing(record, "ambiguities"),
     conflictsValueCategory: valueCategoryOrMissing(record, "conflicts"),
+    structuralReason: structuralReason({
+      input,
+      record,
+      parsed,
+      structure,
+    }),
+    serializedResponseBytesBucket: serializedBytesBucket(
+      structure.serializedBytes,
+    ),
+    totalAtomCountBucket: countBucket(structure.atomCount),
+    totalNodeCountBucket: countBucket(structure.nodeCount),
+    maxDepthBucket: countBucket(structure.maxDepth),
+    maxDepthObserved: structure.maxDepth,
+    workExperienceCountBucket: collectionCountBucket(
+      sectionRecord,
+      "workExperience",
+    ),
+    educationCountBucket: collectionCountBucket(sectionRecord, "education"),
+    skillsCountBucket: collectionCountBucket(sectionRecord, "skills"),
+    languagesCountBucket: collectionCountBucket(sectionRecord, "languages"),
+    projectsCountBucket: collectionCountBucket(sectionRecord, "projects"),
+    certificationsCountBucket: collectionCountBucket(
+      sectionRecord,
+      "certifications",
+    ),
+    professionalLinksCountBucket: collectionCountBucket(
+      sectionRecord,
+      "professionalLinks",
+    ),
+    relationshipCountBucket: collectionCountBucket(record, "relationships"),
+    ambiguityCountBucket: collectionCountBucket(record, "ambiguities"),
+    conflictCountBucket: collectionCountBucket(record, "conflicts"),
+    configuredLimits: {
+      responseJsonBytes: maxSemanticExtractionV2ResponseJsonBytes,
+      objectDepth: maxSemanticExtractionV2ObjectDepth,
+      totalAtoms: maxSemanticExtractionV2TotalAtoms,
+      totalNodes: maxSemanticExtractionV2TotalNodes,
+    },
+    responseJsonByteLimit: maxSemanticExtractionV2ResponseJsonBytes,
+    objectDepthLimit: maxSemanticExtractionV2ObjectDepth,
+    totalAtomLimit: maxSemanticExtractionV2TotalAtoms,
+    totalNodeLimit: maxSemanticExtractionV2TotalNodes,
     ...(firstIssue === undefined ? {} : { firstZodIssueCode: firstIssue.code }),
     firstZodPath: firstZodPath(firstIssue?.path),
-    issueCountBucket: countBucket(
+    issueCountBucket: issueCountBucket(
       parsed?.success === false ? parsed.error.issues.length : 0,
     ),
   };
+}
+
+function structuralReason(input: {
+  readonly input: Parameters<typeof diagnoseSemanticExtractionV2Envelope>[0];
+  readonly record: Record<string, unknown> | undefined;
+  readonly parsed:
+    | { readonly success: true }
+    | {
+        readonly success: false;
+        readonly error: {
+          readonly issues: readonly {
+            readonly code: string;
+            readonly path: readonly PropertyKey[];
+          }[];
+        };
+      }
+    | undefined;
+  readonly structure: V2StructuralInspection;
+}): SemanticExtractionV2EnvelopeStructuralReason {
+  if (!input.input.semanticJsonParseSucceeded) return "semantic_json_parse";
+  if (
+    input.structure.serializedBytes > maxSemanticExtractionV2ResponseJsonBytes
+  )
+    return "response_size_limit";
+  if (input.record === undefined) return "top_level_envelope";
+  if (input.structure.depthLimitExceeded) return "response_depth_limit";
+  if (input.structure.atomLimitExceeded) return "total_atom_limit";
+  if (input.structure.nodeLimitExceeded) return "total_node_limit";
+  if (schemaVersionCategory(input.record) !== "exact_v2")
+    return "schema_version";
+  if (input.parsed?.success !== false) {
+    return input.input.failureStage === "v2_canonicalizer"
+      ? "canonicalizer_exception"
+      : "none";
+  }
+  const issue = input.parsed.error.issues[0];
+  if (issue?.code === "too_big") {
+    if (issue.path[0] === "relationships")
+      return "relationship_cardinality_limit";
+    if (issue.path[0] === "ambiguities" || issue.path[0] === "conflicts")
+      return "aggregate_collection_limit";
+    if (issue.path[0] === "sections") return "section_cardinality_limit";
+  }
+  return "top_level_envelope";
+}
+
+function collectionCountBucket(
+  record: Record<string, unknown> | undefined,
+  key: string,
+): SemanticExtractionV2CountBucket {
+  const value = record?.[key];
+  return Array.isArray(value) ? countBucket(value.length) : countBucket(0);
+}
+
+function serializedBytesBucket(
+  bytes: number,
+): SemanticExtractionV2SerializedBytesBucket {
+  if (!Number.isFinite(bytes)) return "not_observed";
+  if (bytes <= 64 * 1024) return "0-64k";
+  if (bytes <= 128 * 1024) return "64k-128k";
+  if (bytes <= 256 * 1024) return "128k-256k";
+  return "over_256k";
 }
 
 function projectKeys(
@@ -260,7 +420,17 @@ function firstZodPath(
     .slice(0, 8);
 }
 
-function countBucket(count: number): "0-4" | "5-19" | "20-99" | "100+" {
+function countBucket(count: number): SemanticExtractionV2CountBucket {
+  if (count <= 4) return "0-4";
+  if (count <= 19) return "5-19";
+  if (count <= 99) return "20-99";
+  if (count <= 199) return "100-199";
+  if (count <= 499) return "200-499";
+  if (count <= 999) return "500-999";
+  return "1000+";
+}
+
+function issueCountBucket(count: number): "0-4" | "5-19" | "20-99" | "100+" {
   if (count <= 4) return "0-4";
   if (count <= 19) return "5-19";
   if (count <= 99) return "20-99";

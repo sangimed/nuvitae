@@ -34,6 +34,7 @@ import {
   type CodexDirectTransportFailureCategory,
   type CodexDirectTransportRequest,
   type CodexDirectTransportProtocolShape,
+  type CodexDirectTransportSseErrorDiagnostic,
   type CodexDirectTransportTiming,
 } from "./codex-direct-transport.js";
 import { parseCodexSessionMaterial } from "./codex-session.js";
@@ -68,6 +69,12 @@ export interface CodexDirectProviderAdapterPorts {
   ) => void;
   readonly onTransportProtocolShape?: (
     shape: CodexDirectTransportProtocolShape & {
+      readonly importId: string;
+      readonly correlationId?: string;
+    },
+  ) => void;
+  readonly onTransportSseError?: (
+    diagnostic: CodexDirectTransportSseErrorDiagnostic & {
       readonly importId: string;
       readonly correlationId?: string;
     },
@@ -213,6 +220,21 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
           });
         } catch {
           // Protocol diagnostics must never change provider behavior.
+        }
+      },
+      onProviderSseError: (diagnostic) => {
+        try {
+          if (request.importId === null) return;
+          this.ports.onTransportSseError?.({
+            ...diagnostic,
+            importId: request.importId,
+            ...(request.correlationId === null ||
+            request.correlationId === undefined
+              ? {}
+              : { correlationId: request.correlationId }),
+          });
+        } catch {
+          // Transport diagnostics must never change provider behavior.
         }
       },
     };
@@ -368,17 +390,22 @@ function failureForV2WholeResponse(
   reason:
     | "malformed_json"
     | "response_too_large"
-    | "unsafe_structure"
+    | "response_depth_limit"
+    | "total_atom_limit"
+    | "total_node_limit"
     | "unsupported_contract_version"
     | "invalid_top_level_envelope",
 ) {
   switch (reason) {
     case "response_too_large":
       return failure("response_too_large", "v2_invalid_envelope");
+    case "response_depth_limit":
+    case "total_atom_limit":
+    case "total_node_limit":
+      return failure("schema_violation", "v2_invalid_envelope");
     case "unsupported_contract_version":
       return failure("unsupported_contract_version", "v2_invalid_envelope");
     case "malformed_json":
-    case "unsafe_structure":
     case "invalid_top_level_envelope":
       return failure("schema_violation", "v2_invalid_envelope");
   }

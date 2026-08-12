@@ -11,9 +11,41 @@ export const nuvitaeSemanticExtractionV2ResponseVersion =
 export const maxSemanticExtractionV2ResponseJsonBytes = 256_000;
 export const maxSemanticExtractionV2SourceRefs = 8;
 export const maxSemanticExtractionV2QuoteLength = 2_000;
-export const maxSemanticExtractionV2ValueLength = 1_000;
+/** Matches the existing review/draft text ceiling for long-form source text. */
+export const maxSemanticExtractionV2ValueLength = 4_000;
 export const maxSemanticExtractionV2ArrayItems = 120;
-export const maxSemanticExtractionV2ObjectDepth = 8;
+/** The deepest valid path is a work-role bullet's source-reference quote. */
+export const maxSemanticExtractionV2ObjectDepth = 10;
+/**
+ * A two-to-three page CV normally produces well below 200 grounded atoms. A
+ * 600-atom ceiling leaves room for dense senior CVs while bounding grounding,
+ * candidate construction, and downstream persistence work. This is a whole
+ * response limit, not a license to truncate provider output.
+ */
+export const maxSemanticExtractionV2TotalAtoms = 600;
+/**
+ * The node budget is deliberately independent from collection cardinality.
+ * Twenty structural nodes per atom covers the atom/source-reference shape,
+ * grouping objects, and nullable fields without reviving the old synthetic
+ * `array-items * 50` coupling. The serialized response limit remains the
+ * primary byte/memory ceiling.
+ */
+export const maxSemanticExtractionV2TotalNodes =
+  maxSemanticExtractionV2TotalAtoms * 20;
+export const maxSemanticExtractionV2WorkExperiences = 25;
+export const maxSemanticExtractionV2RolesPerWorkExperience = 12;
+export const maxSemanticExtractionV2ResponsibilitiesPerRole = 20;
+export const maxSemanticExtractionV2AchievementsPerRole = 20;
+export const maxSemanticExtractionV2EducationEntries = 20;
+export const maxSemanticExtractionV2Skills = 120;
+export const maxSemanticExtractionV2Languages = 20;
+export const maxSemanticExtractionV2Projects = 30;
+export const maxSemanticExtractionV2Certifications = 30;
+export const maxSemanticExtractionV2ProfessionalLinks = 30;
+export const maxSemanticExtractionV2Relationships =
+  maxSemanticExtractionV2ArrayItems;
+export const maxSemanticExtractionV2Ambiguities = 50;
+export const maxSemanticExtractionV2Conflicts = 50;
 
 const v2IdentifierSchema = z
   .string()
@@ -56,8 +88,12 @@ const workRoleSchema = z
     location: nullableAtomSchema,
     startDate: nullableAtomSchema,
     endDate: nullableAtomSchema,
-    responsibilities: z.array(semanticExtractionV2AtomSchema).max(20),
-    achievements: z.array(semanticExtractionV2AtomSchema).max(20),
+    responsibilities: z
+      .array(semanticExtractionV2AtomSchema)
+      .max(maxSemanticExtractionV2ResponsibilitiesPerRole),
+    achievements: z
+      .array(semanticExtractionV2AtomSchema)
+      .max(maxSemanticExtractionV2AchievementsPerRole),
   })
   .strict();
 
@@ -65,7 +101,9 @@ const workExperienceSchema = z
   .object({
     employerName: nullableAtomSchema,
     employerLocation: nullableAtomSchema,
-    roles: z.array(workRoleSchema).max(12),
+    roles: z
+      .array(workRoleSchema)
+      .max(maxSemanticExtractionV2RolesPerWorkExperience),
   })
   .strict();
 
@@ -106,6 +144,16 @@ const certificationSchema = z
     issuer: nullableAtomSchema,
   })
   .strict();
+
+const professionalLinkSchema = z.union([
+  semanticExtractionV2AtomSchema,
+  z
+    .object({
+      label: nullableAtomSchema,
+      url: semanticExtractionV2AtomSchema,
+    })
+    .strict(),
+]);
 
 /**
  * This is the only relationship shape reserved by the architecture record.
@@ -156,20 +204,34 @@ export const nuvitaeSemanticExtractionV2ResponseSchema = z
         contact: contactSchema,
         headline: nullableAtomSchema,
         summary: nullableAtomSchema,
-        workExperience: z.array(workExperienceSchema).max(25),
-        education: z.array(educationSchema).max(20),
-        skills: z.array(skillSchema).max(120),
-        languages: z.array(languageSchema).max(20),
-        projects: z.array(projectSchema).max(30),
-        certifications: z.array(certificationSchema).max(30),
-        professionalLinks: z.array(semanticExtractionV2AtomSchema).max(30),
+        workExperience: z
+          .array(workExperienceSchema)
+          .max(maxSemanticExtractionV2WorkExperiences),
+        education: z
+          .array(educationSchema)
+          .max(maxSemanticExtractionV2EducationEntries),
+        skills: z.array(skillSchema).max(maxSemanticExtractionV2Skills),
+        languages: z
+          .array(languageSchema)
+          .max(maxSemanticExtractionV2Languages),
+        projects: z.array(projectSchema).max(maxSemanticExtractionV2Projects),
+        certifications: z
+          .array(certificationSchema)
+          .max(maxSemanticExtractionV2Certifications),
+        professionalLinks: z
+          .array(professionalLinkSchema)
+          .max(maxSemanticExtractionV2ProfessionalLinks),
       })
       .strict(),
     relationships: z
       .array(semanticExtractionV2RelationshipSchema)
-      .max(maxSemanticExtractionV2ArrayItems),
-    ambiguities: z.array(semanticExtractionV2SignalSchema).max(50),
-    conflicts: z.array(semanticExtractionV2SignalSchema).max(50),
+      .max(maxSemanticExtractionV2Relationships),
+    ambiguities: z
+      .array(semanticExtractionV2SignalSchema)
+      .max(maxSemanticExtractionV2Ambiguities),
+    conflicts: z
+      .array(semanticExtractionV2SignalSchema)
+      .max(maxSemanticExtractionV2Conflicts),
   })
   .strict();
 
@@ -199,13 +261,21 @@ const envelopeSectionsSchema = z
     contact: envelopeContactSchema,
     headline: requiredUnknownSchema,
     summary: requiredUnknownSchema,
-    workExperience: z.array(z.unknown()).max(25),
-    education: z.array(z.unknown()).max(20),
-    skills: z.array(z.unknown()).max(120),
-    languages: z.array(z.unknown()).max(20),
-    projects: z.array(z.unknown()).max(30),
-    certifications: z.array(z.unknown()).max(30),
-    professionalLinks: z.array(z.unknown()).max(30),
+    workExperience: z
+      .array(z.unknown())
+      .max(maxSemanticExtractionV2WorkExperiences),
+    education: z
+      .array(z.unknown())
+      .max(maxSemanticExtractionV2EducationEntries),
+    skills: z.array(z.unknown()).max(maxSemanticExtractionV2Skills),
+    languages: z.array(z.unknown()).max(maxSemanticExtractionV2Languages),
+    projects: z.array(z.unknown()).max(maxSemanticExtractionV2Projects),
+    certifications: z
+      .array(z.unknown())
+      .max(maxSemanticExtractionV2Certifications),
+    professionalLinks: z
+      .array(z.unknown())
+      .max(maxSemanticExtractionV2ProfessionalLinks),
   })
   .strict();
 
@@ -213,9 +283,11 @@ export const nuvitaeSemanticExtractionV2EnvelopeSchema = z
   .object({
     schemaVersion: z.literal(nuvitaeSemanticExtractionV2ResponseVersion),
     sections: envelopeSectionsSchema,
-    relationships: z.array(z.unknown()).max(maxSemanticExtractionV2ArrayItems),
-    ambiguities: z.array(z.unknown()).max(50),
-    conflicts: z.array(z.unknown()).max(50),
+    relationships: z
+      .array(z.unknown())
+      .max(maxSemanticExtractionV2Relationships),
+    ambiguities: z.array(z.unknown()).max(maxSemanticExtractionV2Ambiguities),
+    conflicts: z.array(z.unknown()).max(maxSemanticExtractionV2Conflicts),
   })
   .strict();
 
