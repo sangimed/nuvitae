@@ -244,6 +244,26 @@ describe("privacy-safe import events (T075)", () => {
       relationshipsValueCategory: "missing",
       ambiguitiesValueCategory: "array",
       conflictsValueCategory: "array",
+      structuralReason: "top_level_envelope",
+      serializedResponseBytesBucket: "0-64k",
+      totalAtomCountBucket: "0-4",
+      totalNodeCountBucket: "20-99",
+      maxDepthBucket: "0-4",
+      maxDepthObserved: 3,
+      workExperienceCountBucket: "0-4",
+      educationCountBucket: "0-4",
+      skillsCountBucket: "0-4",
+      languagesCountBucket: "0-4",
+      projectsCountBucket: "0-4",
+      certificationsCountBucket: "0-4",
+      professionalLinksCountBucket: "0-4",
+      relationshipCountBucket: "0-4",
+      ambiguityCountBucket: "0-4",
+      conflictCountBucket: "0-4",
+      responseJsonByteLimit: 256_000,
+      objectDepthLimit: 10,
+      totalAtomLimit: 600,
+      totalNodeLimit: 12_000,
       firstZodIssueCode: "invalid_type",
       firstZodPath: ["sections", "headline"],
       issueCountBucket: "0-4",
@@ -258,6 +278,9 @@ describe("privacy-safe import events (T075)", () => {
       responseContractVersion: "nuvitae.semantic-extraction.v2",
       topLevelKeys: ["schemaVersion", "sections"],
       unexpectedTopLevelKeys: ["response"],
+      structuralReason: "top_level_envelope",
+      serializedResponseBytesBucket: "0-64k",
+      totalAtomCountBucket: "0-4",
       firstZodPath: ["sections", "headline"],
     });
     const serialized = JSON.stringify(sink.records);
@@ -265,6 +288,57 @@ describe("privacy-safe import events (T075)", () => {
     expect(serialized).not.toContain("PRIVLOG-RAW-RESPONSE");
     expect(serialized).not.toContain("PRIVLOG-PROMPT");
     expect(serialized).not.toContain("PRIVLOG-SOURCE");
+  });
+
+  it("records long-form fidelity only as bounded metrics", () => {
+    const sink = new RecordingSink();
+    const emitter = createImportEventEmitter(sink);
+    emitter.emit("semantic.source_fidelity", {
+      importId,
+      stage: "canonical_candidate",
+      longFormFieldCategory: "summary",
+      sourceCoverageCategory: "complete",
+      sourceRefCountBucket: "0-4",
+      sourceCharacterCountBucket: "256_to_999",
+      acceptedCharacterCountBucket: "256_to_999",
+      truncationDetected: false,
+      sourceText: "PRIVLOG-SOURCE-TEXT",
+      acceptedValue: "PRIVLOG-ACCEPTED-VALUE",
+    } as never);
+    expect(sink.records[0]?.metadata).toMatchObject({
+      stage: "canonical_candidate",
+      sourceCoverageCategory: "complete",
+      truncationDetected: false,
+    });
+    expect(JSON.stringify(sink.records)).not.toContain("PRIVLOG-SOURCE-TEXT");
+    expect(JSON.stringify(sink.records)).not.toContain(
+      "PRIVLOG-ACCEPTED-VALUE",
+    );
+  });
+
+  it("accepts only bounded structural SSE error diagnostics", () => {
+    const sink = new RecordingSink();
+    const emitter = createImportEventEmitter(sink);
+
+    emitter.emit("semantic.provider_sse_error", {
+      importId,
+      providerErrorCategory: "authentication_revoked",
+      providerErrorCodeCategory: "revoked",
+      retryable: false,
+      eventShapeCategory: "nested_error_object",
+      rawMessage: "PRIVLOG-RAW-PROVIDER-MESSAGE",
+      token: "PRIVLOG-TOKEN",
+    } as never);
+
+    expect(sink.records[0]?.metadata).toEqual({
+      importId,
+      providerErrorCategory: "authentication_revoked",
+      providerErrorCodeCategory: "revoked",
+      retryable: false,
+      eventShapeCategory: "nested_error_object",
+    });
+    expect(JSON.stringify(sink.records)).not.toContain("PRIVLOG-RAW-PROVIDER");
+    expect(JSON.stringify(sink.records)).not.toContain("PRIVLOG-TOKEN");
   });
 
   it("drops provider, model, and error metadata for every registered event without leaking", () => {

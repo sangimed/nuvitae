@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { CodexDirectTransport } from "./codex-direct-transport.js";
+import {
+  CODEX_DIRECT_TRANSPORT_DEADLINES,
+  CodexDirectTransport,
+} from "./codex-direct-transport.js";
 
 const input = {
   accessToken: "access-token",
@@ -93,6 +96,15 @@ function streamResponse(
 }
 
 describe("CodexDirectTransport", () => {
+  it("exposes bounded independent production deadlines", () => {
+    expect(CODEX_DIRECT_TRANSPORT_DEADLINES).toEqual({
+      headerTimeoutMs: 30_000,
+      firstOutputTimeoutMs: 60_000,
+      activeStreamInactivityTimeoutMs: 15_000,
+      totalGenerationTimeoutMs: 90_000,
+    });
+  });
+
   it("preserves the qualified SSE response contract and assembles output", async () => {
     const fetcher = vi.fn(
       async () =>
@@ -489,6 +501,127 @@ describe("CodexDirectTransport", () => {
     ).toEqual({ ok: false, category: "response_too_large" });
   });
 
+  it.each([
+    [
+      "auth expired",
+      {
+        type: "error",
+        error: {
+          type: "authentication_error",
+          code: "token_expired",
+          message: "do-not-log-expired-message",
+        },
+      },
+      "authentication_expired",
+      "expired",
+      "nested_error_object",
+      false,
+      "authentication_expired",
+    ],
+    [
+      "auth revoked",
+      { type: "error", code: "invalid_token", message: "private-message" },
+      "authentication_revoked",
+      "revoked",
+      "flat_error_object",
+      false,
+      "authentication_revoked",
+    ],
+    [
+      "rate limit",
+      { type: "error", error: { code: "rate_limit_exceeded" } },
+      "rate_limited",
+      "rate_limit",
+      "nested_error_object",
+      true,
+      "rate_limited",
+    ],
+    [
+      "quota",
+      { type: "error", error: { code: "usage_limit_reached" } },
+      "quota_exhausted",
+      "quota",
+      "nested_error_object",
+      false,
+      "quota_exceeded",
+    ],
+    [
+      "temporary unavailable",
+      { type: "error", error: { code: "service_unavailable" } },
+      "provider_unavailable",
+      "temporary",
+      "nested_error_object",
+      true,
+      "provider_unavailable",
+    ],
+    [
+      "internal provider error",
+      {
+        type: "response.failed",
+        response: { error: { type: "internal_error" } },
+      },
+      "provider_unavailable",
+      "internal",
+      "nested_response_error",
+      true,
+      "provider_unavailable",
+    ],
+    [
+      "malformed error event",
+      { type: "error", error: "private raw provider message" },
+      "malformed_provider_output",
+      "not_present",
+      "malformed_error_object",
+      true,
+      "protocol_invalid",
+    ],
+    [
+      "unknown error code",
+      { type: "error", error: { code: "future_provider_code" } },
+      "unknown",
+      "unknown",
+      "nested_error_object",
+      true,
+      "provider_unavailable",
+    ],
+  ] as const)(
+    "classifies privacy-safe SSE provider error: %s",
+    async (
+      _name,
+      event,
+      providerErrorCategory,
+      providerErrorCodeCategory,
+      eventShapeCategory,
+      retryable,
+      transportCategory,
+    ) => {
+      const diagnostics: unknown[] = [];
+      const result = await new CodexDirectTransport({
+        fetch: vi.fn(
+          async () =>
+            new Response(sse(JSON.stringify(event)), {
+              status: 200,
+              headers: { "content-type": "text/event-stream" },
+            }),
+        ),
+      }).invoke({
+        ...input,
+        onProviderSseError: (diagnostic) => diagnostics.push(diagnostic),
+      });
+      expect(result).toEqual({ ok: false, category: transportCategory });
+      expect(diagnostics).toEqual([
+        {
+          providerErrorCategory,
+          providerErrorCodeCategory,
+          retryable,
+          eventShapeCategory,
+        },
+      ]);
+      expect(JSON.stringify(diagnostics)).not.toContain("private");
+      expect(JSON.stringify(diagnostics)).not.toContain("future_provider_code");
+    },
+  );
+
   it("propagates cancellation before any network request", async () => {
     const fetcher = vi.fn();
     const controller = new AbortController();
@@ -535,6 +668,204 @@ describe("CodexDirectTransport", () => {
     ).toBe(false);
   });
 
+  it("allows 25 seconds of pre-output provider processing after initial events", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetcher = vi.fn(async (_url: string, init: RequestInit) =>
+        delayedSseResponse(
+          [
+            sse('{"type":"response.created","response":{}}'),
+            sse('{"type":"response.output_item.added","item":{}}'),
+            sse(
+              '{"type":"response.output_text.delta","delta":"{\\"ok\\":true}"}',
+            ),
+            sse('{"type":"response.completed","response":{"id":"response-1"}}'),
+            sse("[DONE]"),
+          ],
+          [0, 0, 25_000, 0, 0],
+          init.signal as AbortSignal,
+        ),
+      );
+      const resultPromise = new CodexDirectTransport({ fetch: fetcher }).invoke(
+        input,
+      );
+      await vi.advanceTimersByTimeAsync(25_000);
+      await vi.runOnlyPendingTimersAsync();
+      await expect(resultPromise).resolves.toEqual({
+        ok: true,
+        normalizedOutput: '{"ok":true}',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("times out an active stream only after post-output inactivity", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetcher = vi.fn(
+        async (_url: string, init: RequestInit) =>
+          new Response(
+            new ReadableStream<Uint8Array>({
+              start(controller) {
+                controller.enqueue(
+                  new TextEncoder().encode(
+                    sse(
+                      '{"type":"response.created","response":{}}',
+                      '{"type":"response.output_text.delta","delta":"{\\"ok\\":true}"}',
+                    ),
+                  ),
+                );
+                (init.signal as AbortSignal).addEventListener(
+                  "abort",
+                  () =>
+                    controller.error(new DOMException("aborted", "AbortError")),
+                  { once: true },
+                );
+              },
+            }),
+            { status: 200, headers: { "content-type": "text/event-stream" } },
+          ),
+      );
+      const timing: unknown[] = [];
+      const resultPromise = new CodexDirectTransport({ fetch: fetcher }).invoke(
+        {
+          ...input,
+          onTiming: (event) => timing.push(event),
+        },
+      );
+      await vi.advanceTimersByTimeAsync(15_000);
+      await expect(resultPromise).resolves.toEqual({
+        ok: false,
+        category: "timeout",
+      });
+      expect(timing).toContainEqual(
+        expect.objectContaining({ phase: "stream_inactivity_timeout" }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("times out when headers never arrive", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetcher = vi.fn(
+        async (_url: string, init: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            (init.signal as AbortSignal).addEventListener(
+              "abort",
+              () => reject(new DOMException("aborted", "AbortError")),
+              { once: true },
+            );
+          }),
+      );
+      const timing: unknown[] = [];
+      const resultPromise = new CodexDirectTransport({ fetch: fetcher }).invoke(
+        {
+          ...input,
+          onTiming: (event) => timing.push(event),
+        },
+      );
+      await vi.advanceTimersByTimeAsync(30_000);
+      await expect(resultPromise).resolves.toEqual({
+        ok: false,
+        category: "timeout",
+      });
+      expect(timing).toContainEqual(
+        expect.objectContaining({ phase: "request_timeout" }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("enforces total generation time even when the active stream keeps moving", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetcher = vi.fn(
+        async (_url: string, init: RequestInit) =>
+          new Response(
+            new ReadableStream<Uint8Array>({
+              start(controller) {
+                const encoder = new TextEncoder();
+                controller.enqueue(
+                  encoder.encode(
+                    sse(
+                      '{"type":"response.created","response":{}}',
+                      '{"type":"response.output_text.delta","delta":"{\\"ok\\":true}"}',
+                    ),
+                  ),
+                );
+                let timer: ReturnType<typeof setTimeout> | undefined;
+                const keepMoving = () => {
+                  controller.enqueue(encoder.encode(": keepalive\n\n"));
+                  timer = setTimeout(keepMoving, 10_000);
+                };
+                timer = setTimeout(keepMoving, 10_000);
+                (init.signal as AbortSignal).addEventListener(
+                  "abort",
+                  () => {
+                    if (timer !== undefined) clearTimeout(timer);
+                    controller.error(new DOMException("aborted", "AbortError"));
+                  },
+                  { once: true },
+                );
+              },
+            }),
+            { status: 200, headers: { "content-type": "text/event-stream" } },
+          ),
+      );
+      const timing: unknown[] = [];
+      const resultPromise = new CodexDirectTransport({ fetch: fetcher }).invoke(
+        {
+          ...input,
+          onTiming: (event) => timing.push(event),
+        },
+      );
+      await vi.advanceTimersByTimeAsync(90_000);
+      await expect(resultPromise).resolves.toEqual({
+        ok: false,
+        category: "timeout",
+      });
+      expect(timing).toContainEqual(
+        expect.objectContaining({ phase: "generation_timeout" }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("completes a realistic 59-second stream within the total deadline", async () => {
+    vi.useFakeTimers();
+    try {
+      const body = completeSse();
+      const chunkSize = Math.ceil(body.length / 60);
+      const chunks = Array.from(
+        { length: Math.ceil(body.length / chunkSize) },
+        (_, index) => body.slice(index * chunkSize, (index + 1) * chunkSize),
+      );
+      const fetcher = vi.fn(async (_url: string, init: RequestInit) =>
+        delayedSseResponse(
+          chunks,
+          chunks.map((_chunk, index) => (index === 0 ? 0 : 1_000)),
+          init.signal as AbortSignal,
+        ),
+      );
+      const resultPromise = new CodexDirectTransport({ fetch: fetcher }).invoke(
+        input,
+      );
+      await vi.advanceTimersByTimeAsync(60_000);
+      await vi.runOnlyPendingTimersAsync();
+      await expect(resultPromise).resolves.toEqual({
+        ok: true,
+        normalizedOutput: '{"ok":true}',
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("resets inactivity timing on stream progress and parses split SSE frames", async () => {
     const created = '{"type":"response.created",';
     const fetcher = vi.fn(async (_url: string, init: RequestInit) =>
@@ -569,12 +900,12 @@ describe("CodexDirectTransport", () => {
     const timing: unknown[] = [];
     const result = await new CodexDirectTransport({
       fetch: fetcher,
-      streamIdleTimeoutMs: 10,
+      firstOutputTimeoutMs: 10,
     }).invoke({ ...input, onTiming: (event) => timing.push(event) });
     expect(result).toEqual({ ok: false, category: "timeout" });
     expect(timing).toContainEqual(
       expect.objectContaining({
-        phase: "stream_inactivity_timeout",
+        phase: "first_output_timeout",
         httpStatusCategory: "2xx",
         firstByteReceived: false,
         sseStarted: false,
@@ -606,14 +937,14 @@ describe("CodexDirectTransport", () => {
     try {
       const result = await new CodexDirectTransport({
         fetch: fetcher,
-        streamIdleTimeoutMs: 10,
+        firstOutputTimeoutMs: 10,
       }).invoke({ ...input, onProtocolShape: (value) => shape.push(value) });
       expect(result).toEqual({ ok: false, category: "timeout" });
       expect(fetcher).toHaveBeenCalledTimes(1);
       expect(shape).toContainEqual(
         expect.objectContaining({
           firstStructuralTokenCategory: "sse_data",
-          inactivityDurationMs: 10,
+          inactivityDurationMs: 0,
         }),
       );
       await new Promise((resolve) => setTimeout(resolve, 0));
@@ -633,7 +964,14 @@ describe("CodexDirectTransport", () => {
         new ReadableStream<Uint8Array>({
           start(controller) {
             const encoder = new TextEncoder();
-            controller.enqueue(encoder.encode(": keepalive\n\n"));
+            controller.enqueue(
+              encoder.encode(
+                sse(
+                  '{"type":"response.created","response":{}}',
+                  '{"type":"response.output_text.delta","delta":"{\\"ok\\":true}"}',
+                ),
+              ),
+            );
             const timer = setTimeout(
               () => controller.enqueue(encoder.encode(": progress\n\n")),
               6,

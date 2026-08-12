@@ -337,6 +337,9 @@ describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
     expect(invocation?.instructions).toContain(
       "Nuvitae owns candidateId, hashes, offsets",
     );
+    expect(invocation?.instructions).toContain("object depth 10");
+    expect(invocation?.instructions).toContain("total atoms 600");
+    expect(invocation?.instructions).toContain("relationships 120");
     const input = JSON.parse(invocation?.inputText ?? "{}") as {
       readonly contract?: string;
       readonly document?: {
@@ -453,6 +456,10 @@ describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
       ["protocol_invalid", "schema_violation"],
       ["timeout", "timeout"],
       ["cancelled", "cancelled"],
+      ["authentication_expired", "authentication_expired"],
+      ["authentication_revoked", "authentication_revoked"],
+      ["rate_limited", "rate_limited"],
+      ["quota_exceeded", "quota_exceeded"],
       ["provider_unavailable", "provider_unavailable"],
     ] as const) {
       const harness = setup(connection(), { ok: false, category });
