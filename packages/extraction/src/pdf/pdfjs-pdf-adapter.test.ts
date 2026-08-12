@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import type { ExtractionSourceReader } from "../adapters.js";
 import { PdfJsPdfAdapter } from "./pdfjs-pdf-adapter.js";
-import { buildPdf } from "../testing/test-document-builders.js";
+import {
+  buildPdf,
+  buildStructuralPdf,
+} from "../testing/test-document-builders.js";
 
 const request = (key: string, signal?: AbortSignal) => ({
   importId: "00000000-0000-4000-8000-000000000001",
@@ -82,6 +85,20 @@ describe("PdfJsPdfAdapter", () => {
     });
   });
 
+  it("does not classify passive visible text as PDF active content", async () => {
+    const bytes = await buildPdf({
+      pages: [["Anonymous candidate", "JS (value)", "Professional experience"]],
+    });
+    const adapter = new PdfJsPdfAdapter(readerFor({ source: bytes }), {
+      maximumFileSizeBytes: 1_000_000,
+      maximumPageCount: 5,
+    });
+
+    await expect(
+      adapter.extractSelectableText(request("source")),
+    ).resolves.toMatchObject({ ok: true });
+  });
+
   it("returns privacy-safe failures for malformed and truncated input", async () => {
     const valid = await buildPdf({ pages: [["Safe text"]] });
     for (const bytes of [new Uint8Array([1, 2, 3]), valid.subarray(0, 80)]) {
@@ -158,4 +175,67 @@ describe("PdfJsPdfAdapter", () => {
       value: { renderedPageCount: 1 },
     });
   });
+
+  it("accepts ordinary URI annotations without exposing or dereferencing URLs", async () => {
+    const bytes = buildStructuralPdf({ cases: ["uri", "uri", "uri"] });
+    const adapter = new PdfJsPdfAdapter(readerFor({ source: bytes }), {
+      maximumFileSizeBytes: 1_000_000,
+      maximumPageCount: 5,
+    });
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => {
+      throw new Error("network access is forbidden in this test");
+    };
+
+    try {
+      await expect(
+        adapter.countPages(request("source")),
+      ).resolves.toMatchObject({
+        ok: true,
+        value: { renderedPageCount: 1 },
+      });
+      await expect(
+        adapter.extractSelectableText(request("source")),
+      ).resolves.toMatchObject({ ok: true });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("accepts safe internal GoTo navigation", async () => {
+    const bytes = buildStructuralPdf({ cases: ["goto"] });
+    const adapter = new PdfJsPdfAdapter(readerFor({ source: bytes }), {
+      maximumFileSizeBytes: 1_000_000,
+      maximumPageCount: 5,
+    });
+    await expect(
+      adapter.extractSelectableText(request("source")),
+    ).resolves.toMatchObject({
+      ok: true,
+    });
+  });
+
+  it.each([
+    ["javascript", "pdf_javascript_action"],
+    ["launch", "pdf_launch_action"],
+    ["embedded_file", "pdf_embedded_file"],
+    ["rich_media", "pdf_rich_media"],
+    ["unsupported_action", "pdf_unsupported_active_content"],
+    ["malformed_action", "pdf_malformed_active_content"],
+  ] as const)(
+    "rejects %s before PDF.js content processing",
+    async (kind, reason) => {
+      const bytes = buildStructuralPdf({ cases: [kind] });
+      const adapter = new PdfJsPdfAdapter(readerFor({ source: bytes }), {
+        maximumFileSizeBytes: 1_000_000,
+        maximumPageCount: 5,
+      });
+      await expect(
+        adapter.countPages(request("source")),
+      ).resolves.toMatchObject({
+        ok: false,
+        error: { category: "unsupported", safetyReason: reason },
+      });
+    },
+  );
 });

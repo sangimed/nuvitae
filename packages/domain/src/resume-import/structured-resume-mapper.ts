@@ -164,6 +164,9 @@ export function mapReviewedImportDraftToStructuredResume(
       : { summary: singular.summary[0] }),
     workExperiences: finishWorkExperiences(grouped.workExperiences),
     education: finishEducation(grouped.education),
+    languages: finishLanguages(grouped.languages),
+    projects: finishProjects(grouped.projects),
+    certifications: finishCertifications(grouped.certifications),
   };
 
   return {
@@ -318,7 +321,7 @@ function mapField(
     case "skills":
       return appendSkills(field, childIds, content);
     case "languages":
-      return appendLanguage(field, childIds, content);
+      return appendLanguage(field, childIds, grouped);
     case "professional_links":
       return appendProfessionalLink(field, childIds, content);
     case "work_experience":
@@ -326,9 +329,9 @@ function mapField(
     case "education":
       return appendEducation(field, childIds, grouped);
     case "projects":
-      return appendProject(field, childIds, content);
+      return appendProject(field, childIds, grouped);
     case "certifications":
-      return appendCertification(field, childIds, content);
+      return appendCertification(field, childIds, grouped);
   }
 }
 
@@ -358,27 +361,40 @@ function appendSkills(
 function appendLanguage(
   field: ExtractedField,
   childIds: StructuredResumeChildIdFactory,
-  content: MutableStructuredResumeContent,
+  grouped: GroupedAccumulator,
 ) {
-  const value =
-    field.value.kind === "language"
-      ? {
-          name: field.value.name,
-          proficiency: field.value.proficiency,
-        }
-      : field.value.kind === "text"
-        ? { name: field.value.value }
-        : undefined;
-  if (value === undefined)
+  const match = /^languages\.([A-Za-z0-9_-]+)\.(name|proficiency)$/u.exec(
+    field.fieldPath,
+  );
+  if (match === null)
     return { ok: false as const, code: "unsupported_reviewed_shape" as const };
-  content.languages.push({
-    id: childIds.sectionItemId(),
-    name: sourcedFromField(field, value.name),
-    ...(value.proficiency === undefined
-      ? {}
-      : { proficiency: sourcedFromField(field, value.proficiency) }),
-    reviewStatus: field.reviewStatus,
-  });
+  const languageKey = match[1];
+  const suffix = match[2];
+  if (languageKey === undefined || suffix === undefined)
+    return { ok: false as const, code: "unsupported_reviewed_shape" as const };
+  let language = grouped.languages.get(languageKey);
+  if (language === undefined) {
+    language = {
+      id: childIds.sectionItemId(),
+      reviewStatus: field.reviewStatus,
+    };
+    grouped.languages.set(languageKey, language);
+  }
+  if (suffix === "name") {
+    if (field.value.kind === "language") {
+      language.name = sourcedFromField(field, field.value.name);
+      if (field.value.proficiency !== undefined)
+        language.proficiency = sourcedFromField(field, field.value.proficiency);
+    } else if (field.value.kind === "text") {
+      language.name = sourcedFromField(field, field.value.value);
+    } else {
+      return { ok: false as const, code: "invalid_reviewed_value" as const };
+    }
+  } else if (field.value.kind === "text") {
+    language.proficiency = sourcedFromField(field, field.value.value);
+  } else {
+    return { ok: false as const, code: "invalid_reviewed_value" as const };
+  }
   return { ok: true as const };
 }
 
@@ -462,43 +478,76 @@ function appendEducation(
 function appendProject(
   field: ExtractedField,
   childIds: StructuredResumeChildIdFactory,
-  content: MutableStructuredResumeContent,
+  grouped: GroupedAccumulator,
 ) {
   if (field.value.kind !== "text")
     return { ok: false as const, code: "unsupported_reviewed_shape" as const };
   if (!["name", "description"].includes(pathSuffix(field.fieldPath))) {
     return { ok: false as const, code: "unsupported_reviewed_shape" as const };
   }
-  content.projects.push({
-    id: childIds.sectionItemId(),
-    name: sourcedFromField(field, field.value.value),
-    links: [],
-    reviewStatus: field.reviewStatus,
-  });
+  const match = /^projects\.([A-Za-z0-9_-]+)\.(name|description)$/u.exec(
+    field.fieldPath,
+  );
+  if (match === null)
+    return { ok: false as const, code: "unsupported_reviewed_shape" as const };
+  const projectKey = match[1];
+  const suffix = match[2];
+  if (projectKey === undefined || suffix === undefined)
+    return { ok: false as const, code: "unsupported_reviewed_shape" as const };
+  let project = grouped.projects.get(projectKey);
+  if (project === undefined) {
+    project = {
+      id: childIds.sectionItemId(),
+      links: [],
+      reviewStatus: field.reviewStatus,
+    };
+    grouped.projects.set(projectKey, project);
+  }
+  if (suffix === "name")
+    project.name = sourcedFromField(field, field.value.value);
+  else project.description = sourcedFromField(field, field.value.value);
   return { ok: true as const };
 }
 
 function appendCertification(
   field: ExtractedField,
   childIds: StructuredResumeChildIdFactory,
-  content: MutableStructuredResumeContent,
+  grouped: GroupedAccumulator,
 ) {
   if (field.value.kind !== "text")
     return { ok: false as const, code: "unsupported_reviewed_shape" as const };
   if (!["name", "issuer"].includes(pathSuffix(field.fieldPath))) {
     return { ok: false as const, code: "unsupported_reviewed_shape" as const };
   }
-  content.certifications.push({
-    id: childIds.sectionItemId(),
-    name: sourcedFromField(field, field.value.value),
-    reviewStatus: field.reviewStatus,
-  });
+  const match = /^certifications\.([A-Za-z0-9_-]+)\.(name|issuer)$/u.exec(
+    field.fieldPath,
+  );
+  if (match === null)
+    return { ok: false as const, code: "unsupported_reviewed_shape" as const };
+  const certificationKey = match[1];
+  const suffix = match[2];
+  if (certificationKey === undefined || suffix === undefined)
+    return { ok: false as const, code: "unsupported_reviewed_shape" as const };
+  let certification = grouped.certifications.get(certificationKey);
+  if (certification === undefined) {
+    certification = {
+      id: childIds.sectionItemId(),
+      reviewStatus: field.reviewStatus,
+    };
+    grouped.certifications.set(certificationKey, certification);
+  }
+  if (suffix === "name")
+    certification.name = sourcedFromField(field, field.value.value);
+  else certification.issuer = sourcedFromField(field, field.value.value);
   return { ok: true as const };
 }
 
 interface GroupedAccumulator {
   readonly workExperiences: Map<string, WorkAccumulator>;
   readonly education: Map<string, EducationAccumulator>;
+  readonly languages: Map<string, LanguageAccumulator>;
+  readonly projects: Map<string, ProjectAccumulator>;
+  readonly certifications: Map<string, CertificationAccumulator>;
 }
 
 interface WorkAccumulator {
@@ -535,8 +584,36 @@ interface EducationAccumulator {
   reviewStatus: Education["reviewStatus"];
 }
 
+interface LanguageAccumulator {
+  readonly id: string;
+  name?: SourcedText;
+  proficiency?: SourcedText;
+  reviewStatus: LanguageSkill["reviewStatus"];
+}
+
+interface ProjectAccumulator {
+  readonly id: string;
+  name?: SourcedText;
+  description?: SourcedText;
+  readonly links: readonly ProfessionalLink[];
+  reviewStatus: Project["reviewStatus"];
+}
+
+interface CertificationAccumulator {
+  readonly id: string;
+  name?: SourcedText;
+  issuer?: SourcedText;
+  reviewStatus: Certification["reviewStatus"];
+}
+
 function createGroupedAccumulator(): GroupedAccumulator {
-  return { workExperiences: new Map(), education: new Map() };
+  return {
+    workExperiences: new Map(),
+    education: new Map(),
+    languages: new Map(),
+    projects: new Map(),
+    certifications: new Map(),
+  };
 }
 
 function appendWorkExperience(
@@ -544,6 +621,34 @@ function appendWorkExperience(
   childIds: StructuredResumeChildIdFactory,
   grouped: GroupedAccumulator,
 ) {
+  const employerMatch =
+    /^work_experience\.([A-Za-z0-9_-]+)\.(employer|employer_location)$/u.exec(
+      field.fieldPath,
+    );
+  if (employerMatch !== null) {
+    const employerKey = employerMatch[1];
+    const leaf = employerMatch[2];
+    if (employerKey === undefined || leaf === undefined)
+      return {
+        ok: false as const,
+        code: "unsupported_reviewed_shape" as const,
+      };
+    let work = grouped.workExperiences.get(employerKey);
+    if (work === undefined) {
+      work = {
+        id: childIds.workExperienceId(),
+        roles: new Map(),
+        reviewStatus: field.reviewStatus,
+        inferenceStatus: field.inferenceStatus,
+      };
+      grouped.workExperiences.set(employerKey, work);
+    }
+    if (field.value.kind !== "text")
+      return { ok: false as const, code: "invalid_reviewed_value" as const };
+    if (leaf === "employer") work.employerName = field.value.value;
+    else work.employerLocation = field.value.value;
+    return { ok: true as const };
+  }
   const match =
     /^work_experience\.([A-Za-z0-9_-]+)\.roles\.([A-Za-z0-9_-]+)\.([A-Za-z0-9_]+)$/.exec(
       field.fieldPath,
@@ -684,6 +789,60 @@ function finishEducation(
               ? {}
               : { startDate: item.startDate }),
             ...(item.endDate === undefined ? {} : { endDate: item.endDate }),
+            reviewStatus: item.reviewStatus,
+          },
+        ],
+  );
+}
+
+function finishLanguages(
+  languages: Map<string, LanguageAccumulator>,
+): LanguageSkill[] {
+  return [...languages.values()].flatMap((item) =>
+    item.name === undefined
+      ? []
+      : [
+          {
+            id: item.id,
+            name: item.name,
+            ...(item.proficiency === undefined
+              ? {}
+              : { proficiency: item.proficiency }),
+            reviewStatus: item.reviewStatus,
+          },
+        ],
+  );
+}
+
+function finishProjects(projects: Map<string, ProjectAccumulator>): Project[] {
+  return [...projects.values()].flatMap((item) =>
+    item.name === undefined
+      ? []
+      : [
+          {
+            id: item.id,
+            name: item.name,
+            ...(item.description === undefined
+              ? {}
+              : { description: item.description }),
+            links: [...item.links],
+            reviewStatus: item.reviewStatus,
+          },
+        ],
+  );
+}
+
+function finishCertifications(
+  certifications: Map<string, CertificationAccumulator>,
+): Certification[] {
+  return [...certifications.values()].flatMap((item) =>
+    item.name === undefined
+      ? []
+      : [
+          {
+            id: item.id,
+            name: item.name,
+            ...(item.issuer === undefined ? {} : { issuer: item.issuer }),
             reviewStatus: item.reviewStatus,
           },
         ],

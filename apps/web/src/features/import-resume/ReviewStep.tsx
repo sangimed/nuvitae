@@ -22,6 +22,7 @@ import {
   focusTarget,
 } from "./focus-management";
 import { ReviewWarning } from "./ReviewWarning";
+import { formatReviewDate, formatReviewDateRange } from "./review-date";
 
 export function ReviewStep(props: { readonly importId: string }) {
   const [draft, setDraft] = useState<ReviewDraftReadResponse | undefined>();
@@ -414,9 +415,9 @@ function valueToText(value: ReviewField["value"]): string {
     case "text_list":
       return value.values.join(", ");
     case "date":
-      return String(value.value.year);
+      return formatReviewDate(value.value);
     case "date_range":
-      return value.isOngoing ? "Present" : "Date range";
+      return formatReviewDateRange(value);
     case "link":
       return value.label === undefined
         ? value.url

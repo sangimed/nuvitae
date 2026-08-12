@@ -1,4 +1,5 @@
 import {
+  reviewResumeDateSchema,
   reviewDraftReadResponseSchema,
   reviewMutationRequestSchema,
   reviewMutationResponseSchema,
@@ -12,6 +13,39 @@ const fieldId = "44444444-4444-4444-8444-444444444444";
 const warningId = "55555555-5555-4555-8555-555555555555";
 
 describe("import review draft contract", () => {
+  it.each([
+    ["year-only", { year: 2020, precision: "year" }],
+    [
+      "month/year",
+      { year: 2020, month: 2, precision: "month", originalText: "02/2020" },
+    ],
+    [
+      "year-month source spelling",
+      { year: 2020, month: 2, precision: "month", originalText: "2020-02" },
+    ],
+    [
+      "month-name/year source spelling",
+      {
+        year: 2020,
+        month: 2,
+        precision: "month",
+        originalText: "February 2020",
+      },
+    ],
+    ["present/current", { precision: "present", originalText: "Current" }],
+  ] as const)("accepts the canonical %s date", (_name, value) => {
+    expect(reviewResumeDateSchema.parse(value)).toEqual(value);
+  });
+
+  it.each([
+    ["present with a fake year", { precision: "present", year: 2020 }],
+    ["month precision without a month", { year: 2020, precision: "month" }],
+    ["legacy day precision", { year: 2020, precision: "day" }],
+    ["fake calendar day", { year: 2020, month: 2, day: 3, precision: "month" }],
+  ] as const)("rejects malformed %s date data", (_name, value) => {
+    expect(reviewResumeDateSchema.safeParse(value).success).toBe(false);
+  });
+
   it("accepts an owner-scoped grouped review response with safe provenance only", () => {
     const response = reviewDraftReadResponseSchema.parse({
       version: "2026-07-28",

@@ -7,6 +7,7 @@ import type {
   PdfPageCounter,
   PdfPageText,
   PdfSelectableTextExtractor,
+  PdfSafetyReasonCode,
   PdfTextItem,
 } from "../adapters.js";
 import type { PDFDocumentProxy } from "pdfjs-dist/types/src/display/api.js";
@@ -17,17 +18,7 @@ import {
   succeeded,
   throwIfAborted,
 } from "../extraction-failures.js";
-import { scanTextForHostileContent } from "../safety.js";
-
-const structuralDangerCategories = new Set([
-  "script",
-  "macro",
-  "ole_object",
-  "entity_expansion",
-  "path_traversal",
-  "launch_action",
-  "embedded_file",
-]);
+import { inspectPdfStructuralSafety } from "./pdf-safety.js";
 
 /**
  * PDF item indexes and global reading order are zero-based. Page numbers are
@@ -52,6 +43,7 @@ export class PdfJsPdfAdapter
 
     try {
       const data = await this.readSource(request);
+      this.validateStructuralSafety(data);
       const result = await this.withDocument(
         data,
         request.abortSignal,
@@ -62,7 +54,8 @@ export class PdfJsPdfAdapter
       );
       return succeeded(result);
     } catch (error) {
-      return failed(mapPdfFailure(error, request.abortSignal));
+      const failure = mapPdfFailure(error, request.abortSignal);
+      return failed(failure.category, failure.safetyReason);
     }
   }
 
@@ -75,6 +68,7 @@ export class PdfJsPdfAdapter
 
     try {
       const data = await this.readSource(request);
+      this.validateStructuralSafety(data);
       const pages = await this.withDocument(
         data,
         request.abortSignal,
@@ -145,21 +139,26 @@ export class PdfJsPdfAdapter
             throw new ExtractionOperationError("scanned_or_image_only");
           }
 
-          const allText = result
-            .flatMap((page) => page.items.map((item) => item.text))
-            .join(" ");
-          const hostile = scanTextForHostileContent(allText);
-          if (hostile.some((cat) => structuralDangerCategories.has(cat))) {
-            throw new ExtractionOperationError("unsupported");
-          }
-
           return Object.freeze(result);
         },
       );
       return succeeded(pages);
     } catch (error) {
-      return failed(mapPdfFailure(error, request.abortSignal));
+      const failure = mapPdfFailure(error, request.abortSignal);
+      return failed(failure.category, failure.safetyReason);
     }
+  }
+
+  private validateStructuralSafety(source: Uint8Array): void {
+    const inspection = inspectPdfStructuralSafety(source);
+    if (inspection.safe) return;
+    if (inspection.failure === "malformed_pdf") {
+      throw new ExtractionOperationError("malformed");
+    }
+    throw new ExtractionOperationError(
+      "unsupported",
+      inspection.reasonCode ?? "pdf_unclassified_action",
+    );
   }
 
   private async readSource(request: ExtractionRequest): Promise<Uint8Array> {
@@ -267,26 +266,40 @@ function finiteNumber(value: number | undefined): number {
 function mapPdfFailure(
   error: unknown,
   signal: AbortSignal | undefined,
-): ReturnType<typeof categoryFromUnknown> {
+): {
+  readonly category: ReturnType<typeof categoryFromUnknown>;
+  readonly safetyReason?: PdfSafetyReasonCode;
+} {
+  const safetyReason =
+    error instanceof ExtractionOperationError ? error.safetyReason : undefined;
+  const result = (
+    category: ReturnType<typeof categoryFromUnknown>,
+  ): {
+    readonly category: ReturnType<typeof categoryFromUnknown>;
+    readonly safetyReason?: PdfSafetyReasonCode;
+  } => ({
+    category,
+    ...(safetyReason === undefined ? {} : { safetyReason }),
+  });
   if (signal?.aborted === true) {
-    return "cancelled";
+    return result("cancelled");
   }
   const known = categoryFromUnknown(error, "unexpected");
   if (known !== "unexpected") {
-    return known;
+    return result(known);
   }
   const name = error instanceof Error ? error.name : "";
   switch (name) {
     case "PasswordException":
-      return "password_protected";
+      return result("password_protected");
     case "InvalidPDFException":
-      return "malformed";
+      return result("malformed");
     case "MissingPDFException":
     case "UnexpectedResponseException":
-      return "corrupted";
+      return result("corrupted");
     case "AbortException":
-      return "corrupted";
+      return result("corrupted");
     default:
-      return "unexpected";
+      return result("unexpected");
   }
 }

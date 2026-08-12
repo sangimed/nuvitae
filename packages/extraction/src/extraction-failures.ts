@@ -2,6 +2,7 @@ import type {
   ExtractionFailure,
   ExtractionFailureCategory,
   ExtractionResult,
+  PdfSafetyReasonCode,
 } from "./adapters.js";
 
 const publicMessages: Record<ExtractionFailureCategory, string> = {
@@ -19,6 +20,7 @@ const publicMessages: Record<ExtractionFailureCategory, string> = {
 
 export function extractionFailure(
   category: ExtractionFailureCategory,
+  safetyReason?: PdfSafetyReasonCode,
 ): ExtractionFailure {
   return Object.freeze({
     category,
@@ -27,13 +29,15 @@ export function extractionFailure(
       category === "resource_limit" ||
       category === "unexpected",
     message: publicMessages[category],
+    ...(safetyReason === undefined ? {} : { safetyReason }),
   });
 }
 
 export function failed<Value>(
   category: ExtractionFailureCategory,
+  safetyReason?: PdfSafetyReasonCode,
 ): ExtractionResult<Value> {
-  return { ok: false, error: extractionFailure(category) };
+  return { ok: false, error: extractionFailure(category, safetyReason) };
 }
 
 export function succeeded<Value>(value: Value): ExtractionResult<Value> {
@@ -51,7 +55,10 @@ export function throwIfAborted(signal: AbortSignal | undefined): void {
 }
 
 export class ExtractionOperationError extends Error {
-  constructor(readonly category: ExtractionFailureCategory) {
+  constructor(
+    readonly category: ExtractionFailureCategory,
+    readonly safetyReason?: PdfSafetyReasonCode,
+  ) {
     super(publicMessages[category]);
     this.name = "ExtractionOperationError";
   }

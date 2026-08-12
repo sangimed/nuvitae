@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { importResumeResponseSchemaVersion } from "./import-resume/responses.js";
+import { resumeDateSchema } from "./import-resume/resume-date.js";
 
 const uuidSchema = z.string().uuid();
 const plainMessageSchema = z.string().min(1).max(400);
@@ -13,15 +14,6 @@ export const manualDraftCreationKeySchema = z
   .min(16)
   .max(96)
   .regex(/^[A-Za-z0-9._:-]+$/);
-
-export const resumeDateSchema = z
-  .object({
-    year: z.number().int().min(1900).max(2100),
-    month: z.number().int().min(1).max(12).optional(),
-    precision: z.enum(["year", "month", "day"]),
-    originalText: z.string().min(1).max(80).optional(),
-  })
-  .strict();
 
 export const manualSourcedTextSchema = z
   .object({
@@ -56,10 +48,16 @@ const workExperienceRoleSchema = z
     inferenceStatus: manualInferenceStatusSchema,
   })
   .strict()
-  .refine((role) => !role.isOngoing || role.endDate === undefined, {
-    path: ["endDate"],
-    message: "Ongoing roles cannot have an end date.",
-  });
+  .refine(
+    (role) =>
+      !role.isOngoing ||
+      role.endDate === undefined ||
+      role.endDate.precision === "present",
+    {
+      path: ["endDate"],
+      message: "Ongoing roles cannot have an end date.",
+    },
+  );
 
 const workExperienceSchema = z
   .object({

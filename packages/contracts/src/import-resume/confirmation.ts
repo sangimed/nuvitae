@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { extractedValueSchema, safeProvenanceSchema } from "./review.js";
 import { importResumeResponseSchemaVersion } from "./responses.js";
+import { resumeDateSchema } from "./resume-date.js";
 
 const uuidSchema = z.string().uuid();
 const isoDateSchema = z.string().datetime();
@@ -117,15 +118,6 @@ const confirmedSourcedTextSchema = z
     confidenceStatus: z.enum(["high", "medium", "low", "not_applicable"]),
     inferenceStatus: z.enum(["not_inferred", "confirmed_inference"]),
     provenance: safeProvenanceSchema,
-  })
-  .strict();
-
-const resumeDateSchema = z
-  .object({
-    year: z.number().int().min(1900).max(2100),
-    month: z.number().int().min(1).max(12).optional(),
-    precision: z.enum(["year", "month", "day"]),
-    originalText: z.string().min(1).max(80).optional(),
   })
   .strict();
 

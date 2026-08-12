@@ -1,11 +1,20 @@
 import { readFile, stat } from "node:fs/promises";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import type {
   NuvitaeSemanticExtractionResponse,
   ResumeSemanticParseRequest,
 } from "@nuvitae/contracts";
 import { resumeSemanticParserContractVersion } from "@nuvitae/contracts";
 import {
+  CodexDirectProviderAdapter,
   createPrivacySafeSemanticProviderError,
   validateSemanticResponse,
   type ResumeSemanticParserCapabilities,
@@ -23,7 +32,10 @@ import {
   PdfJsPdfAdapter,
   type ExtractionSourceReader,
 } from "@nuvitae/extraction";
-import type { ImportedDocument } from "@nuvitae/domain";
+import type {
+  AIProviderRuntimeConnection,
+  ImportedDocument,
+} from "@nuvitae/domain";
 import {
   TypeOrmImportResumeRepository,
   type DataSource,
@@ -41,6 +53,8 @@ const pdfFixturePath =
   "tests/fixtures/resumes/semantic-vertical-slice-jordan-avery.pdf";
 const docxFixturePath =
   "tests/fixtures/resumes/semantic-vertical-slice-maya-chen.docx";
+const anonymousPdfFixturePath =
+  "tests/fixtures/resumes/anonymous-selectable-resume.pdf";
 
 const ownerUserId = "20000000-0000-4000-8000-000000000201";
 const now = new Date("2026-08-01T10:00:00.000Z");
@@ -108,6 +122,113 @@ describe("semantic parser worker integration", () => {
     expect(request.formatMetadata).toEqual(profile.formatMetadata);
     await expectStatus(importId, "ready_for_review");
     await expectDraftCount(importId, 1);
+  });
+
+  it("routes the anonymous selectable PDF through the production Codex V2 adapter into review", async () => {
+    const codex = codexFixtureProvider();
+    const harness = createHarness(dataSource, { provider: codex.provider });
+    const importId = nextImportId();
+    await seedAnonymousImport(harness.repository, importId);
+
+    await harness.processor.process({
+      ownerUserId,
+      importedDocumentId: importId,
+    });
+
+    expect(codex.invoke).toHaveBeenCalledTimes(1);
+    await expectStatus(importId, "ready_for_review");
+    const draft = await harness.repository.findDraftByImportAndOwner(
+      importId,
+      ownerUserId,
+    );
+    expect(draft).not.toBeNull();
+    if (draft === null) return;
+    expect(draft.fields).toHaveLength(15);
+    expect(draftValueKeys(draft.fields)).toEqual(
+      expect.arrayContaining([
+        "Alex Martin",
+        "alex.martin@example.test",
+        "+33 6 12 34 56 78",
+        "Lyon, France",
+        "Backend Engineer",
+        "Master of Software Engineering",
+        "Example University",
+        "2022",
+        "TypeScript",
+        "NestJS",
+        "PostgreSQL",
+        "Docker",
+        "French",
+        "English",
+        "https://example.test/alex-martin",
+      ]),
+    );
+    expect(draftValueKeys(draft.fields)).not.toContain("present");
+    expect(harness.logs.map((entry) => entry.metadata.outcome)).toContain(
+      "v2_success",
+    );
+  });
+
+  it("keeps unrelated V2 fields when only the headline is corrupt", async () => {
+    const codex = codexFixtureProvider({ corruptHeadline: true });
+    const harness = createHarness(dataSource, { provider: codex.provider });
+    const importId = nextImportId();
+    await seedAnonymousImport(harness.repository, importId);
+
+    await harness.processor.process({
+      ownerUserId,
+      importedDocumentId: importId,
+    });
+
+    expect(codex.invoke).toHaveBeenCalledTimes(1);
+    await expectStatus(importId, "ready_for_review");
+    const draft = await harness.repository.findDraftByImportAndOwner(
+      importId,
+      ownerUserId,
+    );
+    expect(draft).not.toBeNull();
+    if (draft === null) return;
+    expect(draftValueKeys(draft.fields)).toHaveLength(14);
+    expect(draftValueKeys(draft.fields)).not.toContain("Backend Engineer");
+    expect(draftValueKeys(draft.fields)).toContain("Alex Martin");
+    expect(draftValueKeys(draft.fields)).toContain("alex.martin@example.test");
+    expect(draft.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          warningType: "unsupported",
+          fieldPath: "headline",
+          requiresResolution: true,
+        }),
+      ]),
+    );
+    expect(harness.logs.map((entry) => entry.metadata.outcome)).toContain(
+      "v2_partial_acceptance",
+    );
+    expect(harness.logs.map((entry) => entry.metadata.outcome)).not.toContain(
+      "partial_deterministic_fallback",
+    );
+  });
+
+  it("uses bounded recovery for an invalid V2 envelope without partial acceptance", async () => {
+    const codex = codexFixtureProvider({ invalidEnvelope: "wrong-version" });
+    const harness = createHarness(dataSource, { provider: codex.provider });
+    const importId = nextImportId();
+    await seedAnonymousImport(harness.repository, importId);
+
+    await harness.processor.process({
+      ownerUserId,
+      importedDocumentId: importId,
+    });
+
+    expect(codex.invoke).toHaveBeenCalledTimes(1);
+    await expectStatus(importId, "ready_for_review");
+    await expectDraftCount(importId, 1);
+    expect(harness.logs.map((entry) => entry.metadata.outcome)).toContain(
+      "v2_invalid_envelope",
+    );
+    expect(harness.logs.map((entry) => entry.metadata.outcome)).toContain(
+      "partial_deterministic_fallback",
+    );
   });
 
   it("persists exactly one review draft with unconfirmed candidates from valid provider output", async () => {
@@ -357,6 +478,21 @@ describe("semantic parser worker integration", () => {
     });
   }
 
+  async function seedAnonymousImport(
+    repository: TypeOrmImportResumeRepository,
+    importId: string,
+  ): Promise<void> {
+    const metadata = await stat(anonymousPdfFixturePath);
+    await repository.createImportAggregate({
+      document: {
+        ...documentFor("pdf", metadata.size, importId),
+        visibleFilename: "anonymous-selectable-resume.pdf",
+        storageKey: anonymousPdfFixturePath,
+      },
+      artifacts: [],
+    });
+  }
+
   async function expectStatus(
     importId: string,
     expected: string,
@@ -440,6 +576,184 @@ function documentFor(
     createdAt,
     retentionExpiresAt,
   };
+}
+
+function codexFixtureProvider(
+  options: {
+    readonly corruptHeadline?: boolean;
+    readonly invalidEnvelope?: "wrong-version" | "malformed";
+  } = {},
+) {
+  const connection: AIProviderRuntimeConnection = {
+    id: "30000000-0000-4000-8000-000000000001",
+    ownerUserId,
+    providerKind: "codex",
+    displayName: "Codex",
+    connectionStatus: "connected",
+    authenticationStatus: "authenticated",
+    availabilityStatus: "available",
+    capabilities: {
+      supportedDocumentFormats: ["pdf", "docx"],
+      supportedDocumentLanguages: [
+        "english",
+        "french",
+        "bilingual_french_english",
+      ],
+      supportsNonInteractiveParsing: true,
+      supportsStructuredJson: true,
+      supportsCanonicalFlattenedEvidence: true,
+      acceptsNormalizedTranscript: true,
+      acceptsRawStoragePaths: false,
+      exposesCredentialsToDomain: false,
+      predictsPhysicalCoordinates: false,
+      maxRequestJsonBytes: 256000,
+      maxResponseJsonBytes: 256000,
+      maxTimeoutMs: 30000,
+    },
+    capabilitySnapshotAt: now,
+    sessionReference: "40000000-0000-4000-8000-000000000001",
+    lastCheckedAt: now,
+    loginStartedAt: now,
+    connectedAt: now,
+    refreshedAt: now,
+    expiresAt: null,
+    disconnectedAt: null,
+    revokedAt: null,
+    revocationReason: null,
+    createdAt: now,
+    deletedAt: null,
+    deletionReason: null,
+  };
+  const invoke = vi.fn(async (input: { readonly inputText: string }) => {
+    if (options.invalidEnvelope === "malformed")
+      return { ok: true as const, normalizedOutput: "not-json" };
+    const parsed = buildAlexV2Response(
+      input.inputText,
+      options.corruptHeadline,
+    );
+    if (options.invalidEnvelope === "wrong-version")
+      return {
+        ok: true as const,
+        normalizedOutput: JSON.stringify({ ...parsed, schemaVersion: "v1" }),
+      };
+    return { ok: true as const, normalizedOutput: JSON.stringify(parsed) };
+  });
+  const provider = new CodexDirectProviderAdapter({
+    repository: {
+      findConnectionByProviderAndOwner: vi.fn(async () => connection),
+    },
+    sessionStore: {
+      readSession: vi.fn(async () =>
+        new TextEncoder().encode(
+          JSON.stringify({
+            v: 1,
+            accessToken: "access-token",
+            refreshToken: "refresh-token",
+            accountId: "account-id",
+            expiresAt: null,
+            reference: connection.sessionReference,
+          }),
+        ),
+      ),
+    },
+    transport: { invoke },
+    now: () => now,
+  } as never);
+  return { provider, invoke };
+}
+
+function buildAlexV2Response(inputText: string, corruptHeadline = false) {
+  const input = JSON.parse(inputText) as {
+    readonly document: {
+      readonly fragments: readonly {
+        readonly fragmentId: string;
+        readonly text: string;
+      }[];
+    };
+  };
+  const fragmentFor = (value: string) => {
+    const fragment = input.document.fragments.find((item) =>
+      item.text.includes(value),
+    );
+    if (fragment === undefined)
+      throw new Error(`Missing fixture value: ${value}`);
+    return fragment;
+  };
+  const atom = (value: string, quote = value) => ({
+    value,
+    sourceRefs: [{ fragmentId: fragmentFor(value).fragmentId, quote }],
+  });
+  const headline = corruptHeadline
+    ? {
+        value: "Backend Engineer",
+        sourceRefs: [
+          {
+            fragmentId: fragmentFor("Backend Engineer").fragmentId,
+            quote: "not present in the fragment",
+          },
+        ],
+      }
+    : atom("Backend Engineer");
+  return {
+    schemaVersion: "nuvitae.semantic-extraction.v2",
+    sections: {
+      contact: {
+        fullName: atom("Alex Martin"),
+        email: atom("alex.martin@example.test"),
+        phone: atom("+33 6 12 34 56 78"),
+        location: atom("Lyon, France"),
+        website: null,
+      },
+      headline,
+      summary: null,
+      workExperience: [],
+      education: [
+        {
+          institution: atom("Example University"),
+          degree: atom("Master of Software Engineering"),
+          fieldOfStudy: null,
+          startDate: null,
+          endDate: atom("2022"),
+          location: null,
+        },
+      ],
+      skills: ["TypeScript", "NestJS", "PostgreSQL", "Docker"].map((value) => ({
+        name: atom(value),
+      })),
+      languages: ["French", "English"].map((value) => ({
+        name: atom(value),
+        proficiency: null,
+      })),
+      projects: [],
+      certifications: [],
+      professionalLinks: [atom("https://example.test/alex-martin")],
+    },
+    relationships: [],
+    ambiguities: [],
+    conflicts: [],
+  };
+}
+
+function draftValueKeys(
+  fields: readonly { readonly value: unknown }[],
+): readonly string[] {
+  return fields.map((field) => {
+    const value = field.value as Record<string, unknown>;
+    switch (value.kind) {
+      case "date": {
+        const date = value.value as { readonly year: number };
+        return String(date.year);
+      }
+      case "link":
+        return String(value.url);
+      case "language":
+        return String(value.name);
+      case "text":
+        return String(value.value);
+      default:
+        return String(value.kind);
+    }
+  });
 }
 
 function buildFixtureRequest(

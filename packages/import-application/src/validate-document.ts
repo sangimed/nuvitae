@@ -18,6 +18,7 @@ import type {
   PdfPageCounter,
   PdfPageText,
   PdfSelectableTextExtractor,
+  PdfSafetyReasonCode,
   SelectableTextAssessment,
 } from "@nuvitae/extraction";
 import type {
@@ -97,6 +98,7 @@ interface DocumentRejection {
   readonly renderedPageCount?: number;
   readonly recoveryActions: readonly RecoveryAction[];
   readonly userMessage: string;
+  readonly safetyReason?: PdfSafetyReasonCode;
 }
 
 interface RecoverableOutcome {
@@ -191,6 +193,9 @@ export class ValidateDocumentService {
         ...(outcome.detectedLanguage === undefined
           ? {}
           : { detectedLanguage: outcome.detectedLanguage }),
+        ...(outcome.safetyReason === undefined
+          ? {}
+          : { pdfSafetyReason: outcome.safetyReason }),
       });
       return this.response({
         requestId,
@@ -501,6 +506,7 @@ export class ValidateDocumentService {
     details: {
       readonly renderedPageCount?: number;
       readonly detectedLanguage?: DetectedLanguage;
+      readonly pdfSafetyReason?: PdfSafetyReasonCode;
     } = {},
   ): void {
     const duration = Math.max(
@@ -513,6 +519,9 @@ export class ValidateDocumentService {
       durationBucket: durationBucket(duration),
       pageCountBucket: pageCountBucket(details.renderedPageCount),
       languageCategory: details.detectedLanguage ?? "not_known",
+      ...(details.pdfSafetyReason === undefined
+        ? {}
+        : { pdfSafetyReason: details.pdfSafetyReason }),
     });
   }
 }
@@ -601,11 +610,16 @@ function mapExtractionFailure(
     case "scanned_or_image_only":
       return noSelectableText();
     case "unsupported":
-      return rejection(
-        "unsafe_content",
-        "The document contains content that cannot be processed safely.",
-        ["replace_upload", "manual_entry"],
-      );
+      return {
+        ...rejection(
+          "unsafe_content",
+          "The document contains content that cannot be processed safely.",
+          ["replace_upload", "manual_entry"],
+        ),
+        ...(error.safetyReason === undefined
+          ? {}
+          : { safetyReason: error.safetyReason }),
+      };
     case "resource_limit":
       return stage === "page_count"
         ? rejection(

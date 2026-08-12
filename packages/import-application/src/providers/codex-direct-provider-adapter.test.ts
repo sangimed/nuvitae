@@ -14,35 +14,19 @@ const referenceA = "a".repeat(64);
 const referenceB = "b".repeat(64);
 const now = new Date("2026-08-08T12:00:00.000Z");
 
-const evidence = {
-  line: 1,
-  start: 0,
-  end: 4,
-  fragmentHash: createHash("sha256").update("Ada").digest("hex"),
-  fragmentId: null,
-};
-
-function semanticValue(value: string) {
+function atom(value: string) {
   return {
     value,
-    normalizedValue: null,
-    evidence: [evidence],
-    classification: "explicit" as const,
-    confidence: "high" as const,
+    sourceRefs: [{ fragmentId: "fragment-1", quote: value }],
   };
 }
 
 function response() {
   return {
-    schemaVersion: "nuvitae.semantic-extraction.v1" as const,
-    documentLanguage: {
-      value: "english" as const,
-      confidence: "high" as const,
-      evidence: [evidence],
-    },
+    schemaVersion: "nuvitae.semantic-extraction.v2" as const,
     sections: {
       contact: {
-        fullName: null,
+        fullName: atom("Ada"),
         email: null,
         phone: null,
         location: null,
@@ -59,9 +43,8 @@ function response() {
       professionalLinks: [],
     },
     relationships: [],
-    ambiguityDiagnostics: [],
-    conflictDiagnostics: [],
-    privacyWarnings: [],
+    ambiguities: [],
+    conflicts: [],
   };
 }
 
@@ -173,6 +156,7 @@ function setup(
   },
 ) {
   const transport = { invoke: vi.fn(async () => transportResult) };
+  const onV2EnvelopeDiagnostic = vi.fn();
   const repository = {
     findConnectionByProviderAndOwner: vi.fn(
       async (_provider: string, owner: string) =>
@@ -201,81 +185,137 @@ function setup(
     sessionStore,
     transport,
     now: () => now,
+    onV2EnvelopeDiagnostic,
   } as unknown as CodexDirectProviderAdapterPorts;
   return {
     provider: new CodexDirectProviderAdapter(ports),
     repository,
     sessionStore,
     transport,
+    onV2EnvelopeDiagnostic,
   };
 }
 
-describe("CodexDirectProviderAdapter (T216)", () => {
-  it("accepts a semantic candidate without a provider-owned ID", async () => {
-    const candidate = response() as {
-      sections: { skills: unknown[] };
-    };
-    candidate.sections.skills = [
-      { name: semanticValue("TypeScript"), category: null },
-    ];
-
+describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
+  it("diagnoses semantic JSON parse failure without reaching the canonicalizer", async () => {
     const harness = setup(connection(), {
       ok: true,
-      normalizedOutput: JSON.stringify(candidate),
+      normalizedOutput: "not-json",
     });
-    const result = await harness.provider.parse(request(), {
+
+    const result = await harness.provider.parseV2(request(), {
       timeoutMs: 30000,
       ownerUserId: ownerA,
     });
 
-    expect(result.ok).toBe(true);
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "invalid_provider_response" },
+    });
+    expect(harness.onV2EnvelopeDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        semanticJsonParseSucceeded: false,
+        canonicalizerReached: false,
+        failureStage: "semantic_json_parse",
+        topLevelValueCategory: "unparseable",
+      }),
+    );
   });
 
-  it("does not treat null or arbitrary legacy IDs as application identity", async () => {
-    for (const candidateId of [null, "provider-controlled"]) {
-      const candidate = response() as {
-        sections: { skills: unknown[] };
-      };
-      candidate.sections.skills = [
-        { candidateId, name: semanticValue("TypeScript"), category: null },
-      ];
-      const harness = setup(connection(), {
-        ok: true,
-        normalizedOutput: JSON.stringify(candidate),
-      });
+  it("does not strip a markdown wrapper before semantic JSON parsing", async () => {
+    const harness = setup(connection(), {
+      ok: true,
+      normalizedOutput: `\`\`\`json\n${JSON.stringify(response())}\n\`\`\``,
+    });
 
-      const result = await harness.provider.parse(request(), {
-        timeoutMs: 30000,
-        ownerUserId: ownerA,
-      });
+    const result = await harness.provider.parseV2(request(), {
+      timeoutMs: 30000,
+      ownerUserId: ownerA,
+    });
 
-      expect(result.ok).toBe(true);
-    }
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "invalid_provider_response" },
+    });
+    expect(harness.onV2EnvelopeDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        semanticJsonParseSucceeded: false,
+        failureStage: "semantic_json_parse",
+      }),
+    );
   });
 
-  it("ignores a wrong-typed legacy candidate ID at the provider boundary", async () => {
-    const candidate = response() as {
-      sections: { skills: unknown[] };
-    };
-    candidate.sections.skills = [
-      { candidateId: 42, name: semanticValue("TypeScript"), category: null },
-    ];
+  it("diagnoses a parsed wrong-version envelope after the canonicalizer is reached", async () => {
+    const harness = setup(connection(), {
+      ok: true,
+      normalizedOutput: JSON.stringify({
+        ...response(),
+        schemaVersion: "nuvitae.semantic-extraction.v1",
+      }),
+    });
+
+    await harness.provider.parseV2(request(), {
+      timeoutMs: 30000,
+      ownerUserId: ownerA,
+    });
+
+    expect(harness.onV2EnvelopeDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        semanticJsonParseSucceeded: true,
+        canonicalizerReached: true,
+        failureStage: "v2_envelope",
+        topLevelValueCategory: "object",
+        schemaVersionCategory: "other_string",
+        firstZodPath: ["schemaVersion"],
+      }),
+    );
+  });
+
+  it("does not emit envelope diagnostics for a valid envelope with a malformed atom", async () => {
+    const candidate = response();
+    candidate.sections.headline = { value: 42, sourceRefs: [] } as never;
     const harness = setup(connection(), {
       ok: true,
       normalizedOutput: JSON.stringify(candidate),
     });
 
-    await expect(
-      harness.provider.parse(request(), {
-        timeoutMs: 30000,
-        ownerUserId: ownerA,
-      }),
-    ).resolves.toMatchObject({ ok: true });
+    const result = await harness.provider.parseV2(request(), {
+      timeoutMs: 30000,
+      ownerUserId: ownerA,
+    });
+
+    expect(result).toMatchObject({ ok: true });
+    if (result.ok) {
+      expect(result.canonical.candidates).toHaveLength(1);
+      expect(
+        result.canonical.candidates.some(
+          (candidate) => candidate.fieldPath === "headline",
+        ),
+      ).toBe(false);
+    }
+    expect(harness.onV2EnvelopeDiagnostic).not.toHaveBeenCalled();
+  });
+
+  it("returns Nuvitae-canonical V2 candidates without provider-owned metadata", async () => {
+    const harness = setup(connection(), {
+      ok: true,
+      normalizedOutput: JSON.stringify(response()),
+    });
+    const result = await harness.provider.parseV2(request(), {
+      timeoutMs: 30000,
+      ownerUserId: ownerA,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      contractVersion: "nuvitae.semantic-extraction.v2",
+      canonical: { candidates: [{ value: "Ada" }] },
+    });
   });
 
   it("resolves the ready owner-bound session and invokes Codex once", async () => {
     const harness = setup();
-    const result = await harness.provider.parse(request(), {
+    const result = await harness.provider.parseV2(request(), {
       timeoutMs: 30000,
       ownerUserId: ownerA,
     });
@@ -292,14 +332,26 @@ describe("CodexDirectProviderAdapter (T216)", () => {
     const invocation = harness.transport.invoke.mock.calls[0]?.[0] as
       { readonly instructions: string; readonly inputText: string } | undefined;
     expect(invocation?.instructions).toContain(
-      "preserve explicit professional titles",
+      "nuvitae.semantic-extraction.v2",
     );
-    expect(invocation?.instructions).toContain("Do not return candidateId");
+    expect(invocation?.instructions).toContain(
+      "Nuvitae owns candidateId, hashes, offsets",
+    );
+    expect(invocation?.instructions).toContain("object depth 10");
+    expect(invocation?.instructions).toContain("total atoms 600");
+    expect(invocation?.instructions).toContain("relationships 120");
     const input = JSON.parse(invocation?.inputText ?? "{}") as {
-      readonly output?: { readonly sections?: string };
+      readonly contract?: string;
+      readonly document?: {
+        readonly fragments?: readonly Record<string, unknown>[];
+      };
     };
-    expect(input.output?.sections).toContain("education");
-    expect(input.output?.sections).not.toContain("candidateId");
+    expect(input.contract).toBe("nuvitae.semantic-extraction.v2");
+    expect(input.document?.fragments).toEqual([
+      { fragmentId: "fragment-1", order: 0, text: "Ada" },
+    ]);
+    expect(JSON.stringify(input)).not.toContain("fragmentHash");
+    expect(JSON.stringify(input)).not.toContain("candidateId");
   });
 
   it.each([
@@ -346,7 +398,7 @@ describe("CodexDirectProviderAdapter (T216)", () => {
     ],
   ] as const)("does not invoke for %s", async (_name, current) => {
     const harness = setup(current);
-    const result = await harness.provider.parse(request(), {
+    const result = await harness.provider.parseV2(request(), {
       timeoutMs: 30000,
       ownerUserId: ownerA,
     });
@@ -358,7 +410,7 @@ describe("CodexDirectProviderAdapter (T216)", () => {
     const missing = setup(connection(ownerA, connectionA));
     missing.sessionStore.readSession.mockRejectedValue(new Error("missing"));
     expect(
-      await missing.provider.parse(request(), {
+      await missing.provider.parseV2(request(), {
         timeoutMs: 30000,
         ownerUserId: ownerA,
       }),
@@ -366,7 +418,7 @@ describe("CodexDirectProviderAdapter (T216)", () => {
 
     const foreign = setup(connection(ownerA, connectionA, referenceB));
     expect(
-      await foreign.provider.parse(request(), {
+      await foreign.provider.parseV2(request(), {
         timeoutMs: 30000,
         ownerUserId: ownerA,
       }),
@@ -379,7 +431,7 @@ describe("CodexDirectProviderAdapter (T216)", () => {
       }),
     );
     expect(
-      await deleted.provider.parse(request(), {
+      await deleted.provider.parseV2(request(), {
         timeoutMs: 30000,
         ownerUserId: ownerA,
       }),
@@ -388,7 +440,7 @@ describe("CodexDirectProviderAdapter (T216)", () => {
 
   it("cannot resolve owner A through owner B's connection", async () => {
     const harness = setup(connection(ownerB, connectionB, referenceB));
-    const result = await harness.provider.parse(request(), {
+    const result = await harness.provider.parseV2(request(), {
       timeoutMs: 30000,
       ownerUserId: ownerA,
     });
@@ -404,10 +456,14 @@ describe("CodexDirectProviderAdapter (T216)", () => {
       ["protocol_invalid", "schema_violation"],
       ["timeout", "timeout"],
       ["cancelled", "cancelled"],
+      ["authentication_expired", "authentication_expired"],
+      ["authentication_revoked", "authentication_revoked"],
+      ["rate_limited", "rate_limited"],
+      ["quota_exceeded", "quota_exceeded"],
       ["provider_unavailable", "provider_unavailable"],
     ] as const) {
       const harness = setup(connection(), { ok: false, category });
-      const result = await harness.provider.parse(request(), {
+      const result = await harness.provider.parseV2(request(), {
         timeoutMs: 30000,
         ownerUserId: ownerA,
       });
@@ -421,7 +477,7 @@ describe("CodexDirectProviderAdapter (T216)", () => {
       ok: true,
       normalizedOutput: "not-json",
     });
-    const result = await harness.provider.parse(request(), {
+    const result = await harness.provider.parseV2(request(), {
       timeoutMs: 30000,
       ownerUserId: ownerA,
     });
@@ -437,14 +493,14 @@ describe("CodexDirectProviderAdapter (T216)", () => {
     const controller = new AbortController();
     controller.abort();
     expect(
-      await harness.provider.parse(request(), {
+      await harness.provider.parseV2(request(), {
         timeoutMs: 30000,
         ownerUserId: ownerA,
         abortSignal: controller.signal,
       }),
     ).toMatchObject({ ok: false, error: { code: "cancelled" } });
     expect(
-      await harness.provider.parse(request(), { timeoutMs: 30000 }),
+      await harness.provider.parseV2(request(), { timeoutMs: 30000 }),
     ).toMatchObject({ ok: false, error: { code: "unknown_provider_failure" } });
     expect(harness.transport.invoke).not.toHaveBeenCalled();
   });

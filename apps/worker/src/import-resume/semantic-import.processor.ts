@@ -27,6 +27,7 @@ import {
   consumesProcessingCapacity,
   generateSemanticWarnings,
   mapSemanticCandidates,
+  mapSemanticV2CandidatesToDraft,
   runLimitedDeterministicPartialFallback,
   serializeSemanticValidationDiagnostic,
   validationIssueCategory,
@@ -154,6 +155,18 @@ export class SemanticImportProcessor {
         );
         return;
       }
+      this.emitSourceFidelity(
+        document,
+        "source_extraction",
+        {
+          sourceCoverageCategory: "unknown",
+          sourceRefCount: undefined,
+          sourceCharacterCount: undefined,
+          acceptedCharacterCount: undefined,
+          truncationDetected: false,
+        },
+        input.correlationId,
+      );
 
       if (!this.ports.provider) {
         this.emitSemanticOutcome(
@@ -179,19 +192,28 @@ export class SemanticImportProcessor {
       this.logger.emit("semantic.provider_invocation_started", {
         importId: document.id,
         contractVersion: resumeSemanticParserContractVersion,
+        requestContractVersion: resumeSemanticParserContractVersion,
+        responseContractVersion: "nuvitae.semantic-extraction.v2",
         ...(requestResult.data.correlationId === null ||
         requestResult.data.correlationId === undefined
           ? {}
           : { correlationId: requestResult.data.correlationId }),
       });
-      const providerResult = await this.ports.provider.parse(
-        requestResult.data,
-        {
-          timeoutMs: this.ports.provider.capabilities.maxTimeoutMs,
-          ownerUserId: input.ownerUserId,
-          ...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
-        },
-      );
+      const invocationOptions = {
+        timeoutMs: this.ports.provider.capabilities.maxTimeoutMs,
+        ownerUserId: input.ownerUserId,
+        ...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
+      };
+      const providerResult =
+        this.ports.provider.parseV2 === undefined
+          ? await this.ports.provider.parse(
+              requestResult.data,
+              invocationOptions,
+            )
+          : await this.ports.provider.parseV2(
+              requestResult.data,
+              invocationOptions,
+            );
       if (!providerResult.ok) {
         if (
           input.abortSignal?.aborted ||
@@ -229,7 +251,11 @@ export class SemanticImportProcessor {
           this.emitSemanticOutcome(
             document,
             started,
-            providerResult.error.code,
+            providerResult.error.validationIssues.some(
+              (issue) => issue.code === "v2_invalid_envelope",
+            )
+              ? "v2_invalid_envelope"
+              : providerResult.error.code,
             providerResult.error.retryable,
             0,
             providerResult.error.validationIssues.length,
@@ -266,6 +292,136 @@ export class SemanticImportProcessor {
           0,
           input.correlationId,
         );
+        return;
+      }
+      if ("canonical" in providerResult) {
+        const canonical = providerResult.canonical;
+        const summaryCandidate = canonical.candidates.find(
+          (candidate) => candidate.fieldPath === "summary",
+        );
+        this.emitSourceFidelity(
+          document,
+          "provider_response",
+          {
+            sourceCoverageCategory:
+              summaryCandidate === undefined ? "unknown" : "grounded",
+            sourceRefCount: summaryCandidate?.evidence.length,
+            sourceCharacterCount:
+              summaryCandidate === undefined
+                ? undefined
+                : evidenceCharacterCount(summaryCandidate.evidence),
+            acceptedCharacterCount: summaryCandidate?.value.length,
+            truncationDetected: false,
+          },
+          input.correlationId,
+        );
+        if (canonical.candidates.length === 0) {
+          this.emitSemanticOutcome(
+            document,
+            started,
+            "v2_zero_accepted_fields",
+            false,
+            0,
+            canonical.rejected.length,
+            input.correlationId,
+          );
+          if (!input.abortSignal?.aborted) {
+            await this.runFallbackOrLeaveTerminal(
+              document,
+              requestResult.data,
+              extracted.fragments,
+              "malformed_provider_output",
+              started,
+              input,
+            );
+          }
+          return;
+        }
+        for (const rejected of canonical.rejected.slice(0, 20)) {
+          this.logger.emit("semantic.validation_diagnostics", {
+            category: "schema",
+            code: rejected.code,
+            retryable: false,
+            requiresReview: true,
+            path: rejected.path,
+            importId: document.id,
+            ...(input.correlationId === undefined
+              ? {}
+              : { correlationId: input.correlationId }),
+          });
+        }
+        const mapping = mapSemanticV2CandidatesToDraft({
+          candidates: canonical.candidates,
+          rejected: canonical.rejected,
+          signals: canonical.signals,
+          document,
+        });
+        const draftResult = buildExtractionDraft({
+          importedDocument: document,
+          fields: mapping.fields,
+          warnings: mapping.warnings,
+          missingOrUnprocessedSections: [],
+          ids: {
+            draftId: randomUUID,
+            fieldId: randomUUID,
+            warningId: randomUUID,
+          },
+          now: this.clock.now(),
+        });
+        this.emitSourceFidelityForCandidates(
+          document,
+          canonical.candidates,
+          mapping.fields,
+          input.correlationId,
+        );
+        this.emitSemanticOutcome(
+          document,
+          started,
+          canonical.rejected.length > 0 || canonical.signals.length > 0
+            ? "v2_partial_acceptance"
+            : "v2_success",
+          false,
+          canonical.candidates.length,
+          canonical.rejected.length + canonical.signals.length,
+          input.correlationId,
+        );
+        if (!draftResult.draft) {
+          await this.transition(document, "semantic_validation_failed");
+          return;
+        }
+        await this.ports.transactionRunner.transaction(async (manager) => {
+          const current = await this.ports.repository.findImportByOwner(
+            document.id,
+            document.ownerUserId,
+            manager,
+          );
+          if (
+            !current ||
+            current.document.processingStatus === "ready_for_review" ||
+            (await this.ports.repository.findDraftByImportAndOwner(
+              document.id,
+              document.ownerUserId,
+              manager,
+            ))
+          )
+            return;
+          await this.ports.repository.saveDraft(draftResult.draft!, manager);
+          await this.ports.repository.saveImportLifecycle(
+            { ...current.document, processingStatus: "ready_for_review" },
+            manager,
+          );
+          this.logger.emit("review.draft_created", {
+            importId: document.id,
+            draftId: draftResult.draft!.id,
+            status:
+              draftResult.draft!.status === "ready_to_confirm"
+                ? "ready_to_confirm"
+                : "review_required",
+            fieldCountBucket: bucket(draftResult.draft!.fields.length),
+            warningCountBucket: bucket(draftResult.draft!.warnings.length),
+          });
+        });
+        await this.releaseCapacity(document.id, document.ownerUserId);
         return;
       }
       const validation = validateSemanticResponse({
@@ -643,6 +799,143 @@ export class SemanticImportProcessor {
       ...(correlationId === undefined ? {} : { correlationId }),
     });
   }
+
+  private emitSourceFidelity(
+    document: ImportedDocument,
+    stage: "source_extraction" | "provider_response",
+    measurements: {
+      readonly sourceCoverageCategory: "unknown" | "grounded";
+      readonly sourceRefCount: number | undefined;
+      readonly sourceCharacterCount: number | undefined;
+      readonly acceptedCharacterCount: number | undefined;
+      readonly truncationDetected: boolean;
+    },
+    correlationId?: string,
+  ): void {
+    this.logger.emit("semantic.source_fidelity", {
+      importId: document.id,
+      stage,
+      longFormFieldCategory: "summary",
+      sourceCoverageCategory: measurements.sourceCoverageCategory,
+      sourceRefCountBucket:
+        measurements.sourceRefCount === undefined
+          ? "unknown"
+          : countBucket(measurements.sourceRefCount),
+      sourceCharacterCountBucket: characterBucket(
+        measurements.sourceCharacterCount,
+      ),
+      acceptedCharacterCountBucket: characterBucket(
+        measurements.acceptedCharacterCount,
+      ),
+      truncationDetected: measurements.truncationDetected,
+      ...(correlationId === undefined ? {} : { correlationId }),
+    });
+  }
+
+  private emitSourceFidelityForCandidates(
+    document: ImportedDocument,
+    candidates: readonly {
+      readonly fieldPath: string;
+      readonly value: string;
+      readonly evidence: readonly { readonly quote: string }[];
+    }[],
+    fields: readonly DeterministicResumeFieldCandidate[],
+    correlationId?: string,
+  ): void {
+    for (const candidate of candidates) {
+      const category = longFormCategory(candidate.fieldPath);
+      if (category === undefined) continue;
+      const draftField = fields.find(
+        (field) => field.fieldPath === draftFieldPath(candidate.fieldPath),
+      );
+      this.logger.emit("semantic.source_fidelity", {
+        importId: document.id,
+        stage: "canonical_candidate",
+        longFormFieldCategory: category,
+        sourceCoverageCategory: "grounded",
+        sourceRefCountBucket: countBucket(candidate.evidence.length),
+        sourceCharacterCountBucket: characterBucket(
+          evidenceCharacterCount(candidate.evidence),
+        ),
+        acceptedCharacterCountBucket: characterBucket(candidate.value.length),
+        truncationDetected: false,
+        ...(correlationId === undefined ? {} : { correlationId }),
+      });
+      if (draftField !== undefined) {
+        const accepted =
+          draftField.value.kind === "text"
+            ? draftField.value.value.length
+            : draftField.value.kind === "link"
+              ? draftField.value.url.length
+              : 0;
+        this.logger.emit("semantic.source_fidelity", {
+          importId: document.id,
+          stage: "draft_field",
+          longFormFieldCategory: category,
+          sourceCoverageCategory: "grounded",
+          sourceRefCountBucket: countBucket(candidate.evidence.length),
+          sourceCharacterCountBucket: characterBucket(
+            evidenceCharacterCount(candidate.evidence),
+          ),
+          acceptedCharacterCountBucket: characterBucket(accepted),
+          truncationDetected: accepted !== candidate.value.length,
+          ...(correlationId === undefined ? {} : { correlationId }),
+        });
+      }
+    }
+  }
+}
+
+function longFormCategory(
+  fieldPath: string,
+): "summary" | "work_bullet" | "project_description" | undefined {
+  if (fieldPath === "summary") return "summary";
+  if (/\.responsibilities\.\d+$/u.test(fieldPath)) return "work_bullet";
+  if (/\.achievements\.\d+$/u.test(fieldPath)) return "work_bullet";
+  if (/^projects\.\d+\.description$/u.test(fieldPath))
+    return "project_description";
+  return undefined;
+}
+
+function draftFieldPath(fieldPath: string): string {
+  return fieldPath
+    .replace(/^workExperience/u, "work_experience")
+    .replace(/^professionalLinks/u, "professional_links")
+    .replace(/\.startDate$/u, ".start_date")
+    .replace(/\.endDate$/u, ".end_date")
+    .replace(/\.employerName$/u, ".employer")
+    .replace(/\.employerLocation$/u, ".employer_location")
+    .replace(/\.fieldOfStudy$/u, ".field_of_study");
+}
+
+function countBucket(value: number): "0-4" | "5-19" | "20-99" | "100+" {
+  if (value < 5) return "0-4";
+  if (value < 20) return "5-19";
+  if (value < 100) return "20-99";
+  return "100+";
+}
+
+function characterBucket(
+  value: number | undefined,
+):
+  | "unknown"
+  | "none"
+  | "under_256"
+  | "256_to_999"
+  | "1000_to_3999"
+  | "4000_plus" {
+  if (value === undefined) return "unknown";
+  if (value === 0) return "none";
+  if (value < 256) return "under_256";
+  if (value < 1_000) return "256_to_999";
+  if (value < 4_000) return "1000_to_3999";
+  return "4000_plus";
+}
+
+function evidenceCharacterCount(
+  evidence: readonly { readonly quote: string }[],
+): number {
+  return evidence.reduce((total, item) => total + item.quote.length, 0);
 }
 
 const fallbackMissingSections = [

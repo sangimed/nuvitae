@@ -84,6 +84,7 @@ function setup(
   provider?: ResumeSemanticParserProvider,
   textItems = ["Ada Lovelace"],
 ) {
+  const logger = { emit: vi.fn() };
   const repository = {
     findImportByOwner: vi.fn(async () => ({
       document: document(),
@@ -133,8 +134,9 @@ function setup(
     docxTextExtractor: {} as never,
     provider,
     clock: { now: () => now },
+    logger: logger as never,
   });
-  return { processor, repository, transactionRunner, textExtractor };
+  return { processor, repository, transactionRunner, textExtractor, logger };
 }
 
 const provider = {
@@ -223,6 +225,30 @@ describe("SemanticImportProcessor", () => {
     expect(JSON.stringify(repository.saveDraft.mock.calls)).not.toContain(
       "schemaVersion",
     );
+  });
+
+  it("does not label the whole normalized document as source-stage Summary", async () => {
+    const harness = setup(provider, [
+      "Ada Lovelace",
+      ...Array.from({ length: 120 }, (_, index) => `Document line ${index}`),
+    ]);
+
+    await harness.processor.process({
+      ownerUserId,
+      importedDocumentId: importId,
+    });
+
+    const sourceStage = harness.logger.emit.mock.calls.find(
+      ([event]) => event === "semantic.source_fidelity",
+    );
+    expect(sourceStage?.[1]).toMatchObject({
+      stage: "source_extraction",
+      longFormFieldCategory: "summary",
+      sourceCoverageCategory: "unknown",
+      sourceRefCountBucket: "unknown",
+      sourceCharacterCountBucket: "unknown",
+      acceptedCharacterCountBucket: "unknown",
+    });
   });
 
   it.each([
@@ -448,6 +474,42 @@ describe("SemanticImportProcessor", () => {
 
       expect(terminalProvider.parse).toHaveBeenCalledTimes(1);
       expect(repository.saveDraft).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([
+    ["authentication_expired", false],
+    ["authentication_revoked", false],
+    ["provider_unavailable", true],
+    ["rate_limited", true],
+    ["quota_exceeded", false],
+  ] as const)(
+    "emits the provider-neutral semantic outcome %s",
+    async (code, retryable) => {
+      const terminalProvider = {
+        ...provider,
+        parse: vi.fn(async () => ({
+          ok: false as const,
+          error: {
+            code,
+            retryable,
+            recoveryActions: ["manual_entry"] as const,
+            diagnostic: code,
+            validationIssues: [],
+          },
+        })),
+      } satisfies ResumeSemanticParserProvider;
+      const harness = setup(terminalProvider, ["Email: jane@example.com"]);
+
+      await harness.processor.process({
+        ownerUserId,
+        importedDocumentId: importId,
+      });
+
+      const outcome = harness.logger.emit.mock.calls.find(
+        ([event]) => event === "semantic.outcome",
+      );
+      expect(outcome?.[1]).toMatchObject({ outcome: code, retryable });
     },
   );
 

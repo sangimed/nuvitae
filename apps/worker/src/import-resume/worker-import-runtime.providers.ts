@@ -88,6 +88,13 @@ export function createProductionSemanticParserProvider(
             logger.emit("semantic.provider_transport_timing", timing),
           onTransportProtocolShape: (shape) =>
             logger.emit("semantic.provider_protocol_shape", shape),
+          onTransportSseError: (diagnostic) =>
+            logger.emit("semantic.provider_sse_error", diagnostic),
+          onV2EnvelopeDiagnostic: (diagnostic) =>
+            logger.emit(
+              "semantic.provider_v2_envelope_diagnostics",
+              diagnostic,
+            ),
         }),
   });
 }

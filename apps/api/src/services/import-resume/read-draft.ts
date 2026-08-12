@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
+  extractedValueSchema,
   importResumeResponseSchemaVersion,
   reviewDraftReadResponseSchema,
   type GroupedReviewSection,
@@ -198,7 +199,10 @@ function toReviewField(
   return {
     fieldId: field.id,
     fieldPath: field.fieldPath,
-    value: field.value as ReviewField["value"],
+    // Persistence is JSONB, so validate every value again at the public read
+    // boundary. This keeps malformed legacy data fail-closed while allowing
+    // the canonical present/current variant to omit calendar components.
+    value: extractedValueSchema.parse(field.value),
     sourceStatus: field.sourceStatus,
     confidenceStatus: field.confidenceStatus,
     inferenceStatus: field.inferenceStatus,

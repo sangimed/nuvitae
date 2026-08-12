@@ -864,7 +864,7 @@ describe("hostile-document security suite (T066)", () => {
       expect(result.ok).toBe(true);
     });
 
-    it("PDF adapter rejects visible path-traversal text in page content", async () => {
+    it("PDF adapter accepts visible path-traversal text as passive page content", async () => {
       const hostile = await buildPdf({
         pages: [["Attempting to read ../../../etc/passwd from file system"]],
       });
@@ -872,7 +872,12 @@ describe("hostile-document security suite (T066)", () => {
         maximumFileSizeBytes: 1_000_000,
         maximumPageCount: 5,
       }).extractSelectableText(pdfRequest());
-      expect(result.ok).toBe(false);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(
+          result.value.flatMap((page) => page.items.map((item) => item.text)),
+        ).toContain("Attempting to read ../../../etc/passwd from file system");
+      }
     });
 
     it("PDF adapter accepts safe page content with structural checks passing", async () => {

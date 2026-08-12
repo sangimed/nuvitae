@@ -13,10 +13,23 @@ export type ExtractionFailureCategory =
   | "cancelled"
   | "unexpected";
 
+export const pdfSafetyReasonCodes = [
+  "pdf_javascript_action",
+  "pdf_launch_action",
+  "pdf_embedded_file",
+  "pdf_rich_media",
+  "pdf_unsupported_active_content",
+  "pdf_unclassified_action",
+  "pdf_malformed_active_content",
+] as const;
+
+export type PdfSafetyReasonCode = (typeof pdfSafetyReasonCodes)[number];
+
 export interface ExtractionFailure {
   readonly category: ExtractionFailureCategory;
   readonly retryable: boolean;
   readonly message: string;
+  readonly safetyReason?: PdfSafetyReasonCode;
 }
 
 export type ExtractionResult<Value> =

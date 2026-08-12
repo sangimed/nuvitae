@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { importResumeResponseSchemaVersion } from "./responses.js";
+import { resumeDateSchema } from "./resume-date.js";
 
 const uuidSchema = z.string().uuid();
 const isoDateSchema = z.string().datetime();
@@ -34,14 +35,7 @@ export const reviewActionSchema = z.enum([
   "intentionally_leave",
 ]);
 
-export const reviewResumeDateSchema = z
-  .object({
-    year: z.number().int().min(1900).max(2100),
-    month: z.number().int().min(1).max(12).optional(),
-    precision: z.enum(["year", "month", "day"]),
-    originalText: z.string().min(1).max(80).optional(),
-  })
-  .strict();
+export const reviewResumeDateSchema = resumeDateSchema;
 
 export const extractedValueSchema = z.discriminatedUnion("kind", [
   z

@@ -765,6 +765,8 @@ describe("privacy-safe import logging (T068)", () => {
       expect(started?.metadata).toEqual({
         importId: docA,
         contractVersion: "nuvitae.resume-semantic-parser.v1",
+        requestContractVersion: "nuvitae.resume-semantic-parser.v1",
+        responseContractVersion: "nuvitae.semantic-extraction.v2",
         correlationId: docA,
       });
       expect(serialized(harness.logs)).not.toContain(sentinels.transcript);
