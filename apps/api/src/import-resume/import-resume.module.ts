@@ -22,6 +22,7 @@ import {
 import { ReadImportDraftService } from "../services/import-resume/read-draft.js";
 import { UpdateImportReviewService } from "../services/import-resume/update-review.js";
 import { ConfirmStructuredResumeService } from "../services/import-resume/confirm-structured-resume.js";
+import { ImportTimingController } from "./import-timing.controller.js";
 
 export interface ImportResumeModuleOptions {
   readonly imports?: ModuleMetadata["imports"];
@@ -46,6 +47,7 @@ export class ImportResumeModule {
         ReviewController,
         ConfirmController,
         ConfirmedStructuredResumeController,
+        ImportTimingController,
         ...(options.controllers === undefined ? [] : [...options.controllers]),
       ],
       providers: [

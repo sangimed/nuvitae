@@ -29,6 +29,7 @@ import {
   mapSemanticCandidates,
   mapSemanticV2CandidatesToDraft,
   runLimitedDeterministicPartialFallback,
+  emitImportTiming,
   serializeSemanticValidationDiagnostic,
   validationIssueCategory,
   validateSemanticResponse,
@@ -118,6 +119,7 @@ export class SemanticImportProcessor {
       const extracted = await this.readAndNormalize(
         document,
         input.abortSignal,
+        input.correlationId,
       );
       if (!extracted.ok) {
         await this.transition(
@@ -189,6 +191,15 @@ export class SemanticImportProcessor {
         return;
       }
 
+      const providerStartedAt = this.clock.now();
+      emitImportTiming(this.logger, {
+        importId: document.id,
+        correlationId: input.correlationId,
+        phase: "provider_started",
+        source: "worker",
+        at: providerStartedAt,
+        uploadReceivedAt: document.createdAt,
+      });
       this.logger.emit("semantic.provider_invocation_started", {
         importId: document.id,
         contractVersion: resumeSemanticParserContractVersion,
@@ -214,6 +225,16 @@ export class SemanticImportProcessor {
               requestResult.data,
               invocationOptions,
             );
+      const providerCompletedAt = this.clock.now();
+      emitImportTiming(this.logger, {
+        importId: document.id,
+        correlationId: input.correlationId,
+        phase: "semantic_parsing_completed",
+        source: "worker",
+        at: providerCompletedAt,
+        durationMs: providerCompletedAt.getTime() - providerStartedAt.getTime(),
+        uploadReceivedAt: document.createdAt,
+      });
       if (!providerResult.ok) {
         if (
           input.abortSignal?.aborted ||
@@ -421,6 +442,14 @@ export class SemanticImportProcessor {
             warningCountBucket: bucket(draftResult.draft!.warnings.length),
           });
         });
+        emitImportTiming(this.logger, {
+          importId: document.id,
+          correlationId: input.correlationId,
+          phase: "draft_persisted",
+          source: "worker",
+          at: this.clock.now(),
+          uploadReceivedAt: document.createdAt,
+        });
         await this.releaseCapacity(document.id, document.ownerUserId);
         return;
       }
@@ -531,6 +560,14 @@ export class SemanticImportProcessor {
           fieldCountBucket: bucket(draftResult.draft!.fields.length),
           warningCountBucket: bucket(draftResult.draft!.warnings.length),
         });
+      });
+      emitImportTiming(this.logger, {
+        importId: document.id,
+        correlationId: input.correlationId,
+        phase: "draft_persisted",
+        source: "worker",
+        at: this.clock.now(),
+        uploadReceivedAt: document.createdAt,
       });
       await this.releaseCapacity(document.id, document.ownerUserId);
     } catch (error) {
@@ -671,6 +708,14 @@ export class SemanticImportProcessor {
         warningCountBucket: bucket(draftResult.draft!.warnings.length),
       });
     });
+    emitImportTiming(this.logger, {
+      importId: document.id,
+      correlationId: input.correlationId,
+      phase: "draft_persisted",
+      source: "worker",
+      at: this.clock.now(),
+      uploadReceivedAt: document.createdAt,
+    });
     await this.releaseCapacity(document.id, document.ownerUserId);
     this.emitSemanticOutcome(
       document,
@@ -686,11 +731,13 @@ export class SemanticImportProcessor {
   private async readAndNormalize(
     document: ImportedDocument,
     abortSignal?: AbortSignal,
+    correlationId?: string,
   ) {
     if (!document.storageKey || !document.fileExtension || abortSignal?.aborted)
       return { ok: false as const, cancelled: abortSignal?.aborted === true };
     let fragments: readonly ResumeSourceFragment[];
     if (document.fileExtension === "pdf") {
+      const extractionStartedAt = this.clock.now();
       const result = await this.ports.pdfTextExtractor.extractSelectableText({
         importId: document.id,
         ownerUserId: document.ownerUserId,
@@ -703,9 +750,31 @@ export class SemanticImportProcessor {
           ok: false as const,
           cancelled: result.error.category === "cancelled",
         };
+      const extractedAt = this.clock.now();
+      emitImportTiming(this.logger, {
+        importId: document.id,
+        correlationId,
+        phase: "extraction_completed",
+        source: "worker",
+        at: extractedAt,
+        durationMs: extractedAt.getTime() - extractionStartedAt.getTime(),
+        uploadReceivedAt: document.createdAt,
+      });
+      const normalizationStartedAt = extractedAt;
       fragments = fragmentsFromPdf(result.value as readonly PdfPageText[]);
-      this.emitTranscriptNormalized(document, fragments);
+      const normalizedAt = this.clock.now();
+      emitImportTiming(this.logger, {
+        importId: document.id,
+        correlationId,
+        phase: "normalization_completed",
+        source: "worker",
+        at: normalizedAt,
+        durationMs: normalizedAt.getTime() - normalizationStartedAt.getTime(),
+        uploadReceivedAt: document.createdAt,
+      });
+      this.emitTranscriptNormalized(document, fragments, correlationId);
     } else {
+      const extractionStartedAt = this.clock.now();
       const result = await this.ports.docxTextExtractor.extractText({
         importId: document.id,
         ownerUserId: document.ownerUserId,
@@ -718,8 +787,29 @@ export class SemanticImportProcessor {
           ok: false as const,
           cancelled: result.error.category === "cancelled",
         };
+      const extractedAt = this.clock.now();
+      emitImportTiming(this.logger, {
+        importId: document.id,
+        correlationId,
+        phase: "extraction_completed",
+        source: "worker",
+        at: extractedAt,
+        durationMs: extractedAt.getTime() - extractionStartedAt.getTime(),
+        uploadReceivedAt: document.createdAt,
+      });
+      const normalizationStartedAt = extractedAt;
       fragments = fragmentsFromDocx(result.value);
-      this.emitTranscriptNormalized(document, fragments);
+      const normalizedAt = this.clock.now();
+      emitImportTiming(this.logger, {
+        importId: document.id,
+        correlationId,
+        phase: "normalization_completed",
+        source: "worker",
+        at: normalizedAt,
+        durationMs: normalizedAt.getTime() - normalizationStartedAt.getTime(),
+        uploadReceivedAt: document.createdAt,
+      });
+      this.emitTranscriptNormalized(document, fragments, correlationId);
     }
     return { ok: true as const, fragments };
   }
@@ -727,6 +817,7 @@ export class SemanticImportProcessor {
   private emitTranscriptNormalized(
     document: ImportedDocument,
     fragments: readonly ResumeSourceFragment[],
+    correlationId?: string,
   ): void {
     this.logger.emit("extraction.transcript_normalized", {
       importId: document.id,
@@ -735,6 +826,7 @@ export class SemanticImportProcessor {
       lineCountBucket: bucket(
         fragments.filter((fragment) => fragment.text.trim().length > 0).length,
       ),
+      ...(correlationId === undefined ? {} : { correlationId }),
     });
   }
 

@@ -41,6 +41,7 @@ export type CodexDirectTransportTimingPhase =
   | "request_started"
   | "response_headers"
   | "first_byte"
+  | "first_semantic_output"
   | "sse_started"
   | "completion_event"
   | "response_eof"
@@ -57,6 +58,7 @@ export type CodexDirectHttpStatusCategory =
 
 export interface CodexDirectTransportTiming {
   readonly phase: CodexDirectTransportTimingPhase;
+  readonly timestampMs: number;
   readonly elapsedMs: number;
   readonly httpStatusCategory: CodexDirectHttpStatusCategory;
   readonly firstByteReceived: boolean;
@@ -335,6 +337,7 @@ export class CodexDirectTransport {
         if (firstSemanticOutputSeen) return;
         firstSemanticOutputSeen = true;
         if (firstOutputTimer !== undefined) clearTimeout(firstOutputTimer);
+        emitTiming(input, timingState, startedAt, "first_semantic_output");
         resetStreamIdleTimer();
       };
       if (protocol === "sse") {
@@ -759,9 +762,11 @@ function emitTiming(
   phase: CodexDirectTransportTimingPhase,
 ): void {
   try {
+    const timestampMs = Date.now();
     input.onTiming?.({
       phase,
-      elapsedMs: Math.max(0, Date.now() - startedAt),
+      timestampMs,
+      elapsedMs: Math.max(0, timestampMs - startedAt),
       httpStatusCategory: state.httpStatusCategory,
       firstByteReceived: state.firstByteReceived,
       sseStarted: state.sseStarted,

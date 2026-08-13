@@ -12,6 +12,7 @@ import {
 import type { ImportedDocument } from "@nuvitae/domain";
 import {
   ProcessingStartDeniedError,
+  emitImportTiming,
   type ImportEventEmitter,
   type ImportProcessingCapacityPort,
 } from "@nuvitae/import-application";
@@ -43,6 +44,8 @@ export interface WorkerImportValidationUseCase {
   validate(input: {
     ownerUserId: string;
     importedDocumentId: string;
+    correlationId?: string;
+    uploadReceivedAt?: Date;
     abortSignal?: AbortSignal;
   }): Promise<{ accepted: boolean }>;
 }
@@ -77,6 +80,7 @@ export const WORKER_IMPORT_EVENT_EMITTER = Symbol(
 export const WORKER_IMPORT_CAPACITY_PORT = Symbol(
   "WORKER_IMPORT_CAPACITY_PORT",
 );
+export const WORKER_IMPORT_CLOCK = Symbol("WORKER_IMPORT_CLOCK");
 
 @Injectable()
 @Processor(IMPORT_RESUME_PROCESSING_QUEUE, {
@@ -103,9 +107,15 @@ export class ImportProcessingProcessor extends WorkerHost {
     @Inject(WORKER_IMPORT_CAPACITY_PORT)
     private readonly capacity:
       ImportProcessingCapacityPort | undefined = undefined,
+    @Optional()
+    @Inject(WORKER_IMPORT_CLOCK)
+    clock?: { readonly now: () => Date },
   ) {
     super();
+    this.clock = clock ?? { now: () => new Date() };
   }
+
+  private readonly clock: { readonly now: () => Date };
 
   async process(job: Job<unknown>): Promise<void> {
     switch (job.name) {
@@ -127,6 +137,21 @@ export class ImportProcessingProcessor extends WorkerHost {
     if (this.validation === undefined)
       throw new Error("validation_use_case_unavailable");
     const payload = parsePayload(documentValidationJobPayloadSchema, job.data);
+    const workerStartedAt = this.clock.now();
+    if (this.events !== undefined) {
+      emitImportTiming(this.events, {
+        importId: payload.importId,
+        correlationId: payload.correlationId,
+        phase: "worker_started",
+        source: "worker",
+        at: workerStartedAt,
+        durationMs:
+          typeof job.timestamp === "number"
+            ? workerStartedAt.getTime() - job.timestamp
+            : undefined,
+        uploadReceivedAt: new Date(payload.requestedAt),
+      });
+    }
     const document = await this.findOwnedDocument(
       payload.importId,
       payload.owner.ownerUserId,
@@ -143,6 +168,8 @@ export class ImportProcessingProcessor extends WorkerHost {
       const result = await this.validation.validate({
         ownerUserId: document.ownerUserId,
         importedDocumentId: document.id,
+        correlationId: payload.correlationId,
+        uploadReceivedAt: new Date(payload.requestedAt),
         abortSignal: signal,
       });
       if (!result.accepted || signal.aborted) return;

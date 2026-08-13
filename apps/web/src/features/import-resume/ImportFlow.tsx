@@ -22,6 +22,7 @@ import { ProcessingStep } from "./ProcessingStep";
 import { UploadStep } from "./UploadStep";
 import { pollImportStatus } from "../../services/import-resume/import-status-client";
 import { startImportUpload } from "../../services/import-resume/start-import-client";
+import { recordImportTiming } from "../../services/import-resume/import-timing-client";
 
 const initialProcessingStatus = (
   importId: string,
@@ -145,6 +146,8 @@ export function ImportFlow() {
   const uploadInFlight = useRef(false);
   const processingAnnouncedImportRef = useRef<string | null>(null);
   const announcedUnknownRef = useRef(false);
+  const firstPollTimedImportRef = useRef<string | null>(null);
+  const reviewAvailableTimedImportRef = useRef<string | null>(null);
 
   const activeImportId = useMemo(
     () => ("importId" in state ? state.importId : undefined),
@@ -175,6 +178,28 @@ export function ImportFlow() {
         applyStatusState(next, setState);
       },
       onConnectivityLost: setConnectivityMessage,
+      onTiming: (timing) => {
+        if (
+          timing.phase === "review_first_poll" &&
+          firstPollTimedImportRef.current !== activeImportId
+        ) {
+          firstPollTimedImportRef.current = activeImportId;
+          recordImportTiming({ importId: activeImportId, phase: timing.phase });
+        }
+        if (
+          timing.phase === "review_available_to_client" &&
+          reviewAvailableTimedImportRef.current !== activeImportId
+        ) {
+          reviewAvailableTimedImportRef.current = activeImportId;
+          recordImportTiming({
+            importId: activeImportId,
+            phase: timing.phase,
+            ...(timing.durationMs === undefined
+              ? {}
+              : { durationMs: timing.durationMs }),
+          });
+        }
+      },
     });
     return () => controller.abort();
   }, [activeImportId, status]);
@@ -243,6 +268,8 @@ export function ImportFlow() {
     setStatus(undefined);
     setAnnouncement(undefined);
     processingAnnouncedImportRef.current = null;
+    firstPollTimedImportRef.current = null;
+    reviewAvailableTimedImportRef.current = null;
     announcedUnknownRef.current = false;
     setState({ state: "upload_selection" });
   }

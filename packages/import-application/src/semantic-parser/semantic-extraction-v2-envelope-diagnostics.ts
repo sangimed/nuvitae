@@ -8,7 +8,11 @@ import {
 } from "@nuvitae/contracts";
 
 import {
+  expandCompactSemanticExtractionV2ResponseForDiagnostics,
   inspectSemanticExtractionV2Structure,
+  type SemanticExtractionV2WholeEnvelopeFailureCategory,
+  type V2CanonicalizationResult,
+  type V2RejectedField,
   type V2StructuralInspection,
 } from "./semantic-extraction-v2-canonicalizer.js";
 
@@ -44,6 +48,19 @@ export type SemanticExtractionV2EnvelopeStructuralReason =
   | "top_level_envelope"
   | "canonicalizer_exception";
 
+export type SemanticExtractionV2FieldFailureCategory =
+  | "invalid_candidate_shape"
+  | "invalid_source_ref_shape"
+  | "unsupported_typed_value_shape"
+  | "other_schema_violation";
+
+export type SemanticExtractionV2UnrecognizedKeyCategory =
+  | "none"
+  | "known_alias_wrong_location"
+  | "unknown_contact_key"
+  | "misplaced_existing_semantic_field"
+  | "unknown_structural_key";
+
 export type SemanticExtractionV2CountBucket =
   "0-4" | "5-19" | "20-99" | "100-199" | "200-499" | "500-999" | "1000+";
 
@@ -55,12 +72,15 @@ export interface SemanticExtractionV2EnvelopeDiagnostic {
   readonly semanticJsonParseSucceeded: boolean;
   readonly canonicalizerReached: boolean;
   readonly failureStage: SemanticExtractionV2EnvelopeFailureStage;
+  readonly failureLevel: "whole_envelope_unusable";
+  readonly failureCategory: SemanticExtractionV2WholeEnvelopeFailureCategory;
   readonly topLevelValueCategory: SemanticExtractionV2ValueCategory;
   readonly schemaVersionCategory: SemanticExtractionV2SchemaVersionCategory;
   readonly topLevelKeys: readonly string[];
   readonly missingTopLevelKeys: readonly string[];
   readonly unexpectedTopLevelKeys: readonly string[];
   readonly unrecognizedTopLevelKeyPresent: boolean;
+  readonly unrecognizedKeyCategory: SemanticExtractionV2UnrecognizedKeyCategory;
   readonly sectionsValueCategory: SemanticExtractionV2ValueCategory;
   readonly sectionKeys: readonly string[];
   readonly missingSectionKeys: readonly string[];
@@ -70,6 +90,7 @@ export interface SemanticExtractionV2EnvelopeDiagnostic {
   readonly ambiguitiesValueCategory: SemanticExtractionV2ValueCategory;
   readonly conflictsValueCategory: SemanticExtractionV2ValueCategory;
   readonly structuralReason: SemanticExtractionV2EnvelopeStructuralReason;
+  readonly normalizedOutputBytesBucket: SemanticExtractionV2SerializedBytesBucket;
   readonly serializedResponseBytesBucket: SemanticExtractionV2SerializedBytesBucket;
   readonly totalAtomCountBucket: SemanticExtractionV2CountBucket;
   readonly totalNodeCountBucket: SemanticExtractionV2CountBucket;
@@ -98,6 +119,17 @@ export interface SemanticExtractionV2EnvelopeDiagnostic {
   readonly firstZodIssueCode?: string;
   readonly firstZodPath: readonly string[];
   readonly issueCountBucket: "0-4" | "5-19" | "20-99" | "100+";
+}
+
+export interface SemanticExtractionV2FieldDiagnostic {
+  readonly responseContractVersion: typeof nuvitaeSemanticExtractionV2ResponseVersion;
+  readonly failureLevel: "field_level_rejection";
+  readonly failureCategory: SemanticExtractionV2FieldFailureCategory;
+  readonly acceptedCandidateCountBucket: SemanticExtractionV2CountBucket;
+  readonly rejectedFieldCountBucket: SemanticExtractionV2CountBucket;
+  readonly signalCountBucket: SemanticExtractionV2CountBucket;
+  readonly rejectionCategories: readonly SemanticExtractionV2FieldFailureCategory[];
+  readonly firstRejectedPath: readonly (string | number)[];
 }
 
 const topLevelKeys = [
@@ -187,24 +219,60 @@ const schemaFieldNames = new Set([
   "to",
 ]);
 
+const contactKeys = new Set([
+  "fullName",
+  "email",
+  "phone",
+  "location",
+  "website",
+]);
+
+const knownContactAliases = new Set([
+  "name",
+  "full_name",
+  "emailAddress",
+  "phoneNumber",
+  "address",
+  "contactInfo",
+]);
+
+const misplacedExistingSemanticFields = new Set([
+  "headline",
+  "title",
+  "roleTitle",
+  "employerLocation",
+  "professionalLinks",
+  "contactLinks",
+  "links",
+  "urls",
+  "profileLinks",
+  "socialLinks",
+]);
+
 export function diagnoseSemanticExtractionV2Envelope(input: {
   readonly response: unknown;
   readonly semanticJsonParseSucceeded: boolean;
   readonly canonicalizerReached: boolean;
   readonly failureStage: SemanticExtractionV2EnvelopeFailureStage;
+  readonly failureCategory?: SemanticExtractionV2WholeEnvelopeFailureCategory;
+  readonly normalizedOutputBytes?: number;
 }): SemanticExtractionV2EnvelopeDiagnostic {
-  const record = isRecord(input.response) ? input.response : undefined;
+  const normalizedResponse =
+    expandCompactSemanticExtractionV2ResponseForDiagnostics(input.response);
+  const normalizedRecord = isRecord(normalizedResponse)
+    ? normalizedResponse
+    : undefined;
   const parsed =
-    input.semanticJsonParseSucceeded && record !== undefined
-      ? nuvitaeSemanticExtractionV2EnvelopeSchema.safeParse(input.response)
+    input.semanticJsonParseSucceeded && normalizedRecord !== undefined
+      ? nuvitaeSemanticExtractionV2EnvelopeSchema.safeParse(normalizedResponse)
       : undefined;
   const topLevelProjection = projectKeys(
-    record,
+    normalizedRecord,
     topLevelKeys,
     knownUnexpectedTopLevelKeys,
   );
-  const sectionRecord = isRecord(record?.sections)
-    ? record.sections
+  const sectionRecord = isRecord(normalizedRecord?.sections)
+    ? normalizedRecord.sections
     : undefined;
   const sectionProjection = projectKeys(
     sectionRecord,
@@ -223,27 +291,52 @@ export function diagnoseSemanticExtractionV2Envelope(input: {
     topLevelValueCategory: input.semanticJsonParseSucceeded
       ? valueCategory(input.response)
       : "unparseable",
-    schemaVersionCategory: schemaVersionCategory(record),
+    schemaVersionCategory: schemaVersionCategory(normalizedRecord),
     topLevelKeys: topLevelProjection.expected,
     missingTopLevelKeys: topLevelProjection.missing,
     unexpectedTopLevelKeys: topLevelProjection.unexpected,
     unrecognizedTopLevelKeyPresent: topLevelProjection.unrecognized,
-    sectionsValueCategory: valueCategoryOrMissing(record, "sections"),
+    unrecognizedKeyCategory: classifyUnrecognizedKeyCategory({
+      record: normalizedRecord,
+      firstIssue,
+    }),
+    sectionsValueCategory: valueCategoryOrMissing(normalizedRecord, "sections"),
     sectionKeys: sectionProjection.expected,
     missingSectionKeys: sectionProjection.missing,
     unexpectedSectionKeys: sectionProjection.unexpected,
     unrecognizedSectionKeyPresent: sectionProjection.unrecognized,
-    relationshipsValueCategory: valueCategoryOrMissing(record, "relationships"),
-    ambiguitiesValueCategory: valueCategoryOrMissing(record, "ambiguities"),
-    conflictsValueCategory: valueCategoryOrMissing(record, "conflicts"),
+    relationshipsValueCategory: valueCategoryOrMissing(
+      normalizedRecord,
+      "relationships",
+    ),
+    ambiguitiesValueCategory: valueCategoryOrMissing(
+      normalizedRecord,
+      "ambiguities",
+    ),
+    conflictsValueCategory: valueCategoryOrMissing(
+      normalizedRecord,
+      "conflicts",
+    ),
     structuralReason: structuralReason({
       input,
-      record,
+      record: normalizedRecord,
       parsed,
       structure,
     }),
+    failureLevel: "whole_envelope_unusable",
+    failureCategory:
+      input.failureCategory ??
+      inferredFailureCategory({
+        input,
+        record: normalizedRecord,
+        parsed,
+        structure,
+      }),
     serializedResponseBytesBucket: serializedBytesBucket(
       structure.serializedBytes,
+    ),
+    normalizedOutputBytesBucket: serializedBytesBucket(
+      input.normalizedOutputBytes ?? structure.serializedBytes,
     ),
     totalAtomCountBucket: countBucket(structure.atomCount),
     totalNodeCountBucket: countBucket(structure.nodeCount),
@@ -265,9 +358,15 @@ export function diagnoseSemanticExtractionV2Envelope(input: {
       sectionRecord,
       "professionalLinks",
     ),
-    relationshipCountBucket: collectionCountBucket(record, "relationships"),
-    ambiguityCountBucket: collectionCountBucket(record, "ambiguities"),
-    conflictCountBucket: collectionCountBucket(record, "conflicts"),
+    relationshipCountBucket: collectionCountBucket(
+      normalizedRecord,
+      "relationships",
+    ),
+    ambiguityCountBucket: collectionCountBucket(
+      normalizedRecord,
+      "ambiguities",
+    ),
+    conflictCountBucket: collectionCountBucket(normalizedRecord, "conflicts"),
     configuredLimits: {
       responseJsonBytes: maxSemanticExtractionV2ResponseJsonBytes,
       objectDepth: maxSemanticExtractionV2ObjectDepth,
@@ -284,6 +383,153 @@ export function diagnoseSemanticExtractionV2Envelope(input: {
       parsed?.success === false ? parsed.error.issues.length : 0,
     ),
   };
+}
+
+function classifyUnrecognizedKeyCategory(input: {
+  readonly record: Record<string, unknown> | undefined;
+  readonly firstIssue:
+    | {
+        readonly code: string;
+        readonly path: readonly PropertyKey[];
+      }
+    | undefined;
+}): SemanticExtractionV2UnrecognizedKeyCategory {
+  if (input.firstIssue?.code !== "unrecognized_keys") return "none";
+
+  const path = input.firstIssue.path;
+  if (
+    path.length === 2 &&
+    path[0] === "sections" &&
+    path[1] === "contact" &&
+    isRecord(input.record?.sections) &&
+    isRecord(input.record.sections.contact)
+  ) {
+    const key = Object.keys(input.record.sections.contact).find(
+      (candidate) => !contactKeys.has(candidate),
+    );
+    if (key !== undefined) {
+      if (knownContactAliases.has(key)) return "known_alias_wrong_location";
+      if (misplacedExistingSemanticFields.has(key))
+        return "misplaced_existing_semantic_field";
+      return "unknown_contact_key";
+    }
+  }
+
+  if (
+    path.length > 0 &&
+    path.every((part) => typeof part === "string") &&
+    path[0] === "sections"
+  ) {
+    return "misplaced_existing_semantic_field";
+  }
+  return "unknown_structural_key";
+}
+
+export function diagnoseSemanticExtractionV2FieldFailure(input: {
+  readonly canonical: Extract<V2CanonicalizationResult, { readonly ok: true }>;
+}): SemanticExtractionV2FieldDiagnostic | undefined {
+  if (input.canonical.rejected.length === 0) return undefined;
+  const rejectionCategories = [
+    ...new Set(
+      input.canonical.rejected.map((item) => fieldFailureCategory(item.code)),
+    ),
+  ];
+  return {
+    responseContractVersion: nuvitaeSemanticExtractionV2ResponseVersion,
+    failureLevel: "field_level_rejection",
+    failureCategory: rejectionCategories[0] ?? "other_schema_violation",
+    acceptedCandidateCountBucket: countBucket(
+      input.canonical.candidates.length,
+    ),
+    rejectedFieldCountBucket: countBucket(input.canonical.rejected.length),
+    signalCountBucket: countBucket(input.canonical.signals.length),
+    rejectionCategories,
+    firstRejectedPath: input.canonical.rejected[0]?.path ?? [],
+  };
+}
+
+function fieldFailureCategory(
+  code: V2RejectedField["code"],
+): SemanticExtractionV2FieldFailureCategory {
+  if (
+    code === "malformed_atom" ||
+    code === "malformed_group" ||
+    code === "missing_required_group_field" ||
+    code === "unsupported_group_shape"
+  )
+    return "invalid_candidate_shape";
+  if (
+    code === "malformed_source_ref" ||
+    code === "source_fragment_not_found" ||
+    code === "empty_quote" ||
+    code === "quote_not_found_in_fragment" ||
+    code === "quote_ambiguous_within_fragment" ||
+    code === "duplicate_source_ref" ||
+    code === "overlapping_source_refs" ||
+    code === "ambiguous_source_refs" ||
+    code === "missing_source_refs" ||
+    code === "signal_source_invalid"
+  )
+    return "invalid_source_ref_shape";
+  if (code === "unsupported_typed_value")
+    return "unsupported_typed_value_shape";
+  return "other_schema_violation";
+}
+
+function inferredFailureCategory(input: {
+  readonly input: Parameters<typeof diagnoseSemanticExtractionV2Envelope>[0];
+  readonly record: Record<string, unknown> | undefined;
+  readonly parsed:
+    | { readonly success: true }
+    | {
+        readonly success: false;
+        readonly error: {
+          readonly issues: readonly {
+            readonly code: string;
+            readonly path: readonly PropertyKey[];
+          }[];
+        };
+      }
+    | undefined;
+  readonly structure: V2StructuralInspection;
+}): SemanticExtractionV2WholeEnvelopeFailureCategory {
+  if (!input.input.semanticJsonParseSucceeded) return "invalid_json";
+  if (
+    input.structure.serializedBytes > maxSemanticExtractionV2ResponseJsonBytes
+  )
+    return "response_size_exceeded";
+  if (input.record === undefined) return "wrong_root_shape";
+  if (input.structure.depthLimitExceeded) return "object_depth_exceeded";
+  if (input.structure.atomLimitExceeded) return "atom_limit_exceeded";
+  if (input.structure.nodeLimitExceeded) return "node_limit_exceeded";
+  if (
+    topLevelKeys.some(
+      (key) => !Object.prototype.hasOwnProperty.call(input.record, key),
+    )
+  )
+    return "missing_required_root_field";
+  if (
+    Object.keys(input.record).some(
+      (key) => !(topLevelKeys as readonly string[]).includes(key),
+    )
+  )
+    return "unexpected_root_field";
+  if (schemaVersionCategory(input.record) !== "exact_v2")
+    return "other_schema_violation";
+  if (valueCategoryOrMissing(input.record, "sections") !== "object")
+    return "invalid_section_shape";
+  if (
+    input.parsed?.success === false &&
+    input.parsed.error.issues[0]?.path[0] === "sections"
+  )
+    return "invalid_section_shape";
+  if (
+    input.parsed?.success === false &&
+    input.parsed.error.issues[0]?.code === "too_big"
+  )
+    return "cardinality_limit_exceeded";
+  if (input.parsed?.success === false) return "other_schema_violation";
+  return "other_schema_violation";
 }
 
 function structuralReason(input: {

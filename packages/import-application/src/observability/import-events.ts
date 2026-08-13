@@ -213,6 +213,7 @@ const semanticTransportTimingPhases = [
   "request_started",
   "response_headers",
   "first_byte",
+  "first_semantic_output",
   "sse_started",
   "completion_event",
   "response_eof",
@@ -296,6 +297,37 @@ const semanticV2EnvelopeFailureStages = [
   "semantic_json_parse",
   "v2_envelope",
   "v2_canonicalizer",
+] as const;
+const semanticV2EnvelopeFailureLevels = ["whole_envelope_unusable"] as const;
+const semanticV2UnrecognizedKeyCategories = [
+  "none",
+  "known_alias_wrong_location",
+  "unknown_contact_key",
+  "misplaced_existing_semantic_field",
+  "unknown_structural_key",
+] as const;
+const semanticV2EnvelopeFailureCategories = [
+  "invalid_json",
+  "wrong_root_shape",
+  "missing_required_root_field",
+  "unexpected_root_field",
+  "invalid_section_shape",
+  "invalid_candidate_shape",
+  "invalid_source_ref_shape",
+  "unsupported_typed_value_shape",
+  "object_depth_exceeded",
+  "atom_limit_exceeded",
+  "node_limit_exceeded",
+  "response_size_exceeded",
+  "cardinality_limit_exceeded",
+  "other_schema_violation",
+] as const;
+const semanticV2FieldFailureLevels = ["field_level_rejection"] as const;
+const semanticV2FieldFailureCategories = [
+  "invalid_candidate_shape",
+  "invalid_source_ref_shape",
+  "unsupported_typed_value_shape",
+  "other_schema_violation",
 ] as const;
 const semanticV2EnvelopeValueCategories = [
   "not_observed",
@@ -504,7 +536,42 @@ const commonIdentifierFields = {
   correlationId: id(true),
 } as const;
 
+const importTimingPhases = [
+  "upload_received",
+  "upload_persisted",
+  "queue_enqueued",
+  "worker_started",
+  "validation_completed",
+  "extraction_completed",
+  "normalization_completed",
+  "provider_started",
+  "provider_headers",
+  "provider_first_output",
+  "provider_completed",
+  "semantic_parsing_completed",
+  "canonicalization_completed",
+  "draft_persisted",
+  "review_api_available",
+  "review_first_poll",
+  "review_available_to_client",
+  "review_rendered",
+] as const;
+
+const importTimingSources = ["api", "worker", "web"] as const;
+
 export const importEventSchemas = {
+  "import.timing": {
+    level: "info",
+    fields: {
+      importId: id(),
+      correlationId: id(true),
+      phase: enumOf(importTimingPhases),
+      source: enumOf(importTimingSources),
+      timestampMs: int(0, 9_000_000_000_000_000),
+      durationMs: int(0, 86_400_000, true),
+      elapsedSinceUploadMs: int(0, 86_400_000, true),
+    },
+  },
   "import.created": {
     level: "info",
     fields: {
@@ -819,12 +886,15 @@ export const importEventSchemas = {
       semanticJsonParseSucceeded: bool(),
       canonicalizerReached: bool(),
       failureStage: enumOf(semanticV2EnvelopeFailureStages),
+      failureLevel: enumOf(semanticV2EnvelopeFailureLevels),
+      failureCategory: enumOf(semanticV2EnvelopeFailureCategories),
       topLevelValueCategory: enumOf(semanticV2EnvelopeValueCategories),
       schemaVersionCategory: enumOf(semanticV2EnvelopeSchemaVersionCategories),
       topLevelKeys: tokenList(5),
       missingTopLevelKeys: tokenList(5),
       unexpectedTopLevelKeys: tokenList(14),
       unrecognizedTopLevelKeyPresent: bool(),
+      unrecognizedKeyCategory: enumOf(semanticV2UnrecognizedKeyCategories),
       sectionsValueCategory: enumOf(semanticV2EnvelopeValueCategories),
       sectionKeys: tokenList(10),
       missingSectionKeys: tokenList(10),
@@ -834,6 +904,9 @@ export const importEventSchemas = {
       ambiguitiesValueCategory: enumOf(semanticV2EnvelopeValueCategories),
       conflictsValueCategory: enumOf(semanticV2EnvelopeValueCategories),
       structuralReason: enumOf(semanticV2EnvelopeStructuralReasons),
+      normalizedOutputBytesBucket: enumOf(
+        semanticV2EnvelopeSerializedBytesBuckets,
+      ),
       serializedResponseBytesBucket: enumOf(
         semanticV2EnvelopeSerializedBytesBuckets,
       ),
@@ -858,6 +931,21 @@ export const importEventSchemas = {
       firstZodIssueCode: token(true),
       firstZodPath: tokenList(8),
       issueCountBucket: enumOf(countBuckets),
+      correlationId: id(true),
+    },
+  },
+  "semantic.provider_v2_field_diagnostics": {
+    level: "warn",
+    fields: {
+      importId: id(),
+      responseContractVersion: token(),
+      failureLevel: enumOf(semanticV2FieldFailureLevels),
+      failureCategory: enumOf(semanticV2FieldFailureCategories),
+      acceptedCandidateCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      rejectedFieldCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      signalCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      rejectionCategories: tokenList(4),
+      firstRejectedPath: path(),
       correlationId: id(true),
     },
   },
@@ -912,6 +1000,15 @@ export const importEventSchemas = {
 export type ImportEventName = keyof typeof importEventSchemas;
 
 export interface ImportEventMetadataMap {
+  "import.timing": {
+    readonly importId: string;
+    readonly correlationId?: string;
+    readonly phase: (typeof importTimingPhases)[number];
+    readonly source: (typeof importTimingSources)[number];
+    readonly timestampMs: number;
+    readonly durationMs?: number;
+    readonly elapsedSinceUploadMs?: number;
+  };
   "import.created": {
     readonly importId: string;
     readonly statusCode: number;
@@ -1122,12 +1219,15 @@ export interface ImportEventMetadataMap {
     readonly semanticJsonParseSucceeded: boolean;
     readonly canonicalizerReached: boolean;
     readonly failureStage: (typeof semanticV2EnvelopeFailureStages)[number];
+    readonly failureLevel: (typeof semanticV2EnvelopeFailureLevels)[number];
+    readonly failureCategory: (typeof semanticV2EnvelopeFailureCategories)[number];
     readonly topLevelValueCategory: (typeof semanticV2EnvelopeValueCategories)[number];
     readonly schemaVersionCategory: (typeof semanticV2EnvelopeSchemaVersionCategories)[number];
     readonly topLevelKeys: readonly string[];
     readonly missingTopLevelKeys: readonly string[];
     readonly unexpectedTopLevelKeys: readonly string[];
     readonly unrecognizedTopLevelKeyPresent: boolean;
+    readonly unrecognizedKeyCategory: (typeof semanticV2UnrecognizedKeyCategories)[number];
     readonly sectionsValueCategory: (typeof semanticV2EnvelopeValueCategories)[number];
     readonly sectionKeys: readonly string[];
     readonly missingSectionKeys: readonly string[];
@@ -1137,6 +1237,7 @@ export interface ImportEventMetadataMap {
     readonly ambiguitiesValueCategory: (typeof semanticV2EnvelopeValueCategories)[number];
     readonly conflictsValueCategory: (typeof semanticV2EnvelopeValueCategories)[number];
     readonly structuralReason: (typeof semanticV2EnvelopeStructuralReasons)[number];
+    readonly normalizedOutputBytesBucket: (typeof semanticV2EnvelopeSerializedBytesBuckets)[number];
     readonly serializedResponseBytesBucket: (typeof semanticV2EnvelopeSerializedBytesBuckets)[number];
     readonly totalAtomCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
     readonly totalNodeCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
@@ -1159,6 +1260,18 @@ export interface ImportEventMetadataMap {
     readonly firstZodIssueCode?: string;
     readonly firstZodPath: readonly string[];
     readonly issueCountBucket: (typeof countBuckets)[number];
+    readonly correlationId?: string;
+  };
+  "semantic.provider_v2_field_diagnostics": {
+    readonly importId: string;
+    readonly responseContractVersion: string;
+    readonly failureLevel: (typeof semanticV2FieldFailureLevels)[number];
+    readonly failureCategory: (typeof semanticV2FieldFailureCategories)[number];
+    readonly acceptedCandidateCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly rejectedFieldCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly signalCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly rejectionCategories: readonly string[];
+    readonly firstRejectedPath: readonly (string | number)[];
     readonly correlationId?: string;
   };
   "semantic.outcome": {
@@ -1200,6 +1313,56 @@ export interface ImportEventMetadataMap {
 
 export type ImportEventMetadataFor<K extends ImportEventName> =
   ImportEventMetadataMap[K];
+
+export type ImportTimingPhase = (typeof importTimingPhases)[number];
+export type ImportTimingSource = (typeof importTimingSources)[number];
+
+export interface ImportTimingPoint {
+  readonly importId: string;
+  readonly correlationId?: string | undefined;
+  readonly phase: ImportTimingPhase;
+  readonly source: ImportTimingSource;
+  readonly at: Date;
+  readonly durationMs?: number | undefined;
+  readonly uploadReceivedAt?: Date | undefined;
+}
+
+/**
+ * Emits one canonical, wall-clock timestamp for a stage. Durations are
+ * bounded local measurements; cross-service totals are reconstructed from the
+ * timestamps and import/correlation id rather than from process-relative
+ * clocks. No source content or provider material is accepted here.
+ */
+export function emitImportTiming(
+  emitter: ImportEventEmitter,
+  point: ImportTimingPoint,
+): void {
+  const timestamp = point.at.getTime();
+  if (!Number.isSafeInteger(timestamp) || timestamp < 0) return;
+  const elapsedSinceUploadMs =
+    point.uploadReceivedAt === undefined
+      ? undefined
+      : boundedDuration(timestamp - point.uploadReceivedAt.getTime());
+  emitter.emit("import.timing", {
+    importId: point.importId,
+    phase: point.phase,
+    source: point.source,
+    timestampMs: timestamp,
+    ...(point.correlationId === undefined
+      ? {}
+      : { correlationId: point.correlationId }),
+    ...(point.durationMs === undefined
+      ? {}
+      : { durationMs: boundedDuration(point.durationMs) }),
+    ...(elapsedSinceUploadMs === undefined ? {} : { elapsedSinceUploadMs }),
+  });
+}
+
+function boundedDuration(value: number): number {
+  return Number.isFinite(value)
+    ? Math.min(86_400_000, Math.max(0, Math.round(value)))
+    : 0;
+}
 
 export function emitImportEvent(
   sink: ImportEventSink,

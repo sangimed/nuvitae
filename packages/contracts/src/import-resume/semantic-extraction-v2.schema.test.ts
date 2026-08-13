@@ -116,4 +116,26 @@ describe("semantic-extraction.v2 contract", () => {
       nuvitaeSemanticExtractionV2EnvelopeSchema.safeParse(candidate).success,
     ).toBe(false);
   });
+
+  it("accepts only the five exact contact wrapper keys", () => {
+    expect(
+      nuvitaeSemanticExtractionV2EnvelopeSchema.safeParse(response()).success,
+    ).toBe(true);
+
+    const withUnknownContactKey = {
+      ...response(),
+      sections: {
+        ...response().sections,
+        contact: {
+          ...response().sections.contact,
+          address: null,
+        },
+      },
+    };
+
+    expect(
+      nuvitaeSemanticExtractionV2EnvelopeSchema.safeParse(withUnknownContactKey)
+        .success,
+    ).toBe(false);
+  });
 });

@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import {
   extractedValueSchema,
   importResumeResponseSchemaVersion,
@@ -20,12 +20,15 @@ import {
 } from "@nuvitae/domain";
 import type { ImportResumeRepository } from "@nuvitae/persistence";
 import type { ImportEventEmitter } from "../../observability/import-events.js";
+import { emitImportTiming } from "../../observability/import-events.js";
 import { API_IMPORT_RESUME_REPOSITORY } from "../../persistence/api-persistence.module.js";
 import type { ImportStatusRequestIdGenerator } from "../../import-resume/import-status.ports.js";
 import {
   IMPORT_STATUS_REQUEST_ID_GENERATOR,
+  START_IMPORT_CLOCK,
   START_IMPORT_PRIVACY_LOGGER,
 } from "../../import-resume/start-import.tokens.js";
+import type { StartImportClock } from "../../import-resume/start-import.ports.js";
 
 const sections = [
   "personal",
@@ -74,6 +77,9 @@ export class ReadImportDraftService {
     private readonly requestIds: ImportStatusRequestIdGenerator,
     @Inject(START_IMPORT_PRIVACY_LOGGER)
     private readonly logger: ImportEventEmitter,
+    @Optional()
+    @Inject(START_IMPORT_CLOCK)
+    private readonly clock: StartImportClock = { now: () => new Date() },
   ) {}
 
   async read(input: {
@@ -126,14 +132,22 @@ export class ReadImportDraftService {
         message: "This import cannot be reviewed in its current state.",
       };
     }
-    return {
-      ok: true,
+    const response = {
+      ok: true as const,
       response: buildReviewDraftResponse({
         requestId,
         importId: input.importId,
         draft,
       }),
     };
+    emitImportTiming(this.logger, {
+      importId: input.importId,
+      correlationId: input.importId,
+      phase: "review_api_available",
+      source: "api",
+      at: this.clock.now(),
+    });
+    return response;
   }
 }
 

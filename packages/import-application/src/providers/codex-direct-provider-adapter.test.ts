@@ -157,6 +157,7 @@ function setup(
 ) {
   const transport = { invoke: vi.fn(async () => transportResult) };
   const onV2EnvelopeDiagnostic = vi.fn();
+  const onV2FieldDiagnostic = vi.fn();
   const repository = {
     findConnectionByProviderAndOwner: vi.fn(
       async (_provider: string, owner: string) =>
@@ -186,6 +187,7 @@ function setup(
     transport,
     now: () => now,
     onV2EnvelopeDiagnostic,
+    onV2FieldDiagnostic,
   } as unknown as CodexDirectProviderAdapterPorts;
   return {
     provider: new CodexDirectProviderAdapter(ports),
@@ -193,6 +195,7 @@ function setup(
     sessionStore,
     transport,
     onV2EnvelopeDiagnostic,
+    onV2FieldDiagnostic,
   };
 }
 
@@ -217,6 +220,7 @@ describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
         semanticJsonParseSucceeded: false,
         canonicalizerReached: false,
         failureStage: "semantic_json_parse",
+        failureCategory: "invalid_json",
         topLevelValueCategory: "unparseable",
       }),
     );
@@ -264,6 +268,7 @@ describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
         semanticJsonParseSucceeded: true,
         canonicalizerReached: true,
         failureStage: "v2_envelope",
+        failureCategory: "other_schema_violation",
         topLevelValueCategory: "object",
         schemaVersionCategory: "other_string",
         firstZodPath: ["schemaVersion"],
@@ -271,9 +276,42 @@ describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
     );
   });
 
+  it("classifies an unrecognized contact key without exposing the raw key", async () => {
+    const candidate = response();
+    candidate.sections.contact = {
+      ...candidate.sections.contact,
+      address: null,
+    } as never;
+    const harness = setup(connection(), {
+      ok: true,
+      normalizedOutput: JSON.stringify(candidate),
+    });
+
+    const result = await harness.provider.parseV2(request(), {
+      timeoutMs: 30000,
+      ownerUserId: ownerA,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "schema_violation" },
+    });
+    expect(harness.onV2EnvelopeDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        failureCategory: "invalid_section_shape",
+        firstZodIssueCode: "unrecognized_keys",
+        firstZodPath: ["sections", "contact"],
+        unrecognizedKeyCategory: "known_alias_wrong_location",
+      }),
+    );
+    expect(
+      JSON.stringify(harness.onV2EnvelopeDiagnostic.mock.calls),
+    ).not.toContain("address");
+  });
+
   it("does not emit envelope diagnostics for a valid envelope with a malformed atom", async () => {
     const candidate = response();
-    candidate.sections.headline = { value: 42, sourceRefs: [] } as never;
+    candidate.sections.headline = 42 as never;
     const harness = setup(connection(), {
       ok: true,
       normalizedOutput: JSON.stringify(candidate),
@@ -294,6 +332,13 @@ describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
       ).toBe(false);
     }
     expect(harness.onV2EnvelopeDiagnostic).not.toHaveBeenCalled();
+    expect(harness.onV2FieldDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        failureLevel: "field_level_rejection",
+        failureCategory: "invalid_candidate_shape",
+        acceptedCandidateCountBucket: "0-4",
+      }),
+    );
   });
 
   it("returns Nuvitae-canonical V2 candidates without provider-owned metadata", async () => {

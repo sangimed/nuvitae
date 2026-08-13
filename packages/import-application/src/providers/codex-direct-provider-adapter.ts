@@ -16,7 +16,9 @@ import {
 import { canonicalizeSemanticExtractionV2 } from "../semantic-parser/semantic-extraction-v2-canonicalizer.js";
 import {
   diagnoseSemanticExtractionV2Envelope,
+  diagnoseSemanticExtractionV2FieldFailure,
   type SemanticExtractionV2EnvelopeDiagnostic,
+  type SemanticExtractionV2FieldDiagnostic,
 } from "../semantic-parser/semantic-extraction-v2-envelope-diagnostics.js";
 import { createSourceRegistryFromSemanticParseRequest } from "../semantic-parser/source-registry.js";
 import type {
@@ -85,6 +87,18 @@ export interface CodexDirectProviderAdapterPorts {
       readonly correlationId?: string;
     },
   ) => void;
+  readonly onV2FieldDiagnostic?: (
+    diagnostic: SemanticExtractionV2FieldDiagnostic & {
+      readonly importId: string;
+      readonly correlationId?: string;
+    },
+  ) => void;
+  readonly onCanonicalizationTiming?: (timing: {
+    readonly importId: string;
+    readonly correlationId?: string;
+    readonly timestampMs: number;
+    readonly durationMs: number;
+  }) => void;
 }
 
 /**
@@ -250,6 +264,10 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
       return failure(mapTransportFailure(transportResult.category));
 
     let candidate: unknown;
+    const normalizedOutputBytes = Buffer.byteLength(
+      transportResult.normalizedOutput,
+      "utf8",
+    );
     try {
       candidate = JSON.parse(transportResult.normalizedOutput);
     } catch {
@@ -258,9 +276,12 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
         semanticJsonParseSucceeded: false,
         canonicalizerReached: false,
         failureStage: "semantic_json_parse",
+        failureCategory: "invalid_json",
+        normalizedOutputBytes,
       });
       return failure("invalid_provider_response", "v2_invalid_envelope");
     }
+    const canonicalizationStartedAt = this.now();
     let canonical;
     try {
       canonical = canonicalizeSemanticExtractionV2({
@@ -279,23 +300,51 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
         semanticJsonParseSucceeded: true,
         canonicalizerReached: true,
         failureStage: "v2_canonicalizer",
+        normalizedOutputBytes,
       });
       return failure("schema_violation", "v2_invalid_envelope");
     }
     if (!canonical.ok) {
+      this.emitCanonicalizationTiming(request, canonicalizationStartedAt);
       emitV2EnvelopeDiagnostic(this.ports, request, {
         response: candidate,
         semanticJsonParseSucceeded: true,
         canonicalizerReached: true,
         failureStage: "v2_envelope",
+        failureCategory: canonical.failureCategory,
+        normalizedOutputBytes,
       });
       return failureForV2WholeResponse(canonical.reason);
     }
+    this.emitCanonicalizationTiming(request, canonicalizationStartedAt);
+    emitV2FieldDiagnostic(this.ports, request, canonical);
     return {
       ok: true,
       contractVersion: "nuvitae.semantic-extraction.v2",
       canonical,
     };
+  }
+
+  private emitCanonicalizationTiming(
+    request: ResumeSemanticParseRequest,
+    startedAt: Date,
+  ): void {
+    const completedAt = this.now();
+    try {
+      if (request.importId !== null) {
+        this.ports.onCanonicalizationTiming?.({
+          importId: request.importId,
+          ...(request.correlationId === null ||
+          request.correlationId === undefined
+            ? {}
+            : { correlationId: request.correlationId }),
+          timestampMs: completedAt.getTime(),
+          durationMs: completedAt.getTime() - startedAt.getTime(),
+        });
+      }
+    } catch {
+      // Timing diagnostics must never change provider behavior.
+    }
   }
 
   private async findOwnerConnection(
@@ -366,6 +415,30 @@ function emitV2EnvelopeDiagnostic(
     });
   } catch {
     // Envelope diagnostics must never change provider behavior.
+  }
+}
+
+function emitV2FieldDiagnostic(
+  ports: CodexDirectProviderAdapterPorts,
+  request: ResumeSemanticParseRequest,
+  canonical: Extract<
+    Awaited<ReturnType<typeof canonicalizeSemanticExtractionV2>>,
+    { readonly ok: true }
+  >,
+): void {
+  if (request.importId === null) return;
+  const diagnostic = diagnoseSemanticExtractionV2FieldFailure({ canonical });
+  if (diagnostic === undefined) return;
+  try {
+    ports.onV2FieldDiagnostic?.({
+      ...diagnostic,
+      importId: request.importId,
+      ...(request.correlationId === null || request.correlationId === undefined
+        ? {}
+        : { correlationId: request.correlationId }),
+    });
+  } catch {
+    // Field diagnostics must never change provider behavior.
   }
 }
 
