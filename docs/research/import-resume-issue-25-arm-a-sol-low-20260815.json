@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "issue": 25,
+  "campaign": "import-resume-latency-confirmatory",
+  "arm": "A",
+  "authorization_id": "issue-25-arm-a-sol-low-20260815",
+  "authorization_commit": "a3b02ca",
+  "observed_at": "2026-08-15T15:10:34.272Z",
+  "valid_latency_sample": true,
+  "execution": {
+    "uploads": 1,
+    "fresh_import_id": "e0798f17-14b4-4902-91f2-028efb0d0f5f",
+    "primary_provider_invocations": 1,
+    "automatic_retries": 0,
+    "terra_executed": false,
+    "browser_or_operator_delay_in_primary_metrics": false
+  },
+  "fixture": {
+    "path": "tests/fixtures/resumes/anonymous-realistic-2-page-resume.pdf",
+    "sha256": "5d2d7c303241daa3cd6faafcfea50873c52140034f2e72db56a45f7fe6509b64"
+  },
+  "timings_ms": {
+    "upload_to_worker_start": 27,
+    "upload_to_provider_start": 194,
+    "provider_to_headers": 1003,
+    "provider_to_first_semantic_output": 9510,
+    "first_semantic_output_to_provider_completion": 40083,
+    "provider_total": 49593,
+    "provider_completion_to_canonicalization": 15,
+    "canonicalization_to_draft_persistence": 48,
+    "draft_persistence_to_normal_status_draft_ready": 572,
+    "upload_to_normal_status_draft_ready": 50428,
+    "review_api_response_elapsed": 81,
+    "draft_persistence_to_review_api_event_observed_operator_contaminated": 31624
+  },
+  "timing_notes": {
+    "normal_primary_review_availability": "The normal status wait observed draft_ready 572 ms after draft persistence.",
+    "direct_review_api_event": "A later direct review read returned HTTP 200 in 81 ms; its 31,624 ms since draft persistence includes diagnostic/operator delay and is excluded from the primary metric."
+  },
+  "provider": {
+    "model": "gpt-5.6-sol",
+    "reasoning": "low",
+    "verbosity": "low",
+    "provider_http_status": "2xx",
+    "response_completed": true,
+    "accepted_value_bucket": "20-99",
+    "diagnostic_bucket": "0-4",
+    "semantic_outcome": "v2_success",
+    "fallback": false,
+    "safe_final_state": "draft_ready"
+  },
+  "transport": {
+    "response_completed": true,
+    "final_recognized_event": "response.completed",
+    "reconstructed_sse_frame_count": 2372,
+    "reconstructed_sse_frame_bucket": "1000-9999",
+    "typed_sse_event_count": 2372,
+    "typed_sse_event_bucket": "1000-9999",
+    "event_count_diagnostic_only": true,
+    "raw_sse_response_size_bucket": "256k-1m",
+    "semantic_output_size_bucket": "0-64k",
+    "transport_limit_reached": false,
+    "cumulative_raw_sse_cap_bytes": 2097152,
+    "individual_sse_event_cap_bytes": 262144,
+    "semantic_output_cap_bytes": 65536,
+    "sse_event_accounting": [
+      "response.created:1:0-64k",
+      "response.in_progress:1:0-64k",
+      "response.output_text.delta:2362:256k-1m",
+      "response.output_text.done:1:0-64k",
+      "response.output_item.done:2:0-64k",
+      "response.completed:1:0-64k",
+      "response.content_part.added:1:0-64k",
+      "response.content_part.done:1:0-64k",
+      "response.output_item.added:2:0-64k",
+      "response.reasoning_summary_part.added:0:0-64k",
+      "response.reasoning_summary_text.delta:0:0-64k",
+      "response.reasoning_summary_text.done:0:0-64k",
+      "response.reasoning_summary_part.done:0:0-64k",
+      "response.metadata:0:0-64k",
+      "response.failed:0:0-64k",
+      "response.incomplete:0:0-64k",
+      "error:0:0-64k",
+      "unclassified:0:0-64k"
+    ]
+  },
+  "fidelity": {
+    "active_draft_field_count": 64,
+    "grounded_field_count": 64,
+    "grounded_bullet_count": 4,
+    "rejected_field_count": 0,
+    "unsupported_or_invented_value_count": 0,
+    "warning_count": 0,
+    "contact": { "expected": 4, "matched": 4 },
+    "headline": { "expected": 1, "matched": 1 },
+    "summary": { "source_supported": true, "matched": 1, "grounded": true },
+    "work": {
+      "expected_employers": 2,
+      "matched_employers": 2,
+      "expected_roles": 2,
+      "matched_roles": 2,
+      "expected_dates": 2,
+      "matched_dates": 2,
+      "expected_bullets": 4,
+      "matched_bullets": 4,
+      "substantially_present": true
+    },
+    "education": {
+      "expected_entries": 2,
+      "matched_entries": 2,
+      "matched_institutions": 2,
+      "matched_credentials": 2,
+      "substantially_present": true
+    },
+    "skills": { "expected": 10, "matched": 10 },
+    "languages": { "expected": 2, "matched": 2 },
+    "professional_links": { "expected": 0, "matched": 0 },
+    "certifications": { "expected": 2, "matched": 2 },
+    "projects": { "expected": 12, "matched": 12 }
+  },
+  "warnings": [
+    {
+      "code": "source_section_not_expected",
+      "section": "summary",
+      "requires_review": false,
+      "impact": "informational_source_inventory_diagnostic"
+    }
+  ],
+  "quality_gate": {
+    "response_completed": true,
+    "semantic_v2_envelope_accepted": true,
+    "deterministic_fallback_used": false,
+    "canonical_draft_produced": true,
+    "summary_complete_grounded_when_source_supported": true,
+    "work_structure_substantially_present": true,
+    "education_structure_substantially_present": true,
+    "no_material_invention": true,
+    "grounding_and_evidence_gates_pass": true,
+    "classification": "PASS"
+  }
+}

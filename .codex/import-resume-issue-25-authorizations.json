@@ -6,7 +6,11 @@
     {
       "authorization_id": "issue-25-arm-a-sol-low-20260815",
       "arm": "A",
-      "state": "authorized",
+      "state": "consumed",
+      "consumed_import_id": "e0798f17-14b4-4902-91f2-028efb0d0f5f",
+      "consumed_provider_invocations": 1,
+      "consumed_uploads": 1,
+      "consumed_evidence_path": "docs/research/import-resume-issue-25-arm-a-sol-low-20260815.json",
       "model": "gpt-5.6-sol",
       "reasoning": "low",
       "verbosity": "low",
