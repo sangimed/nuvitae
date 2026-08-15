@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
-
+import {
+  resolveCodexModelSelection,
+  type CodexModelIdentifier,
+} from "./codex-model-selection.js";
 const CODEX_ENDPOINT = "https://chatgpt.com/backend-api/codex/responses";
-const CODEX_MODEL = "gpt-5.6-sol";
 const CODEX_ORIGINATOR = "openclaw";
 const CODEX_USER_AGENT = "nuvitae-codex-direct-provider/1";
 const MAX_REQUEST_BYTES = 65_536;
@@ -257,6 +259,8 @@ export type CodexDirectTransportResult =
 
 export interface CodexDirectTransportOptions {
   readonly fetch?: typeof globalThis.fetch;
+  /** Immutable model selection for this transport instance. */
+  readonly model?: unknown;
   /** Test-only seam; production uses the bounded active-stream limit. */
   readonly streamIdleTimeoutMs?: number;
   /** Test-only seam; production uses the bounded pre-output grace period. */
@@ -271,12 +275,16 @@ export interface CodexDirectTransportOptions {
  * status classification; it never logs or returns provider payloads.
  */
 export class CodexDirectTransport {
+  readonly model: CodexModelIdentifier;
   private readonly fetcher: typeof globalThis.fetch;
   private readonly streamIdleTimeoutMs: number;
   private readonly firstOutputTimeoutMs: number;
   private readonly totalGenerationTimeoutMs: number;
 
   constructor(options: CodexDirectTransportOptions = {}) {
+    this.model = resolveCodexModelSelection({
+      configuredModel: options.model,
+    });
     this.fetcher = options.fetch ?? globalThis.fetch;
     this.streamIdleTimeoutMs = positiveIntegerOrDefault(
       options.streamIdleTimeoutMs,
@@ -311,7 +319,7 @@ export class CodexDirectTransport {
     const threadId = randomUUID();
     const installationId = randomUUID();
     const body = {
-      model: CODEX_MODEL,
+      model: this.model,
       instructions: input.instructions,
       input: [
         {

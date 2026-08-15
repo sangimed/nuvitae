@@ -1,4 +1,5 @@
 import type { ResumeSemanticParseRequest } from "../semantic-parser/resume-semantic-parser-provider.js";
+import { resolveCodexModelSelection } from "./codex-model-selection.js";
 
 export interface ProviderRequestShapeAudit {
   readonly normalizedTranscriptCharacterCount: number;
@@ -31,7 +32,11 @@ export interface ProviderResponseShapeAudit {
 export function auditProviderRequestShape(input: {
   readonly request: ResumeSemanticParseRequest;
   readonly instructions: string;
+  readonly model?: unknown;
 }): ProviderRequestShapeAudit {
+  const model = resolveCodexModelSelection({
+    configuredModel: input.model,
+  });
   const document = {
     format: input.request.documentFormat,
     language: input.request.languageContext.detectedLanguage,
@@ -48,7 +53,7 @@ export function auditProviderRequestShape(input: {
   const serializedInstructions = input.instructions;
   const serializedInput = JSON.stringify(semanticInput);
   const transportBody = {
-    model: "gpt-5.6-sol",
+    model,
     instructions: serializedInstructions,
     input: [
       {

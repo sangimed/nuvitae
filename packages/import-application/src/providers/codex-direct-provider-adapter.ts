@@ -41,6 +41,10 @@ import {
   type CodexDirectTransportSseErrorDiagnostic,
   type CodexDirectTransportTiming,
 } from "./codex-direct-transport.js";
+import {
+  resolveCodexModelSelection,
+  type CodexModelIdentifier,
+} from "./codex-model-selection.js";
 import { parseCodexSessionMaterial } from "./codex-session.js";
 
 export const codexDirectProviderKind = "codex" as const;
@@ -63,7 +67,9 @@ const capabilities: ResumeSemanticParserCapabilities = {
 export interface CodexDirectProviderAdapterPorts {
   readonly repository: AIProviderRuntimeConnectionsRepository;
   readonly sessionStore: ProviderSessionStore;
-  readonly transport?: Pick<CodexDirectTransport, "invoke">;
+  readonly model?: unknown;
+  readonly transport?: Pick<CodexDirectTransport, "invoke"> &
+    Partial<Pick<CodexDirectTransport, "model">>;
   readonly now?: () => Date;
   readonly onTransportTiming?: (
     timing: CodexDirectTransportTiming & {
@@ -117,11 +123,17 @@ export interface CodexDirectProviderAdapterPorts {
 export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider {
   readonly providerKind = codexDirectProviderKind;
   readonly capabilities = capabilities;
+  readonly model: CodexModelIdentifier;
   private readonly transport: Pick<CodexDirectTransport, "invoke">;
   private readonly now: () => Date;
 
   constructor(private readonly ports: CodexDirectProviderAdapterPorts) {
-    this.transport = ports.transport ?? new CodexDirectTransport();
+    this.model = resolveCodexModelSelection({
+      configuredModel: ports.model,
+      transportModel: ports.transport?.model,
+    });
+    this.transport =
+      ports.transport ?? new CodexDirectTransport({ model: this.model });
     this.now = ports.now ?? (() => new Date());
   }
 

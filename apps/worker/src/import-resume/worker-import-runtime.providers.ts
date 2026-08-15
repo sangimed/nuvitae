@@ -12,6 +12,7 @@ import {
   ImportLimitService,
   TypeOrmImportLimitStore,
   CodexDirectProviderAdapter,
+  type CodexModelIdentifier,
   emitImportTiming,
   type ProviderSessionStore,
   type ResumeSemanticParserProvider,
@@ -79,10 +80,12 @@ export function createProductionSemanticParserProvider(
   repository: AIProviderRuntimeConnectionsRepository,
   sessionStore: ProviderSessionStore,
   logger?: ImportEventEmitter,
+  model?: CodexModelIdentifier,
 ): ResumeSemanticParserProvider {
   return new CodexDirectProviderAdapter({
     repository,
     sessionStore,
+    ...(model === undefined ? {} : { model }),
     ...(logger === undefined
       ? {}
       : {
