@@ -27,6 +27,7 @@
     "first_semantic_output_to_provider_completion": 40083,
     "provider_total": 49593,
     "provider_completion_to_canonicalization": 15,
+    "provider_completion_to_draft_persistence": 63,
     "canonicalization_to_draft_persistence": 48,
     "draft_persistence_to_normal_status_draft_ready": 572,
     "upload_to_normal_status_draft_ready": 50428,
