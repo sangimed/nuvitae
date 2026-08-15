@@ -5,9 +5,9 @@ const CODEX_MODEL = "gpt-5.6-sol";
 const CODEX_ORIGINATOR = "openclaw";
 const CODEX_USER_AGENT = "nuvitae-codex-direct-provider/1";
 const MAX_REQUEST_BYTES = 65_536;
-const MAX_RESPONSE_BYTES = 1_048_576;
+const MAX_BUFFERED_RESPONSE_BYTES = 1_048_576;
+const MAX_SSE_RAW_BODY_BYTES = 2 * 1_048_576;
 const MAX_EVENT_BYTES = 262_144;
-const MAX_EVENT_COUNT = 4_096;
 const MAX_OUTPUT_BYTES = 65_536;
 const MAX_PROTOCOL_SNIFF_BYTES = 4_096;
 
@@ -34,6 +34,9 @@ export interface CodexDirectTransportRequest {
   readonly onProtocolShape?: (shape: CodexDirectTransportProtocolShape) => void;
   readonly onProviderSseError?: (
     diagnostic: CodexDirectTransportSseErrorDiagnostic,
+  ) => void;
+  readonly onResponseLimitDiagnostic?: (
+    diagnostic: CodexDirectTransportResponseLimitDiagnostic,
   ) => void;
 }
 
@@ -87,6 +90,13 @@ export interface CodexDirectTransportProtocolShape {
   readonly jsonObjectParsed: boolean;
   readonly jsonTopLevelKeys: readonly string[];
   readonly finalRecognizedEventType?: string;
+  readonly receivedRawBodyBytesBucket: CodexDirectTransportResponseLimitByteBucket;
+  readonly assembledSemanticOutputBytesBucket: CodexDirectTransportResponseLimitByteBucket;
+  readonly parsedSseEventCount: number;
+  readonly parsedSseEventCountBucket: CodexDirectTransportResponseLimitEventCountBucket;
+  readonly responseCompletedObserved: boolean;
+  readonly sseEventAccounting: CodexDirectTransportSseEventAccounting;
+  readonly transportFailureCategory: CodexDirectTransportFailureDiagnosticCategory;
 }
 
 export type CodexDirectTransportContentEncodingCategory =
@@ -116,6 +126,87 @@ export type CodexDirectTransportFailureCategory =
   | "provider_unavailable"
   | "protocol_invalid"
   | "unknown_provider_failure";
+
+/** Closed, content-free classification of the independent response guards. */
+export type CodexDirectTransportResponseLimitTriggerCategory =
+  | "cumulative_raw_sse_limit"
+  | "buffered_response_body_limit"
+  | "individual_sse_event_limit"
+  | "semantic_output_limit"
+  | "v2_envelope_size_limit";
+
+export type CodexDirectTransportResponseLimitByteBucket =
+  "not_observed" | "0-64k" | "64k-256k" | "256k-1m" | "1m-2m" | "over_2m";
+
+export type CodexDirectTransportResponseLimitEventCountBucket =
+  | "0-4"
+  | "5-19"
+  | "20-99"
+  | "100-999"
+  | "1000-9999"
+  | "10000-99999"
+  | "100000-999999"
+  | "over_999999";
+
+export type CodexDirectTransportFailureDiagnosticCategory =
+  | "none"
+  | "cumulative_raw_sse_limit"
+  | "buffered_response_body_limit"
+  | "individual_sse_event_limit"
+  | "semantic_output_limit"
+  | "malformed_protocol"
+  | "missing_response_completed"
+  | "request_timeout"
+  | "first_output_timeout"
+  | "stream_inactivity_timeout"
+  | "generation_timeout"
+  | "cancelled";
+
+/**
+ * Fixed-order, content-free SSE accounting. Each item is
+ * `${eventType}:${count}:${rawBytesBucket}`. The final `unclassified` item
+ * covers decoded raw bytes that cannot safely be assigned to an allowlisted
+ * event type (comments, keepalives, partial frames, and unknown frames).
+ */
+export type CodexDirectTransportSseEventAccounting = readonly string[];
+
+export const CODEX_DIRECT_SSE_EVENT_TYPES = [
+  "response.created",
+  "response.in_progress",
+  "response.output_text.delta",
+  "response.output_text.done",
+  "response.output_item.done",
+  "response.completed",
+  "response.content_part.added",
+  "response.content_part.done",
+  "response.output_item.added",
+  "response.reasoning_summary_part.added",
+  "response.reasoning_summary_text.delta",
+  "response.reasoning_summary_text.done",
+  "response.reasoning_summary_part.done",
+  "response.metadata",
+  "response.failed",
+  "response.incomplete",
+  "error",
+] as const;
+
+type CodexDirectSseEventType = (typeof CODEX_DIRECT_SSE_EVENT_TYPES)[number];
+
+/**
+ * Content-free response-limit observation. It intentionally contains only
+ * buckets, safe protocol tokens, and completion state—not provider payloads.
+ */
+export interface CodexDirectTransportResponseLimitDiagnostic {
+  readonly triggerCategory: CodexDirectTransportResponseLimitTriggerCategory;
+  readonly receivedRawBodyBytesBucket: CodexDirectTransportResponseLimitByteBucket;
+  readonly assembledSemanticOutputBytesBucket: CodexDirectTransportResponseLimitByteBucket;
+  readonly parsedSseEventCount: number;
+  readonly parsedSseEventCountBucket: CodexDirectTransportResponseLimitEventCountBucket;
+  readonly responseCompletedObserved: boolean;
+  readonly sseFrameCount: number;
+  readonly eventTypes: readonly string[];
+  readonly sseEventAccounting: CodexDirectTransportSseEventAccounting;
+}
 
 /**
  * Provider error diagnostics deliberately expose categories only. The
@@ -352,14 +443,35 @@ export class CodexDirectTransport {
       firstOutputTimer = setTimeout(() => {
         abortWithReason("first_output_timeout");
       }, this.firstOutputTimeoutMs);
+      /**
+       * SSE is processed and discarded incrementally. Each frame and the
+       * assembled semantic output are independently bounded, while the
+       * complete decoded SSE body is bounded by cumulative bytes. Typed event
+       * count is diagnostic only and never terminates a valid stream.
+       */
+      const responseMaximumBytes =
+        protocol === "json"
+          ? MAX_BUFFERED_RESPONSE_BYTES
+          : protocol === "sse"
+            ? MAX_SSE_RAW_BODY_BYTES
+            : () =>
+                protocol === "json"
+                  ? MAX_BUFFERED_RESPONSE_BYTES
+                  : MAX_SSE_RAW_BODY_BYTES;
       const bodyBytes = await readBoundedBody(
         response,
-        MAX_RESPONSE_BYTES,
+        responseMaximumBytes,
         controller.signal,
+        (totalBytes) => {
+          protocolShape!.receivedRawBodyBytes = totalBytes;
+          protocolShape!.receivedRawBodyBytesBucket =
+            responseLimitByteBucket(totalBytes);
+        },
         (chunk) => {
           if (chunk.byteLength === 0) return;
           if (firstSemanticOutputSeen) resetStreamIdleTimer();
           observeProtocolBytes(protocolShape!, chunk);
+          const sniffedBytesBeforeChunk = sniffedBytes.byteLength;
           if (chunk.byteLength > 0) {
             sniffedBytes = appendSniffBytes(sniffedBytes, chunk);
             protocolShape!.firstStructuralTokenCategory =
@@ -384,6 +496,12 @@ export class CodexDirectTransport {
                 markFirstSemanticOutput,
               );
               parser.consume(sniffedBytes);
+              const sniffedBytesFromCurrentChunk = Math.max(
+                0,
+                sniffedBytes.byteLength - sniffedBytesBeforeChunk,
+              );
+              if (chunk.byteLength > sniffedBytesFromCurrentChunk)
+                parser.consume(chunk.subarray(sniffedBytesFromCurrentChunk));
             } else if (structuralCategory === "json_object") {
               protocol = "json";
               markFirstSemanticOutput();
@@ -393,12 +511,24 @@ export class CodexDirectTransport {
           } else if (protocol === "json") {
             markFirstSemanticOutput();
           }
+          return {
+            retain: protocol !== "sse",
+          };
         },
       );
       if (streamIdleTimer !== undefined) clearTimeout(streamIdleTimer);
       if (firstOutputTimer !== undefined) clearTimeout(firstOutputTimer);
-      if (bodyBytes === null)
+      if (bodyBytes === null) {
+        emitResponseLimitDiagnostic(
+          input,
+          protocolShape,
+          protocol === "sse"
+            ? "cumulative_raw_sse_limit"
+            : "buffered_response_body_limit",
+        );
+        emitTiming(input, timingState, startedAt, "transport_error");
         return { ok: false, category: "response_too_large" };
+      }
       protocolShape.eofObserved = true;
       emitTiming(input, timingState, startedAt, "response_eof");
       if (protocol === undefined) {
@@ -413,17 +543,41 @@ export class CodexDirectTransport {
         else if (structuralCategory === "json_object") protocol = "json";
       }
       if (protocol === "json") {
-        return parseJsonResponse(bodyBytes, protocolShape);
+        if (bodyBytes === undefined)
+          return { ok: false, category: "protocol_invalid" };
+        const result = parseJsonResponse(bodyBytes, protocolShape, input);
+        if (!result.ok && result.category === "response_too_large")
+          emitTiming(input, timingState, startedAt, "transport_error");
+        return result;
       }
       if (protocol !== "sse") {
         return { ok: false, category: "protocol_invalid" };
       }
       const result =
-        parser?.finish() ?? parseSseResponse(bodyBytes, protocolShape);
+        parser?.finish() ??
+        (bodyBytes === undefined
+          ? { ok: false, category: "protocol_invalid" }
+          : parseSseResponse(bodyBytes, protocolShape));
+      if (!result.ok && protocolShape.transportFailureCategory === "none")
+        protocolShape.transportFailureCategory =
+          result.category === "protocol_invalid"
+            ? parser === undefined
+              ? "malformed_protocol"
+              : parser.failureCategory()
+            : "none";
+      if (!result.ok && result.category === "response_too_large")
+        emitTiming(input, timingState, startedAt, "transport_error");
       if (result.ok) emitTiming(input, timingState, startedAt, "completed");
       return result;
     } catch (error) {
       if (error instanceof SseParseError) {
+        if (
+          protocolShape !== undefined &&
+          error.category === "protocol_invalid"
+        )
+          protocolShape.transportFailureCategory = "malformed_protocol";
+        if (error.category === "response_too_large")
+          emitTiming(input, timingState, startedAt, "transport_error");
         return { ok: false, category: error.category };
       }
       if (
@@ -440,6 +594,9 @@ export class CodexDirectTransport {
         abortReason === "generation_timeout" ||
         isAbortError(error)
       ) {
+        if (protocolShape !== undefined)
+          protocolShape.transportFailureCategory =
+            transportFailureDiagnosticCategory(abortReason);
         emitTiming(
           input,
           timingState,
@@ -504,6 +661,16 @@ interface MutableProtocolShape {
   jsonObjectParsed: boolean;
   jsonTopLevelKeys: string[];
   finalRecognizedEventType?: string;
+  receivedRawBodyBytesBucket: CodexDirectTransportResponseLimitByteBucket;
+  assembledSemanticOutputBytesBucket: CodexDirectTransportResponseLimitByteBucket;
+  parsedSseEventCount: number;
+  parsedSseEventCountBucket: CodexDirectTransportResponseLimitEventCountBucket;
+  responseCompletedObserved: boolean;
+  receivedRawBodyBytes: number;
+  sseEventCounts: Record<CodexDirectSseEventType, number>;
+  sseEventBytes: Record<CodexDirectSseEventType, number>;
+  unclassifiedSseFrameCount: number;
+  transportFailureCategory: CodexDirectTransportFailureDiagnosticCategory;
 }
 
 const MAX_PROTOCOL_SHAPE_STRINGS = 64;
@@ -535,7 +702,23 @@ function createProtocolShape(
     eofObserved: false,
     jsonObjectParsed: false,
     jsonTopLevelKeys: [],
+    receivedRawBodyBytesBucket: "not_observed",
+    assembledSemanticOutputBytesBucket: "not_observed",
+    parsedSseEventCount: 0,
+    parsedSseEventCountBucket: "0-4",
+    responseCompletedObserved: false,
+    receivedRawBodyBytes: 0,
+    sseEventCounts: createSseEventCounters(),
+    sseEventBytes: createSseEventCounters(),
+    unclassifiedSseFrameCount: 0,
+    transportFailureCategory: "none",
   };
+}
+
+function createSseEventCounters(): Record<CodexDirectSseEventType, number> {
+  return Object.fromEntries(
+    CODEX_DIRECT_SSE_EVENT_TYPES.map((eventType) => [eventType, 0]),
+  ) as Record<CodexDirectSseEventType, number>;
 }
 
 function contentEncodingCategory(
@@ -566,6 +749,29 @@ function byteCountBucket(bytes: number): CodexDirectTransportByteCountBucket {
   if (bytes <= 512) return "small";
   if (bytes <= 8_192) return "medium";
   return "large";
+}
+
+function responseLimitByteBucket(
+  bytes: number,
+): CodexDirectTransportResponseLimitByteBucket {
+  if (bytes <= 65_536) return "0-64k";
+  if (bytes <= 262_144) return "64k-256k";
+  if (bytes <= 1_048_576) return "256k-1m";
+  if (bytes <= 2_097_152) return "1m-2m";
+  return "over_2m";
+}
+
+function responseLimitEventCountBucket(
+  count: number,
+): CodexDirectTransportResponseLimitEventCountBucket {
+  if (count <= 4) return "0-4";
+  if (count <= 19) return "5-19";
+  if (count <= 99) return "20-99";
+  if (count <= 999) return "100-999";
+  if (count <= 9_999) return "1000-9999";
+  if (count <= 99_999) return "10000-99999";
+  if (count <= 999_999) return "100000-999999";
+  return "over_999999";
 }
 
 function newlineCountBucket(
@@ -672,12 +878,19 @@ function createSseParser(
     onCompleted: () => {
       if (timingState.completionEventReceived) return;
       timingState.completionEventReceived = true;
+      protocolShape.responseCompletedObserved = true;
       emitTiming(input, timingState, startedAt, "completion_event");
     },
     onOutputText,
     ...(input.onProviderSseError === undefined
       ? {}
       : { onProviderSseError: input.onProviderSseError }),
+    ...(input.onResponseLimitDiagnostic === undefined
+      ? {}
+      : {
+          onResponseLimit: (triggerCategory) =>
+            emitResponseLimitDiagnostic(input, protocolShape, triggerCategory),
+        }),
   });
 }
 
@@ -687,13 +900,100 @@ function emitProtocolShape(
 ): void {
   try {
     input.onProtocolShape?.({
-      ...shape,
+      contentType: shape.contentType,
+      contentTypePresent: shape.contentTypePresent,
+      contentEncoding: shape.contentEncoding,
+      transferEncoding: shape.transferEncoding,
+      firstChunkByteCountBucket: shape.firstChunkByteCountBucket,
+      firstStructuralTokenCategory: shape.firstStructuralTokenCategory,
+      newlineCountBucket: shape.newlineCountBucket,
+      additionalBytesAfterFirstByte: shape.additionalBytesAfterFirstByte,
+      inactivityDurationMs: shape.inactivityDurationMs,
+      eventLinesObserved: shape.eventLinesObserved,
       eventNames: [...shape.eventNames],
       eventTypes: [...shape.eventTypes],
+      sseFrameCount: shape.sseFrameCount,
+      dataFieldCount: shape.dataFieldCount,
+      multilineDataObserved: shape.multilineDataObserved,
+      doneSentinelObserved: shape.doneSentinelObserved,
+      eofObserved: shape.eofObserved,
+      jsonObjectParsed: shape.jsonObjectParsed,
       jsonTopLevelKeys: [...shape.jsonTopLevelKeys],
+      ...(shape.finalRecognizedEventType === undefined
+        ? {}
+        : { finalRecognizedEventType: shape.finalRecognizedEventType }),
+      receivedRawBodyBytesBucket: shape.receivedRawBodyBytesBucket,
+      assembledSemanticOutputBytesBucket:
+        shape.assembledSemanticOutputBytesBucket,
+      parsedSseEventCount: shape.parsedSseEventCount,
+      parsedSseEventCountBucket: shape.parsedSseEventCountBucket,
+      responseCompletedObserved: shape.responseCompletedObserved,
+      sseEventAccounting: sseEventAccounting(shape),
+      transportFailureCategory: shape.transportFailureCategory,
     });
   } catch {
     // Protocol diagnostics must never change provider behavior.
+  }
+}
+
+function emitResponseLimitDiagnostic(
+  input: CodexDirectTransportRequest,
+  shape: MutableProtocolShape,
+  triggerCategory: CodexDirectTransportResponseLimitTriggerCategory,
+): void {
+  shape.transportFailureCategory =
+    responseLimitFailureCategory(triggerCategory);
+  try {
+    input.onResponseLimitDiagnostic?.({
+      triggerCategory,
+      receivedRawBodyBytesBucket: shape.receivedRawBodyBytesBucket,
+      assembledSemanticOutputBytesBucket:
+        shape.assembledSemanticOutputBytesBucket,
+      parsedSseEventCount: shape.parsedSseEventCount,
+      parsedSseEventCountBucket: shape.parsedSseEventCountBucket,
+      responseCompletedObserved: shape.responseCompletedObserved,
+      sseFrameCount: shape.sseFrameCount,
+      eventTypes: [...shape.eventTypes],
+      sseEventAccounting: sseEventAccounting(shape),
+    });
+  } catch {
+    // Diagnostics must never change transport behavior.
+  }
+}
+
+function responseLimitFailureCategory(
+  triggerCategory: CodexDirectTransportResponseLimitTriggerCategory,
+): CodexDirectTransportFailureDiagnosticCategory {
+  switch (triggerCategory) {
+    case "cumulative_raw_sse_limit":
+      return "cumulative_raw_sse_limit";
+    case "buffered_response_body_limit":
+      return "buffered_response_body_limit";
+    case "individual_sse_event_limit":
+      return "individual_sse_event_limit";
+    case "semantic_output_limit":
+      return "semantic_output_limit";
+    case "v2_envelope_size_limit":
+      return "semantic_output_limit";
+  }
+}
+
+function transportFailureDiagnosticCategory(
+  abortReason: TransportAbortReason | undefined,
+): CodexDirectTransportFailureDiagnosticCategory {
+  switch (abortReason) {
+    case "request_timeout":
+      return "request_timeout";
+    case "first_output_timeout":
+      return "first_output_timeout";
+    case "stream_timeout":
+      return "stream_inactivity_timeout";
+    case "generation_timeout":
+      return "generation_timeout";
+    case "cancelled":
+      return "cancelled";
+    default:
+      return "malformed_protocol";
   }
 }
 
@@ -733,26 +1033,39 @@ function recordJsonShape(shape: MutableProtocolShape, value: unknown): void {
   }
 }
 
-function isRecognizedEventType(eventType: string): boolean {
+function isRecognizedEventType(
+  eventType: string,
+): eventType is CodexDirectSseEventType {
+  return (CODEX_DIRECT_SSE_EVENT_TYPES as readonly string[]).includes(
+    eventType,
+  );
+}
+
+function sseEventAccounting(
+  shape: MutableProtocolShape,
+): CodexDirectTransportSseEventAccounting {
+  const attributedBytes = CODEX_DIRECT_SSE_EVENT_TYPES.reduce(
+    (total, eventType) => total + shape.sseEventBytes[eventType],
+    0,
+  );
+  const unclassifiedBytes = Math.max(
+    0,
+    shape.receivedRawBodyBytes - attributedBytes,
+  );
   return [
-    "response.created",
-    "response.in_progress",
-    "response.output_text.delta",
-    "response.output_text.done",
-    "response.output_item.done",
-    "response.completed",
-    "response.content_part.added",
-    "response.content_part.done",
-    "response.output_item.added",
-    "response.reasoning_summary_part.added",
-    "response.reasoning_summary_text.delta",
-    "response.reasoning_summary_text.done",
-    "response.reasoning_summary_part.done",
-    "response.metadata",
-    "response.failed",
-    "response.incomplete",
-    "error",
-  ].includes(eventType);
+    ...CODEX_DIRECT_SSE_EVENT_TYPES.map(
+      (eventType) =>
+        `${eventType}:${shape.sseEventCounts[eventType]}:${responseLimitByteBucket(shape.sseEventBytes[eventType])}`,
+    ),
+    `unclassified:${shape.unclassifiedSseFrameCount}:${responseLimitByteBucket(unclassifiedBytes)}`,
+  ];
+}
+
+export function emptyCodexDirectTransportSseEventAccounting(): CodexDirectTransportSseEventAccounting {
+  return [
+    ...CODEX_DIRECT_SSE_EVENT_TYPES.map((eventType) => `${eventType}:0:0-64k`),
+    "unclassified:0:0-64k",
+  ];
 }
 
 function emitTiming(
@@ -794,19 +1107,35 @@ function positiveIntegerOrDefault(
     : fallback;
 }
 
+interface ReadBodyChunkDecision {
+  readonly retain: boolean;
+}
+
 async function readBoundedBody(
   response: Response,
-  maximumBytes: number,
+  maximumBytes: number | (() => number | undefined) | undefined,
   abortSignal: AbortSignal,
-  onChunk?: (chunk: Uint8Array) => void,
-): Promise<Uint8Array | null> {
-  if (response.body === null) return new Uint8Array();
+  onReceivedBytes?: (totalBytes: number) => void,
+  onChunk?: (chunk: Uint8Array) => ReadBodyChunkDecision | undefined | void,
+): Promise<Uint8Array | null | undefined> {
+  if (response.body === null) {
+    const noBodyMaximumBytes =
+      typeof maximumBytes === "function" ? maximumBytes() : maximumBytes;
+    return noBodyMaximumBytes === undefined ? undefined : new Uint8Array();
+  }
   const contentLength = response.headers.get("content-length");
-  if (contentLength !== null && Number(contentLength) > maximumBytes)
+  const initialMaximumBytes =
+    typeof maximumBytes === "function" ? undefined : maximumBytes;
+  if (
+    initialMaximumBytes !== undefined &&
+    contentLength !== null &&
+    Number(contentLength) > initialMaximumBytes
+  )
     return null;
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;
+  let retainedBytes = 0;
   let removeAbortListener: (() => void) | undefined;
   let readerCancellation: Promise<void> | undefined;
   const cancelReader = (): Promise<void> => {
@@ -832,12 +1161,27 @@ async function readBoundedBody(
       const next = await Promise.race([reader.read(), abortPromise]);
       if (next.done) break;
       total += next.value.byteLength;
-      if (total > maximumBytes) {
+      onReceivedBytes?.(total);
+      const initialChunkMaximumBytes =
+        typeof maximumBytes === "function" ? maximumBytes() : maximumBytes;
+      if (
+        initialChunkMaximumBytes !== undefined &&
+        total > initialChunkMaximumBytes
+      ) {
         await cancelReader();
         return null;
       }
-      onChunk?.(next.value);
-      chunks.push(next.value);
+      const decision = onChunk?.(next.value) ?? { retain: true };
+      const currentMaximumBytes =
+        typeof maximumBytes === "function" ? maximumBytes() : maximumBytes;
+      if (currentMaximumBytes !== undefined && total > currentMaximumBytes) {
+        await cancelReader();
+        return null;
+      }
+      if (decision.retain) {
+        chunks.push(next.value);
+        retainedBytes += next.value.byteLength;
+      }
     }
   } catch (error) {
     await cancelReader();
@@ -847,7 +1191,8 @@ async function readBoundedBody(
     await readerCancellation;
     reader.releaseLock();
   }
-  const result = new Uint8Array(total);
+  if (chunks.length === 0) return undefined;
+  const result = new Uint8Array(retainedBytes);
   let offset = 0;
   for (const chunk of chunks) {
     result.set(chunk, offset);
@@ -859,6 +1204,7 @@ async function readBoundedBody(
 function parseJsonResponse(
   bytes: Uint8Array,
   protocolShape?: MutableProtocolShape,
+  input?: CodexDirectTransportRequest,
 ): CodexDirectTransportResult {
   try {
     const parsed: unknown = JSON.parse(
@@ -874,10 +1220,22 @@ function parseJsonResponse(
       return { ok: false, category: "protocol_invalid" };
     }
     const output = outputTextFromItems(parsed.output);
-    return output.length > MAX_OUTPUT_BYTES
-      ? { ok: false, category: "response_too_large" }
-      : { ok: true, normalizedOutput: output };
+    if (protocolShape !== undefined)
+      protocolShape.assembledSemanticOutputBytesBucket =
+        responseLimitByteBucket(Buffer.byteLength(output, "utf8"));
+    if (Buffer.byteLength(output, "utf8") > MAX_OUTPUT_BYTES) {
+      if (protocolShape !== undefined && input !== undefined)
+        emitResponseLimitDiagnostic(
+          input,
+          protocolShape,
+          "semantic_output_limit",
+        );
+      return { ok: false, category: "response_too_large" };
+    }
+    return { ok: true, normalizedOutput: output };
   } catch {
+    if (protocolShape !== undefined)
+      protocolShape.transportFailureCategory = "malformed_protocol";
     return { ok: false, category: "protocol_invalid" };
   }
 }
@@ -891,6 +1249,7 @@ class BoundedSseParser {
   private completed = false;
   private eventCount = 0;
   private sawData = false;
+  private frameBytes = 0;
 
   constructor(
     private readonly callbacks: {
@@ -900,6 +1259,9 @@ class BoundedSseParser {
       readonly onProviderSseError?: (
         diagnostic: CodexDirectTransportSseErrorDiagnostic,
       ) => void;
+      readonly onResponseLimit?: (
+        triggerCategory: CodexDirectTransportResponseLimitTriggerCategory,
+      ) => void;
       readonly protocolShape?: MutableProtocolShape;
     } = {},
   ) {}
@@ -908,7 +1270,11 @@ class BoundedSseParser {
     try {
       this.consumeText(this.decoder.decode(bytes, { stream: true }));
     } catch (error) {
-      if (error instanceof SseParseError) throw error;
+      if (error instanceof SseParseError) {
+        if (error.category === "protocol_invalid") this.markMalformedProtocol();
+        throw error;
+      }
+      this.markMalformedProtocol();
       throw new SseParseError("protocol_invalid");
     }
   }
@@ -919,17 +1285,37 @@ class BoundedSseParser {
     } catch (error) {
       if (error instanceof SseParseError)
         return { ok: false, category: error.category };
+      this.markMalformedProtocol();
       return { ok: false, category: "protocol_invalid" };
     }
     if (this.dataLines.length > 0) {
-      if (this.dataLines.join("\n") !== "[DONE]")
-        return { ok: false, category: "protocol_invalid" };
+      if (this.dataLines.join("\n") !== "[DONE]") return this.malformedResult();
       this.dataLines = [];
     }
-    if (this.lineRemainder !== "" || !this.sawData || !this.completed) {
+    if (this.lineRemainder !== "" || !this.sawData)
+      return this.malformedResult();
+    if (!this.completed) {
+      if (this.callbacks.protocolShape !== undefined)
+        this.callbacks.protocolShape.transportFailureCategory =
+          "missing_response_completed";
       return { ok: false, category: "protocol_invalid" };
     }
     return { ok: true, normalizedOutput: this.output.trim() };
+  }
+
+  failureCategory(): CodexDirectTransportFailureDiagnosticCategory {
+    return this.callbacks.protocolShape?.transportFailureCategory ?? "none";
+  }
+
+  private malformedResult(): CodexDirectTransportResult {
+    this.markMalformedProtocol();
+    return { ok: false, category: "protocol_invalid" };
+  }
+
+  private markMalformedProtocol(): void {
+    if (this.callbacks.protocolShape !== undefined)
+      this.callbacks.protocolShape.transportFailureCategory =
+        "malformed_protocol";
   }
 
   private consumeText(text: string): void {
@@ -938,18 +1324,29 @@ class BoundedSseParser {
     while (cursor < this.lineRemainder.length) {
       const lineFeed = this.lineRemainder.indexOf("\n", cursor);
       if (lineFeed === -1) break;
-      this.processLine(
-        this.lineRemainder.slice(cursor, lineFeed).replace(/\r$/u, ""),
-      );
+      const rawLine = this.lineRemainder.slice(cursor, lineFeed);
+      this.processLine(rawLine.replace(/\r$/u, ""), rawLine);
       cursor = lineFeed + 1;
     }
     this.lineRemainder = this.lineRemainder.slice(cursor);
+    if (Buffer.byteLength(this.lineRemainder, "utf8") > MAX_EVENT_BYTES) {
+      this.callbacks.onResponseLimit?.("individual_sse_event_limit");
+      throw new SseParseError("response_too_large");
+    }
   }
 
-  private processLine(line: string): void {
+  private processLine(line: string, rawLine: string): void {
+    this.frameBytes += Buffer.byteLength(rawLine, "utf8") + 1;
+    if (this.frameBytes > MAX_EVENT_BYTES) {
+      this.callbacks.onResponseLimit?.("individual_sse_event_limit");
+      throw new SseParseError("response_too_large");
+    }
     this.callbacks.onStarted?.();
     if (line.startsWith(":")) return;
-    if (line === "" && this.dataLines.length === 0) return;
+    if (line === "" && this.dataLines.length === 0) {
+      this.recordUnclassifiedFrame();
+      return;
+    }
     if (line === "" && this.dataLines.length > 0) {
       const payload = this.dataLines.join("\n");
       const shape = this.callbacks.protocolShape;
@@ -961,24 +1358,43 @@ class BoundedSseParser {
       this.dataBytes = 0;
       if (payload === "[DONE]") {
         if (shape !== undefined) shape.doneSentinelObserved = true;
+        this.recordUnclassifiedFrame();
         return;
       }
       this.sawData = true;
-      this.eventCount += 1;
-      if (this.eventCount > MAX_EVENT_COUNT)
-        throw new SseParseError("response_too_large");
       let event: unknown;
       try {
         event = JSON.parse(payload);
       } catch {
+        this.recordUnclassifiedFrame();
+        this.markMalformedProtocol();
         throw new SseParseError("protocol_invalid");
       }
-      if (shape !== undefined) recordJsonShape(shape, event);
-      if (!isRecord(event) || typeof event.type !== "string")
+      if (!isRecord(event) || typeof event.type !== "string") {
+        this.recordUnclassifiedFrame();
+        this.markMalformedProtocol();
         throw new SseParseError("protocol_invalid");
-      if (shape !== undefined) recordShapeToken(shape.eventTypes, event.type);
+      }
+      // This is a typed-event count: dispatch reconstruction, JSON parsing,
+      // and a string type discriminator must all succeed first. It is
+      // diagnostic only and never terminates an otherwise bounded stream.
+      this.eventCount += 1;
+      if (shape !== undefined) {
+        shape.parsedSseEventCount = this.eventCount;
+        shape.parsedSseEventCountBucket = responseLimitEventCountBucket(
+          this.eventCount,
+        );
+      }
       if (shape !== undefined && isRecognizedEventType(event.type))
+        recordShapeToken(shape.eventTypes, event.type);
+      if (shape !== undefined && isRecognizedEventType(event.type)) {
         shape.finalRecognizedEventType = event.type;
+        shape.sseEventCounts[event.type] += 1;
+        shape.sseEventBytes[event.type] += this.frameBytes;
+        this.frameBytes = 0;
+      } else {
+        this.recordUnclassifiedFrame();
+      }
       this.processEvent(event);
       return;
     }
@@ -988,7 +1404,8 @@ class BoundedSseParser {
       const shape = this.callbacks.protocolShape;
       if (shape !== undefined) {
         shape.eventLinesObserved = true;
-        recordShapeToken(shape.eventNames, eventName);
+        if (isRecognizedEventType(eventName))
+          recordShapeToken(shape.eventNames, eventName);
       }
       return;
     }
@@ -997,10 +1414,19 @@ class BoundedSseParser {
       if (this.callbacks.protocolShape !== undefined)
         this.callbacks.protocolShape.dataFieldCount += 1;
       this.dataBytes += Buffer.byteLength(value, "utf8");
-      if (this.dataBytes > MAX_EVENT_BYTES)
+      if (this.dataBytes > MAX_EVENT_BYTES) {
+        this.callbacks.onResponseLimit?.("individual_sse_event_limit");
         throw new SseParseError("response_too_large");
+      }
       this.dataLines.push(value);
     }
+  }
+
+  private recordUnclassifiedFrame(): void {
+    const shape = this.callbacks.protocolShape;
+    if (shape !== undefined && this.frameBytes > 0)
+      shape.unclassifiedSseFrameCount += 1;
+    this.frameBytes = 0;
   }
 
   private processEvent(event: Record<string, unknown>): void {
@@ -1054,8 +1480,13 @@ class BoundedSseParser {
       default:
         throw new SseParseError("protocol_invalid");
     }
-    if (Buffer.byteLength(this.output, "utf8") > MAX_OUTPUT_BYTES)
+    if (this.callbacks.protocolShape !== undefined)
+      this.callbacks.protocolShape.assembledSemanticOutputBytesBucket =
+        responseLimitByteBucket(Buffer.byteLength(this.output, "utf8"));
+    if (Buffer.byteLength(this.output, "utf8") > MAX_OUTPUT_BYTES) {
+      this.callbacks.onResponseLimit?.("semantic_output_limit");
       throw new SseParseError("response_too_large");
+    }
   }
 }
 

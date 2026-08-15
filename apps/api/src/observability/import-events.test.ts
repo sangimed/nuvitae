@@ -346,6 +346,83 @@ describe("privacy-safe import events (T075)", () => {
     expect(JSON.stringify(sink.records)).not.toContain("PRIVLOG-TOKEN");
   });
 
+  it("persists only bounded response-limit diagnostics", () => {
+    const sink = new RecordingSink();
+    const emitter = createImportEventEmitter(sink);
+
+    emitter.emit("semantic.provider_response_limit", {
+      importId,
+      triggerCategory: "cumulative_raw_sse_limit",
+      receivedRawBodyBytesBucket: "over_2m",
+      assembledSemanticOutputBytesBucket: "0-64k",
+      parsedSseEventCount: 12000,
+      parsedSseEventCountBucket: "10000-99999",
+      responseCompletedObserved: false,
+      sseFrameCount: 12000,
+      eventTypes: ["response.metadata"],
+      sseEventAccounting: [
+        "response.created:0:0-64k",
+        "response.in_progress:0:0-64k",
+        "response.output_text.delta:0:0-64k",
+        "response.output_text.done:0:0-64k",
+        "response.output_item.done:0:0-64k",
+        "response.completed:0:0-64k",
+        "response.content_part.added:0:0-64k",
+        "response.content_part.done:0:0-64k",
+        "response.output_item.added:0:0-64k",
+        "response.reasoning_summary_part.added:0:0-64k",
+        "response.reasoning_summary_text.delta:0:0-64k",
+        "response.reasoning_summary_text.done:0:0-64k",
+        "response.reasoning_summary_part.done:0:0-64k",
+        "response.metadata:12000:1m-2m",
+        "response.failed:0:0-64k",
+        "response.incomplete:0:0-64k",
+        "error:0:0-64k",
+        "unclassified:0:0-64k",
+      ],
+      rawProviderFrame: "PRIVLOG-RAW-SSE-FRAME",
+      semanticValue: "PRIVLOG-SEMANTIC-VALUE",
+      prompt: "PRIVLOG-PROMPT",
+    } as never);
+
+    expect(sink.records[0]?.metadata).toEqual({
+      importId,
+      triggerCategory: "cumulative_raw_sse_limit",
+      receivedRawBodyBytesBucket: "over_2m",
+      assembledSemanticOutputBytesBucket: "0-64k",
+      parsedSseEventCount: 12000,
+      parsedSseEventCountBucket: "10000-99999",
+      responseCompletedObserved: false,
+      sseFrameCount: 12000,
+      eventTypes: ["response.metadata"],
+      sseEventAccounting: [
+        "response.created:0:0-64k",
+        "response.in_progress:0:0-64k",
+        "response.output_text.delta:0:0-64k",
+        "response.output_text.done:0:0-64k",
+        "response.output_item.done:0:0-64k",
+        "response.completed:0:0-64k",
+        "response.content_part.added:0:0-64k",
+        "response.content_part.done:0:0-64k",
+        "response.output_item.added:0:0-64k",
+        "response.reasoning_summary_part.added:0:0-64k",
+        "response.reasoning_summary_text.delta:0:0-64k",
+        "response.reasoning_summary_text.done:0:0-64k",
+        "response.reasoning_summary_part.done:0:0-64k",
+        "response.metadata:12000:1m-2m",
+        "response.failed:0:0-64k",
+        "response.incomplete:0:0-64k",
+        "error:0:0-64k",
+        "unclassified:0:0-64k",
+      ],
+    });
+    expect(JSON.stringify(sink.records)).not.toContain("PRIVLOG-RAW-SSE-FRAME");
+    expect(JSON.stringify(sink.records)).not.toContain(
+      "PRIVLOG-SEMANTIC-VALUE",
+    );
+    expect(JSON.stringify(sink.records)).not.toContain("PRIVLOG-PROMPT");
+  });
+
   it("drops provider, model, and error metadata for every registered event without leaking", () => {
     const sink = new RecordingSink();
     const emitter: ImportEventEmitter = createImportEventEmitter(sink);

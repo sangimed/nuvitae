@@ -33,9 +33,11 @@ import { validateSemanticParseRequest } from "../semantic-parser/validate-semant
 import { semanticParserInstructions } from "../validation/semantic-parser-instructions.js";
 import {
   CodexDirectTransport,
+  emptyCodexDirectTransportSseEventAccounting,
   type CodexDirectTransportFailureCategory,
   type CodexDirectTransportRequest,
   type CodexDirectTransportProtocolShape,
+  type CodexDirectTransportResponseLimitDiagnostic,
   type CodexDirectTransportSseErrorDiagnostic,
   type CodexDirectTransportTiming,
 } from "./codex-direct-transport.js";
@@ -77,6 +79,12 @@ export interface CodexDirectProviderAdapterPorts {
   ) => void;
   readonly onTransportSseError?: (
     diagnostic: CodexDirectTransportSseErrorDiagnostic & {
+      readonly importId: string;
+      readonly correlationId?: string;
+    },
+  ) => void;
+  readonly onResponseLimitDiagnostic?: (
+    diagnostic: CodexDirectTransportResponseLimitDiagnostic & {
       readonly importId: string;
       readonly correlationId?: string;
     },
@@ -195,6 +203,7 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
       session.accountId ?? accountIdentifierFromJwt(session.accessToken);
     if (accountIdentifier === null) return failure("authentication_revoked");
 
+    let protocolShape: CodexDirectTransportProtocolShape | undefined;
     const transportRequest: CodexDirectTransportRequest = {
       accessToken: session.accessToken,
       accountIdentifier,
@@ -223,6 +232,7 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
       },
       onProtocolShape: (shape) => {
         try {
+          protocolShape = shape;
           if (request.importId === null) return;
           this.ports.onTransportProtocolShape?.({
             ...shape,
@@ -249,6 +259,21 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
           });
         } catch {
           // Transport diagnostics must never change provider behavior.
+        }
+      },
+      onResponseLimitDiagnostic: (diagnostic) => {
+        try {
+          if (request.importId === null) return;
+          this.ports.onResponseLimitDiagnostic?.({
+            ...diagnostic,
+            importId: request.importId,
+            ...(request.correlationId === null ||
+            request.correlationId === undefined
+              ? {}
+              : { correlationId: request.correlationId }),
+          });
+        } catch {
+          // Limit diagnostics must never change provider behavior.
         }
       },
     };
@@ -314,6 +339,13 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
         failureCategory: canonical.failureCategory,
         normalizedOutputBytes,
       });
+      if (canonical.reason === "response_too_large")
+        emitV2ResponseLimitDiagnostic(
+          this.ports,
+          request,
+          normalizedOutputBytes,
+          protocolShape,
+        );
       return failureForV2WholeResponse(canonical.reason);
     }
     this.emitCanonicalizationTiming(request, canonicalizationStartedAt);
@@ -397,6 +429,49 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
       return snapshotForError("authentication_revoked", checkedAt);
     }
   }
+}
+
+function emitV2ResponseLimitDiagnostic(
+  ports: CodexDirectProviderAdapterPorts,
+  request: ResumeSemanticParseRequest,
+  normalizedOutputBytes: number,
+  protocolShape: CodexDirectTransportProtocolShape | undefined,
+): void {
+  if (request.importId === null) return;
+  try {
+    ports.onResponseLimitDiagnostic?.({
+      triggerCategory: "v2_envelope_size_limit",
+      receivedRawBodyBytesBucket:
+        protocolShape?.receivedRawBodyBytesBucket ?? "not_observed",
+      assembledSemanticOutputBytesBucket: byteBucket(normalizedOutputBytes),
+      parsedSseEventCount: protocolShape?.parsedSseEventCount ?? 0,
+      parsedSseEventCountBucket:
+        protocolShape?.parsedSseEventCountBucket ?? "0-4",
+      responseCompletedObserved:
+        protocolShape?.responseCompletedObserved ?? false,
+      sseFrameCount: protocolShape?.sseFrameCount ?? 0,
+      eventTypes: protocolShape?.eventTypes ?? [],
+      sseEventAccounting:
+        protocolShape?.sseEventAccounting ??
+        emptyCodexDirectTransportSseEventAccounting(),
+      importId: request.importId,
+      ...(request.correlationId === null || request.correlationId === undefined
+        ? {}
+        : { correlationId: request.correlationId }),
+    });
+  } catch {
+    // Limit diagnostics must never change provider behavior.
+  }
+}
+
+function byteBucket(
+  bytes: number,
+): CodexDirectTransportResponseLimitDiagnostic["assembledSemanticOutputBytesBucket"] {
+  if (bytes <= 65_536) return "0-64k";
+  if (bytes <= 262_144) return "64k-256k";
+  if (bytes <= 1_048_576) return "256k-1m";
+  if (bytes <= 2_097_152) return "1m-2m";
+  return "over_2m";
 }
 
 function emitV2EnvelopeDiagnostic(
