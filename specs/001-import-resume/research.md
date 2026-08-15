@@ -437,3 +437,39 @@ would bypass the mandatory fail-closed hash verification. Committing opaque
 manually-created binaries without reproducible generators was rejected
 because the repository convention requires deterministic generator sources
 for every fixture.
+
+## Issue #25 Sol/low vs Terra/low benchmark conclusion (2026-08-15)
+
+The bounded confirmatory comparison was intentionally stopped after Arm B
+failed its predefined quality gate. Arm A (Sol/low) passed with provider total
+49,593 ms, first semantic output 9,510 ms, generation 40,083 ms, 64/64 active
+and grounded fields, and no rejected fields, warnings, or invented values.
+Arm B (Terra/low) completed at the transport level but failed the grounding /
+evidence gate: provider total 50,780 ms, first semantic output 15,548 ms,
+generation 35,229 ms, 64/64 active and grounded fields, two rejected fields,
+two warnings, and `v2_partial_acceptance` caused by two ambiguous
+language-proficiency evidence candidates. Arm B used no fallback and remains
+an immutable quality-failed sample.
+
+Arm B was +1,187 ms (+2.393%) in provider total, +6,038 ms (+63.491%) to first
+semantic output, and -4,854 ms (-12.11%) in generation versus Arm A. The
+earlier bounded Terra advantage was not reproduced. Sol/low remains the
+selected default candidate; Terra/low is not selected based on the available
+evidence. This is not a claim that Terra is universally slower or lower
+quality, only that the hypothesized stable advantage was not confirmed.
+
+The four-arm sequence was conditional on preceding arms remaining valid, so
+the Arm B gate failure ended the sequence. Arms C and D are not missing
+samples: neither was authorized or executed. Terra must not be rerun, and no
+prompt, evidence-rule, threshold, schema, evaluator, or model-configuration
+tuning followed by another benchmark is authorized for issue #25. No further
+live provider call is justified. The incremental SSE transport correction
+remains independently valid and must not be reverted. The two
+language-proficiency rejections may be tracked as a separate product-quality
+observation without reopening this benchmark.
+
+Canonical evidence remains immutable in
+`docs/research/import-resume-issue-25-arm-a-sol-low-20260815.json`,
+`docs/research/import-resume-issue-25-arm-b-terra-low-20260815.json`, and the
+conclusion record
+`docs/research/import-resume-issue-25-conclusion-20260815.md`.
