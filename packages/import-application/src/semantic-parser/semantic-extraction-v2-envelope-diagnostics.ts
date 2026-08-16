@@ -5,6 +5,7 @@ import {
   maxSemanticExtractionV2TotalNodes,
   nuvitaeSemanticExtractionV2EnvelopeSchema,
   nuvitaeSemanticExtractionV2ResponseVersion,
+  semanticExtractionV2ContactKeys,
 } from "@nuvitae/contracts";
 
 import {
@@ -219,13 +220,9 @@ const schemaFieldNames = new Set([
   "to",
 ]);
 
-const contactKeys = new Set([
-  "fullName",
-  "email",
-  "phone",
-  "location",
-  "website",
-]);
+const contactKeys: ReadonlySet<string> = new Set(
+  semanticExtractionV2ContactKeys,
+);
 
 const knownContactAliases = new Set([
   "name",

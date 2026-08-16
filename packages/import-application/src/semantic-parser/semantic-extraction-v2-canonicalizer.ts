@@ -13,6 +13,7 @@ import {
   maxSemanticExtractionV2TotalAtoms,
   maxSemanticExtractionV2TotalNodes,
   maxSemanticExtractionV2WorkExperiences,
+  semanticExtractionV2ContactKeys,
   nuvitaeSemanticExtractionV2EnvelopeSchema,
   semanticExtractionV2AtomSchema,
   semanticExtractionV2RelationshipSchema,
@@ -172,6 +173,10 @@ const groupKeys = {
   project: ["name", "description"],
   certification: ["name", "issuer"],
 } as const;
+
+const semanticExtractionV2ContactKeySet: ReadonlySet<string> = new Set(
+  semanticExtractionV2ContactKeys,
+);
 
 export function canonicalizeSemanticExtractionV2(input: {
   readonly response: unknown;
@@ -552,13 +557,7 @@ function expandCompactSemanticExtractionV2Response(response: unknown): unknown {
 
 function expandCompactContact(value: unknown): unknown {
   if (!isRecord(value)) return value;
-  return expandNullableFields(value, [
-    "fullName",
-    "email",
-    "phone",
-    "location",
-    "website",
-  ]);
+  return expandNullableFields(value, semanticExtractionV2ContactKeys);
 }
 
 function expandCompactWorkExperience(value: unknown): unknown {
@@ -1287,12 +1286,13 @@ function classifyEnvelopeFailure(
   }
   if (!isRecord(sections.contact)) return "invalid_section_shape";
   const contact = sections.contact;
-  const contactKeys = ["fullName", "email", "phone", "location", "website"];
   if (
-    contactKeys.some(
+    semanticExtractionV2ContactKeys.some(
       (key) => !Object.prototype.hasOwnProperty.call(contact, key),
     ) ||
-    Object.keys(contact).some((key) => !contactKeys.includes(key))
+    Object.keys(contact).some(
+      (key) => !semanticExtractionV2ContactKeySet.has(key),
+    )
   ) {
     return "invalid_section_shape";
   }

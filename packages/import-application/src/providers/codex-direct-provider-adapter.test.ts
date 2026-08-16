@@ -358,6 +358,38 @@ describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
     });
   });
 
+  it("canonicalizes a compact contact wrapper without leaking absent values", async () => {
+    const compact = structuredClone(response()) as {
+      sections: {
+        contact: Record<string, unknown>;
+        professionalLinks?: unknown;
+      };
+    };
+    compact.sections.contact = { fullName: atom("Ada") };
+    delete compact.sections.professionalLinks;
+    const harness = setup(connection(), {
+      ok: true,
+      normalizedOutput: JSON.stringify(compact),
+    });
+
+    const result = await harness.provider.parseV2(request(), {
+      timeoutMs: 30000,
+      ownerUserId: ownerA,
+    });
+
+    expect(result).toMatchObject({ ok: true });
+    if (result.ok) {
+      expect(result.canonical.rejected).toEqual([]);
+      expect(result.canonical.candidates).toEqual([
+        expect.objectContaining({
+          fieldPath: "contact.fullName",
+          value: "Ada",
+          sourceStatus: "explicit_source",
+        }),
+      ]);
+    }
+  });
+
   it("resolves the ready owner-bound session and invokes Codex once", async () => {
     const harness = setup();
     const result = await harness.provider.parseV2(request(), {
@@ -381,6 +413,12 @@ describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
     );
     expect(invocation?.instructions).toContain(
       "Nuvitae owns candidateId, hashes, offsets",
+    );
+    expect(invocation?.instructions).toContain(
+      "The sections.contact object is required and has exactly these allowed keys and no others: fullName, email, phone, location, website.",
+    );
+    expect(invocation?.instructions).toContain(
+      "For every non-null contact value, include at least one sourceRefs entry",
     );
     expect(invocation?.instructions).toContain("object depth 10");
     expect(invocation?.instructions).toContain("total atoms 600");

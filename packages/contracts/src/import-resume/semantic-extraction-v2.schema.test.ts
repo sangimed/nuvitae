@@ -138,4 +138,22 @@ describe("semantic-extraction.v2 contract", () => {
         .success,
     ).toBe(false);
   });
+
+  it("requires the contact wrapper and every canonical member in full responses", () => {
+    const missingWrapper = response();
+    delete (missingWrapper.sections as { contact?: unknown }).contact;
+    expect(
+      nuvitaeSemanticExtractionV2ResponseSchema.safeParse(missingWrapper)
+        .success,
+    ).toBe(false);
+
+    for (const key of ["fullName", "email", "phone", "location", "website"]) {
+      const missingMember = response();
+      delete (missingMember.sections.contact as Record<string, unknown>)[key];
+      expect(
+        nuvitaeSemanticExtractionV2ResponseSchema.safeParse(missingMember)
+          .success,
+      ).toBe(false);
+    }
+  });
 });

@@ -5,7 +5,16 @@ import { semanticParserInstructions } from "./semantic-parser-instructions.js";
 describe("Semantic V2 parser instructions", () => {
   it("states the exact contact allowlist and routing rules", () => {
     expect(semanticParserInstructions).toContain(
-      "The sections.contact object has exactly these allowed keys and no others: fullName, email, phone, location, website.",
+      "The sections.contact object is required and has exactly these allowed keys and no others: fullName, email, phone, location, website.",
+    );
+    expect(semanticParserInstructions).toContain(
+      "Every key is required in the canonical shape and accepts either one grounded atom or null",
+    );
+    expect(semanticParserInstructions).toContain(
+      "For every non-null contact value, include at least one sourceRefs entry",
+    );
+    expect(semanticParserInstructions).toContain(
+      "Never invent a contact value, phone country code, location, URL, website title, or identity",
     );
     expect(semanticParserInstructions).toContain(
       "Put a professional title or headline in sections.headline",
@@ -20,10 +29,10 @@ describe("Semantic V2 parser instructions", () => {
 
   it("preserves compact omission semantics while forbidding extra contact keys", () => {
     expect(semanticParserInstructions).toContain(
-      "omitted contact scalar fields are restored to null",
+      "in compact output, omit only an absent nullable key and Nuvitae restores it to null",
     );
     expect(semanticParserInstructions).toContain(
-      "only the five allowlisted keys may be present",
+      "Contact values must not be copied into another section.",
     );
   });
 });
