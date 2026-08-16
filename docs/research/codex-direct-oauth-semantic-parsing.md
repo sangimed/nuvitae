@@ -211,14 +211,14 @@ Mandatory T201 pass thresholds:
 Previous shared transport limits used by T200 and inherited by the first T201
 attempt:
 
-| Limit | Previous value |
-|---|---:|
-| Total compressed response bytes | 262,144 |
-| Total decompressed response bytes | 262,144 |
-| Maximum individual SSE event bytes | 262,144 |
-| Maximum SSE event count | 80 |
-| Maximum assembled assistant-output bytes | 8,192 |
-| Maximum T201 structured JSON bytes | 32,768 |
+| Limit                                    | Previous value |
+| ---------------------------------------- | -------------: |
+| Total compressed response bytes          |        262,144 |
+| Total decompressed response bytes        |        262,144 |
+| Maximum individual SSE event bytes       |        262,144 |
+| Maximum SSE event count                  |             80 |
+| Maximum assembled assistant-output bytes |          8,192 |
+| Maximum T201 structured JSON bytes       |         32,768 |
 
 The verified T201 evidence recorded `response_event_count: 81`,
 `safe_transport_classification: response_too_large`, and no terminal response
@@ -234,33 +234,29 @@ despite the expected deterministic structured result being only 7,370 bytes.
 
 Current explicit T201 limits:
 
-| Limit | T201-only value |
-|---|---:|
-| Total compressed response bytes | 1,048,576 |
-| Total decompressed response bytes | 1,048,576 |
-| Maximum individual SSE event bytes | 262,144 |
-| Maximum typed JSON protocol event count | 4,096 |
-| Maximum assembled assistant-output bytes | 65,536 |
-| Maximum structured JSON bytes | 65,536 |
+| Limit                                    |           T201-only value |
+| ---------------------------------------- | ------------------------: |
+| Maximum cumulative raw SSE body bytes    |                 2,097,152 |
+| Maximum individual SSE event bytes       |                   262,144 |
+| Maximum typed JSON protocol event count  | diagnostic only; no abort |
+| Maximum assembled assistant-output bytes |                    65,536 |
+| Maximum structured JSON bytes            |                    65,536 |
 
-The 4,096-event budget is T201-specific bounded compatibility headroom for the
-observed small-delta fragmentation, not a stable public-protocol guarantee. It
-remains bounded by the 1 MiB response ceilings and the 64 KiB assistant/JSON
-ceilings. The 64 KiB assistant and JSON limits are substantially stricter than
-the prior 229,376-byte limits while remaining comfortably above the 7,370-byte
-deterministic golden result. This changes no semantic schema, evidence,
-grounding, or no-invention acceptance requirement.
+The cumulative raw SSE limit is an operational memory/transport bound, not a
+provider event-count requirement. The typed-event count remains available in
+bounded diagnostics, while the 256 KiB individual-event and 64 KiB
+assistant/JSON limits remain independent. This changes no semantic schema,
+evidence, grounding, or no-invention acceptance requirement.
 
 Absolute hard ceilings enforced before any network request:
 
-| Limit | Hard ceiling |
-|---|---:|
-| Total compressed response bytes | 1,048,576 |
-| Total decompressed response bytes | 1,048,576 |
-| Maximum individual SSE event bytes | 262,144 |
-| Maximum typed JSON protocol event count | 4,096 |
-| Maximum assembled assistant-output bytes | 65,536 |
-| Maximum structured JSON bytes | 65,536 |
+| Limit                                    |              Hard ceiling |
+| ---------------------------------------- | ------------------------: |
+| Maximum cumulative raw SSE body bytes    |                 2,097,152 |
+| Maximum individual SSE event bytes       |                   262,144 |
+| Maximum typed JSON protocol event count  | diagnostic only; no abort |
+| Maximum assembled assistant-output bytes |                    65,536 |
+| Maximum structured JSON bytes            |                    65,536 |
 
 Invalid, missing, non-integer, unlimited, zero, or above-ceiling response limit
 values fail during local limit validation before any network request.
@@ -347,21 +343,21 @@ resume was returned to the parent.
 Because the HTTP response exceeded a bounded output limit before a terminal SSE
 event, structured output and semantic quality were not evaluated:
 
-| Metric | Value |
-|---|---:|
-| `schema_valid` | null |
-| `JSON_only_valid` | null |
-| `expected_section_recall` | null |
-| `expected_item_recall` | null |
-| `exact_fact_recall` | null |
-| `high_priority_fact_recall` | null |
-| `unsupported_fact_count` | null |
-| `forbidden_inference_count` | null |
-| `missing_evidence_count` | null |
-| `invalid_evidence_count` | null |
-| `source_grounding_pass` | null |
-| `no_invention_pass` | null |
-| `parsing_pass` | false |
+| Metric                      | Value |
+| --------------------------- | ----: |
+| `schema_valid`              |  null |
+| `JSON_only_valid`           |  null |
+| `expected_section_recall`   |  null |
+| `expected_item_recall`      |  null |
+| `exact_fact_recall`         |  null |
+| `high_priority_fact_recall` |  null |
+| `unsupported_fact_count`    |  null |
+| `forbidden_inference_count` |  null |
+| `missing_evidence_count`    |  null |
+| `invalid_evidence_count`    |  null |
+| `source_grounding_pass`     |  null |
+| `no_invention_pass`         |  null |
+| `parsing_pass`              | false |
 
 The null counts mean no structured candidate values were evaluated, not that
 semantic parsing quality passed.
@@ -424,7 +420,8 @@ sh spikes/codex-direct-oauth/run-t201-live.sh
 
 Do not run that command as part of this refresh unless a live invocation is
 explicitly authorized. The later retry remains bounded by the explicit T201
-limits above, including the 4,096-event ceiling.
+limits above, including the incremental 2 MiB raw SSE guard and independent
+output/event/deadline guards.
 
 ## 17. T202 entry implications
 
@@ -466,13 +463,22 @@ consume the event-count budget. A multi-line SSE data payload yields one JSON
 object and one count. Parsed but untyped JSON, malformed JSON, and empty
 dispatches do not count as protocol events.
 
-The earlier 1,024-event ceiling was incompatible with the observed backend
-fragmentation and is replaced only for T201 by a 4,096-event ceiling. When
-event 4,097 is seen, the parser throws the existing bounded `sse_event_count`
-failure while attaching a
-count-only snapshot: framing counts, parsed/typed/recognized/unknown counts,
-event-type histogram, assistant-output byte count, terminal flag, and an
-average whose explicit denominator is `typed_protocol_event_count`. No data
-payload, output text, reasoning, identifiers, sequence numbers, or raw error
-messages enter that snapshot. The transport, broker, and runner project the same
-sanitized snapshot so a later authorized retry can explain its abort truthfully.
+The typed-event count is diagnostic only; it is not a protocol termination
+condition. A valid stream may contain more than 4,096 small typed events. The
+incremental transport instead enforces a 2 MiB cumulative raw SSE byte limit,
+the existing 256 KiB individual-event limit, the existing 64 KiB semantic
+output limit, and the independent deadlines. It discards consumed SSE bytes and
+never buffers the complete raw response.
+
+The transport keeps separate counters: raw/network bytes, reconstructed SSE
+dispatch/frame count, successfully parsed typed-event count, and semantic
+output bytes. `sseFrameCount` counts completed non-empty `data` dispatches and
+therefore includes `[DONE]`; `[DONE]` is not a typed event. Comments, keepalives,
+empty dispatches, malformed JSON, untyped JSON, and network chunks do not
+increment the typed-event count. A multiline `data:` dispatch counts once.
+
+The previous bounded Sol benchmark remains a transport-failed, invalid latency
+sample. Its absence of Work/Education output is not a semantic-quality result,
+and no benchmark result is reclassified retroactively. A further bounded Sol
+confirmation may be considered only after this implementation and its offline
+regression suite pass. Terra remains unauthorized.

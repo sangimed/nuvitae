@@ -75,6 +75,17 @@ function completeSse(): string {
   );
 }
 
+function manySmallDeltaSse(): string {
+  return sse(
+    '{"type":"response.created","response":{}}',
+    ...Array.from({ length: 4_500 }, () =>
+      JSON.stringify({ type: "response.output_text.delta", delta: "x" }),
+    ),
+    '{"type":"response.completed","response":{"id":"response-1"}}',
+    "[DONE]",
+  );
+}
+
 function streamResponse(
   chunks: readonly Uint8Array[] | readonly string[],
   headers: Record<string, string> = {},
@@ -338,6 +349,9 @@ describe("CodexDirectTransport", () => {
     expect(shape).toContainEqual(
       expect.objectContaining({ multilineDataObserved: true }),
     );
+    expect(shape).toContainEqual(
+      expect.objectContaining({ parsedSseEventCount: 3, sseFrameCount: 3 }),
+    );
   });
 
   it("E. ignores comments and keepalives while parsing frames", async () => {
@@ -359,6 +373,37 @@ describe("CodexDirectTransport", () => {
     expect(result).toEqual({ ok: true, normalizedOutput: "" });
   });
 
+  it("keeps transport frames separate from typed-event accounting", async () => {
+    const shapes: unknown[] = [];
+    const body =
+      ": comment\n\n\n" +
+      "\n" +
+      sse(
+        '{"type":"response.created","response":{}}',
+        '{"type":"response.completed","response":{"id":"response-1"}}',
+        "[DONE]",
+      );
+    const result = await new CodexDirectTransport({
+      fetch: vi.fn(
+        async () =>
+          new Response(body, {
+            status: 200,
+            headers: { "content-type": "text/event-stream" },
+          }),
+      ),
+    }).invoke({ ...input, onProtocolShape: (shape) => shapes.push(shape) });
+
+    expect(result).toEqual({ ok: true, normalizedOutput: "" });
+    expect(shapes).toContainEqual(
+      expect.objectContaining({
+        parsedSseEventCount: 2,
+        sseFrameCount: 3,
+        doneSentinelObserved: true,
+        transportFailureCategory: "none",
+      }),
+    );
+  });
+
   it("F. tolerates [DONE] after a completed response", async () => {
     const shape: unknown[] = [];
     const result = await new CodexDirectTransport({
@@ -370,7 +415,7 @@ describe("CodexDirectTransport", () => {
               '{"type":"response.completed","response":{"id":"response-1"}}',
               "[DONE]",
             ),
-            { status: 200, headers: { "content-type": "text/event-stream" } },
+            { status: 200 },
           ),
       ),
     }).invoke({ ...input, onProtocolShape: (value) => shape.push(value) });
@@ -417,6 +462,8 @@ describe("CodexDirectTransport", () => {
         finalRecognizedEventType: "response.output_item.done",
         doneSentinelObserved: true,
         eofObserved: true,
+        parsedSseEventCount: 2,
+        transportFailureCategory: "missing_response_completed",
       }),
     );
   });
@@ -447,6 +494,7 @@ describe("CodexDirectTransport", () => {
   });
 
   it("J. fails closed for a genuinely malformed SSE stream", async () => {
+    const shapes: unknown[] = [];
     const result = await new CodexDirectTransport({
       fetch: vi.fn(
         async () =>
@@ -455,8 +503,39 @@ describe("CodexDirectTransport", () => {
             headers: { "content-type": "text/event-stream" },
           }),
       ),
-    }).invoke(input);
+    }).invoke({ ...input, onProtocolShape: (shape) => shapes.push(shape) });
     expect(result).toEqual({ ok: false, category: "protocol_invalid" });
+    expect(shapes).toContainEqual(
+      expect.objectContaining({
+        parsedSseEventCount: 0,
+        transportFailureCategory: "malformed_protocol",
+      }),
+    );
+  });
+
+  it.each([
+    ["untyped JSON", "{}"],
+    ["JSON array", "[]"],
+  ])("does not count %s as a typed SSE event", async (_name, payload) => {
+    const shapes: unknown[] = [];
+    const result = await new CodexDirectTransport({
+      fetch: vi.fn(
+        async () =>
+          new Response(sse(payload), {
+            status: 200,
+            headers: { "content-type": "text/event-stream" },
+          }),
+      ),
+    }).invoke({ ...input, onProtocolShape: (shape) => shapes.push(shape) });
+
+    expect(result).toEqual({ ok: false, category: "protocol_invalid" });
+    expect(shapes).toContainEqual(
+      expect.objectContaining({
+        parsedSseEventCount: 0,
+        sseFrameCount: 1,
+        transportFailureCategory: "malformed_protocol",
+      }),
+    );
   });
 
   it.each([
@@ -491,7 +570,7 @@ describe("CodexDirectTransport", () => {
         new Response("", {
           status: 200,
           headers: {
-            "content-type": "text/event-stream",
+            "content-type": "application/json",
             "content-length": "1048577",
           },
         }),
@@ -499,6 +578,276 @@ describe("CodexDirectTransport", () => {
     expect(
       await new CodexDirectTransport({ fetch: oversized }).invoke(input),
     ).toEqual({ ok: false, category: "response_too_large" });
+  });
+
+  it.each([
+    [
+      "buffered response body",
+      () =>
+        streamResponse([new Uint8Array(1_048_576), new Uint8Array([1])], {
+          "content-type": "application/json",
+        }),
+      "buffered_response_body_limit",
+      { parsedSseEventCount: 0, responseCompletedObserved: false },
+    ],
+    [
+      "single SSE event size",
+      () =>
+        new Response(
+          `data: {"type":"response.output_text.delta","delta":"${"x".repeat(262_145)}"}\n\n`,
+          { status: 200, headers: { "content-type": "text/event-stream" } },
+        ),
+      "individual_sse_event_limit",
+      { parsedSseEventCount: 0, responseCompletedObserved: false },
+    ],
+    [
+      "incomplete SSE line",
+      () =>
+        new Response(`data: ${"x".repeat(262_144)}`, {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        }),
+      "individual_sse_event_limit",
+      { parsedSseEventCount: 0, responseCompletedObserved: false },
+    ],
+    [
+      "assembled semantic output",
+      () =>
+        new Response(
+          sse(
+            `{"type":"response.output_text.delta","delta":"${"x".repeat(65_537)}"}`,
+          ),
+          { status: 200, headers: { "content-type": "text/event-stream" } },
+        ),
+      "semantic_output_limit",
+      { parsedSseEventCount: 1, responseCompletedObserved: false },
+    ],
+  ] as const)(
+    "emits content-free response-limit diagnostics for %s",
+    async (_name, response, triggerCategory, expected) => {
+      const diagnostics: unknown[] = [];
+      const result = await new CodexDirectTransport({
+        fetch: vi.fn(async () => response()),
+      }).invoke({
+        ...input,
+        onResponseLimitDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+      });
+
+      expect(result).toEqual({ ok: false, category: "response_too_large" });
+      expect(diagnostics).toContainEqual(
+        expect.objectContaining({
+          triggerCategory,
+          receivedRawBodyBytesBucket: expect.any(String),
+          assembledSemanticOutputBytesBucket: expect.any(String),
+          parsedSseEventCountBucket: expect.any(String),
+          eventTypes: expect.any(Array),
+          ...expected,
+        }),
+      );
+      expect(JSON.stringify(diagnostics)).not.toContain("x".repeat(128));
+    },
+  );
+
+  it("accepts a valid SSE stream beyond 4,096 typed events", async () => {
+    const shapes: unknown[] = [];
+    const result = await new CodexDirectTransport({
+      fetch: vi.fn(
+        async () =>
+          new Response(manySmallDeltaSse(), {
+            status: 200,
+            headers: { "content-type": "text/event-stream" },
+          }),
+      ),
+    }).invoke({
+      ...input,
+      onProtocolShape: (shape) => shapes.push(shape),
+    });
+
+    expect(result).toEqual({ ok: true, normalizedOutput: "x".repeat(4_500) });
+    expect(shapes).toContainEqual(
+      expect.objectContaining({
+        parsedSseEventCount: 4_502,
+        parsedSseEventCountBucket: "1000-9999",
+        sseFrameCount: 4_503,
+        responseCompletedObserved: true,
+      }),
+    );
+  });
+
+  it("aborts incrementally when cumulative SSE bytes exceed 2 MiB", async () => {
+    const encoder = new TextEncoder();
+    const chunk = sse(
+      ...Array.from({ length: 128 }, () =>
+        JSON.stringify({
+          type: "response.metadata",
+          metadata: "x".repeat(160),
+        }),
+      ),
+    );
+    const chunks = Array.from({ length: 100 }, () => encoder.encode(chunk));
+    let nextChunk = 0;
+    let cancelled = false;
+    const diagnostics: unknown[] = [];
+    const timings: unknown[] = [];
+    const result = await new CodexDirectTransport({
+      fetch: vi.fn(
+        async () =>
+          new Response(
+            new ReadableStream<Uint8Array>({
+              pull(controller) {
+                const value = chunks[nextChunk++];
+                if (value === undefined) controller.close();
+                else controller.enqueue(value);
+              },
+              cancel() {
+                cancelled = true;
+              },
+            }),
+            { status: 200 },
+          ),
+      ),
+    }).invoke({
+      ...input,
+      onResponseLimitDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+      onTiming: (timing) => timings.push(timing),
+    });
+
+    expect(result).toEqual({ ok: false, category: "response_too_large" });
+    expect(cancelled).toBe(true);
+    expect(diagnostics).toContainEqual(
+      expect.objectContaining({
+        triggerCategory: "cumulative_raw_sse_limit",
+        receivedRawBodyBytesBucket: "over_2m",
+        parsedSseEventCount: expect.any(Number),
+        parsedSseEventCountBucket: expect.any(String),
+        responseCompletedObserved: false,
+        sseFrameCount: expect.any(Number),
+      }),
+    );
+    expect(timings).toContainEqual(
+      expect.objectContaining({
+        phase: "transport_error",
+        elapsedMs: expect.any(Number),
+      }),
+    );
+  });
+
+  it("still accounts a buffered response chunk that crosses its limit", async () => {
+    const diagnostics: unknown[] = [];
+    const result = await new CodexDirectTransport({
+      fetch: vi.fn(async () =>
+        streamResponse([new Uint8Array(1_048_576), new Uint8Array([1])], {
+          "content-type": "application/json",
+        }),
+      ),
+    }).invoke({
+      ...input,
+      onResponseLimitDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+    });
+
+    expect(result).toEqual({ ok: false, category: "response_too_large" });
+    expect(diagnostics).toContainEqual(
+      expect.objectContaining({
+        triggerCategory: "buffered_response_body_limit",
+        receivedRawBodyBytesBucket: "1m-2m",
+        responseCompletedObserved: false,
+      }),
+    );
+  });
+
+  it("accounts fixed allowlisted SSE families without a cumulative raw-body abort", async () => {
+    const shapes: unknown[] = [];
+    const body = sse(
+      '{"type":"response.created","response":{}}',
+      `{"type":"response.content_part.added","content":"${"x".repeat(70_000)}"}`,
+      '{"type":"response.output_text.delta","delta":"{}"}',
+    );
+    const result = await new CodexDirectTransport({
+      fetch: vi.fn(
+        async () =>
+          new Response(body, {
+            status: 200,
+            headers: { "content-type": "text/event-stream" },
+          }),
+      ),
+    }).invoke({
+      ...input,
+      onProtocolShape: (shape) => shapes.push(shape),
+    });
+
+    expect(result).toEqual({ ok: false, category: "protocol_invalid" });
+    expect(shapes).toContainEqual(
+      expect.objectContaining({
+        sseEventAccounting: [
+          "response.created:1:0-64k",
+          "response.in_progress:0:0-64k",
+          "response.output_text.delta:1:0-64k",
+          "response.output_text.done:0:0-64k",
+          "response.output_item.done:0:0-64k",
+          "response.completed:0:0-64k",
+          "response.content_part.added:1:64k-256k",
+          "response.content_part.done:0:0-64k",
+          "response.output_item.added:0:0-64k",
+          "response.reasoning_summary_part.added:0:0-64k",
+          "response.reasoning_summary_text.delta:0:0-64k",
+          "response.reasoning_summary_text.done:0:0-64k",
+          "response.reasoning_summary_part.done:0:0-64k",
+          "response.metadata:0:0-64k",
+          "response.failed:0:0-64k",
+          "response.incomplete:0:0-64k",
+          "error:0:0-64k",
+          "unclassified:0:0-64k",
+        ],
+      }),
+    );
+  });
+
+  it("keeps unknown SSE payload content out of fixed response-limit accounting", async () => {
+    const shapes: unknown[] = [];
+    const privatePayload = "PRIVATE-UNKNOWN-SSE-PAYLOAD";
+    const result = await new CodexDirectTransport({
+      fetch: vi.fn(async () =>
+        streamResponse(
+          [sse(`{"type":"future.event","private":"${privatePayload}"}`)],
+          { "content-type": "text/event-stream" },
+        ),
+      ),
+    }).invoke({
+      ...input,
+      onProtocolShape: (shape) => shapes.push(shape),
+    });
+
+    expect(result).toEqual({ ok: false, category: "protocol_invalid" });
+    expect(shapes).toContainEqual(
+      expect.objectContaining({
+        parsedSseEventCount: 1,
+        parsedSseEventCountBucket: "0-4",
+        sseFrameCount: 1,
+        transportFailureCategory: "malformed_protocol",
+      }),
+    );
+    expect(JSON.stringify(shapes)).not.toContain(privatePayload);
+    expect(JSON.stringify(shapes)).not.toContain("private");
+    expect(JSON.stringify(shapes)).not.toContain("future.event");
+  });
+
+  it("keeps accepted responses and limit diagnostics unchanged", async () => {
+    const diagnostics: unknown[] = [];
+    const result = await new CodexDirectTransport({
+      fetch: vi.fn(
+        async () =>
+          new Response(completeSse(), {
+            status: 200,
+            headers: { "content-type": "text/event-stream" },
+          }),
+      ),
+    }).invoke({
+      ...input,
+      onResponseLimitDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+    });
+
+    expect(result).toEqual({ ok: true, normalizedOutput: '{"ok":true}' });
+    expect(diagnostics).toEqual([]);
   });
 
   it.each([

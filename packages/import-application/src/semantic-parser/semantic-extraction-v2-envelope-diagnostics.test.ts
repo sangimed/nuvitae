@@ -53,7 +53,7 @@ describe("semantic-extraction.v2 envelope diagnostics", () => {
       secretValue: "PRIVATE-RESUME-VALUE",
       response: { prompt: "PRIVATE-PROMPT" },
     };
-    delete (response as { conflicts?: unknown }).conflicts;
+    response.relationships = null as never;
 
     const result = diagnostic(response);
 
@@ -61,16 +61,18 @@ describe("semantic-extraction.v2 envelope diagnostics", () => {
       semanticJsonParseSucceeded: true,
       canonicalizerReached: true,
       failureStage: "v2_envelope",
+      failureLevel: "whole_envelope_unusable",
+      failureCategory: "unexpected_root_field",
       topLevelValueCategory: "object",
       schemaVersionCategory: "exact_v2",
-      missingTopLevelKeys: ["conflicts"],
+      missingTopLevelKeys: [],
       unexpectedTopLevelKeys: ["response"],
       unrecognizedTopLevelKeyPresent: true,
       sectionsValueCategory: "object",
-      relationshipsValueCategory: "array",
+      relationshipsValueCategory: "null",
       ambiguitiesValueCategory: "array",
-      conflictsValueCategory: "missing",
-      firstZodPath: ["conflicts"],
+      conflictsValueCategory: "array",
+      firstZodPath: ["relationships"],
       issueCountBucket: "0-4",
     });
     expect(JSON.stringify(result)).not.toContain("PRIVATE-RESUME-VALUE");
@@ -128,6 +130,34 @@ describe("semantic-extraction.v2 envelope diagnostics", () => {
     expect(result.firstZodPath).toEqual(["schemaVersion"]);
     expect(result.issueCountBucket).toBe("0-4");
   });
+
+  it.each([
+    ["address", "known_alias_wrong_location"],
+    ["headline", "misplaced_existing_semantic_field"],
+    ["providerContactFlag", "unknown_contact_key"],
+  ] as const)(
+    "classifies an unrecognized contact key as %s without exposing the key",
+    (key, category) => {
+      const response = validEnvelope();
+      response.sections.contact = {
+        ...response.sections.contact,
+        [key]: null,
+      };
+
+      const result = diagnostic(response);
+
+      expect(result).toMatchObject({
+        failureCategory: "invalid_section_shape",
+        firstZodIssueCode: "unrecognized_keys",
+        firstZodPath: ["sections", "contact"],
+        unrecognizedKeyCategory: category,
+      });
+      expect(result).not.toHaveProperty("unrecognizedKey");
+      expect(result).not.toHaveProperty("unrecognizedContactKey");
+      if (key !== "headline")
+        expect(JSON.stringify(result)).not.toContain(key);
+    },
+  );
 
   it.each([
     [

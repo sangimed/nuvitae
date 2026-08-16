@@ -32,6 +32,7 @@ import type {
   ImportEventEmitter,
   ImportEventMetadataFor,
 } from "./observability/import-events.js";
+import { emitImportTiming } from "./observability/import-events.js";
 
 const pdfContentType = "application/pdf";
 const docxContentType =
@@ -45,6 +46,8 @@ type RecoveryAction = NonNullable<
 export interface ValidateDocumentInput {
   readonly ownerUserId: string;
   readonly importedDocumentId: string;
+  readonly correlationId?: string;
+  readonly uploadReceivedAt?: Date;
   readonly abortSignal?: AbortSignal;
 }
 
@@ -157,7 +160,7 @@ export class ValidateDocumentService {
 
     if ("kind" in outcome && outcome.kind === "recoverable") {
       await this.restoreRetryableState(document);
-      this.logCompletion(document.id, outcome.code, startedAt);
+      this.logCompletion(document.id, outcome.code, startedAt, {}, input);
       return this.response({
         requestId,
         importId: document.id,
@@ -186,17 +189,23 @@ export class ValidateDocumentService {
         return this.retryableInfrastructureResponse(requestId, document.id);
       }
       await this.releaseCapacity(document.id, document.ownerUserId);
-      this.logCompletion(document.id, outcome.code, startedAt, {
-        ...(outcome.renderedPageCount === undefined
-          ? {}
-          : { renderedPageCount: outcome.renderedPageCount }),
-        ...(outcome.detectedLanguage === undefined
-          ? {}
-          : { detectedLanguage: outcome.detectedLanguage }),
-        ...(outcome.safetyReason === undefined
-          ? {}
-          : { pdfSafetyReason: outcome.safetyReason }),
-      });
+      this.logCompletion(
+        document.id,
+        outcome.code,
+        startedAt,
+        {
+          ...(outcome.renderedPageCount === undefined
+            ? {}
+            : { renderedPageCount: outcome.renderedPageCount }),
+          ...(outcome.detectedLanguage === undefined
+            ? {}
+            : { detectedLanguage: outcome.detectedLanguage }),
+          ...(outcome.safetyReason === undefined
+            ? {}
+            : { pdfSafetyReason: outcome.safetyReason }),
+        },
+        input,
+      );
       return this.response({
         requestId,
         importId: document.id,
@@ -224,7 +233,7 @@ export class ValidateDocumentService {
     if (!persisted) {
       return this.retryableInfrastructureResponse(requestId, document.id);
     }
-    this.logCompletion(document.id, "accepted", startedAt, outcome);
+    this.logCompletion(document.id, "accepted", startedAt, outcome, input);
     return this.response({
       requestId,
       importId: document.id,
@@ -508,11 +517,10 @@ export class ValidateDocumentService {
       readonly detectedLanguage?: DetectedLanguage;
       readonly pdfSafetyReason?: PdfSafetyReasonCode;
     } = {},
+    input?: Pick<ValidateDocumentInput, "correlationId" | "uploadReceivedAt">,
   ): void {
-    const duration = Math.max(
-      0,
-      this.ports.clock.now().getTime() - startedAt.getTime(),
-    );
+    const completedAt = this.ports.clock.now();
+    const duration = Math.max(0, completedAt.getTime() - startedAt.getTime());
     this.ports.logger.emit("validation.completed", {
       importId,
       errorCategory,
@@ -522,6 +530,18 @@ export class ValidateDocumentService {
       ...(details.pdfSafetyReason === undefined
         ? {}
         : { pdfSafetyReason: details.pdfSafetyReason }),
+      ...(input?.correlationId === undefined
+        ? {}
+        : { correlationId: input.correlationId }),
+    });
+    emitImportTiming(this.ports.logger, {
+      importId,
+      correlationId: input?.correlationId,
+      phase: "validation_completed",
+      source: "worker",
+      at: completedAt,
+      durationMs: duration,
+      uploadReceivedAt: input?.uploadReceivedAt,
     });
   }
 }

@@ -150,6 +150,41 @@ describe("semantic-extraction.v2 canonicalization", () => {
     expect(email?.normalizedValue).toBe("alex.martin@example.test");
   });
 
+  it("expands compact deterministic absence markers without changing semantics", () => {
+    const full = canonical();
+    const compact = structuredClone(response()) as {
+      sections: {
+        contact: Record<string, unknown>;
+        education: Array<Record<string, unknown>>;
+        languages: Array<Record<string, unknown>>;
+        [key: string]: unknown;
+      };
+      [key: string]: unknown;
+    };
+
+    delete compact.sections.contact.website;
+    delete compact.sections.summary;
+    delete compact.sections.workExperience;
+    delete compact.sections.projects;
+    delete compact.sections.certifications;
+    const education = compact.sections.education[0];
+    if (education !== undefined) {
+      delete education.fieldOfStudy;
+      delete education.location;
+    }
+    const language = compact.sections.languages[0];
+    if (language !== undefined) delete language.proficiency;
+    delete compact.relationships;
+    delete compact.ambiguities;
+    delete compact.conflicts;
+
+    const compactResult = canonical(compact);
+    expect(compactResult).toEqual(full);
+    expect(JSON.stringify(compact).length).toBeLessThan(
+      JSON.stringify(response()).length,
+    );
+  });
+
   it("partially accepts independent fields when headline grounding is corrupt", () => {
     const corrupted = response({
       sections: {
@@ -346,7 +381,7 @@ describe("semantic-extraction.v2 canonicalization", () => {
         value: "Backend Engineer",
         sourceRefs: [{ fragmentId: null, quote: "Backend Engineer" }],
       },
-      "malformed_atom",
+      "malformed_source_ref",
     ],
   ] as const)(
     "rejects %s with a fragment-scoped reason",
@@ -480,7 +515,7 @@ describe("semantic-extraction.v2 canonicalization", () => {
 
   it("rejects malformed top-level envelopes as whole-response failures", () => {
     const malformed = response();
-    delete (malformed as { conflicts?: unknown }).conflicts;
+    delete (malformed as { sections?: unknown }).sections;
     const result = canonicalizeSemanticExtractionV2({
       response: malformed,
       sourceRegistry: registry,
@@ -489,6 +524,7 @@ describe("semantic-extraction.v2 canonicalization", () => {
     expect(result).toEqual({
       ok: false,
       reason: "invalid_top_level_envelope",
+      failureCategory: "missing_required_root_field",
       rejected: [],
     });
   });

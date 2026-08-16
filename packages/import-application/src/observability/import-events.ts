@@ -213,6 +213,7 @@ const semanticTransportTimingPhases = [
   "request_started",
   "response_headers",
   "first_byte",
+  "first_semantic_output",
   "sse_started",
   "completion_event",
   "response_eof",
@@ -264,6 +265,65 @@ const semanticTransportNewlineCountBuckets = [
   "5-19",
   "20+",
 ] as const;
+const semanticResponseLimitTriggerCategories = [
+  "cumulative_raw_sse_limit",
+  "buffered_response_body_limit",
+  "individual_sse_event_limit",
+  "semantic_output_limit",
+  "v2_envelope_size_limit",
+] as const;
+const semanticResponseLimitByteBuckets = [
+  "not_observed",
+  "0-64k",
+  "64k-256k",
+  "256k-1m",
+  "1m-2m",
+  "over_2m",
+] as const;
+const semanticResponseLimitEventCountBuckets = [
+  "0-4",
+  "5-19",
+  "20-99",
+  "100-999",
+  "1000-9999",
+  "10000-99999",
+  "100000-999999",
+  "over_999999",
+] as const;
+const semanticTransportFailureDiagnosticCategories = [
+  "none",
+  "cumulative_raw_sse_limit",
+  "buffered_response_body_limit",
+  "individual_sse_event_limit",
+  "semantic_output_limit",
+  "malformed_protocol",
+  "missing_response_completed",
+  "request_timeout",
+  "first_output_timeout",
+  "stream_inactivity_timeout",
+  "generation_timeout",
+  "cancelled",
+] as const;
+const semanticResponseLimitSseEventTypes = [
+  "response.created",
+  "response.in_progress",
+  "response.output_text.delta",
+  "response.output_text.done",
+  "response.output_item.done",
+  "response.completed",
+  "response.content_part.added",
+  "response.content_part.done",
+  "response.output_item.added",
+  "response.reasoning_summary_part.added",
+  "response.reasoning_summary_text.delta",
+  "response.reasoning_summary_text.done",
+  "response.reasoning_summary_part.done",
+  "response.metadata",
+  "response.failed",
+  "response.incomplete",
+  "error",
+  "unclassified",
+] as const;
 const semanticProviderErrorCategories = [
   "authentication_expired",
   "authentication_revoked",
@@ -296,6 +356,37 @@ const semanticV2EnvelopeFailureStages = [
   "semantic_json_parse",
   "v2_envelope",
   "v2_canonicalizer",
+] as const;
+const semanticV2EnvelopeFailureLevels = ["whole_envelope_unusable"] as const;
+const semanticV2UnrecognizedKeyCategories = [
+  "none",
+  "known_alias_wrong_location",
+  "unknown_contact_key",
+  "misplaced_existing_semantic_field",
+  "unknown_structural_key",
+] as const;
+const semanticV2EnvelopeFailureCategories = [
+  "invalid_json",
+  "wrong_root_shape",
+  "missing_required_root_field",
+  "unexpected_root_field",
+  "invalid_section_shape",
+  "invalid_candidate_shape",
+  "invalid_source_ref_shape",
+  "unsupported_typed_value_shape",
+  "object_depth_exceeded",
+  "atom_limit_exceeded",
+  "node_limit_exceeded",
+  "response_size_exceeded",
+  "cardinality_limit_exceeded",
+  "other_schema_violation",
+] as const;
+const semanticV2FieldFailureLevels = ["field_level_rejection"] as const;
+const semanticV2FieldFailureCategories = [
+  "invalid_candidate_shape",
+  "invalid_source_ref_shape",
+  "unsupported_typed_value_shape",
+  "other_schema_violation",
 ] as const;
 const semanticV2EnvelopeValueCategories = [
   "not_observed",
@@ -451,9 +542,19 @@ type TokenListField = {
   readonly maxItemLength: number;
   readonly optional?: boolean;
 };
+type SseEventAccountingField = {
+  readonly kind: "sse_event_accounting";
+  readonly optional?: boolean;
+};
 
 type FieldSpec =
-  StringField | IntField | BoolField | EnumField | PathField | TokenListField;
+  | StringField
+  | IntField
+  | BoolField
+  | EnumField
+  | PathField
+  | TokenListField
+  | SseEventAccountingField;
 
 export interface ImportEventSchema {
   readonly level: ImportEventLevel;
@@ -498,13 +599,51 @@ const tokenList = (
   maxItemLength,
   optional,
 });
+const sseEventAccounting = (): SseEventAccountingField => ({
+  kind: "sse_event_accounting",
+});
 
 const commonIdentifierFields = {
   importId: id(true),
   correlationId: id(true),
 } as const;
 
+const importTimingPhases = [
+  "upload_received",
+  "upload_persisted",
+  "queue_enqueued",
+  "worker_started",
+  "validation_completed",
+  "extraction_completed",
+  "normalization_completed",
+  "provider_started",
+  "provider_headers",
+  "provider_first_output",
+  "provider_completed",
+  "semantic_parsing_completed",
+  "canonicalization_completed",
+  "draft_persisted",
+  "review_api_available",
+  "review_first_poll",
+  "review_available_to_client",
+  "review_rendered",
+] as const;
+
+const importTimingSources = ["api", "worker", "web"] as const;
+
 export const importEventSchemas = {
+  "import.timing": {
+    level: "info",
+    fields: {
+      importId: id(),
+      correlationId: id(true),
+      phase: enumOf(importTimingPhases),
+      source: enumOf(importTimingSources),
+      timestampMs: int(0, 9_000_000_000_000_000),
+      durationMs: int(0, 86_400_000, true),
+      elapsedSinceUploadMs: int(0, 86_400_000, true),
+    },
+  },
   "import.created": {
     level: "info",
     fields: {
@@ -789,7 +928,9 @@ export const importEventSchemas = {
       eventLinesObserved: bool(),
       eventNames: tokenList(64),
       eventTypes: tokenList(64),
-      sseFrameCount: int(0, 4_096),
+      // sseFrameCount is a reconstructed SSE dispatch count and may include
+      // [DONE]; it is independent from the typed-event count.
+      sseFrameCount: int(0, 2_097_152),
       dataFieldCount: int(0, 1_048_576),
       multilineDataObserved: bool(),
       doneSentinelObserved: bool(),
@@ -797,6 +938,17 @@ export const importEventSchemas = {
       jsonObjectParsed: bool(),
       jsonTopLevelKeys: tokenList(64),
       finalRecognizedEventType: token(true),
+      receivedRawBodyBytesBucket: enumOf(semanticResponseLimitByteBuckets),
+      assembledSemanticOutputBytesBucket: enumOf(
+        semanticResponseLimitByteBuckets,
+      ),
+      parsedSseEventCount: int(0, 2_097_152),
+      parsedSseEventCountBucket: enumOf(semanticResponseLimitEventCountBuckets),
+      responseCompletedObserved: bool(),
+      sseEventAccounting: sseEventAccounting(),
+      transportFailureCategory: enumOf(
+        semanticTransportFailureDiagnosticCategories,
+      ),
       correlationId: id(true),
     },
   },
@@ -811,6 +963,24 @@ export const importEventSchemas = {
       correlationId: id(true),
     },
   },
+  "semantic.provider_response_limit": {
+    level: "warn",
+    fields: {
+      importId: id(),
+      triggerCategory: enumOf(semanticResponseLimitTriggerCategories),
+      receivedRawBodyBytesBucket: enumOf(semanticResponseLimitByteBuckets),
+      assembledSemanticOutputBytesBucket: enumOf(
+        semanticResponseLimitByteBuckets,
+      ),
+      parsedSseEventCount: int(0, 2_097_152),
+      parsedSseEventCountBucket: enumOf(semanticResponseLimitEventCountBuckets),
+      responseCompletedObserved: bool(),
+      sseFrameCount: int(0, 2_097_152),
+      eventTypes: tokenList(64),
+      sseEventAccounting: sseEventAccounting(),
+      correlationId: id(true),
+    },
+  },
   "semantic.provider_v2_envelope_diagnostics": {
     level: "warn",
     fields: {
@@ -819,12 +989,15 @@ export const importEventSchemas = {
       semanticJsonParseSucceeded: bool(),
       canonicalizerReached: bool(),
       failureStage: enumOf(semanticV2EnvelopeFailureStages),
+      failureLevel: enumOf(semanticV2EnvelopeFailureLevels),
+      failureCategory: enumOf(semanticV2EnvelopeFailureCategories),
       topLevelValueCategory: enumOf(semanticV2EnvelopeValueCategories),
       schemaVersionCategory: enumOf(semanticV2EnvelopeSchemaVersionCategories),
       topLevelKeys: tokenList(5),
       missingTopLevelKeys: tokenList(5),
       unexpectedTopLevelKeys: tokenList(14),
       unrecognizedTopLevelKeyPresent: bool(),
+      unrecognizedKeyCategory: enumOf(semanticV2UnrecognizedKeyCategories),
       sectionsValueCategory: enumOf(semanticV2EnvelopeValueCategories),
       sectionKeys: tokenList(10),
       missingSectionKeys: tokenList(10),
@@ -834,6 +1007,9 @@ export const importEventSchemas = {
       ambiguitiesValueCategory: enumOf(semanticV2EnvelopeValueCategories),
       conflictsValueCategory: enumOf(semanticV2EnvelopeValueCategories),
       structuralReason: enumOf(semanticV2EnvelopeStructuralReasons),
+      normalizedOutputBytesBucket: enumOf(
+        semanticV2EnvelopeSerializedBytesBuckets,
+      ),
       serializedResponseBytesBucket: enumOf(
         semanticV2EnvelopeSerializedBytesBuckets,
       ),
@@ -858,6 +1034,21 @@ export const importEventSchemas = {
       firstZodIssueCode: token(true),
       firstZodPath: tokenList(8),
       issueCountBucket: enumOf(countBuckets),
+      correlationId: id(true),
+    },
+  },
+  "semantic.provider_v2_field_diagnostics": {
+    level: "warn",
+    fields: {
+      importId: id(),
+      responseContractVersion: token(),
+      failureLevel: enumOf(semanticV2FieldFailureLevels),
+      failureCategory: enumOf(semanticV2FieldFailureCategories),
+      acceptedCandidateCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      rejectedFieldCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      signalCountBucket: enumOf(semanticV2EnvelopeCountBuckets),
+      rejectionCategories: tokenList(4),
+      firstRejectedPath: path(),
       correlationId: id(true),
     },
   },
@@ -912,6 +1103,15 @@ export const importEventSchemas = {
 export type ImportEventName = keyof typeof importEventSchemas;
 
 export interface ImportEventMetadataMap {
+  "import.timing": {
+    readonly importId: string;
+    readonly correlationId?: string;
+    readonly phase: (typeof importTimingPhases)[number];
+    readonly source: (typeof importTimingSources)[number];
+    readonly timestampMs: number;
+    readonly durationMs?: number;
+    readonly elapsedSinceUploadMs?: number;
+  };
   "import.created": {
     readonly importId: string;
     readonly statusCode: number;
@@ -1106,6 +1306,13 @@ export interface ImportEventMetadataMap {
     readonly jsonObjectParsed: boolean;
     readonly jsonTopLevelKeys: readonly string[];
     readonly finalRecognizedEventType?: string;
+    readonly receivedRawBodyBytesBucket: (typeof semanticResponseLimitByteBuckets)[number];
+    readonly assembledSemanticOutputBytesBucket: (typeof semanticResponseLimitByteBuckets)[number];
+    readonly parsedSseEventCount: number;
+    readonly parsedSseEventCountBucket: (typeof semanticResponseLimitEventCountBuckets)[number];
+    readonly responseCompletedObserved: boolean;
+    readonly sseEventAccounting: readonly string[];
+    readonly transportFailureCategory: (typeof semanticTransportFailureDiagnosticCategories)[number];
     readonly correlationId?: string;
   };
   "semantic.provider_sse_error": {
@@ -1116,18 +1323,34 @@ export interface ImportEventMetadataMap {
     readonly eventShapeCategory: (typeof semanticProviderErrorShapeCategories)[number];
     readonly correlationId?: string;
   };
+  "semantic.provider_response_limit": {
+    readonly importId: string;
+    readonly triggerCategory: (typeof semanticResponseLimitTriggerCategories)[number];
+    readonly receivedRawBodyBytesBucket: (typeof semanticResponseLimitByteBuckets)[number];
+    readonly assembledSemanticOutputBytesBucket: (typeof semanticResponseLimitByteBuckets)[number];
+    readonly parsedSseEventCount: number;
+    readonly parsedSseEventCountBucket: (typeof semanticResponseLimitEventCountBuckets)[number];
+    readonly responseCompletedObserved: boolean;
+    readonly sseFrameCount: number;
+    readonly eventTypes: readonly string[];
+    readonly sseEventAccounting: readonly string[];
+    readonly correlationId?: string;
+  };
   "semantic.provider_v2_envelope_diagnostics": {
     readonly importId: string;
     readonly responseContractVersion: string;
     readonly semanticJsonParseSucceeded: boolean;
     readonly canonicalizerReached: boolean;
     readonly failureStage: (typeof semanticV2EnvelopeFailureStages)[number];
+    readonly failureLevel: (typeof semanticV2EnvelopeFailureLevels)[number];
+    readonly failureCategory: (typeof semanticV2EnvelopeFailureCategories)[number];
     readonly topLevelValueCategory: (typeof semanticV2EnvelopeValueCategories)[number];
     readonly schemaVersionCategory: (typeof semanticV2EnvelopeSchemaVersionCategories)[number];
     readonly topLevelKeys: readonly string[];
     readonly missingTopLevelKeys: readonly string[];
     readonly unexpectedTopLevelKeys: readonly string[];
     readonly unrecognizedTopLevelKeyPresent: boolean;
+    readonly unrecognizedKeyCategory: (typeof semanticV2UnrecognizedKeyCategories)[number];
     readonly sectionsValueCategory: (typeof semanticV2EnvelopeValueCategories)[number];
     readonly sectionKeys: readonly string[];
     readonly missingSectionKeys: readonly string[];
@@ -1137,6 +1360,7 @@ export interface ImportEventMetadataMap {
     readonly ambiguitiesValueCategory: (typeof semanticV2EnvelopeValueCategories)[number];
     readonly conflictsValueCategory: (typeof semanticV2EnvelopeValueCategories)[number];
     readonly structuralReason: (typeof semanticV2EnvelopeStructuralReasons)[number];
+    readonly normalizedOutputBytesBucket: (typeof semanticV2EnvelopeSerializedBytesBuckets)[number];
     readonly serializedResponseBytesBucket: (typeof semanticV2EnvelopeSerializedBytesBuckets)[number];
     readonly totalAtomCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
     readonly totalNodeCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
@@ -1159,6 +1383,18 @@ export interface ImportEventMetadataMap {
     readonly firstZodIssueCode?: string;
     readonly firstZodPath: readonly string[];
     readonly issueCountBucket: (typeof countBuckets)[number];
+    readonly correlationId?: string;
+  };
+  "semantic.provider_v2_field_diagnostics": {
+    readonly importId: string;
+    readonly responseContractVersion: string;
+    readonly failureLevel: (typeof semanticV2FieldFailureLevels)[number];
+    readonly failureCategory: (typeof semanticV2FieldFailureCategories)[number];
+    readonly acceptedCandidateCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly rejectedFieldCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly signalCountBucket: (typeof semanticV2EnvelopeCountBuckets)[number];
+    readonly rejectionCategories: readonly string[];
+    readonly firstRejectedPath: readonly (string | number)[];
     readonly correlationId?: string;
   };
   "semantic.outcome": {
@@ -1200,6 +1436,56 @@ export interface ImportEventMetadataMap {
 
 export type ImportEventMetadataFor<K extends ImportEventName> =
   ImportEventMetadataMap[K];
+
+export type ImportTimingPhase = (typeof importTimingPhases)[number];
+export type ImportTimingSource = (typeof importTimingSources)[number];
+
+export interface ImportTimingPoint {
+  readonly importId: string;
+  readonly correlationId?: string | undefined;
+  readonly phase: ImportTimingPhase;
+  readonly source: ImportTimingSource;
+  readonly at: Date;
+  readonly durationMs?: number | undefined;
+  readonly uploadReceivedAt?: Date | undefined;
+}
+
+/**
+ * Emits one canonical, wall-clock timestamp for a stage. Durations are
+ * bounded local measurements; cross-service totals are reconstructed from the
+ * timestamps and import/correlation id rather than from process-relative
+ * clocks. No source content or provider material is accepted here.
+ */
+export function emitImportTiming(
+  emitter: ImportEventEmitter,
+  point: ImportTimingPoint,
+): void {
+  const timestamp = point.at.getTime();
+  if (!Number.isSafeInteger(timestamp) || timestamp < 0) return;
+  const elapsedSinceUploadMs =
+    point.uploadReceivedAt === undefined
+      ? undefined
+      : boundedDuration(timestamp - point.uploadReceivedAt.getTime());
+  emitter.emit("import.timing", {
+    importId: point.importId,
+    phase: point.phase,
+    source: point.source,
+    timestampMs: timestamp,
+    ...(point.correlationId === undefined
+      ? {}
+      : { correlationId: point.correlationId }),
+    ...(point.durationMs === undefined
+      ? {}
+      : { durationMs: boundedDuration(point.durationMs) }),
+    ...(elapsedSinceUploadMs === undefined ? {} : { elapsedSinceUploadMs }),
+  });
+}
+
+function boundedDuration(value: number): number {
+  return Number.isFinite(value)
+    ? Math.min(86_400_000, Math.max(0, Math.round(value)))
+    : 0;
+}
 
 export function emitImportEvent(
   sink: ImportEventSink,
@@ -1330,7 +1616,40 @@ function normalizeField(
       return normalizePath(value);
     case "token_list":
       return normalizeTokenList(spec, value);
+    case "sse_event_accounting":
+      return normalizeSseEventAccounting(value);
   }
+}
+
+function normalizeSseEventAccounting(
+  value: unknown,
+): readonly string[] | typeof INVALID {
+  const items = extractArray(value, semanticResponseLimitSseEventTypes.length);
+  if (
+    items === null ||
+    items.length !== semanticResponseLimitSseEventTypes.length
+  )
+    return INVALID;
+  const normalized: string[] = [];
+  for (const [
+    index,
+    eventType,
+  ] of semanticResponseLimitSseEventTypes.entries()) {
+    const item = items[index];
+    if (typeof item !== "string") return INVALID;
+    const match =
+      /^([_a-z.]+):(\d{1,7}):(not_observed|0-64k|64k-256k|256k-1m|1m-2m|over_2m)$/u.exec(
+        item,
+      );
+    if (
+      match === null ||
+      match[1] !== eventType ||
+      !semanticResponseLimitByteBuckets.includes(match[3] as never)
+    )
+      return INVALID;
+    normalized.push(item);
+  }
+  return normalized;
 }
 
 function normalizeTokenList(

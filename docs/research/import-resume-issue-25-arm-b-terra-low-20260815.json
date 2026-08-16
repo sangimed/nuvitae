@@ -1,0 +1,150 @@
+{
+  "schema_version": 1,
+  "issue": 25,
+  "campaign": "import-resume-latency-confirmatory",
+  "arm": "B",
+  "authorization_id": "issue-25-arm-b-terra-low-20260815",
+  "authorization_commit": "306b3bf",
+  "observed_at": "2026-08-15T16:09:33.435Z",
+  "valid_latency_sample": false,
+  "execution": {
+    "uploads": 1,
+    "fresh_import_id": "5421bdb8-1aa1-4715-b180-c045cb97f817",
+    "primary_provider_invocations": 1,
+    "automatic_retries": 0,
+    "terra_executed": true,
+    "browser_or_operator_delay_in_primary_metrics": false
+  },
+  "fixture": {
+    "path": "tests/fixtures/resumes/anonymous-realistic-2-page-resume.pdf",
+    "sha256": "5d2d7c303241daa3cd6faafcfea50873c52140034f2e72db56a45f7fe6509b64"
+  },
+  "timings_ms": {
+    "upload_to_worker_start": 24,
+    "upload_to_provider_start": 170,
+    "provider_to_headers": 936,
+    "provider_to_first_semantic_output": 15548,
+    "first_semantic_output_to_provider_completion": 35229,
+    "provider_total": 50780,
+    "provider_completion_to_canonicalization": 6,
+    "provider_completion_to_draft_persistence": 53,
+    "canonicalization_to_draft_persistence": 47,
+    "draft_persistence_to_normal_status_draft_ready": null,
+    "upload_to_normal_status_draft_ready": null
+  },
+  "transport": {
+    "provider_http_status": "2xx",
+    "response_completed": true,
+    "reconstructed_sse_frame_count": 2347,
+    "reconstructed_sse_frame_bucket": "1000-9999",
+    "typed_sse_event_count": 2347,
+    "typed_sse_event_bucket": "1000-9999",
+    "event_count_diagnostic_only": true,
+    "raw_sse_response_size_bucket": "256k-1m",
+    "semantic_output_size_bucket": "0-64k",
+    "transport_limit_reached": false,
+    "cumulative_raw_sse_cap_bytes": 2097152,
+    "individual_sse_event_cap_bytes": 262144,
+    "semantic_output_cap_bytes": 65536,
+    "final_recognized_event": "response.completed",
+    "sse_event_accounting": [
+      "response.created:1:0-64k",
+      "response.in_progress:1:0-64k",
+      "response.output_text.delta:2337:256k-1m",
+      "response.output_text.done:1:0-64k",
+      "response.output_item.done:2:0-64k",
+      "response.completed:1:0-64k",
+      "response.content_part.added:1:0-64k",
+      "response.content_part.done:1:0-64k",
+      "response.output_item.added:2:0-64k",
+      "response.reasoning_summary_part.added:0:0-64k",
+      "response.reasoning_summary_text.delta:0:0-64k",
+      "response.reasoning_summary_text.done:0:0-64k",
+      "response.reasoning_summary_part.done:0:0-64k",
+      "response.metadata:0:0-64k",
+      "response.failed:0:0-64k",
+      "response.incomplete:0:0-64k",
+      "error:0:0-64k",
+      "unclassified:0:0-64k"
+    ]
+  },
+  "fidelity": {
+    "active_draft_field_count": 64,
+    "grounded_field_count": 64,
+    "grounded_bullet_count": 4,
+    "rejected_field_count": 2,
+    "unsupported_or_invented_value_count": 0,
+    "warning_count": 2,
+    "contact": { "expected": 4, "matched": 4 },
+    "headline": { "expected": 1, "matched": 1 },
+    "summary": { "source_supported": true, "matched": 1, "grounded": true },
+    "work": {
+      "expected_employers": 2,
+      "matched_employers": 2,
+      "expected_roles": 2,
+      "matched_roles": 2,
+      "expected_dates": 2,
+      "matched_dates": 2,
+      "expected_bullets": 4,
+      "matched_bullets": 4,
+      "substantially_present": true
+    },
+    "education": {
+      "expected_entries": 2,
+      "matched_entries": 2,
+      "matched_institutions": 2,
+      "matched_credentials": 2,
+      "substantially_present": true
+    },
+    "skills": { "expected": 10, "matched": 10 },
+    "languages": { "expected": 2, "matched": 2 },
+    "professional_links": { "expected": 0, "matched": 0 },
+    "certifications": { "expected": 2, "matched": 2 },
+    "projects": { "expected": 12, "matched": 12 }
+  },
+  "warnings": [
+    {
+      "code": "source_section_not_expected",
+      "section": "summary",
+      "requires_review": false,
+      "impact": "informational_source_inventory_diagnostic"
+    },
+    {
+      "code": "language_proficiency_evidence_rejected",
+      "section": "languages",
+      "count": 2,
+      "requires_review": true,
+      "impact": "invalid_or_ambiguous_source_evidence"
+    }
+  ],
+  "quality_gate": {
+    "response_completed": true,
+    "semantic_v2_envelope_accepted": true,
+    "deterministic_fallback_used": false,
+    "canonical_draft_produced": true,
+    "summary_complete_grounded_when_source_supported": true,
+    "work_structure_substantially_present": true,
+    "education_structure_substantially_present": true,
+    "no_material_invention": true,
+    "grounding_and_evidence_gates_pass": false,
+    "classification": "FAIL",
+    "failed_gate": "grounding_and_evidence",
+    "failure_reason": "Two language-proficiency candidates were rejected or warned for invalid/ambiguous source evidence; the semantic outcome was v2_partial_acceptance rather than v2_success."
+  },
+  "semantic_outcome": "v2_partial_acceptance",
+  "fallback": false,
+  "comparison_to_canonical_arm_a": {
+    "provider_total": { "arm_a_ms": 49593, "arm_b_ms": 50780, "delta_ms": 1187, "delta_percent": 2.393 },
+    "first_output": { "arm_a_ms": 9510, "arm_b_ms": 15548, "delta_ms": 6038, "delta_percent": 63.491 },
+    "generation": { "arm_a_ms": 40083, "arm_b_ms": 35229, "delta_ms": -4854, "delta_percent": -12.11 },
+    "post_provider_persistence": { "arm_a_ms": 63, "arm_b_ms": 53, "delta_ms": -10, "delta_percent": -15.873 },
+    "canonicalization": { "arm_a_ms": 15, "arm_b_ms": 6, "delta_ms": -9, "delta_percent": -60 },
+    "fidelity_differences": {
+      "active_fields": { "arm_a": 64, "arm_b": 64 },
+      "grounded_fields": { "arm_a": 64, "arm_b": 64 },
+      "rejected_fields": { "arm_a": 0, "arm_b": 2 },
+      "warnings": { "arm_a": 0, "arm_b": 2 },
+      "semantic_outcome": { "arm_a": "v2_success", "arm_b": "v2_partial_acceptance" }
+    }
+  }
+}

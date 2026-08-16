@@ -116,4 +116,44 @@ describe("semantic-extraction.v2 contract", () => {
       nuvitaeSemanticExtractionV2EnvelopeSchema.safeParse(candidate).success,
     ).toBe(false);
   });
+
+  it("accepts only the five exact contact wrapper keys", () => {
+    expect(
+      nuvitaeSemanticExtractionV2EnvelopeSchema.safeParse(response()).success,
+    ).toBe(true);
+
+    const withUnknownContactKey = {
+      ...response(),
+      sections: {
+        ...response().sections,
+        contact: {
+          ...response().sections.contact,
+          address: null,
+        },
+      },
+    };
+
+    expect(
+      nuvitaeSemanticExtractionV2EnvelopeSchema.safeParse(withUnknownContactKey)
+        .success,
+    ).toBe(false);
+  });
+
+  it("requires the contact wrapper and every canonical member in full responses", () => {
+    const missingWrapper = response();
+    delete (missingWrapper.sections as { contact?: unknown }).contact;
+    expect(
+      nuvitaeSemanticExtractionV2ResponseSchema.safeParse(missingWrapper)
+        .success,
+    ).toBe(false);
+
+    for (const key of ["fullName", "email", "phone", "location", "website"]) {
+      const missingMember = response();
+      delete (missingMember.sections.contact as Record<string, unknown>)[key];
+      expect(
+        nuvitaeSemanticExtractionV2ResponseSchema.safeParse(missingMember)
+          .success,
+      ).toBe(false);
+    }
+  });
 });

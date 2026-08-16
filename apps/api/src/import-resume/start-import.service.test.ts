@@ -293,7 +293,7 @@ describe("StartImportService", () => {
     const firstTime = new Date("2026-07-29T09:30:00.000Z");
     const secondTime = new Date("2026-07-29T10:00:00.000Z");
     const harness = createHarness({
-      times: [firstTime, secondTime],
+      times: [firstTime, firstTime, secondTime, secondTime],
       importIds: [importId, "dddddddd-dddd-4ddd-8ddd-dddddddddddd"],
       requestIds: [requestId, "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"],
     });

@@ -9,6 +9,7 @@
 export {
   createImportEventEmitter,
   emitImportEvent,
+  emitImportTiming,
   importEventSchemas,
   serializeSemanticValidationDiagnostic,
   type ImportEventEmitter,
@@ -19,4 +20,7 @@ export {
   type ImportEventRecord,
   type ImportEventSchema,
   type ImportEventSink,
+  type ImportTimingPhase,
+  type ImportTimingPoint,
+  type ImportTimingSource,
 } from "@nuvitae/import-application";

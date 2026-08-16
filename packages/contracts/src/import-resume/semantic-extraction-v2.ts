@@ -72,7 +72,21 @@ export const semanticExtractionV2AtomSchema = z
 
 const nullableAtomSchema = semanticExtractionV2AtomSchema.nullable();
 
-const contactSchema = z
+/**
+ * The canonical V2 contact wrapper is required and has exactly these five
+ * keys. Each key is required in the canonical response but nullable when the
+ * source does not contain that contact concept. The provider's compact wire
+ * form may omit an absent nullable member; canonicalization restores null.
+ */
+export const semanticExtractionV2ContactKeys = [
+  "fullName",
+  "email",
+  "phone",
+  "location",
+  "website",
+] as const;
+
+export const semanticExtractionV2ContactSchema = z
   .object({
     fullName: nullableAtomSchema,
     email: nullableAtomSchema,
@@ -81,6 +95,10 @@ const contactSchema = z
     website: nullableAtomSchema,
   })
   .strict();
+
+export type SemanticExtractionV2Contact = z.infer<
+  typeof semanticExtractionV2ContactSchema
+>;
 
 const workRoleSchema = z
   .object({
@@ -201,7 +219,7 @@ export const nuvitaeSemanticExtractionV2ResponseSchema = z
     schemaVersion: z.literal(nuvitaeSemanticExtractionV2ResponseVersion),
     sections: z
       .object({
-        contact: contactSchema,
+        contact: semanticExtractionV2ContactSchema,
         headline: nullableAtomSchema,
         summary: nullableAtomSchema,
         workExperience: z

@@ -97,6 +97,10 @@ export async function pollImportStatus(input: {
   readonly signal: AbortSignal;
   readonly onStatus: (status: PublicImportStatusResponse) => void;
   readonly onConnectivityLost?: (message: string) => void;
+  readonly onTiming?: (timing: {
+    readonly phase: "review_first_poll" | "review_available_to_client";
+    readonly durationMs?: number;
+  }) => void;
   readonly fetchImpl?: typeof fetch;
   readonly intervalMs?: number;
   readonly maxBackoffMs?: number;
@@ -107,6 +111,8 @@ export async function pollImportStatus(input: {
   const delay = input.delay ?? abortableDelay;
   let backoffMs = intervalMs;
   let latest: PublicImportStatusResponse | undefined;
+  const firstPollStartedAt = performance.now();
+  input.onTiming?.({ phase: "review_first_poll" });
 
   while (!input.signal.aborted) {
     const outcome = await readImportStatus({
@@ -121,7 +127,18 @@ export async function pollImportStatus(input: {
       backoffMs = intervalMs;
       latest = preserveNonRegressiveStatus(latest, outcome.response);
       input.onStatus(latest);
-      if (terminalStatuses.has(latest.status)) return;
+      if (terminalStatuses.has(latest.status)) {
+        if (
+          latest.status === "draft_ready" ||
+          latest.status === "partial_extraction"
+        ) {
+          input.onTiming?.({
+            phase: "review_available_to_client",
+            durationMs: performance.now() - firstPollStartedAt,
+          });
+        }
+        return;
+      }
       await delay(intervalMs, input.signal);
       continue;
     }

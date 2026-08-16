@@ -38,6 +38,7 @@ import type {
   StartImportQueuePublisher,
   StartImportRequestIdGenerator,
 } from "./start-import.ports.js";
+import { emitImportTiming } from "../observability/import-events.js";
 import {
   START_IMPORT_CLOCK,
   START_IMPORT_ID_GENERATOR,
@@ -133,6 +134,13 @@ export class StartImportService {
       );
       throw mapLimitDenial(queueAdmission);
     }
+    emitImportTiming(this.logger, {
+      importId,
+      correlationId: importId,
+      phase: "upload_received",
+      source: "api",
+      at: createdAt,
+    });
 
     const storageKey = generatePrivateImportStorageKey({
       ownerUserId: input.ownerUserId,
@@ -214,6 +222,16 @@ export class StartImportService {
         "Resume import is unavailable. Try again later.",
       );
     }
+    const persistedAt = this.clock.now();
+    emitImportTiming(this.logger, {
+      importId,
+      correlationId: importId,
+      phase: "upload_persisted",
+      source: "api",
+      at: persistedAt,
+      durationMs: persistedAt.getTime() - createdAt.getTime(),
+      uploadReceivedAt: createdAt,
+    });
 
     if (this.queuePublisher !== undefined) {
       const deadline = new Date(
@@ -256,6 +274,16 @@ export class StartImportService {
             },
           },
         ]);
+        const enqueuedAt = this.clock.now();
+        emitImportTiming(this.logger, {
+          importId,
+          correlationId: importId,
+          phase: "queue_enqueued",
+          source: "api",
+          at: enqueuedAt,
+          durationMs: enqueuedAt.getTime() - persistedAt.getTime(),
+          uploadReceivedAt: createdAt,
+        });
         await this.transactionRunner.transaction(async (manager) => {
           const current = await this.repository.findImportByOwner(
             importId,

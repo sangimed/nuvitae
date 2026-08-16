@@ -14,7 +14,26 @@ export * from "./semantic-parser/validate-semantic-response.js";
 export * from "./semantic-parser/source-registry.js";
 export * from "./semantic-parser/semantic-extraction-v2-canonicalizer.js";
 export * from "./semantic-parser/semantic-extraction-v2-envelope-diagnostics.js";
+export * from "./semantic-parser/semantic-benchmark-gate.js";
 export * from "./semantic-parser/semantic-v2-candidates-to-draft.js";
+export {
+  CODEX_BENCHMARK_MODELS,
+  CODEX_DEFAULT_MODEL,
+  CodexModelSelectionError,
+  resolveCodexModelSelection,
+  type CodexModelIdentifier,
+  type CodexModelSelectionErrorCode,
+} from "./providers/codex-model-selection.js";
+export {
+  createIssue25BenchmarkTransport,
+  invokeIssue25BenchmarkTransport,
+  resolveIssue25BenchmarkModel,
+  Issue25BenchmarkAuthorizationError,
+  type Issue25BenchmarkArm,
+  type Issue25BenchmarkAuthorization,
+  type Issue25BenchmarkAuthorizationState,
+  type Issue25BenchmarkTransportOptions,
+} from "./providers/issue-25-model-selection.js";
 export {
   parseCodexSessionMaterial,
   type CodexSessionMaterial,

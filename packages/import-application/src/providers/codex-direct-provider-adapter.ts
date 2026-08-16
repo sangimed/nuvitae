@@ -16,7 +16,9 @@ import {
 import { canonicalizeSemanticExtractionV2 } from "../semantic-parser/semantic-extraction-v2-canonicalizer.js";
 import {
   diagnoseSemanticExtractionV2Envelope,
+  diagnoseSemanticExtractionV2FieldFailure,
   type SemanticExtractionV2EnvelopeDiagnostic,
+  type SemanticExtractionV2FieldDiagnostic,
 } from "../semantic-parser/semantic-extraction-v2-envelope-diagnostics.js";
 import { createSourceRegistryFromSemanticParseRequest } from "../semantic-parser/source-registry.js";
 import type {
@@ -31,12 +33,18 @@ import { validateSemanticParseRequest } from "../semantic-parser/validate-semant
 import { semanticParserInstructions } from "../validation/semantic-parser-instructions.js";
 import {
   CodexDirectTransport,
+  emptyCodexDirectTransportSseEventAccounting,
   type CodexDirectTransportFailureCategory,
   type CodexDirectTransportRequest,
   type CodexDirectTransportProtocolShape,
+  type CodexDirectTransportResponseLimitDiagnostic,
   type CodexDirectTransportSseErrorDiagnostic,
   type CodexDirectTransportTiming,
 } from "./codex-direct-transport.js";
+import {
+  resolveCodexModelSelection,
+  type CodexModelIdentifier,
+} from "./codex-model-selection.js";
 import { parseCodexSessionMaterial } from "./codex-session.js";
 
 export const codexDirectProviderKind = "codex" as const;
@@ -59,7 +67,9 @@ const capabilities: ResumeSemanticParserCapabilities = {
 export interface CodexDirectProviderAdapterPorts {
   readonly repository: AIProviderRuntimeConnectionsRepository;
   readonly sessionStore: ProviderSessionStore;
-  readonly transport?: Pick<CodexDirectTransport, "invoke">;
+  readonly model?: unknown;
+  readonly transport?: Pick<CodexDirectTransport, "invoke"> &
+    Partial<Pick<CodexDirectTransport, "model">>;
   readonly now?: () => Date;
   readonly onTransportTiming?: (
     timing: CodexDirectTransportTiming & {
@@ -79,12 +89,30 @@ export interface CodexDirectProviderAdapterPorts {
       readonly correlationId?: string;
     },
   ) => void;
+  readonly onResponseLimitDiagnostic?: (
+    diagnostic: CodexDirectTransportResponseLimitDiagnostic & {
+      readonly importId: string;
+      readonly correlationId?: string;
+    },
+  ) => void;
   readonly onV2EnvelopeDiagnostic?: (
     diagnostic: SemanticExtractionV2EnvelopeDiagnostic & {
       readonly importId: string;
       readonly correlationId?: string;
     },
   ) => void;
+  readonly onV2FieldDiagnostic?: (
+    diagnostic: SemanticExtractionV2FieldDiagnostic & {
+      readonly importId: string;
+      readonly correlationId?: string;
+    },
+  ) => void;
+  readonly onCanonicalizationTiming?: (timing: {
+    readonly importId: string;
+    readonly correlationId?: string;
+    readonly timestampMs: number;
+    readonly durationMs: number;
+  }) => void;
 }
 
 /**
@@ -95,11 +123,17 @@ export interface CodexDirectProviderAdapterPorts {
 export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider {
   readonly providerKind = codexDirectProviderKind;
   readonly capabilities = capabilities;
+  readonly model: CodexModelIdentifier;
   private readonly transport: Pick<CodexDirectTransport, "invoke">;
   private readonly now: () => Date;
 
   constructor(private readonly ports: CodexDirectProviderAdapterPorts) {
-    this.transport = ports.transport ?? new CodexDirectTransport();
+    this.model = resolveCodexModelSelection({
+      configuredModel: ports.model,
+      transportModel: ports.transport?.model,
+    });
+    this.transport =
+      ports.transport ?? new CodexDirectTransport({ model: this.model });
     this.now = ports.now ?? (() => new Date());
   }
 
@@ -181,6 +215,7 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
       session.accountId ?? accountIdentifierFromJwt(session.accessToken);
     if (accountIdentifier === null) return failure("authentication_revoked");
 
+    let protocolShape: CodexDirectTransportProtocolShape | undefined;
     const transportRequest: CodexDirectTransportRequest = {
       accessToken: session.accessToken,
       accountIdentifier,
@@ -209,6 +244,7 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
       },
       onProtocolShape: (shape) => {
         try {
+          protocolShape = shape;
           if (request.importId === null) return;
           this.ports.onTransportProtocolShape?.({
             ...shape,
@@ -237,6 +273,21 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
           // Transport diagnostics must never change provider behavior.
         }
       },
+      onResponseLimitDiagnostic: (diagnostic) => {
+        try {
+          if (request.importId === null) return;
+          this.ports.onResponseLimitDiagnostic?.({
+            ...diagnostic,
+            importId: request.importId,
+            ...(request.correlationId === null ||
+            request.correlationId === undefined
+              ? {}
+              : { correlationId: request.correlationId }),
+          });
+        } catch {
+          // Limit diagnostics must never change provider behavior.
+        }
+      },
     };
 
     // This is deliberately one call. T217 owns retry/fallback budget.
@@ -250,6 +301,10 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
       return failure(mapTransportFailure(transportResult.category));
 
     let candidate: unknown;
+    const normalizedOutputBytes = Buffer.byteLength(
+      transportResult.normalizedOutput,
+      "utf8",
+    );
     try {
       candidate = JSON.parse(transportResult.normalizedOutput);
     } catch {
@@ -258,9 +313,12 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
         semanticJsonParseSucceeded: false,
         canonicalizerReached: false,
         failureStage: "semantic_json_parse",
+        failureCategory: "invalid_json",
+        normalizedOutputBytes,
       });
       return failure("invalid_provider_response", "v2_invalid_envelope");
     }
+    const canonicalizationStartedAt = this.now();
     let canonical;
     try {
       canonical = canonicalizeSemanticExtractionV2({
@@ -279,23 +337,58 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
         semanticJsonParseSucceeded: true,
         canonicalizerReached: true,
         failureStage: "v2_canonicalizer",
+        normalizedOutputBytes,
       });
       return failure("schema_violation", "v2_invalid_envelope");
     }
     if (!canonical.ok) {
+      this.emitCanonicalizationTiming(request, canonicalizationStartedAt);
       emitV2EnvelopeDiagnostic(this.ports, request, {
         response: candidate,
         semanticJsonParseSucceeded: true,
         canonicalizerReached: true,
         failureStage: "v2_envelope",
+        failureCategory: canonical.failureCategory,
+        normalizedOutputBytes,
       });
+      if (canonical.reason === "response_too_large")
+        emitV2ResponseLimitDiagnostic(
+          this.ports,
+          request,
+          normalizedOutputBytes,
+          protocolShape,
+        );
       return failureForV2WholeResponse(canonical.reason);
     }
+    this.emitCanonicalizationTiming(request, canonicalizationStartedAt);
+    emitV2FieldDiagnostic(this.ports, request, canonical);
     return {
       ok: true,
       contractVersion: "nuvitae.semantic-extraction.v2",
       canonical,
     };
+  }
+
+  private emitCanonicalizationTiming(
+    request: ResumeSemanticParseRequest,
+    startedAt: Date,
+  ): void {
+    const completedAt = this.now();
+    try {
+      if (request.importId !== null) {
+        this.ports.onCanonicalizationTiming?.({
+          importId: request.importId,
+          ...(request.correlationId === null ||
+          request.correlationId === undefined
+            ? {}
+            : { correlationId: request.correlationId }),
+          timestampMs: completedAt.getTime(),
+          durationMs: completedAt.getTime() - startedAt.getTime(),
+        });
+      }
+    } catch {
+      // Timing diagnostics must never change provider behavior.
+    }
   }
 
   private async findOwnerConnection(
@@ -350,6 +443,49 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
   }
 }
 
+function emitV2ResponseLimitDiagnostic(
+  ports: CodexDirectProviderAdapterPorts,
+  request: ResumeSemanticParseRequest,
+  normalizedOutputBytes: number,
+  protocolShape: CodexDirectTransportProtocolShape | undefined,
+): void {
+  if (request.importId === null) return;
+  try {
+    ports.onResponseLimitDiagnostic?.({
+      triggerCategory: "v2_envelope_size_limit",
+      receivedRawBodyBytesBucket:
+        protocolShape?.receivedRawBodyBytesBucket ?? "not_observed",
+      assembledSemanticOutputBytesBucket: byteBucket(normalizedOutputBytes),
+      parsedSseEventCount: protocolShape?.parsedSseEventCount ?? 0,
+      parsedSseEventCountBucket:
+        protocolShape?.parsedSseEventCountBucket ?? "0-4",
+      responseCompletedObserved:
+        protocolShape?.responseCompletedObserved ?? false,
+      sseFrameCount: protocolShape?.sseFrameCount ?? 0,
+      eventTypes: protocolShape?.eventTypes ?? [],
+      sseEventAccounting:
+        protocolShape?.sseEventAccounting ??
+        emptyCodexDirectTransportSseEventAccounting(),
+      importId: request.importId,
+      ...(request.correlationId === null || request.correlationId === undefined
+        ? {}
+        : { correlationId: request.correlationId }),
+    });
+  } catch {
+    // Limit diagnostics must never change provider behavior.
+  }
+}
+
+function byteBucket(
+  bytes: number,
+): CodexDirectTransportResponseLimitDiagnostic["assembledSemanticOutputBytesBucket"] {
+  if (bytes <= 65_536) return "0-64k";
+  if (bytes <= 262_144) return "64k-256k";
+  if (bytes <= 1_048_576) return "256k-1m";
+  if (bytes <= 2_097_152) return "1m-2m";
+  return "over_2m";
+}
+
 function emitV2EnvelopeDiagnostic(
   ports: CodexDirectProviderAdapterPorts,
   request: ResumeSemanticParseRequest,
@@ -366,6 +502,30 @@ function emitV2EnvelopeDiagnostic(
     });
   } catch {
     // Envelope diagnostics must never change provider behavior.
+  }
+}
+
+function emitV2FieldDiagnostic(
+  ports: CodexDirectProviderAdapterPorts,
+  request: ResumeSemanticParseRequest,
+  canonical: Extract<
+    Awaited<ReturnType<typeof canonicalizeSemanticExtractionV2>>,
+    { readonly ok: true }
+  >,
+): void {
+  if (request.importId === null) return;
+  const diagnostic = diagnoseSemanticExtractionV2FieldFailure({ canonical });
+  if (diagnostic === undefined) return;
+  try {
+    ports.onV2FieldDiagnostic?.({
+      ...diagnostic,
+      importId: request.importId,
+      ...(request.correlationId === null || request.correlationId === undefined
+        ? {}
+        : { correlationId: request.correlationId }),
+    });
+  } catch {
+    // Field diagnostics must never change provider behavior.
   }
 }
 

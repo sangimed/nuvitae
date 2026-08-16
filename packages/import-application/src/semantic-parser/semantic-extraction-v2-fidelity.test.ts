@@ -252,6 +252,78 @@ function certification(name: string, issuer: string) {
   return { name: atom(name, line), issuer: atom(issuer, line) };
 }
 
+function compactProviderResponse(
+  input: ReturnType<typeof realisticResponse>,
+): unknown {
+  const compact = structuredClone(input) as {
+    sections: Record<string, unknown>;
+    [key: string]: unknown;
+  };
+  const sections = compact.sections;
+  const contact = sections.contact as Record<string, unknown>;
+  for (const key of ["fullName", "email", "phone", "location", "website"]) {
+    if (contact[key] === null) delete contact[key];
+  }
+  for (const key of ["headline", "summary"]) {
+    if (sections[key] === null) delete sections[key];
+  }
+  for (const key of [
+    "workExperience",
+    "education",
+    "skills",
+    "languages",
+    "projects",
+    "certifications",
+    "professionalLinks",
+  ]) {
+    if (Array.isArray(sections[key]) && sections[key].length === 0)
+      delete sections[key];
+  }
+  const workExperience = sections.workExperience as Array<
+    Record<string, unknown>
+  >;
+  for (const work of workExperience) {
+    if (work.employerLocation === null) delete work.employerLocation;
+    const roles = work.roles as Array<Record<string, unknown>>;
+    for (const role of roles) {
+      for (const key of ["location", "startDate", "endDate"]) {
+        if (role[key] === null) delete role[key];
+      }
+      for (const key of ["responsibilities", "achievements"]) {
+        if (Array.isArray(role[key]) && role[key].length === 0)
+          delete role[key];
+      }
+    }
+  }
+  const education = sections.education as Array<Record<string, unknown>>;
+  for (const item of education) {
+    for (const key of [
+      "degree",
+      "fieldOfStudy",
+      "startDate",
+      "endDate",
+      "location",
+    ]) {
+      if (item[key] === null) delete item[key];
+    }
+  }
+  const languages = sections.languages as Array<Record<string, unknown>>;
+  for (const item of languages) {
+    if (item.proficiency === null) delete item.proficiency;
+  }
+  const certifications = sections.certifications as Array<
+    Record<string, unknown>
+  >;
+  for (const item of certifications) {
+    if (item.issuer === null) delete item.issuer;
+  }
+  for (const key of ["relationships", "ambiguities", "conflicts"]) {
+    if (Array.isArray(compact[key]) && compact[key].length === 0)
+      delete compact[key];
+  }
+  return compact;
+}
+
 function document() {
   return {
     id: "10000000-0000-4000-8000-000000000001",
@@ -393,6 +465,21 @@ describe("semantic-extraction.v2 realistic source fidelity", () => {
       signals: canonical.signals,
       document: document(),
     });
+    const compactCanonical = canonicalizeSemanticExtractionV2({
+      response: compactProviderResponse(response),
+      sourceRegistry,
+      importId: document().id,
+    });
+    expect(compactCanonical).toEqual(canonical);
+    if (!compactCanonical.ok) return;
+    expect(
+      mapSemanticV2CandidatesToDraft({
+        candidates: compactCanonical.candidates,
+        rejected: compactCanonical.rejected,
+        signals: compactCanonical.signals,
+        document: document(),
+      }),
+    ).toEqual(mapped);
     expect(mapped.warnings).toEqual([]);
     const draftResult = buildExtractionDraft({
       importedDocument: document(),

@@ -4,6 +4,12 @@ import {
   canonicalizeSemanticExtractionV2,
   inspectSemanticExtractionV2Structure,
 } from "./semantic-extraction-v2-canonicalizer.js";
+import {
+  auditProviderRequestShape,
+  auditProviderResponseShape,
+} from "../providers/provider-payload-shape-audit.js";
+import { semanticParserInstructions } from "../validation/semantic-parser-instructions.js";
+import type { ResumeSemanticParseRequest } from "../semantic-parser/resume-semantic-parser-provider.js";
 import { createSourceRegistry } from "./source-registry.js";
 
 type TestAtom = {
@@ -13,7 +19,7 @@ type TestAtom = {
   ];
 };
 
-function realisticEnvelope() {
+export function realisticEnvelope() {
   const sourceLines: Array<{ order: number; line: number; text: string }> = [];
   let nextFragment = 1;
   const atom = (value: string): TestAtom => {
@@ -105,6 +111,18 @@ function realisticEnvelope() {
     response,
     sourceRegistry: createSourceRegistry(sourceLines),
   };
+}
+
+function compactAbsenceOnlyResponse(response: unknown): unknown {
+  const compact = structuredClone(response) as {
+    sections: { contact: Record<string, unknown> };
+    [key: string]: unknown;
+  };
+  delete compact.sections.contact.website;
+  delete compact.relationships;
+  delete compact.ambiguities;
+  delete compact.conflicts;
+  return compact;
 }
 
 function canonical(
@@ -211,6 +229,97 @@ function repeatedTextFixture() {
 }
 
 describe("semantic-extraction.v2 realistic structural limits", () => {
+  it("measures provider-bound shape using aggregate counts only", () => {
+    const fixture = realisticEnvelope();
+    const fragments = fixture.sourceRegistry.all();
+    const sourceFragments = fragments.map((fragment) => ({
+      order: fragment.order,
+      line: fragment.line,
+      text: fragment.text,
+      hash: fragment.hash,
+      bounds: {
+        lineStart: fragment.lineStart,
+        lineEnd: fragment.lineEnd,
+        start: fragment.start,
+        end: fragment.end,
+      },
+    }));
+    const transcript = sourceFragments
+      .map((fragment) => fragment.text)
+      .join("\n");
+    const request = {
+      contractVersion: "nuvitae.semantic-parser.v1",
+      importId: "offline-audit",
+      correlationId: "offline-audit",
+      documentFormat: "pdf",
+      languageContext: {
+        detectedLanguage: "english",
+        confidence: null,
+        textDirection: "ltr",
+      },
+      normalizedTranscript: {
+        text: transcript,
+        sha256: "offline",
+        lineCount: sourceFragments.length,
+      },
+      sourceFragments,
+      fragmentHashes: sourceFragments.map((fragment) => fragment.hash),
+      formatMetadata: {
+        sourceFormat: "pdf",
+        extractionMode: "selectable_text",
+        renderedPageCount: 2,
+        parserVersion: null,
+      },
+    } satisfies ResumeSemanticParseRequest;
+
+    expect({
+      request: auditProviderRequestShape({
+        request,
+        instructions: `${semanticParserInstructions} Use minified JSON serialization.`,
+      }),
+      response: auditProviderResponseShape(fixture.response),
+      compactResponse: auditProviderResponseShape(
+        compactAbsenceOnlyResponse(fixture.response),
+      ),
+    }).toEqual({
+      request: {
+        normalizedTranscriptCharacterCount: 2946,
+        fragmentCount: 181,
+        requestJsonBytes: 20873,
+        instructionBytes: 6389,
+        documentPayloadBytes: 12011,
+        semanticInputBytes: 12068,
+        transportEnvelopeBytes: 530,
+      },
+      response: {
+        responseJsonBytes: 19593,
+        candidateCount: 181,
+        sourceRefCount: 181,
+        sourceRefQuoteBytes: 2766,
+        candidateValueBytes: 2766,
+        expectedEnvelopeStructuralBytes: 14061,
+        emptyArrayCount: 3,
+        nullValueCount: 1,
+        repeatedFragmentIdCount: 0,
+        providerGeneratedIdCount: 0,
+        providerMetadataFieldCount: 0,
+      },
+      compactResponse: {
+        responseJsonBytes: 19527,
+        candidateCount: 181,
+        sourceRefCount: 181,
+        sourceRefQuoteBytes: 2766,
+        candidateValueBytes: 2766,
+        expectedEnvelopeStructuralBytes: 13995,
+        emptyArrayCount: 0,
+        nullValueCount: 0,
+        repeatedFragmentIdCount: 0,
+        providerGeneratedIdCount: 0,
+        providerMetadataFieldCount: 0,
+      },
+    });
+  });
+
   it("keeps realistic repeated city, employer, role, and university text anchored", () => {
     const fixture = repeatedTextFixture();
     const result = canonical(fixture.response, fixture.sourceRegistry);
@@ -275,6 +384,7 @@ describe("semantic-extraction.v2 realistic structural limits", () => {
         oversizedStructuralValue: "x".repeat(300_000),
       }),
       "response_too_large",
+      "response_size_exceeded",
     ],
     [
       "response depth",
@@ -288,6 +398,7 @@ describe("semantic-extraction.v2 realistic structural limits", () => {
         };
       },
       "response_depth_limit",
+      "object_depth_exceeded",
     ],
     [
       "total atoms",
@@ -304,6 +415,7 @@ describe("semantic-extraction.v2 realistic structural limits", () => {
         };
       },
       "total_atom_limit",
+      "atom_limit_exceeded",
     ],
     [
       "total nodes",
@@ -312,12 +424,65 @@ describe("semantic-extraction.v2 realistic structural limits", () => {
         structuralPadding: Array.from({ length: 12_001 }, () => null),
       }),
       "total_node_limit",
+      "node_limit_exceeded",
     ],
   ] as const)(
     "rejects adversarial %s before field canonicalization",
-    (_name, make, reason) => {
+    (_name, make, reason, failureCategory) => {
       const result = canonical(make());
-      expect(result).toMatchObject({ ok: false, reason, rejected: [] });
+      expect(result).toMatchObject({
+        ok: false,
+        reason,
+        failureCategory,
+        rejected: [],
+      });
+    },
+  );
+
+  it.each([
+    ["wrong root", null, "wrong_root_shape"],
+    [
+      "missing required root field",
+      (() => {
+        const value = realisticEnvelope().response;
+        delete (value as { schemaVersion?: unknown }).schemaVersion;
+        return value;
+      })(),
+      "missing_required_root_field",
+    ],
+    [
+      "unexpected root field",
+      { ...realisticEnvelope().response, providerWrapper: {} },
+      "unexpected_root_field",
+    ],
+    [
+      "invalid section shape",
+      {
+        ...realisticEnvelope().response,
+        sections: { ...realisticEnvelope().response.sections, contact: null },
+      },
+      "invalid_section_shape",
+    ],
+    [
+      "cardinality limit",
+      {
+        ...realisticEnvelope().response,
+        sections: {
+          ...realisticEnvelope().response.sections,
+          skills: Array.from({ length: 121 }, () => ({})),
+        },
+      },
+      "cardinality_limit_exceeded",
+    ],
+  ] as const)(
+    "classifies %s as a whole-envelope failure",
+    (_name, value, category) => {
+      const result = canonical(value);
+      expect(result).toMatchObject({
+        ok: false,
+        failureCategory: category,
+        rejected: [],
+      });
     },
   );
 });

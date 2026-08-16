@@ -1,11 +1,23 @@
 import {
   maxSemanticExtractionV2ObjectDepth,
+  maxSemanticExtractionV2Ambiguities,
+  maxSemanticExtractionV2Certifications,
+  maxSemanticExtractionV2Conflicts,
+  maxSemanticExtractionV2EducationEntries,
+  maxSemanticExtractionV2Languages,
+  maxSemanticExtractionV2ProfessionalLinks,
+  maxSemanticExtractionV2Projects,
   maxSemanticExtractionV2ResponseJsonBytes,
+  maxSemanticExtractionV2Relationships,
+  maxSemanticExtractionV2Skills,
   maxSemanticExtractionV2TotalAtoms,
   maxSemanticExtractionV2TotalNodes,
+  maxSemanticExtractionV2WorkExperiences,
+  semanticExtractionV2ContactKeys,
   nuvitaeSemanticExtractionV2EnvelopeSchema,
   semanticExtractionV2AtomSchema,
   semanticExtractionV2RelationshipSchema,
+  semanticExtractionV2SourceRefSchema,
   semanticExtractionV2SignalSchema,
   type SemanticExtractionV2Signal,
 } from "@nuvitae/contracts";
@@ -87,8 +99,29 @@ export type V2CanonicalizationResult =
         | "total_node_limit"
         | "unsupported_contract_version"
         | "invalid_top_level_envelope";
+      /**
+       * Privacy-safe structural category for the whole-response failure. The
+       * legacy `reason` is retained for provider error/recovery compatibility.
+       */
+      readonly failureCategory: SemanticExtractionV2WholeEnvelopeFailureCategory;
       readonly rejected: readonly V2RejectedField[];
     };
+
+export type SemanticExtractionV2WholeEnvelopeFailureCategory =
+  | "invalid_json"
+  | "wrong_root_shape"
+  | "missing_required_root_field"
+  | "unexpected_root_field"
+  | "invalid_section_shape"
+  | "invalid_candidate_shape"
+  | "invalid_source_ref_shape"
+  | "unsupported_typed_value_shape"
+  | "object_depth_exceeded"
+  | "atom_limit_exceeded"
+  | "node_limit_exceeded"
+  | "response_size_exceeded"
+  | "cardinality_limit_exceeded"
+  | "other_schema_violation";
 
 interface GroundedAtom {
   readonly value: string;
@@ -141,6 +174,10 @@ const groupKeys = {
   certification: ["name", "issuer"],
 } as const;
 
+const semanticExtractionV2ContactKeySet: ReadonlySet<string> = new Set(
+  semanticExtractionV2ContactKeys,
+);
+
 export function canonicalizeSemanticExtractionV2(input: {
   readonly response: unknown;
   readonly sourceRegistry: SourceRegistry;
@@ -151,7 +188,7 @@ export function canonicalizeSemanticExtractionV2(input: {
     return wholeResponseFailure("response_too_large");
   }
   if (!isRecord(input.response)) {
-    return wholeResponseFailure("malformed_json");
+    return wholeResponseFailure("malformed_json", "wrong_root_shape");
   }
   if (structure.depthLimitExceeded) {
     return wholeResponseFailure("response_depth_limit");
@@ -163,15 +200,30 @@ export function canonicalizeSemanticExtractionV2(input: {
     return wholeResponseFailure("total_node_limit");
   }
 
-  const version = input.response.schemaVersion;
+  // The provider wire shape may omit deterministic absence markers to reduce
+  // generation work. Expand only the known nullable fields and collections
+  // before applying the unchanged strict V2 envelope. Required semantic
+  // anchors (for example an employer name, role title, institution, skill
+  // name, or URL) are deliberately not synthesized here.
+  const response = expandCompactSemanticExtractionV2Response(input.response);
+
+  const version = isRecord(response) ? response.schemaVersion : undefined;
   if (version !== "nuvitae.semantic-extraction.v2") {
-    return wholeResponseFailure("unsupported_contract_version");
+    return wholeResponseFailure(
+      "unsupported_contract_version",
+      isRecord(response) &&
+        !Object.prototype.hasOwnProperty.call(response, "schemaVersion")
+        ? "missing_required_root_field"
+        : "other_schema_violation",
+    );
   }
-  const envelope = nuvitaeSemanticExtractionV2EnvelopeSchema.safeParse(
-    input.response,
-  );
+  const envelope =
+    nuvitaeSemanticExtractionV2EnvelopeSchema.safeParse(response);
   if (!envelope.success) {
-    return wholeResponseFailure("invalid_top_level_envelope");
+    return wholeResponseFailure(
+      "invalid_top_level_envelope",
+      classifyEnvelopeFailure(response),
+    );
   }
 
   const candidates: V2CanonicalSemanticCandidate[] = [];
@@ -438,6 +490,146 @@ export function canonicalizeSemanticExtractionV2(input: {
   return { ok: true, candidates, signals, rejected };
 }
 
+/**
+ * Expands the compact provider wire form into the stable V2 envelope.
+ *
+ * Omitted values mean the same thing as the existing explicit `null`/`[]`
+ * representation only for the paths listed here. This keeps the external
+ * semantic-extraction.v2/domain contract unchanged while allowing the
+ * provider adapter to avoid repeatedly generating known absence metadata.
+ */
+function expandCompactSemanticExtractionV2Response(response: unknown): unknown {
+  if (!isRecord(response) || !isRecord(response.sections)) return response;
+
+  const sections = response.sections;
+  const expandedSections: Record<string, unknown> = {
+    ...sections,
+    contact: expandCompactContact(sections.contact),
+    headline: sections.headline === undefined ? null : sections.headline,
+    summary: sections.summary === undefined ? null : sections.summary,
+  };
+
+  for (const key of [
+    "workExperience",
+    "education",
+    "skills",
+    "languages",
+    "projects",
+    "certifications",
+    "professionalLinks",
+  ] as const) {
+    expandedSections[key] = expandCompactCollection(sections[key]);
+  }
+
+  expandedSections.workExperience = Array.isArray(
+    expandedSections.workExperience,
+  )
+    ? expandedSections.workExperience.map(expandCompactWorkExperience)
+    : expandedSections.workExperience;
+  expandedSections.education = Array.isArray(expandedSections.education)
+    ? expandedSections.education.map(expandCompactEducation)
+    : expandedSections.education;
+  expandedSections.languages = Array.isArray(expandedSections.languages)
+    ? expandedSections.languages.map(expandCompactLanguage)
+    : expandedSections.languages;
+  expandedSections.projects = Array.isArray(expandedSections.projects)
+    ? expandedSections.projects.map(expandCompactProject)
+    : expandedSections.projects;
+  expandedSections.certifications = Array.isArray(
+    expandedSections.certifications,
+  )
+    ? expandedSections.certifications.map(expandCompactCertification)
+    : expandedSections.certifications;
+  expandedSections.professionalLinks = Array.isArray(
+    expandedSections.professionalLinks,
+  )
+    ? expandedSections.professionalLinks.map(expandCompactProfessionalLink)
+    : expandedSections.professionalLinks;
+
+  return {
+    ...response,
+    sections: expandedSections,
+    relationships: expandCompactCollection(response.relationships),
+    ambiguities: expandCompactCollection(response.ambiguities),
+    conflicts: expandCompactCollection(response.conflicts),
+  };
+}
+
+function expandCompactContact(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return expandNullableFields(value, semanticExtractionV2ContactKeys);
+}
+
+function expandCompactWorkExperience(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  const expanded = expandNullableFields(value, ["employerLocation"]);
+  if (!isRecord(expanded)) return expanded;
+  return {
+    ...expanded,
+    roles: Array.isArray(expanded.roles)
+      ? expanded.roles.map(expandCompactRole)
+      : expanded.roles,
+  };
+}
+
+function expandCompactRole(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return {
+    ...expandNullableFields(value, ["location", "startDate", "endDate"]),
+    responsibilities: expandCompactCollection(value.responsibilities),
+    achievements: expandCompactCollection(value.achievements),
+  };
+}
+
+function expandCompactEducation(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return expandNullableFields(value, [
+    "degree",
+    "fieldOfStudy",
+    "startDate",
+    "endDate",
+    "location",
+  ]);
+}
+
+function expandCompactLanguage(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return expandNullableFields(value, ["proficiency"]);
+}
+
+function expandCompactProject(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return expandNullableFields(value, ["description"]);
+}
+
+function expandCompactCertification(value: unknown): unknown {
+  if (!isRecord(value)) return value;
+  return expandNullableFields(value, ["issuer"]);
+}
+
+function expandCompactProfessionalLink(value: unknown): unknown {
+  if (!isRecord(value) || !Object.prototype.hasOwnProperty.call(value, "url"))
+    return value;
+  return expandNullableFields(value, ["label"]);
+}
+
+function expandCompactCollection(value: unknown): unknown[] | unknown {
+  if (value === undefined) return [];
+  return value;
+}
+
+function expandNullableFields(
+  value: Record<string, unknown>,
+  fields: readonly string[],
+): Record<string, unknown> {
+  const expanded = { ...value };
+  for (const field of fields) {
+    if (!Object.prototype.hasOwnProperty.call(expanded, field))
+      expanded[field] = null;
+  }
+  return expanded;
+}
+
 function acceptSignals(
   rawSignals: readonly unknown[],
   root: "ambiguities" | "conflicts",
@@ -476,8 +668,21 @@ function groundAtom(
     rejected.push({ path, code: "missing_source_refs" });
     return undefined;
   }
-  if (Array.isArray(raw.sourceRefs) && raw.sourceRefs.length === 0) {
+  if (!Array.isArray(raw.sourceRefs)) {
+    rejected.push({ path, code: "malformed_source_ref" });
+    return undefined;
+  }
+  if (raw.sourceRefs.length === 0) {
     rejected.push({ path, code: "missing_source_refs" });
+    return undefined;
+  }
+  if (
+    raw.sourceRefs.some(
+      (reference) =>
+        !semanticExtractionV2SourceRefSchema.safeParse(reference).success,
+    )
+  ) {
+    rejected.push({ path, code: "malformed_source_ref" });
     return undefined;
   }
   const parsed = semanticExtractionV2AtomSchema.safeParse(raw);
@@ -1000,8 +1205,129 @@ function classifyMultipleRefs(
 
 function wholeResponseFailure(
   reason: WholeResponseReason,
+  failureCategory: SemanticExtractionV2WholeEnvelopeFailureCategory = wholeEnvelopeFailureCategoryForReason(
+    reason,
+  ),
 ): V2CanonicalizationResult {
-  return { ok: false, reason, rejected: [] };
+  return { ok: false, reason, failureCategory, rejected: [] };
+}
+
+function wholeEnvelopeFailureCategoryForReason(
+  reason: WholeResponseReason,
+): SemanticExtractionV2WholeEnvelopeFailureCategory {
+  switch (reason) {
+    case "malformed_json":
+      return "invalid_json";
+    case "response_too_large":
+      return "response_size_exceeded";
+    case "response_depth_limit":
+      return "object_depth_exceeded";
+    case "total_atom_limit":
+      return "atom_limit_exceeded";
+    case "total_node_limit":
+      return "node_limit_exceeded";
+    case "unsupported_contract_version":
+      return "other_schema_violation";
+    case "invalid_top_level_envelope":
+      return "other_schema_violation";
+  }
+}
+
+/**
+ * Classifies only the response boundary. Candidate atoms, source references,
+ * and typed values intentionally do not fail the envelope: they are handled
+ * by field-level canonicalization so valid siblings can survive.
+ */
+function classifyEnvelopeFailure(
+  response: unknown,
+): SemanticExtractionV2WholeEnvelopeFailureCategory {
+  if (!isRecord(response)) return "wrong_root_shape";
+
+  const requiredRootKeys = [
+    "schemaVersion",
+    "sections",
+    "relationships",
+    "ambiguities",
+    "conflicts",
+  ];
+  const presentRootKeys = new Set(Object.keys(response));
+  if (requiredRootKeys.some((key) => !presentRootKeys.has(key))) {
+    return "missing_required_root_field";
+  }
+  if (Object.keys(response).some((key) => !requiredRootKeys.includes(key))) {
+    return "unexpected_root_field";
+  }
+  if (response.schemaVersion !== "nuvitae.semantic-extraction.v2") {
+    return "other_schema_violation";
+  }
+
+  if (!isRecord(response.sections)) return "invalid_section_shape";
+  const sections = response.sections;
+  const requiredSectionKeys = [
+    "contact",
+    "headline",
+    "summary",
+    "workExperience",
+    "education",
+    "skills",
+    "languages",
+    "projects",
+    "certifications",
+    "professionalLinks",
+  ];
+  const sectionKeys = Object.keys(sections);
+  if (
+    requiredSectionKeys.some(
+      (key) => !Object.prototype.hasOwnProperty.call(sections, key),
+    ) ||
+    sectionKeys.some((key) => !requiredSectionKeys.includes(key))
+  ) {
+    return "invalid_section_shape";
+  }
+  if (!isRecord(sections.contact)) return "invalid_section_shape";
+  const contact = sections.contact;
+  if (
+    semanticExtractionV2ContactKeys.some(
+      (key) => !Object.prototype.hasOwnProperty.call(contact, key),
+    ) ||
+    Object.keys(contact).some(
+      (key) => !semanticExtractionV2ContactKeySet.has(key),
+    )
+  ) {
+    return "invalid_section_shape";
+  }
+
+  const collectionLimits: Readonly<Record<string, number>> = {
+    workExperience: maxSemanticExtractionV2WorkExperiences,
+    education: maxSemanticExtractionV2EducationEntries,
+    skills: maxSemanticExtractionV2Skills,
+    languages: maxSemanticExtractionV2Languages,
+    projects: maxSemanticExtractionV2Projects,
+    certifications: maxSemanticExtractionV2Certifications,
+    professionalLinks: maxSemanticExtractionV2ProfessionalLinks,
+  };
+  for (const [key, limit] of Object.entries(collectionLimits)) {
+    const value = sections[key];
+    if (!Array.isArray(value)) return "invalid_section_shape";
+    if (value.length > limit) return "cardinality_limit_exceeded";
+  }
+  for (const [key, limit] of [
+    ["relationships", maxSemanticExtractionV2Relationships],
+    ["ambiguities", maxSemanticExtractionV2Ambiguities],
+    ["conflicts", maxSemanticExtractionV2Conflicts],
+  ] as const) {
+    const value = response[key];
+    if (!Array.isArray(value)) return "other_schema_violation";
+    if (value.length > limit) return "cardinality_limit_exceeded";
+  }
+  return "other_schema_violation";
+}
+
+/** Used by privacy-safe diagnostics to inspect the same compact-expanded form. */
+export function expandCompactSemanticExtractionV2ResponseForDiagnostics(
+  response: unknown,
+): unknown {
+  return expandCompactSemanticExtractionV2Response(response);
 }
 
 export function inspectSemanticExtractionV2Structure(

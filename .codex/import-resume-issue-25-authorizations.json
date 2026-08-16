@@ -1,0 +1,139 @@
+{
+  "schema_version": 1,
+  "issue": 25,
+  "campaign": "import-resume-latency-confirmatory",
+  "authorized_attempts": [
+    {
+      "authorization_id": "issue-25-arm-a-sol-low-20260815",
+      "arm": "A",
+      "state": "consumed",
+      "consumed_import_id": "e0798f17-14b4-4902-91f2-028efb0d0f5f",
+      "consumed_provider_invocations": 1,
+      "consumed_uploads": 1,
+      "consumed_evidence_path": "docs/research/import-resume-issue-25-arm-a-sol-low-20260815.json",
+      "model": "gpt-5.6-sol",
+      "reasoning": "low",
+      "verbosity": "low",
+      "maximum_uploads": 1,
+      "maximum_primary_provider_invocations": 1,
+      "automatic_retries": 0,
+      "maximum_benchmark_executions": 1,
+      "maximum_fallback_attempts": 1,
+      "fallback_policy": "normal_existing_deterministic_only_on_natural_failure",
+      "fixture_path": "tests/fixtures/resumes/anonymous-realistic-2-page-resume.pdf",
+      "evidence_path": "docs/research/import-resume-issue-25-arm-a-sol-low-20260815.json",
+      "pinned": {
+        "base_commit": "b31222c53a55de6a05915db90fbe01a27b061f43",
+        "transport_correction_commit": "b31222c53a55de6a05915db90fbe01a27b061f43",
+        "semantic_contract": "nuvitae.semantic-extraction.v2",
+        "artifacts": {
+          "fixture_sha256": "5d2d7c303241daa3cd6faafcfea50873c52140034f2e72db56a45f7fe6509b64",
+          "semantic_contract_sha256": "d60c53ee6c37094fd92e3f4660188a5fbf437bf31085cc94d4eee6c5bca3ed87",
+          "transport_sha256": "9e93dd183b147847f8f4900ab80b88eaa49741895b1dd978dbf7313f5ef9f9ec",
+          "provider_adapter_sha256": "9d93f3f3d093148a1bced3e3e9f3ca7f330e1d27af4f0b67c25d79e51e8ffff7",
+          "prompt_sha256": "714a601e02c80fc877bc27c5c04e0077dac4d8ab8ef11f05bb8b8379dff38ab3",
+          "benchmark_gate_sha256": "650c4698b774dac02e0083db23060651c5d18fe889cfb0007cbd30d5dbab994c",
+          "semantic_processor_sha256": "72833bf153442e5f6c886345f1df9440990be87e5096e905d1961e775a567246",
+          "runtime_provider_registration_sha256": "29bd0b12a38e85a4ff4be0e9427a54960274e7d42cc6487d25f09cfe74e91b3d",
+          "compose_sha256": "c98148c0eaece433a93b714ba30fde4b3423e01dba0d4d30a0292bcfff446291",
+          "compose_local_sha256": "87516121e1f7c6a4d4ac86d6065dcb599d52642661ea3159b7cdafa954aaf367",
+          "api_dockerfile_sha256": "d4996594f031c6378a5bc3e0585eaf4ff2c07004e09b2c5b1985e415a2754e52",
+          "worker_dockerfile_sha256": "76bea891ebd8c1f144548d32d261ec3fcf061d391fb304d2a35402acb2e74ea4"
+        },
+        "runtime": {
+          "api_image": "sha256:559293f4cb3bcb9f2349fa2535b3f5cd67431f11af48d8941d92b5a9a8842470",
+          "worker_image": "sha256:d76c2879b69dbbb4aedb138264e49c7c0fd663fd99f83c732275d84f1209ca8f",
+          "web_image": "sha256:bbb378ca1096364e70da22fc1dbf0670c7d17bf6f1a46c748c666b9cfd774e71",
+          "node_image": "node:24.15.0-bookworm-slim",
+          "environment": "Docker Compose local-play; production semantic-provider mode; PostgreSQL and queue healthy; API/worker/web healthy"
+        },
+        "provider": {
+          "connection_status": "connected",
+          "authentication_status": "authenticated",
+          "availability_status": "available",
+          "ready": true
+        },
+        "transport": {
+          "event_count_role": "diagnostic_only",
+          "cumulative_raw_sse_bytes": 2097152,
+          "individual_sse_event_bytes": 262144,
+          "semantic_output_bytes": 65536,
+          "requires_response_completed": true,
+          "automatic_retries": 0,
+          "deadlines_ms": {
+            "header": 30000,
+            "first_output": 60000,
+            "active_stream_inactivity": 15000,
+            "total_generation": 90000
+          }
+        }
+      }
+    },
+    {
+      "authorization_id": "issue-25-arm-b-terra-low-20260815",
+      "arm": "B",
+      "state": "consumed",
+      "consumed_import_id": "5421bdb8-1aa1-4715-b180-c045cb97f817",
+      "consumed_provider_invocations": 1,
+      "consumed_uploads": 1,
+      "consumed_evidence_path": "docs/research/import-resume-issue-25-arm-b-terra-low-20260815.json",
+      "model": "gpt-5.6-terra",
+      "reasoning": "low",
+      "verbosity": "low",
+      "maximum_uploads": 1,
+      "maximum_primary_provider_invocations": 1,
+      "automatic_retries": 0,
+      "maximum_benchmark_executions": 1,
+      "maximum_fallback_attempts": 1,
+      "fallback_policy": "normal_existing_deterministic_only_on_natural_failure",
+      "fixture_path": "tests/fixtures/resumes/anonymous-realistic-2-page-resume.pdf",
+      "evidence_path": "docs/research/import-resume-issue-25-arm-b-terra-low-20260815.json",
+      "pinned": {
+        "base_commit": "134f328f3392feb8688e5426646b12b57b091e38",
+        "transport_correction_commit": "b31222c53a55de6a05915db90fbe01a27b061f43",
+        "semantic_contract": "nuvitae.semantic-extraction.v2",
+        "artifacts": {
+          "fixture_sha256": "5d2d7c303241daa3cd6faafcfea50873c52140034f2e72db56a45f7fe6509b64",
+          "semantic_contract_sha256": "d60c53ee6c37094fd92e3f4660188a5fbf437bf31085cc94d4eee6c5bca3ed87",
+          "transport_sha256": "220f7ccbb8c0505a39080f4efd6777b677a208bca8d5443fda45c4b2dee1ae4c",
+          "provider_adapter_sha256": "8a746ac77183a930bb19964d292c86af135f88ff19ca0d876078656ad7117bdb",
+          "prompt_sha256": "714a601e02c80fc877bc27c5c04e0077dac4d8ab8ef11f05bb8b8379dff38ab3",
+          "benchmark_gate_sha256": "650c4698b774dac02e0083db23060651c5d18fe889cfb0007cbd30d5dbab994c",
+          "semantic_processor_sha256": "72833bf153442e5f6c886345f1df9440990be87e5096e905d1961e775a567246",
+          "runtime_provider_registration_sha256": "33493733a650bbd14c87860b016c2f88baafa8d3579665d71e3c8a2e8a8ad4fe",
+          "compose_sha256": "c98148c0eaece433a93b714ba30fde4b3423e01dba0d4d30a0292bcfff446291",
+          "compose_local_sha256": "87516121e1f7c6a4d4ac86d6065dcb599d52642661ea3159b7cdafa954aaf367",
+          "api_dockerfile_sha256": "d4996594f031c6378a5bc3e0585eaf4ff2c07004e09b2c5b1985e415a2754e52",
+          "worker_dockerfile_sha256": "76bea891ebd8c1f144548d32d261ec3fcf061d391fb304d2a35402acb2e74ea4"
+        },
+        "runtime": {
+          "api_image": "sha256:559293f4cb3bcb9f2349fa2535b3f5cd67431f11af48d8941d92b5a9a8842470",
+          "worker_image": "sha256:531f352d892b6cdb6b8eff466ee777c9c4123ab5aa78056bb7408ad7d1fc860d",
+          "web_image": "sha256:bbb378ca1096364e70da22fc1dbf0670c7d17bf6f1a46c748c666b9cfd774e71",
+          "node_image": "node:24.15.0-bookworm-slim",
+          "environment": "Docker Compose local-play; production semantic-provider mode; PostgreSQL and queue healthy; API/worker/web healthy"
+        },
+        "provider": {
+          "connection_status": "connected",
+          "authentication_status": "authenticated",
+          "availability_status": "available",
+          "ready": true
+        },
+        "transport": {
+          "event_count_role": "diagnostic_only",
+          "cumulative_raw_sse_bytes": 2097152,
+          "individual_sse_event_bytes": 262144,
+          "semantic_output_bytes": 65536,
+          "requires_response_completed": true,
+          "automatic_retries": 0,
+          "deadlines_ms": {
+            "header": 30000,
+            "first_output": 60000,
+            "active_stream_inactivity": 15000,
+            "total_generation": 90000
+          }
+        }
+      }
+    }
+  ]
+}

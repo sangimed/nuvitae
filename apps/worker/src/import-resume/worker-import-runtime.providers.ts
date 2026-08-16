@@ -12,6 +12,8 @@ import {
   ImportLimitService,
   TypeOrmImportLimitStore,
   CodexDirectProviderAdapter,
+  type CodexModelIdentifier,
+  emitImportTiming,
   type ProviderSessionStore,
   type ResumeSemanticParserProvider,
   ValidateDocumentService,
@@ -37,6 +39,7 @@ import {
 import {
   WORKER_IMPORT_EVENT_EMITTER,
   WORKER_IMPORT_CAPACITY_PORT,
+  WORKER_IMPORT_CLOCK,
   WORKER_IMPORT_EXTRACTION_USE_CASE,
   WORKER_IMPORT_VALIDATION_USE_CASE,
 } from "./import-processing.processor.js";
@@ -77,15 +80,29 @@ export function createProductionSemanticParserProvider(
   repository: AIProviderRuntimeConnectionsRepository,
   sessionStore: ProviderSessionStore,
   logger?: ImportEventEmitter,
+  model?: CodexModelIdentifier,
 ): ResumeSemanticParserProvider {
   return new CodexDirectProviderAdapter({
     repository,
     sessionStore,
+    ...(model === undefined ? {} : { model }),
     ...(logger === undefined
       ? {}
       : {
           onTransportTiming: (timing) =>
-            logger.emit("semantic.provider_transport_timing", timing),
+            (() => {
+              logger.emit("semantic.provider_transport_timing", timing);
+              const phase = providerTimingPhase(timing.phase);
+              if (phase === undefined) return;
+              emitImportTiming(logger, {
+                importId: timing.importId,
+                correlationId: timing.correlationId,
+                phase,
+                source: "worker",
+                at: new Date(timing.timestampMs),
+                durationMs: timing.elapsedMs,
+              });
+            })(),
           onTransportProtocolShape: (shape) =>
             logger.emit("semantic.provider_protocol_shape", shape),
           onTransportSseError: (diagnostic) =>
@@ -95,6 +112,17 @@ export function createProductionSemanticParserProvider(
               "semantic.provider_v2_envelope_diagnostics",
               diagnostic,
             ),
+          onV2FieldDiagnostic: (diagnostic) =>
+            logger.emit("semantic.provider_v2_field_diagnostics", diagnostic),
+          onCanonicalizationTiming: (timing) =>
+            emitImportTiming(logger, {
+              importId: timing.importId,
+              correlationId: timing.correlationId,
+              phase: "canonicalization_completed",
+              source: "worker",
+              at: new Date(timing.timestampMs),
+              durationMs: timing.durationMs,
+            }),
         }),
   });
 }
@@ -124,6 +152,10 @@ const importEventEmitter = createImportEventEmitter({
 const logger = importEventEmitter;
 
 export const workerImportRuntimeProviders: Provider[] = [
+  {
+    provide: WORKER_IMPORT_CLOCK,
+    useValue: { now: () => new Date() },
+  },
   {
     provide: WORKER_IMPORT_EVENT_EMITTER,
     useValue: importEventEmitter,
@@ -315,4 +347,37 @@ function requireEnv(name: string): string {
     throw new Error(`${name} is required.`);
   }
   return value;
+}
+
+function providerTimingPhase(
+  phase:
+    | "request_started"
+    | "response_headers"
+    | "first_byte"
+    | "first_semantic_output"
+    | "sse_started"
+    | "completion_event"
+    | "response_eof"
+    | "request_timeout"
+    | "first_output_timeout"
+    | "stream_inactivity_timeout"
+    | "generation_timeout"
+    | "cancelled"
+    | "completed"
+    | "transport_error",
+):
+  | "provider_headers"
+  | "provider_first_output"
+  | "provider_completed"
+  | undefined {
+  switch (phase) {
+    case "response_headers":
+      return "provider_headers";
+    case "first_semantic_output":
+      return "provider_first_output";
+    case "completed":
+      return "provider_completed";
+    default:
+      return undefined;
+  }
 }

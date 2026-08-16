@@ -23,6 +23,7 @@ import {
 } from "./focus-management";
 import { ReviewWarning } from "./ReviewWarning";
 import { formatReviewDate, formatReviewDateRange } from "./review-date";
+import { recordImportTiming } from "../../services/import-resume/import-timing-client";
 
 export function ReviewStep(props: { readonly importId: string }) {
   const [draft, setDraft] = useState<ReviewDraftReadResponse | undefined>();
@@ -44,6 +45,16 @@ export function ReviewStep(props: { readonly importId: string }) {
   const shellRef = useRef<HTMLElement | null>(null);
   const finalizedRef = useRef<HTMLDivElement | null>(null);
   const previousErrorRef = useRef<string | undefined>(undefined);
+  const renderedTimingRef = useRef(false);
+
+  useEffect(() => {
+    if (draft === undefined || renderedTimingRef.current) return;
+    renderedTimingRef.current = true;
+    recordImportTiming({
+      importId: props.importId,
+      phase: "review_rendered",
+    });
+  }, [draft, props.importId]);
 
   useEffect(() => {
     if (finalized !== undefined) {
