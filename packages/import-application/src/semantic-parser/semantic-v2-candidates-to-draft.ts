@@ -11,6 +11,7 @@ import type {
   V2CanonicalSignal,
   V2RejectedField,
 } from "./semantic-extraction-v2-canonicalizer.js";
+import type { SemanticV2CompletenessDiagnostic } from "./semantic-v2-source-section-inventory.js";
 
 export interface SemanticV2CandidateMappingResult {
   readonly fields: readonly DeterministicResumeFieldCandidate[];
@@ -26,6 +27,7 @@ export function mapSemanticV2CandidatesToDraft(input: {
   readonly candidates: readonly V2CanonicalSemanticCandidate[];
   readonly rejected: readonly V2RejectedField[];
   readonly signals: readonly V2CanonicalSignal[];
+  readonly completenessDiagnostics?: readonly SemanticV2CompletenessDiagnostic[];
   readonly document: ImportedDocument;
 }): SemanticV2CandidateMappingResult {
   const fields: DeterministicResumeFieldCandidate[] = [];
@@ -59,6 +61,7 @@ export function mapSemanticV2CandidatesToDraft(input: {
   const warnings = [
     ...input.rejected.map(rejectedWarning),
     ...input.signals.map(signalWarning),
+    ...(input.completenessDiagnostics ?? []).flatMap(completenessWarning),
   ];
   return { fields, warnings };
 }
@@ -212,9 +215,50 @@ function rejectedWarning(
     ...(fieldPath === undefined
       ? {}
       : { fieldPath: draftFieldPath(fieldPath) }),
-    message: "Some imported content was not supported and was not included.",
+    message: rejectedDiagnosticMessage(rejected.code),
     requiresResolution: true,
   };
+}
+
+function completenessWarning(
+  diagnostic: SemanticV2CompletenessDiagnostic,
+): readonly DeterministicWarningCandidate[] {
+  if (diagnostic.kind !== "expected_section_omitted") return [];
+  return [
+    {
+      warningType: "missing",
+      section:
+        diagnostic.section === "workExperience"
+          ? "work_experience"
+          : diagnostic.section,
+      fieldPath:
+        diagnostic.section === "workExperience"
+          ? "work_experience"
+          : diagnostic.section,
+      message:
+        "A source-supported resume section was omitted and needs review.",
+      requiresResolution: true,
+    },
+  ];
+}
+
+function rejectedDiagnosticMessage(code: V2RejectedField["code"]): string {
+  if (code === "malformed_atom")
+    return "An imported field had an invalid atom shape and was not included.";
+  if (code === "malformed_group" || code === "unsupported_group_shape")
+    return "An imported section had an invalid group shape and was not included.";
+  if (code === "unsupported_typed_value")
+    return "An imported typed value was not supported and was not included.";
+  if (
+    code === "missing_source_refs" ||
+    code === "value_not_grounded" ||
+    code === "ambiguous_source_refs" ||
+    code === "duplicate_source_ref" ||
+    code === "overlapping_source_refs" ||
+    code === "value_ambiguous"
+  )
+    return "An imported field could not be verified against the source and was not included.";
+  return "Some imported content was not supported and was not included.";
 }
 
 function signalWarning(

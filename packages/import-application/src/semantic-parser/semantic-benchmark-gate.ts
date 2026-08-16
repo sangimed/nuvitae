@@ -9,7 +9,12 @@ export interface SemanticBenchmarkGateInput {
   readonly semanticV2EnvelopeAccepted: boolean;
   readonly deterministicFallbackUsed: boolean;
   readonly canonicalDraftProduced: boolean;
+  readonly sourceSectionInventory: {
+    readonly summary: boolean;
+    readonly education: boolean;
+  };
   readonly summaryFidelity: "intact" | "not_intact" | "not_observed";
+  readonly educationFidelity: "intact" | "not_intact" | "not_observed";
   readonly expectedWorkEducationStructure:
     "substantially_present" | "not_present" | "not_observed";
 }
@@ -20,6 +25,7 @@ export type SemanticBenchmarkGateFailure =
   | "deterministic_fallback_used"
   | "canonical_draft_not_produced"
   | "summary_fidelity_not_intact"
+  | "education_fidelity_not_intact"
   | "expected_work_education_structure_not_present";
 
 export interface SemanticBenchmarkGateResult {
@@ -38,8 +44,16 @@ export function evaluateSemanticBenchmarkGate(
     failures.push("deterministic_fallback_used");
   if (!input.canonicalDraftProduced)
     failures.push("canonical_draft_not_produced");
-  if (input.summaryFidelity !== "intact")
+  if (
+    input.sourceSectionInventory.summary &&
+    input.summaryFidelity !== "intact"
+  )
     failures.push("summary_fidelity_not_intact");
+  if (
+    input.sourceSectionInventory.education &&
+    input.educationFidelity !== "intact"
+  )
+    failures.push("education_fidelity_not_intact");
   if (input.expectedWorkEducationStructure !== "substantially_present")
     failures.push("expected_work_education_structure_not_present");
   return { valid: failures.length === 0, failures };
