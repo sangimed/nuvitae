@@ -133,7 +133,7 @@ describe("resume import domain validation", () => {
     ).toHaveLength(0);
   });
 
-  it("blocks structured-resume confirmation for unresolved warnings and missing confirmed fields", () => {
+  it("blocks unresolved warnings but permits valid unreviewed fields", () => {
     const unresolved = validateStructuredResumeConfirmation(
       draft({
         warnings: [warning("needs_review")],
@@ -147,14 +147,32 @@ describe("resume import domain validation", () => {
       error: { code: "unresolved_required_warnings" },
     });
 
-    const noConfirmedField = validateStructuredResumeConfirmation(
+    const unreviewedOnly = validateStructuredResumeConfirmation(
       draft({ warnings: [], fields: [field({ reviewStatus: "unreviewed" })] }),
       now,
       { sourceDeletionStatus: "not_scheduled", sourceArtifactsAvailable: true },
     );
-    expect(noConfirmedField).toMatchObject({
+    expect(unreviewedOnly).toMatchObject({
+      ok: true,
+      value: { confirmedFieldCount: 0, addressedWarningCount: 0 },
+    });
+
+    const unreviewedWarningField = validateStructuredResumeConfirmation(
+      draft({
+        warnings: [],
+        fields: [
+          field({
+            reviewStatus: "unreviewed",
+            warningId: "warning-1",
+          }),
+        ],
+      }),
+      now,
+      { sourceDeletionStatus: "not_scheduled", sourceArtifactsAvailable: true },
+    );
+    expect(unreviewedWarningField).toMatchObject({
       ok: false,
-      error: { code: "no_user_confirmed_supported_field" },
+      error: { code: "unreviewed_field_warnings" },
     });
   });
 

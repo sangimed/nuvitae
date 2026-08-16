@@ -2,7 +2,6 @@ import type {
   ConfidenceCategory,
   DetectedLanguage,
   ExtractedField,
-  FieldReviewStatus,
   ImportDraft,
   ImportWarning,
   SourceDeletionStatus,
@@ -65,7 +64,6 @@ export type ConfirmationFailureCode =
   | "draft_not_reviewable"
   | "unresolved_required_warnings"
   | "unreviewed_field_warnings"
-  | "no_user_confirmed_supported_field"
   | "source_deleted_review_not_confirmable";
 export type RetentionFailureCode =
   | "retention_deadline_before_upload"
@@ -110,11 +108,6 @@ export const addressedWarningStates = [
   "excluded",
   "intentionally_left",
 ] as const satisfies readonly WarningReviewState[];
-export const userConfirmedFieldStates = [
-  "confirmed",
-  "edited",
-] as const satisfies readonly FieldReviewStatus[];
-
 export function isSupportedFormat(
   format: string,
 ): format is SupportedDocumentFormat {
@@ -344,15 +337,15 @@ export function validateStructuredResumeConfirmation(
     );
   }
 
+  // `explicitConfirmation` on the confirmation command is the import-wide
+  // user action. Individual fields remain reviewable, but a valid imported
+  // field must not be discarded merely because its confirm button was not
+  // clicked.
   const confirmedFieldCount = draft.fields.filter(
-    isUserConfirmedSupportedField,
+    (field) =>
+      (field.reviewStatus === "confirmed" || field.reviewStatus === "edited") &&
+      field.inferenceStatus !== "inferred_needs_review",
   ).length;
-  if (confirmedFieldCount === 0) {
-    return validationFailure(
-      "no_user_confirmed_supported_field",
-      "Confirm at least one supported field before creating a structured resume.",
-    );
-  }
 
   if (
     options.sourceDeletionStatus === "deleted" &&
@@ -454,14 +447,6 @@ function isExplicitlySourcedSupportedField(field: ExtractedField): boolean {
   return (
     field.sourceStatus === "explicit_source" &&
     field.sourceLocation !== undefined
-  );
-}
-
-function isUserConfirmedSupportedField(field: ExtractedField): boolean {
-  return (
-    userConfirmedFieldStates.includes(
-      field.reviewStatus as (typeof userConfirmedFieldStates)[number],
-    ) && field.sourceStatus !== "inferred"
   );
 }
 

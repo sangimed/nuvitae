@@ -607,17 +607,6 @@ function confirmationEligibilityError(
       message: "Review every warning before creating the structured resume.",
     };
   }
-  if (code === "no_user_confirmed_supported_field") {
-    return {
-      ok: false,
-      status: 422,
-      code: "no_user_confirmed_field",
-      requestId,
-      importId,
-      draftId,
-      message: "Confirm or edit at least one field before creating the resume.",
-    };
-  }
   return {
     ok: false,
     status: 409,

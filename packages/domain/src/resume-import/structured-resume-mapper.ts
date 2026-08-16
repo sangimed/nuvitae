@@ -61,8 +61,6 @@ export interface MapReviewedImportDraftInput {
   readonly now: Date;
 }
 
-const includedReviewStatuses = new Set(["confirmed", "edited"]);
-
 interface MutableStructuredResumeContent {
   readonly personal: SourcedText[];
   readonly contact: SourcedText[];
@@ -897,7 +895,7 @@ function textValue(value: ExtractedValue): string | undefined {
 
 function isIncludedField(field: ExtractedField): boolean {
   return (
-    includedReviewStatuses.has(field.reviewStatus) &&
+    field.reviewStatus !== "excluded" &&
     field.inferenceStatus !== "inferred_needs_review"
   );
 }

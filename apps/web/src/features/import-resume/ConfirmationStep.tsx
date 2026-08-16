@@ -113,8 +113,10 @@ export function ConfirmationStep(props: {
       {props.draft.readyToConfirm ? (
         <div className="message message-success">
           <p>
-            This creates a new structured resume from the fields you confirmed
-            or edited. The uploaded source remains separate and temporary.
+            This creates a new structured resume from every valid imported field
+            that you have not excluded. Edited fields use their edited values;
+            fields do not need individual confirmation clicks to be retained.
+            The uploaded source remains separate and temporary.
           </p>
           <p>
             Original upload retention ends{" "}
@@ -137,7 +139,7 @@ export function ConfirmationStep(props: {
           <p>
             {props.draft.unresolvedWarningCount} warning
             {props.draft.unresolvedWarningCount === 1 ? "" : "s"} still need
-            review. Confirm or edit at least one field before creating a resume.
+            review. Resolve the blocking review items before creating a resume.
           </p>
           <div className="action-row">
             {unresolvedSections.map((section) => (

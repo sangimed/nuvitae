@@ -112,6 +112,105 @@ describe("confirm structured resume PostgreSQL integration", () => {
     await expectSourceAndArtifactRetentionUnchanged();
   });
 
+  it("retains valid unreviewed Work Experience and Education fields on confirmation", async () => {
+    const base = withoutWarning(importDraft().fields[0]!);
+    await seedImportDraft(
+      importDraft({
+        status: "ready_to_confirm",
+        reviewRevision: 0,
+        warnings: [],
+        retentionExpiresAt: retention,
+        fields: [
+          {
+            ...base,
+            id: "60000000-0000-4000-8000-000000000011",
+            section: "contact",
+            fieldPath: "contact.email",
+            value: { kind: "text", value: "jane@example.invalid" },
+            reviewStatus: "confirmed",
+          },
+          {
+            ...base,
+            id: "60000000-0000-4000-8000-000000000012",
+            section: "contact",
+            fieldPath: "contact.phone",
+            value: { kind: "text", value: "+33 1 23 45 67 89" },
+            reviewStatus: "unreviewed",
+          },
+          {
+            ...base,
+            id: "60000000-0000-4000-8000-000000000013",
+            section: "personal",
+            fieldPath: "personal.full_name",
+            value: { kind: "text", value: "Jane Example" },
+            reviewStatus: "unreviewed",
+          },
+          {
+            ...base,
+            id: "60000000-0000-4000-8000-000000000014",
+            section: "work_experience",
+            fieldPath: "work_experience.0.employer",
+            value: { kind: "text", value: "Example Employer" },
+            reviewStatus: "unreviewed",
+          },
+          {
+            ...base,
+            id: "60000000-0000-4000-8000-000000000015",
+            section: "work_experience",
+            fieldPath: "work_experience.0.roles.0.title",
+            value: { kind: "text", value: "Platform Engineer" },
+            reviewStatus: "unreviewed",
+          },
+          {
+            ...base,
+            id: "60000000-0000-4000-8000-000000000016",
+            section: "education",
+            fieldPath: "education.0.institution",
+            value: { kind: "text", value: "Example University" },
+            reviewStatus: "unreviewed",
+          },
+          {
+            ...base,
+            id: "60000000-0000-4000-8000-000000000017",
+            section: "education",
+            fieldPath: "education.0.credential",
+            value: { kind: "text", value: "MSc Systems Engineering" },
+            reviewStatus: "unreviewed",
+          },
+        ],
+      }),
+    );
+
+    const result = await service.confirm({
+      ownerUserId: ids.ownerA,
+      importId: ids.document,
+      body: confirmBody(0, "80000000-0000-4000-8000-000000000109"),
+      requestId: "90000000-0000-4000-8000-000000000109",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const stored = await repository.findStructuredResumeByOwner(
+      result.response.structuredResumeId,
+      ids.ownerA,
+    );
+    expect(stored?.content.contact.map((item) => item.value)).toEqual([
+      "jane@example.invalid",
+      "+33 1 23 45 67 89",
+    ]);
+    expect(stored?.content.personal.map((item) => item.value)).toEqual([
+      "Jane Example",
+    ]);
+    expect(stored?.content.workExperiences[0]).toMatchObject({
+      employerName: "Example Employer",
+      roles: [{ title: "Platform Engineer" }],
+    });
+    expect(stored?.content.education[0]).toMatchObject({
+      institution: { value: "Example University" },
+      credential: { value: "MSc Systems Engineering" },
+    });
+  });
+
   it("returns the existing resume on retry without duplicate root or child rows", async () => {
     await seedImportDraft(readyDraft());
 
