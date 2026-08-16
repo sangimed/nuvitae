@@ -158,6 +158,7 @@ function setup(
   const transport = { invoke: vi.fn(async () => transportResult) };
   const onV2EnvelopeDiagnostic = vi.fn();
   const onV2FieldDiagnostic = vi.fn();
+  const onResponseLimitDiagnostic = vi.fn();
   const repository = {
     findConnectionByProviderAndOwner: vi.fn(
       async (_provider: string, owner: string) =>
@@ -188,6 +189,7 @@ function setup(
     now: () => now,
     onV2EnvelopeDiagnostic,
     onV2FieldDiagnostic,
+    onResponseLimitDiagnostic,
   } as unknown as CodexDirectProviderAdapterPorts;
   return {
     provider: new CodexDirectProviderAdapter(ports),
@@ -196,6 +198,7 @@ function setup(
     transport,
     onV2EnvelopeDiagnostic,
     onV2FieldDiagnostic,
+    onResponseLimitDiagnostic,
   };
 }
 
@@ -274,6 +277,39 @@ describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
         firstZodPath: ["schemaVersion"],
       }),
     );
+  });
+
+  it("emits a bounded V2 envelope-size trigger without changing fallback classification", async () => {
+    const privatePayload = "PRIVATE-RESUME-PAYLOAD";
+    const harness = setup(connection(), {
+      ok: true,
+      normalizedOutput: JSON.stringify({
+        ...response(),
+        structuralPadding: privatePayload.repeat(20_000),
+      }),
+    });
+
+    const result = await harness.provider.parseV2(request(), {
+      timeoutMs: 30000,
+      ownerUserId: ownerA,
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: { code: "response_too_large" },
+    });
+    expect(harness.onResponseLimitDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        triggerCategory: "v2_envelope_size_limit",
+        receivedRawBodyBytesBucket: "not_observed",
+        assembledSemanticOutputBytesBucket: "256k-1m",
+        parsedSseEventCount: 0,
+        responseCompletedObserved: false,
+      }),
+    );
+    expect(
+      JSON.stringify(harness.onResponseLimitDiagnostic.mock.calls),
+    ).not.toContain(privatePayload);
   });
 
   it("classifies an unrecognized contact key without exposing the raw key", async () => {

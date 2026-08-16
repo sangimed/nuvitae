@@ -1,7 +1,10 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import type { ImportedDocument } from "@nuvitae/domain";
-import type { ResumeSemanticParserProvider } from "@nuvitae/import-application";
+import type {
+  ResumeSemanticParserProvider,
+  V2CanonicalSemanticCandidate,
+} from "@nuvitae/import-application";
 import {
   fallbackTriggerForProviderError,
   SemanticImportProcessor,
@@ -224,6 +227,93 @@ describe("SemanticImportProcessor", () => {
     );
     expect(JSON.stringify(repository.saveDraft.mock.calls)).not.toContain(
       "schemaVersion",
+    );
+  });
+
+  it("creates a review-required partial draft when source Education is omitted", async () => {
+    const candidate: V2CanonicalSemanticCandidate = {
+      fieldPath: "contact.fullName",
+      groupPath: "contact",
+      candidateId: "candidate-1",
+      fieldId: "field-1",
+      value: "Ada Lovelace",
+      normalizedValue: "ada lovelace",
+      valueKind: "text",
+      sourceStatus: "explicit_source",
+      confidence: "high",
+      inferenceStatus: "not_inferred",
+      reviewStatus: "unreviewed",
+      evidence: [
+        {
+          fragmentId: "fragment-1",
+          fragmentHash: createHash("sha256")
+            .update("Ada Lovelace")
+            .digest("hex"),
+          line: 1,
+          start: 0,
+          end: "Ada Lovelace".length,
+          quote: "Ada Lovelace",
+        },
+      ],
+    };
+    const v2Provider = {
+      ...provider,
+      parseV2: vi.fn(async () => ({
+        ok: true as const,
+        contractVersion: "nuvitae.semantic-extraction.v2" as const,
+        canonical: {
+          ok: true as const,
+          candidates: [candidate],
+          signals: [],
+          rejected: [],
+        },
+      })),
+    } satisfies ResumeSemanticParserProvider;
+    const harness = setup(v2Provider, [
+      "Ada Lovelace",
+      "EDUCATION",
+      "Example University",
+    ]);
+
+    await harness.processor.process({
+      ownerUserId,
+      importedDocumentId: importId,
+    });
+
+    expect(harness.repository.saveDraft).toHaveBeenCalledTimes(1);
+    expect(harness.repository.saveDraft.mock.calls[0]?.[0]).toMatchObject({
+      warnings: [
+        expect.objectContaining({
+          warningType: "missing",
+          section: "education",
+          requiresResolution: true,
+        }),
+      ],
+    });
+    const diagnostics = harness.logger.emit.mock.calls
+      .filter(([event]) => event === "semantic.validation_diagnostics")
+      .map(([, metadata]) => metadata);
+    expect(diagnostics).toEqual([
+      expect.objectContaining({
+        code: "expected_section_omitted",
+        requiresReview: true,
+      }),
+    ]);
+    expect(diagnostics).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "source_section_not_expected" }),
+      ]),
+    );
+    const outcomes = harness.logger.emit.mock.calls
+      .filter(([event]) => event === "semantic.outcome")
+      .map(([, metadata]) => metadata);
+    expect(outcomes).toEqual([
+      expect.objectContaining({ outcome: "v2_partial_acceptance" }),
+    ]);
+    expect(outcomes).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ outcome: "v2_success" }),
+      ]),
     );
   });
 

@@ -37,4 +37,7 @@ Thumbs.db
 /storage/
 *.local.pdf
 
+# Private local benchmark fixtures; keep separate from versioned synthetic fixtures.
+/local/fixtures/import-resume/
+
 .turbo/
