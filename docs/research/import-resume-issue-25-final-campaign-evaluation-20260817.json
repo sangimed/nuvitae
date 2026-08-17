@@ -1,0 +1,306 @@
+{
+  "schema_version": 1,
+  "issue": 25,
+  "campaign": "import-resume-semantic-v2-final-campaign",
+  "evaluated_at": "2026-08-17",
+  "evaluation_mode": "offline_existing_imports_only",
+  "provider_activity": false,
+  "source_inventory": {
+    "summary": false,
+    "workExperience": true,
+    "education": true
+  },
+  "predicate_names": [
+    "response_completed",
+    "v2_envelope_accepted",
+    "no_fallback",
+    "canonical_draft_produced",
+    "summary_fidelity",
+    "education_fidelity",
+    "work_fidelity",
+    "no_material_invention",
+    "no_material_truncation"
+  ],
+  "arms": [
+    {
+      "label": "Control Sol",
+      "import_id": "1416faf4-d16c-47b3-93f0-35a11d2c48e6",
+      "model_family": "Sol",
+      "active_field_count": 75,
+      "warning_count": 3,
+      "rejected_field_count": 3,
+      "rejection_categories": ["expected_section_omitted", "schema_violation"],
+      "overall": "PASS",
+      "quality_sample": true,
+      "predicates": [
+        {
+          "name": "response_completed",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        {
+          "name": "v2_envelope_accepted",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        { "name": "no_fallback", "status": "PASS", "reason": "observed" },
+        {
+          "name": "canonical_draft_produced",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        {
+          "name": "summary_fidelity",
+          "status": "not_applicable",
+          "reason": "source_section_not_expected"
+        },
+        {
+          "name": "education_fidelity",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        { "name": "work_fidelity", "status": "PASS", "reason": "observed" },
+        {
+          "name": "no_material_invention",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        {
+          "name": "no_material_truncation",
+          "status": "PASS",
+          "reason": "observed"
+        }
+      ]
+    },
+    {
+      "label": "Sol 1",
+      "import_id": "b51ecfb3-2fd8-462a-aac5-2c823108b0f8",
+      "model_family": "Sol",
+      "active_field_count": 72,
+      "warning_count": 4,
+      "rejected_field_count": 4,
+      "rejection_categories": ["expected_section_omitted", "schema_violation"],
+      "overall": "PASS",
+      "quality_sample": true,
+      "predicates": [
+        {
+          "name": "response_completed",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        {
+          "name": "v2_envelope_accepted",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        { "name": "no_fallback", "status": "PASS", "reason": "observed" },
+        {
+          "name": "canonical_draft_produced",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        {
+          "name": "summary_fidelity",
+          "status": "not_applicable",
+          "reason": "source_section_not_expected"
+        },
+        {
+          "name": "education_fidelity",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        { "name": "work_fidelity", "status": "PASS", "reason": "observed" },
+        {
+          "name": "no_material_invention",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        {
+          "name": "no_material_truncation",
+          "status": "PASS",
+          "reason": "observed"
+        }
+      ]
+    },
+    {
+      "label": "Terra 1",
+      "import_id": "4be84c34-5825-4fe7-ac27-fecc5716355f",
+      "model_family": "Terra",
+      "active_field_count": 16,
+      "warning_count": 24,
+      "rejected_field_count": 24,
+      "rejection_categories": [
+        "invalid_candidate_shape",
+        "typed_value_shape",
+        "source_ref_shape",
+        "schema_violation"
+      ],
+      "overall": "FAIL",
+      "quality_sample": false,
+      "predicates": [
+        {
+          "name": "response_completed",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        {
+          "name": "v2_envelope_accepted",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        { "name": "no_fallback", "status": "PASS", "reason": "observed" },
+        {
+          "name": "canonical_draft_produced",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        {
+          "name": "summary_fidelity",
+          "status": "not_applicable",
+          "reason": "source_section_not_expected"
+        },
+        {
+          "name": "education_fidelity",
+          "status": "FAIL",
+          "reason": "expected_education_missing_or_not_grounded"
+        },
+        {
+          "name": "work_fidelity",
+          "status": "FAIL",
+          "reason": "expected_work_missing_or_not_substantially_present"
+        },
+        {
+          "name": "no_material_invention",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        {
+          "name": "no_material_truncation",
+          "status": "PASS",
+          "reason": "observed"
+        }
+      ]
+    },
+    {
+      "label": "Terra 2",
+      "import_id": "5a96740a-74d4-4e00-8008-b058b9db07c9",
+      "model_family": "Terra",
+      "active_field_count": 16,
+      "warning_count": 24,
+      "rejected_field_count": 24,
+      "rejection_categories": [
+        "invalid_candidate_shape",
+        "typed_value_shape",
+        "source_ref_shape",
+        "schema_violation"
+      ],
+      "overall": "FAIL",
+      "quality_sample": false,
+      "predicates": [
+        {
+          "name": "response_completed",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        {
+          "name": "v2_envelope_accepted",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        { "name": "no_fallback", "status": "PASS", "reason": "observed" },
+        {
+          "name": "canonical_draft_produced",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        {
+          "name": "summary_fidelity",
+          "status": "not_applicable",
+          "reason": "source_section_not_expected"
+        },
+        {
+          "name": "education_fidelity",
+          "status": "FAIL",
+          "reason": "expected_education_missing_or_not_grounded"
+        },
+        {
+          "name": "work_fidelity",
+          "status": "FAIL",
+          "reason": "expected_work_missing_or_not_substantially_present"
+        },
+        {
+          "name": "no_material_invention",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        {
+          "name": "no_material_truncation",
+          "status": "PASS",
+          "reason": "observed"
+        }
+      ]
+    },
+    {
+      "label": "Sol 2",
+      "import_id": "7d28dda8-ea64-4544-90ef-1e7f50d4c9aa",
+      "model_family": "Sol",
+      "active_field_count": 69,
+      "warning_count": 7,
+      "rejected_field_count": 7,
+      "rejection_categories": [
+        "invalid_candidate_shape",
+        "typed_value_shape",
+        "source_ref_shape",
+        "schema_violation"
+      ],
+      "overall": "PASS",
+      "quality_sample": true,
+      "predicates": [
+        {
+          "name": "response_completed",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        {
+          "name": "v2_envelope_accepted",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        { "name": "no_fallback", "status": "PASS", "reason": "observed" },
+        {
+          "name": "canonical_draft_produced",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        {
+          "name": "summary_fidelity",
+          "status": "not_applicable",
+          "reason": "source_section_not_expected"
+        },
+        {
+          "name": "education_fidelity",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        { "name": "work_fidelity", "status": "PASS", "reason": "observed" },
+        {
+          "name": "no_material_invention",
+          "status": "PASS",
+          "reason": "observed"
+        },
+        {
+          "name": "no_material_truncation",
+          "status": "PASS",
+          "reason": "observed"
+        }
+      ]
+    }
+  ],
+  "latency": {
+    "status": "inconclusive",
+    "reason": "provider_latency_not_persisted_with_gate_evidence_and_no_valid_terra_samples",
+    "valid_quality_sample_count": 3,
+    "valid_terra_quality_sample_count": 0,
+    "provider_latency_ms": null
+  }
+}

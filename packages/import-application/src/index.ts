@@ -16,6 +16,7 @@ export * from "./semantic-parser/semantic-extraction-v2-canonicalizer.js";
 export * from "./semantic-parser/semantic-extraction-v2-envelope-diagnostics.js";
 export * from "./semantic-parser/semantic-benchmark-gate.js";
 export * from "./semantic-parser/semantic-v2-candidates-to-draft.js";
+export * from "./semantic-parser/semantic-v2-source-section-inventory.js";
 export {
   CODEX_BENCHMARK_MODELS,
   CODEX_DEFAULT_MODEL,
