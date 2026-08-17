@@ -36,5 +36,6 @@ Thumbs.db
 /generated/
 /storage/
 *.local.pdf
+/local/fixtures/import-resume/
 
 .turbo/

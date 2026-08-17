@@ -35,4 +35,25 @@ describe("Semantic V2 parser instructions", () => {
       "Contact values must not be copied into another section.",
     );
   });
+
+  it("prioritizes Education completeness before generic omission guidance", () => {
+    const educationPriority = semanticParserInstructions.indexOf(
+      "EDUCATION COMPLETENESS PRIORITY",
+    );
+    const genericOmission = semanticParserInstructions.indexOf(
+      "For generic compact output, omit empty collection properties",
+    );
+
+    expect(educationPriority).toBeGreaterThanOrEqual(0);
+    expect(genericOmission).toBeGreaterThan(educationPriority);
+    expect(semanticParserInstructions).toContain(
+      "scan the complete ordered source fragment list for section headings",
+    );
+    expect(semanticParserInstructions).toContain(
+      "If an Education section contains following content",
+    );
+    expect(semanticParserInstructions).toContain(
+      "Never omit Education or emit an empty education collection when Education is expected",
+    );
+  });
 });
