@@ -336,6 +336,51 @@ The development workspace image contains pinned Node.js, Corepack, pnpm, and sha
 
 The approved strategic direction is product-first: Nuvitae Community is the first MVP. The decisions below supersede the earlier architecture-first/hardening-first assumptions in this research file only where noted; earlier decisions remain valid except as amended.
 
+## Decision: Community V1 is one installation = one owner, with real authentication (2026-08-18)
+
+**Rationale**: The bounded T212 runtime audit found that the production-shaped
+Compose runtime cannot establish an authenticated principal: `AppModule` only
+loads `LocalPlayRuntimeModule` when `NUVITAE_LOCAL_PLAY_MODE=true`, while that
+development-only module supplies import/provider runtime wiring and a fixed
+verified development principal. `VerifiedPrincipalGuard` correctly protects
+import, manual-resume, and provider-connection APIs, but no production
+credential-verifying adapter currently attaches a principal. The plan was
+therefore contradictory: it required authenticated, owner-scoped Community
+flows and a usable self-hosted installation without scheduling the mechanism
+that creates the Community owner. Local-play cannot be promoted because it is
+non-production, has a fixed identity, and would turn an internal development
+convenience into implicit production trust.
+
+Community V1 deliberately limits product scope to one self-hosted installation
+and one owner. The smallest safe implementation is a replaceable
+`CommunitySingleOwnerAuthAdapter` at runtime infrastructure: establish a
+stable opaque owner at installation/first-run, authenticate it server-side,
+and issue a bounded session that produces `VerifiedPrincipal`. This avoids a
+premature signup, multi-user account, email/password, recovery, social-login,
+or external-IdP system, while still requiring real credentials, fail-closed
+validation, session expiry/invalidation, and protected APIs. Network locality
+alone is not authentication. The adapter must also wire normal production API,
+worker, queue, persistence, and private-storage configuration rather than
+depending on local-play.
+
+Existing resource ownership remains unchanged: services receive a real opaque
+`ownerUserId`; repositories stay owner-scoped; and authorization compares a
+resource owner to the authenticated principal. This is deliberately compatible
+with V2, where a `MultiUserAuthAdapter` may replace the V1 adapter for multiple
+users, hosted identity, passwordless/OIDC options, recovery, administration,
+or later teams/organizations without rewriting resume/import/provider domain
+logic. Reconsider the V1 model when multiple people share a self-hosted
+instance, when hosted or multi-tenant deployment begins, or when organization
+requirements arise.
+
+**Alternatives considered**: Treating every request as the owner was rejected
+because it removes authentication. Reusing the local-play fixed principal was
+rejected because it is explicitly development-only. Building full multi-user
+authentication now was rejected because it is not required for the V1 product
+promise and would delay the missing production boundary. The roadmap repair is
+T257 before T212; it is not implementation of either task in this planning
+change.
+
 ## Decision: Ship Nuvitae Community as the first MVP (product-first, not architecture-first)
 
 **Rationale**: The import→review→confirm journey is implemented and tested, but no real user can complete it today: production wiring registers no AI provider, so uploads terminate at `provider_unavailable`. The highest-value next move is one decisive vertical slice that makes the product promise real for a real user — not continued hardening. Community (self-hosted, Docker-first, free, user's own Codex access) proves the complete AI-powered resume experience with minimal business risk before a hosted commercial edition is built.

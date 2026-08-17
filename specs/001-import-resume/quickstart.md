@@ -416,13 +416,19 @@ Use this when Docker-managed caches or local service data need a clean state.
 
 ## Validation Scenarios
 
+> **Community V1 planning status:** the production owner/session boundary is
+> scheduled as T257 and must be complete before T212 clean-install validation.
+> The local-play identity is development-only; it must not be used as a
+> Community sign-in substitute. The scenarios below describe the required
+> authenticated behavior once that prerequisite exists.
+
 ### 0. Manual Entry Draft
 
 1. Start the API and web stack with migrations already run.
 2. Visit `/resumes/new/manual`.
 3. If signed out, verify the page shows an authentication-required state and no
    manual draft is created.
-4. Sign in and visit `/resumes/new/manual` again.
+4. Establish the normal Community owner session and visit `/resumes/new/manual` again.
 5. Verify one blank manual structured-resume draft is created or resumed with
    `source: manual_entry`, `status: editing`, all supported sections present,
    and personal, contact, work experience, education, skills, languages,
@@ -450,7 +456,7 @@ resolution are not implemented yet.
 ### 1. Happy Path Import
 
 1. Start the stack with `docker compose up`.
-2. Sign in as `user-a`.
+2. Establish the normal Community owner session.
 3. Start resume creation.
 4. Verify import is presented as the recommended path and manual entry is available.
 5. Upload a supported selectable-text PDF or DOCX under 10 MB and 5 rendered pages.

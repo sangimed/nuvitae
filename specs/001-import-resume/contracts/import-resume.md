@@ -8,7 +8,7 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Trigger**: Authenticated or unauthenticated user starts resume creation.
 
-**Required Behavior**: Present import as the recommended path and manual entry as an available fallback. Manual entry routes to `/resumes/new/manual` and creates a blank editable structured-resume draft without creating an imported document or import job. If the user is not authenticated and chooses upload, require sign-in before accepting the file.
+**Required Behavior**: Present import as the recommended path and manual entry as an available fallback. Manual entry routes to `/resumes/new/manual` and creates a blank editable structured-resume draft without creating an imported document or import job. If the user is not authenticated and chooses upload, require the normal Community owner session before accepting the file. Community V1 is one installation = one owner, but that owner is still established through a production-safe `VerifiedPrincipal` boundary, not a client-selected ID or local-play identity.
 
 ### Upload Step
 
@@ -365,7 +365,7 @@ These service boundaries add the Community MVP surface (Codex connection, visual
 
 ## Authorization Contract
 
-Every import operation must verify that the authenticated user owns the imported document, draft, extracted fields, warnings, corrections, deletion job, and resulting structured resume. Forbidden responses must not reveal personal data from another user's import.
+Every import operation must verify that the authenticated principal owns the imported document, draft, extracted fields, warnings, corrections, deletion job, and resulting structured resume. Community V1's single owner does not weaken this requirement: repositories remain owner-scoped and headers, query parameters, and bodies cannot select or override owner identity. Forbidden responses must not reveal personal data from another user's import. Future multi-user deployment support relies on this unchanged opaque-owner boundary.
 
 ## Logging Contract
 
