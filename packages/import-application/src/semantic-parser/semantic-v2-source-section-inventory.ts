@@ -6,9 +6,9 @@ import type {
 } from "./semantic-extraction-v2-canonicalizer.js";
 
 /**
- * A bounded source expectation inventory. It recognizes only labelled
- * sections with content; unlabeled content never becomes a benchmark
- * requirement.
+ * This intentionally recognizes only unambiguous, standalone section
+ * headings followed by content. It is an expectation inventory, not another
+ * extractor: an unlabelled section is never made mandatory by this module.
  */
 export interface SemanticV2SourceSectionInventory {
   readonly summary: boolean;
@@ -92,7 +92,7 @@ export function inventorySemanticV2SourceSections(
   request: Pick<ResumeSemanticParseRequest, "sourceFragments">,
 ): SemanticV2SourceSectionInventory {
   const lines = request.sourceFragments.flatMap((fragment) =>
-    fragment.text.split(/\r?\n/u).map(normalizeHeading),
+    fragment.text.split(/\r?\n/u).map((line) => normalizeHeading(line)),
   );
   return {
     summary: sectionHasHeadingAndContent(lines, headingLabels.summary),

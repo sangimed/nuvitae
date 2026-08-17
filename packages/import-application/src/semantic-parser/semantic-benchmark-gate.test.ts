@@ -158,4 +158,19 @@ describe("canonical Semantic V2 benchmark gate", () => {
     ).toBe(true);
     expect(result.overall).toBe("PASS");
   });
+
+  it("uses source inventory instead of requiring an absent Summary", () => {
+    expect(
+      evaluateSemanticBenchmarkGate({
+        ...successfulArm,
+        sourceSectionInventory: { summary: false, education: true },
+        summaryFidelity: "not_observed",
+        educationFidelity: "not_intact",
+      }),
+    ).toMatchObject({
+      overall: "FAIL",
+      valid: false,
+      failures: ["education_fidelity_not_intact"],
+    });
+  });
 });

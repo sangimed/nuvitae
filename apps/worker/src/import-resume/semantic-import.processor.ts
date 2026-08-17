@@ -28,6 +28,8 @@ import {
   generateSemanticWarnings,
   mapSemanticCandidates,
   mapSemanticV2CandidatesToDraft,
+  inventorySemanticV2SourceSections,
+  evaluateSemanticV2Completeness,
   runLimitedDeterministicPartialFallback,
   emitImportTiming,
   serializeSemanticValidationDiagnostic,
@@ -317,6 +319,29 @@ export class SemanticImportProcessor {
       }
       if ("canonical" in providerResult) {
         const canonical = providerResult.canonical;
+        const completenessDiagnostics = evaluateSemanticV2Completeness({
+          sourceInventory: inventorySemanticV2SourceSections(
+            requestResult.data,
+          ),
+          canonical,
+        });
+        for (const diagnostic of completenessDiagnostics) {
+          if (diagnostic.kind === "source_section_not_expected") continue;
+          this.logger.emit("semantic.validation_diagnostics", {
+            category:
+              diagnostic.kind === "expected_section_omitted"
+                ? "absence"
+                : "review",
+            code: diagnostic.kind,
+            retryable: false,
+            requiresReview: true,
+            path: ["sections", diagnostic.section],
+            importId: document.id,
+            ...(input.correlationId === undefined
+              ? {}
+              : { correlationId: input.correlationId }),
+          });
+        }
         const summaryCandidate = canonical.candidates.find(
           (candidate) => candidate.fieldPath === "summary",
         );
@@ -375,13 +400,22 @@ export class SemanticImportProcessor {
           candidates: canonical.candidates,
           rejected: canonical.rejected,
           signals: canonical.signals,
+          completenessDiagnostics,
           document,
         });
         const draftResult = buildExtractionDraft({
           importedDocument: document,
           fields: mapping.fields,
           warnings: mapping.warnings,
-          missingOrUnprocessedSections: [],
+          missingOrUnprocessedSections: completenessDiagnostics
+            .filter(
+              (diagnostic) => diagnostic.kind === "expected_section_omitted",
+            )
+            .map((diagnostic) =>
+              diagnostic.section === "workExperience"
+                ? "work_experience"
+                : diagnostic.section,
+            ),
           ids: {
             draftId: randomUUID,
             fieldId: randomUUID,
@@ -398,7 +432,11 @@ export class SemanticImportProcessor {
         this.emitSemanticOutcome(
           document,
           started,
-          canonical.rejected.length > 0 || canonical.signals.length > 0
+          canonical.rejected.length > 0 ||
+            canonical.signals.length > 0 ||
+            completenessDiagnostics.some(
+              (diagnostic) => diagnostic.kind !== "source_section_not_expected",
+            )
             ? "v2_partial_acceptance"
             : "v2_success",
           false,

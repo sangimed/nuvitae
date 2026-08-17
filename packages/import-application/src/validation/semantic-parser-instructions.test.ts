@@ -3,6 +3,38 @@ import { describe, expect, it } from "vitest";
 import { semanticParserInstructions } from "./semantic-parser-instructions.js";
 
 describe("Semantic V2 parser instructions", () => {
+  it("prioritizes complete, grounded Education before compact omission guidance", () => {
+    const educationBlock = semanticParserInstructions.indexOf(
+      "EDUCATION COMPLETENESS PRIORITY",
+    );
+    const genericOmissionGuidance = semanticParserInstructions.indexOf(
+      "GENERIC COMPACT OMISSION",
+    );
+
+    expect(educationBlock).toBeGreaterThanOrEqual(0);
+    expect(genericOmissionGuidance).toBeGreaterThan(educationBlock);
+    expect(semanticParserInstructions).toContain(
+      "Before applying generic compact omission guidance, scan the complete ordered source fragment list for section headings",
+    );
+    expect(semanticParserInstructions).toContain(
+      "An institution-bearing entry must still be emitted when degree, fieldOfStudy, dates, or location are unavailable",
+    );
+    expect(semanticParserInstructions).toContain(
+      "Every emitted Education atom must remain grounded with exact sourceRefs.",
+    );
+    expect(semanticParserInstructions).toContain(
+      "Generic compact omission guidance never overrides this Education completeness rule.",
+    );
+  });
+
+  it("keeps generic collection omission source-aware without making Summary universal", () => {
+    expect(semanticParserInstructions).toContain(
+      "Omit a collection only when the source contains no evidence for that section.",
+    );
+    expect(semanticParserInstructions).not.toContain("Summary is required");
+    expect(semanticParserInstructions).not.toContain("Always emit Summary");
+  });
+
   it("states the exact contact allowlist and routing rules", () => {
     expect(semanticParserInstructions).toContain(
       "The sections.contact object is required and has exactly these allowed keys and no others: fullName, email, phone, location, website.",
