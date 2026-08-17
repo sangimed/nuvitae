@@ -185,6 +185,45 @@ describe("semantic-extraction.v2 canonicalization", () => {
     );
   });
 
+  it("accepts a grounded institution-only education entry with null optionals", () => {
+    const result = canonical(
+      response({
+        sections: {
+          ...response().sections,
+          education: [
+            {
+              institution: atom(9, "Example University"),
+              degree: null,
+              fieldOfStudy: null,
+              startDate: null,
+              endDate: null,
+              location: null,
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(result.rejected).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: ["sections", "education", 0],
+          code: "missing_required_group_field",
+        }),
+      ]),
+    );
+    expect(
+      result.candidates.filter((item) => item.groupPath === "education.0"),
+    ).toEqual([
+      expect.objectContaining({
+        fieldPath: "education.0.institution",
+        value: "Example University",
+        sourceStatus: "explicit_source",
+        evidence: [expect.objectContaining({ quote: "Example University" })],
+      }),
+    ]);
+  });
+
   it("partially accepts independent fields when headline grounding is corrupt", () => {
     const corrupted = response({
       sections: {

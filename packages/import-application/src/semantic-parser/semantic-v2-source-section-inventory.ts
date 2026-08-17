@@ -66,8 +66,6 @@ const recognizedHeadingLabels = new Set([
   "contact",
   "contact information",
   "personal information",
-  "professional summary",
-  "career profile",
   "skills",
   "competences",
   "technical skills",
