@@ -26,21 +26,29 @@ describe("structured resume confirmation mapper", () => {
     );
   });
 
-  it("includes only confirmed or edited active fields and preserves provenance", () => {
+  it("retains valid unreviewed fields when one field is explicitly confirmed", () => {
     const result = mapReviewedImportDraftToStructuredResume({
       draft: draft({
         fields: [
-          field({ reviewStatus: "confirmed" }),
           field({
             id: id(3),
-            fieldPath: "skills",
-            section: "skills",
-            value: { kind: "text_list", values: ["TypeScript", "PostgreSQL"] },
-            reviewStatus: "edited",
-            sourceStatus: "user_edited",
+            section: "contact",
+            fieldPath: "contact.email",
+            value: { kind: "text", value: "jane@example.invalid" },
+            reviewStatus: "confirmed",
           }),
-          field({ id: id(4), reviewStatus: "excluded" }),
-          field({ id: id(5), reviewStatus: "unreviewed" }),
+          field({
+            id: id(4),
+            section: "contact",
+            fieldPath: "contact.phone",
+            value: { kind: "text", value: "+33 1 23 45 67 89" },
+          }),
+          field({
+            id: id(5),
+            section: "personal",
+            fieldPath: "personal.full_name",
+            value: { kind: "text", value: "Jane Example" },
+          }),
         ],
       }),
       corrections: [],
@@ -51,15 +59,293 @@ describe("structured resume confirmation mapper", () => {
     });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.resume.content.headline?.value).toBe("Synthetic headline");
-    expect(result.resume.content.skills.map((item) => item.name.value)).toEqual(
-      ["TypeScript", "PostgreSQL"],
+    expect(result.resume.content.contact.map((item) => item.value)).toEqual([
+      "jane@example.invalid",
+      "+33 1 23 45 67 89",
+    ]);
+    expect(result.resume.content.personal.map((item) => item.value)).toEqual([
+      "Jane Example",
+    ]);
+  });
+
+  it("drops exactly the field explicitly excluded by the user", () => {
+    const result = mapReviewedImportDraftToStructuredResume({
+      draft: draft({
+        fields: [
+          field({
+            id: id(3),
+            section: "contact",
+            fieldPath: "contact.email",
+            value: { kind: "text", value: "jane@example.invalid" },
+          }),
+          field({
+            id: id(4),
+            section: "contact",
+            fieldPath: "contact.phone",
+            value: { kind: "text", value: "+33 1 23 45 67 89" },
+            reviewStatus: "confirmed",
+          }),
+          field({
+            id: id(5),
+            section: "contact",
+            fieldPath: "contact.address",
+            value: { kind: "text", value: "Excluded address" },
+            reviewStatus: "excluded",
+          }),
+        ],
+      }),
+      corrections: [],
+      structuredResumeId: id(9),
+      childIds: ids(),
+      confirmedAt: now,
+      now,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.resume.content.contact.map((item) => item.value)).toEqual([
+      "jane@example.invalid",
+      "+33 1 23 45 67 89",
+    ]);
+    expect(result.resume.content.contact).toHaveLength(2);
+  });
+
+  it("retains edited values and user-added fields with their provenance", () => {
+    const result = mapReviewedImportDraftToStructuredResume({
+      draft: draft({
+        fields: [
+          field({
+            id: id(3),
+            section: "summary",
+            fieldPath: "summary",
+            value: { kind: "text", value: "Edited summary" },
+            sourceStatus: "user_edited",
+            reviewStatus: "edited",
+          }),
+          field({
+            id: id(4),
+            section: "skills",
+            fieldPath: "skills",
+            value: { kind: "text", value: "User-added skill" },
+            sourceStatus: "user_added",
+            sourceLocation: undefined,
+            reviewStatus: "edited",
+          }),
+        ],
+      }),
+      corrections: [],
+      structuredResumeId: id(9),
+      childIds: ids(),
+      confirmedAt: now,
+      now,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.resume.content.summary?.value).toBe("Edited summary");
+    expect(result.resume.content.summary?.value).not.toBe("Original summary");
+    expect(result.resume.content.skills[0]?.name).toMatchObject({
+      value: "User-added skill",
+      sourceStatus: "user_added",
+    });
+  });
+
+  it("blocks unresolved inferred fields instead of retaining them", () => {
+    const result = mapReviewedImportDraftToStructuredResume({
+      draft: draft({
+        fields: [
+          field({
+            id: id(3),
+            section: "contact",
+            fieldPath: "contact.email",
+            value: { kind: "text", value: "jane@example.invalid" },
+          }),
+          field({
+            id: id(4),
+            section: "summary",
+            fieldPath: "summary",
+            value: { kind: "text", value: "Inferred summary" },
+            sourceStatus: "inferred",
+            sourceLocation: undefined,
+            inferenceStatus: "inferred_needs_review",
+          }),
+        ],
+      }),
+      corrections: [],
+      structuredResumeId: id(9),
+      childIds: ids(),
+      confirmedAt: now,
+      now,
+    });
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.blockers.map((item) => item.code)).toContain(
+      "unconfirmed_inference",
     );
-    expect(result.resume.content.skills[0]?.name.sourceStatus).toBe(
-      "user_edited",
+  });
+
+  it("does not retain invalid reviewed shapes", () => {
+    const result = mapReviewedImportDraftToStructuredResume({
+      draft: draft({
+        fields: [
+          field({
+            section: "skills",
+            fieldPath: "skills",
+            value: { kind: "date", value: { year: 2024, precision: "year" } },
+          }),
+        ],
+      }),
+      corrections: [],
+      structuredResumeId: id(9),
+      childIds: ids(),
+      confirmedAt: now,
+      now,
+    });
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.blockers.map((item) => item.code)).toContain(
+      "unsupported_reviewed_shape",
     );
-    expect(result.resume.sourceImportDraftId).toBe(id(1));
-    expect("retentionExpiresAt" in result.resume).toBe(false);
+  });
+
+  it("preserves every outcome in a mixed review once inference is resolved", () => {
+    const mixedFields: ExtractedField[] = [
+      field({
+        id: id(3),
+        section: "contact",
+        fieldPath: "contact.email",
+        value: { kind: "text", value: "unreviewed@example.invalid" },
+      }),
+      field({
+        id: id(4),
+        section: "contact",
+        fieldPath: "contact.phone",
+        value: { kind: "text", value: "+33 1 23 45 67 89" },
+        reviewStatus: "confirmed",
+      }),
+      field({
+        id: id(5),
+        section: "skills",
+        fieldPath: "skills",
+        value: { kind: "text", value: "Edited skill" },
+        sourceStatus: "user_edited",
+        reviewStatus: "edited",
+      }),
+      field({
+        id: id(6),
+        section: "contact",
+        fieldPath: "contact.address",
+        value: { kind: "text", value: "Excluded address" },
+        reviewStatus: "excluded",
+      }),
+      field({
+        id: id(7),
+        section: "summary",
+        fieldPath: "summary",
+        value: { kind: "text", value: "Inferred summary" },
+        sourceStatus: "inferred",
+        sourceLocation: undefined,
+        inferenceStatus: "inferred_needs_review",
+      }),
+    ];
+    const blocked = mapReviewedImportDraftToStructuredResume({
+      draft: draft({ fields: mixedFields }),
+      corrections: [],
+      structuredResumeId: id(9),
+      childIds: ids(),
+      confirmedAt: now,
+      now,
+    });
+    expect(blocked.ok).toBe(false);
+    expect(!blocked.ok && blocked.blockers.map((item) => item.code)).toContain(
+      "unconfirmed_inference",
+    );
+
+    const resolved = mapReviewedImportDraftToStructuredResume({
+      draft: draft({
+        fields: mixedFields.map((item) =>
+          item.inferenceStatus === "inferred_needs_review"
+            ? {
+                ...item,
+                reviewStatus: "confirmed" as const,
+                inferenceStatus: "confirmed_inference" as const,
+              }
+            : item,
+        ),
+      }),
+      corrections: [],
+      structuredResumeId: id(9),
+      childIds: ids(),
+      confirmedAt: now,
+      now,
+    });
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    expect(resolved.resume.content.contact.map((item) => item.value)).toEqual([
+      "unreviewed@example.invalid",
+      "+33 1 23 45 67 89",
+    ]);
+    expect(
+      resolved.resume.content.skills.map((item) => item.name.value),
+    ).toEqual(["Edited skill"]);
+    expect(resolved.resume.content.summary?.value).toBe("Inferred summary");
+  });
+
+  it("retains valid unreviewed Work Experience and Education fields", () => {
+    const result = mapReviewedImportDraftToStructuredResume({
+      draft: draft({
+        fields: [
+          field({
+            id: id(3),
+            section: "work_experience",
+            fieldPath: "work_experience.0.employer",
+            value: { kind: "text", value: "Example Employer" },
+          }),
+          field({
+            id: id(4),
+            section: "work_experience",
+            fieldPath: "work_experience.0.roles.0.title",
+            value: { kind: "text", value: "Platform Engineer" },
+          }),
+          field({
+            id: id(5),
+            section: "work_experience",
+            fieldPath: "work_experience.0.roles.0.responsibility",
+            value: { kind: "text", value: "Built reliable systems." },
+          }),
+          field({
+            id: id(6),
+            section: "education",
+            fieldPath: "education.0.institution",
+            value: { kind: "text", value: "Example University" },
+          }),
+          field({
+            id: id(7),
+            section: "education",
+            fieldPath: "education.0.credential",
+            value: { kind: "text", value: "MSc Systems Engineering" },
+          }),
+        ],
+      }),
+      corrections: [],
+      structuredResumeId: id(9),
+      childIds: ids(),
+      confirmedAt: now,
+      now,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.resume.content.workExperiences).toHaveLength(1);
+    expect(result.resume.content.workExperiences[0]).toMatchObject({
+      employerName: "Example Employer",
+      roles: [
+        {
+          title: "Platform Engineer",
+          responsibilities: [{ value: "Built reliable systems." }],
+        },
+      ],
+    });
+    expect(result.resume.content.education).toHaveLength(1);
+    expect(result.resume.content.education[0]).toMatchObject({
+      institution: { value: "Example University" },
+      credential: { value: "MSc Systems Engineering" },
+    });
   });
 
   it("blocks ambiguous singular fields and generic work entries", () => {
