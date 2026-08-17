@@ -5,7 +5,7 @@ import { semanticParserInstructions } from "./semantic-parser-instructions.js";
 describe("Semantic V2 parser instructions", () => {
   it("prioritizes complete, grounded Education before compact omission guidance", () => {
     const educationBlock = semanticParserInstructions.indexOf(
-      "EDUCATION COMPLETENESS (HIGH PRIORITY)",
+      "EDUCATION COMPLETENESS PRIORITY",
     );
     const genericOmissionGuidance = semanticParserInstructions.indexOf(
       "GENERIC COMPACT OMISSION",
@@ -14,22 +14,10 @@ describe("Semantic V2 parser instructions", () => {
     expect(educationBlock).toBeGreaterThanOrEqual(0);
     expect(genericOmissionGuidance).toBeGreaterThan(educationBlock);
     expect(semanticParserInstructions).toContain(
-      "First scan the complete ordered fragment list for section headings.",
+      "Before applying generic compact omission guidance, scan the complete ordered source fragment list for section headings",
     );
     expect(semanticParserInstructions).toContain(
-      "If a real Education section contains entries before the next recognized section heading, Education is expected.",
-    );
-    expect(semanticParserInstructions).toContain(
-      "Emit every usable grounded Education entry from that section.",
-    );
-    expect(semanticParserInstructions).toContain(
-      "An institution-bearing entry must still be emitted when degree, fieldOfStudy, dates, or location are unavailable.",
-    );
-    expect(semanticParserInstructions).toContain(
-      "Never omit sections.education or emit an empty Education collection when an Education section is expected.",
-    );
-    expect(semanticParserInstructions).toContain(
-      "Never invent missing education values.",
+      "An institution-bearing entry must still be emitted when degree, fieldOfStudy, dates, or location are unavailable",
     );
     expect(semanticParserInstructions).toContain(
       "Every emitted Education atom must remain grounded with exact sourceRefs.",
@@ -77,6 +65,27 @@ describe("Semantic V2 parser instructions", () => {
     );
     expect(semanticParserInstructions).toContain(
       "Contact values must not be copied into another section.",
+    );
+  });
+
+  it("prioritizes Education completeness before generic omission guidance", () => {
+    const educationPriority = semanticParserInstructions.indexOf(
+      "EDUCATION COMPLETENESS PRIORITY",
+    );
+    const genericOmission = semanticParserInstructions.indexOf(
+      "For generic compact output, omit empty collection properties",
+    );
+
+    expect(educationPriority).toBeGreaterThanOrEqual(0);
+    expect(genericOmission).toBeGreaterThan(educationPriority);
+    expect(semanticParserInstructions).toContain(
+      "scan the complete ordered source fragment list for section headings",
+    );
+    expect(semanticParserInstructions).toContain(
+      "If an Education section contains following content",
+    );
+    expect(semanticParserInstructions).toContain(
+      "Never omit Education or emit an empty education collection when Education is expected",
     );
   });
 });

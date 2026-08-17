@@ -8,23 +8,25 @@ import {
 import { createSourceRegistry } from "./source-registry.js";
 import { mapSemanticV2CandidatesToDraft } from "./semantic-v2-candidates-to-draft.js";
 
-const lines = ["EDUCATION", "Example University — Master of Engineering"];
-const registry = createSourceRegistry(
-  lines.map((text, index) => ({ order: index, line: index + 1, text })),
-);
-const atom = (value: string) => ({
+const sourceLines = [
+  "EDUCATION",
+  "Example University — Master of Engineering",
+  "WORK EXPERIENCE",
+  "Example Corp — Engineer",
+];
+const sourceFragments = sourceLines.map((text, order) => ({
+  order,
+  line: order + 1,
+  text,
+}));
+const sourceRegistry = createSourceRegistry(sourceFragments);
+const request = { sourceFragments } as const;
+const atom = (value: string, fragmentId = "fragment-2") => ({
   value,
-  sourceRefs: [{ fragmentId: "fragment-2", quote: value }],
+  sourceRefs: [{ fragmentId, quote: value }],
 });
-const request = {
-  sourceFragments: lines.map((text, index) => ({
-    order: index,
-    line: index + 1,
-    text,
-  })),
-} as const;
 
-function response(education: unknown[] = []) {
+function response(education: unknown[] = [], workExperience: unknown[] = []) {
   return {
     schemaVersion: "nuvitae.semantic-extraction.v2" as const,
     sections: {
@@ -37,7 +39,7 @@ function response(education: unknown[] = []) {
       },
       headline: null,
       summary: null,
-      workExperience: [],
+      workExperience,
       education,
       skills: [],
       languages: [],
@@ -54,7 +56,7 @@ function response(education: unknown[] = []) {
 function canonical(value: unknown) {
   const result = canonicalizeSemanticExtractionV2({
     response: value,
-    sourceRegistry: registry,
+    sourceRegistry,
     importId: "synthetic",
   });
   expect(result.ok).toBe(true);
@@ -64,18 +66,65 @@ function canonical(value: unknown) {
 
 describe("Semantic V2 source-aware completeness", () => {
   it("does not require Summary without recognizable source evidence", () => {
-    const inventory = inventorySemanticV2SourceSections(request);
-    expect(inventory).toMatchObject({ summary: false, education: true });
-    const diagnostics = evaluateSemanticV2Completeness({
-      sourceInventory: inventory,
-      canonical: canonical(response()),
+    const inventory = inventorySemanticV2SourceSections({ sourceFragments });
+
+    expect(inventory).toEqual({
+      summary: false,
+      workExperience: true,
+      education: true,
     });
-    expect(diagnostics).toEqual(
+    expect(
+      evaluateSemanticV2Completeness({
+        sourceInventory: inventory,
+        canonical: canonical(response()),
+      }),
+    ).toEqual(
       expect.arrayContaining([
         { kind: "source_section_not_expected", section: "summary" },
         { kind: "expected_section_omitted", section: "education" },
+        { kind: "expected_section_omitted", section: "workExperience" },
       ]),
     );
+  });
+
+  it("passes expected Education and Work when grounded candidates exist", () => {
+    const result = evaluateSemanticV2Completeness({
+      sourceInventory: inventorySemanticV2SourceSections({ sourceFragments }),
+      canonical: canonical(
+        response(
+          [
+            {
+              institution: atom("Example University"),
+              degree: atom("Master of Engineering"),
+              fieldOfStudy: null,
+              startDate: null,
+              endDate: null,
+              location: null,
+            },
+          ],
+          [
+            {
+              employerName: atom("Example Corp", "fragment-4"),
+              employerLocation: null,
+              roles: [
+                {
+                  title: atom("Engineer", "fragment-4"),
+                  location: null,
+                  startDate: null,
+                  endDate: null,
+                  responsibilities: [],
+                  achievements: [],
+                },
+              ],
+            },
+          ],
+        ),
+      ),
+    });
+
+    expect(result).toEqual([
+      { kind: "source_section_not_expected", section: "summary" },
+    ]);
   });
 
   it("keeps an invented Summary rejected by grounding when Summary is not expected", () => {
@@ -232,7 +281,7 @@ describe("Semantic V2 source-aware completeness", () => {
     );
     expect(
       evaluateSemanticV2Completeness({
-        sourceInventory: inventorySemanticV2SourceSections(request),
+        sourceInventory: inventorySemanticV2SourceSections({ sourceFragments }),
         canonical: rejected,
       }),
     ).toContainEqual({
