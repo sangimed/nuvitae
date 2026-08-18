@@ -1,5 +1,6 @@
 import { bootstrapHealthSchema } from "@nuvitae/contracts";
 import Link from "next/link";
+import { CommunityOwnerAccess } from "../features/community-auth/CommunityOwnerAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default function Home() {
             local Docker volumes and this is not production authentication.
           </div>
         ) : null}
+        {!localPlayMode ? <CommunityOwnerAccess /> : null}
         <div className="choice-grid">
           <Link className="primary-action" href="/import-resume">
             Import an existing resume

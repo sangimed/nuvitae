@@ -377,9 +377,10 @@ requirements arise.
 because it removes authentication. Reusing the local-play fixed principal was
 rejected because it is explicitly development-only. Building full multi-user
 authentication now was rejected because it is not required for the V1 product
-promise and would delay the missing production boundary. The roadmap repair is
-T257 before T212; it is not implementation of either task in this planning
-change.
+promise and would delay the missing production boundary. The roadmap repair was
+T257 before T212. T257 completed on 2026-08-18 with deterministic, host-side
+smoke, and manual-browser validation; T212 is now the next installation/
+onboarding task.
 
 ## Decision: Ship Nuvitae Community as the first MVP (product-first, not architecture-first)
 

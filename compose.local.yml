@@ -94,6 +94,15 @@ services:
       POSTGRES_SSL: "false"
       POSTGRES_CONNECTION_TIMEOUT_MS: 3000
       POSTGRES_STATEMENT_TIMEOUT_MS: 2000
+      NUVITAE_PRIVATE_STORAGE_ROOT: /var/lib/nuvitae/private
+      NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET: "local-play-storage-signing-secret-not-for-production"
+      NUVITAE_PROVIDER_SESSION_ROOT: /var/lib/nuvitae/private/provider-sessions
+      NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET: "local-play-provider-session-encryption-secret-not-for-production"
+      NUVITAE_COMMUNITY_ACCESS_SECRET: "community-mode-off-development-access-secret-000001"
+      NUVITAE_COMMUNITY_COOKIE_SECURE: "false"
+      QUEUE_HOST: queue
+      QUEUE_PORT: 6379
+      QUEUE_PASSWORD: ${QUEUE_PASSWORD:-nuvitae_queue_password}
     depends_on:
       postgres:
         condition: service_healthy

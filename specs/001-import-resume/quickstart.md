@@ -416,11 +416,11 @@ Use this when Docker-managed caches or local service data need a clean state.
 
 ## Validation Scenarios
 
-> **Community V1 planning status:** the production owner/session boundary is
-> scheduled as T257 and must be complete before T212 clean-install validation.
+> **Community V1 status:** T257 completed the production owner/session
+> boundary; T212 clean-install validation is the next task.
 > The local-play identity is development-only; it must not be used as a
 > Community sign-in substitute. The scenarios below describe the required
-> authenticated behavior once that prerequisite exists.
+> authenticated behavior now available through that boundary.
 
 ### 0. Manual Entry Draft
 
