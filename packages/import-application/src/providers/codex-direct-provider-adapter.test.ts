@@ -454,10 +454,10 @@ describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
       "The sections.contact object is required and has exactly these allowed keys and no others: fullName, email, phone, location, website.",
     );
     expect(invocation?.instructions).toContain(
-      "For every non-null contact value, include exactly one sourceRefs entry",
+      "For every non-null contact value, include one direct sourceRef, or an ordered source-proven continuation sequence",
     );
     expect(invocation?.instructions).toContain(
-      "Every scalar atom must contain exactly one sourceRef",
+      "A scalar may use ordered multiple sourceRefs only when the complete value genuinely crosses consecutive fragments",
     );
     expect(invocation?.instructions).toContain("object depth 10");
     expect(invocation?.instructions).toContain("total atoms 600");
@@ -474,6 +474,55 @@ describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
     ]);
     expect(JSON.stringify(input)).not.toContain("fragmentHash");
     expect(JSON.stringify(input)).not.toContain("candidateId");
+  });
+
+  it("exposes only proven continuation edges in the provider fragment input", async () => {
+    const harness = setup();
+    const parseRequest = request();
+    const secondText = "Lovelace";
+    const secondHash = createHash("sha256").update(secondText).digest("hex");
+    const withContinuation = {
+      ...parseRequest,
+      normalizedTranscript: {
+        text: `Ada\n${secondText}`,
+        sha256: createHash("sha256").update(`Ada\n${secondText}`).digest("hex"),
+        lineCount: 2,
+      },
+      sourceFragments: [
+        {
+          ...parseRequest.sourceFragments[0]!,
+          continuationToNext: "space" as const,
+        },
+        {
+          order: 1,
+          line: 2,
+          text: secondText,
+          hash: secondHash,
+          bounds: { lineStart: 2, lineEnd: 2, start: 0, end: 8 },
+        },
+      ],
+      fragmentHashes: [parseRequest.fragmentHashes[0]!, secondHash],
+    };
+
+    await harness.provider.parseV2(withContinuation, {
+      timeoutMs: 30000,
+      ownerUserId: ownerA,
+    });
+    const invocation = harness.transport.invoke.mock.calls[0]?.[0] as
+      { readonly inputText: string } | undefined;
+    const input = JSON.parse(invocation?.inputText ?? "{}") as {
+      readonly document?: { readonly fragments?: readonly unknown[] };
+    };
+
+    expect(input.document?.fragments).toEqual([
+      {
+        fragmentId: "fragment-1",
+        order: 0,
+        text: "Ada",
+        continuationToNext: "space",
+      },
+      { fragmentId: "fragment-2", order: 1, text: "Lovelace" },
+    ]);
   });
 
   it.each([

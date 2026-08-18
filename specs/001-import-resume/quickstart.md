@@ -426,20 +426,19 @@ Use this when Docker-managed caches or local service data need a clean state.
 > Community sign-in substitute. The scenarios below describe the required
 > authenticated behavior now available through that boundary.
 
-### Community OAuth callback and real import closure (T258; future execution)
+### Community OAuth callback and real import closure (T258; consumed quality fail)
 
-T258 is a Tranche-1 gate, not a replacement for T246 or T235. After its
-deterministic callback-security implementation is green, use one normal
-Community Docker installation, a production owner session, a normal browser,
-the existing real Codex OAuth flow, and one realistic existing private PDF or
-DOCX fixture. Click **Connect Codex** once, complete authorization, verify the
-callback and ready state, upload exactly one document, and verify exactly one
-primary provider invocation reaches review with usable grounded content and no
-deterministic fallback. Do not retry or make a second invocation. On failure,
-preserve evidence, classify `AUTH CALLBACK FAIL`, `PROVIDER FAIL`, `PROTOCOL
-FAIL`, `PRODUCT IMPORT FAIL`, or `QUALITY FAIL`, and stop. This does not rerun
-or alter finalized-FAILED T246, does not qualify Codex globally, and does not
-change T203's NO-GO. T235 remains the later full-MVP install-to-PDF validation.
+T258 is a Tranche-1 gate, not a replacement for T246 or T235. Its one
+authorized smoke is consumed as a `QUALITY FAIL`: owner auth, cookie-free
+owner-bound OAuth callback, provider-ready state, one upload, one primary
+provider invocation, canonical partial acceptance, and review availability all
+worked, but generic split scalar evidence made Work/Education/headline content
+unusable. The generic evidence-model correction is deterministic/offline only.
+Do not retry, upload again, invoke a provider, or treat this correction as live
+proof without separate authorization. This does not rerun or alter
+finalized-FAILED T246, does not qualify Codex globally, and does not change
+T203's NO-GO. T258 remains unchecked and T235 remains the later full-MVP
+install-to-PDF validation.
 
 ### 0. Manual Entry Draft
 

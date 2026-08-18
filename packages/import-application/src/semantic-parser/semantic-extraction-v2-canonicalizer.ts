@@ -38,6 +38,7 @@ export interface V2CanonicalEvidence {
   readonly start: number;
   readonly end: number;
   readonly quote: string;
+  readonly continuationToNext?: "none" | "space";
 }
 
 export interface V2CanonicalSemanticCandidate {
@@ -691,13 +692,6 @@ function groundAtom(
     return undefined;
   }
   const longForm = isLongFormFieldPath(path);
-  if (parsed.data.sourceRefs.length !== 1 && !longForm) {
-    rejected.push({
-      path,
-      code: classifyMultipleRefs(parsed.data.sourceRefs, registry),
-    });
-    return undefined;
-  }
   const references = parsed.data.sourceRefs;
   const reference = references[0];
   if (reference === undefined) {
@@ -717,6 +711,19 @@ function groundAtom(
       return undefined;
     }
     return longFormResult.atom;
+  }
+  if (references.length > 1) {
+    const splitScalarResult = resolveSplitScalarAtom(
+      parsed.data.value,
+      references,
+      valueKind,
+      registry,
+    );
+    if (!splitScalarResult.ok) {
+      rejected.push({ path, code: splitScalarResult.code });
+      return undefined;
+    }
+    return splitScalarResult.atom;
   }
   const resolution = registry.resolve(reference);
   if (!resolution.ok) {
@@ -781,6 +788,97 @@ function groundAtom(
         quote: resolution.quote,
       },
     ],
+  };
+}
+
+function resolveSplitScalarAtom(
+  value: string,
+  references: readonly Parameters<SourceRegistry["resolve"]>[0][],
+  kind: V2CanonicalValueKind,
+  registry: SourceRegistry,
+):
+  | { readonly ok: true; readonly atom: GroundedAtom }
+  | {
+      readonly ok: false;
+      readonly code:
+        | SourceReferenceFailureReason
+        | "ambiguous_source_refs"
+        | "duplicate_source_ref"
+        | "overlapping_source_refs"
+        | "value_not_grounded"
+        | "unsupported_typed_value";
+    } {
+  const resolved: Array<
+    Extract<SourceReferenceResolution, { readonly ok: true }>
+  > = [];
+  for (const reference of references) {
+    const result = registry.resolve(reference);
+    if (!result.ok) return { ok: false, code: result.reason };
+    const sameFragment = resolved.find(
+      (item) => item.fragment.fragmentId === result.fragment.fragmentId,
+    );
+    if (sameFragment !== undefined) {
+      if (
+        sameFragment.start === result.start &&
+        sameFragment.end === result.end
+      )
+        return { ok: false, code: "duplicate_source_ref" };
+      if (sameFragment.start < result.end && result.start < sameFragment.end)
+        return { ok: false, code: "overlapping_source_refs" };
+      return { ok: false, code: "ambiguous_source_refs" };
+    }
+    resolved.push(result);
+  }
+
+  let reconstructed = resolved[0]?.quote ?? "";
+  for (let index = 1; index < resolved.length; index += 1) {
+    const previous = resolved[index - 1];
+    const current = resolved[index];
+    if (previous === undefined || current === undefined) {
+      return { ok: false, code: "ambiguous_source_refs" };
+    }
+    if (
+      current.fragment.order !== previous.fragment.order + 1 ||
+      previous.end !== previous.fragment.text.length ||
+      current.start !== 0 ||
+      previous.fragment.continuationToNext === null
+    ) {
+      return { ok: false, code: "ambiguous_source_refs" };
+    }
+    reconstructed +=
+      previous.fragment.continuationToNext === "space" ? " " : "";
+    reconstructed += current.quote;
+  }
+
+  if (normalizeSourceText(value) !== reconstructed) {
+    return { ok: false, code: "value_not_grounded" };
+  }
+  const normalized = normalizeTypedValue(reconstructed, kind);
+  if (normalized === undefined) {
+    return { ok: false, code: "unsupported_typed_value" };
+  }
+  return {
+    ok: true,
+    atom: {
+      value: reconstructed,
+      normalizedValue: normalized.value,
+      valueKind: kind,
+      ...(normalized.linkLabel === undefined
+        ? {}
+        : { linkLabel: normalized.linkLabel }),
+      evidence: resolved.map((result, index) => ({
+        fragmentId: result.fragment.fragmentId,
+        fragmentHash: result.fragment.hash,
+        line: result.fragment.line,
+        start: result.fragment.start + result.start,
+        end: result.fragment.start + result.end,
+        quote: result.quote,
+        ...(index === resolved.length - 1 ||
+        result.fragment.continuationToNext === null
+          ? {}
+          : { continuationToNext: result.fragment.continuationToNext }),
+      })),
+    },
   };
 }
 
@@ -1163,44 +1261,6 @@ function groupShape(
   return keys.every((key) => Object.prototype.hasOwnProperty.call(value, key))
     ? "valid"
     : "malformed";
-}
-
-function classifyMultipleRefs(
-  references: readonly Parameters<SourceRegistry["resolve"]>[0][],
-  registry: SourceRegistry,
-):
-  | SourceReferenceFailureReason
-  | "duplicate_source_ref"
-  | "overlapping_source_refs"
-  | "ambiguous_source_refs" {
-  const seen = new Set<string>();
-  const resolved: Array<
-    Extract<SourceReferenceResolution, { readonly ok: true }>
-  > = [];
-  for (const reference of references) {
-    const key = `${reference.fragmentId}\u0000${normalizeSourceText(reference.quote)}`;
-    if (seen.has(key)) return "duplicate_source_ref";
-    seen.add(key);
-    const result = registry.resolve(reference);
-    if (!result.ok) return result.reason;
-    resolved.push(result);
-  }
-  for (let index = 0; index < resolved.length; index += 1) {
-    const left = resolved[index];
-    if (left === undefined) continue;
-    for (let next = index + 1; next < resolved.length; next += 1) {
-      const right = resolved[next];
-      if (
-        right !== undefined &&
-        left.fragment.fragmentId === right.fragment.fragmentId &&
-        left.start < right.end &&
-        right.start < left.end
-      ) {
-        return "overlapping_source_refs";
-      }
-    }
-  }
-  return "ambiguous_source_refs";
 }
 
 function wholeResponseFailure(

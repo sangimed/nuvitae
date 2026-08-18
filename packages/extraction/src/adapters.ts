@@ -84,6 +84,7 @@ export interface PdfTextItemProvenance {
   readonly itemIndex: number;
   readonly readingOrder: number;
   readonly boundingBox: PdfBoundingBox;
+  readonly hasEol?: boolean;
 }
 
 export interface PdfTextItem {

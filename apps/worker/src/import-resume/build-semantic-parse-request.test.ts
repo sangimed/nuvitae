@@ -76,4 +76,90 @@ describe("buildSemanticParseRequest", () => {
       educationCompletenessFixtureV1.length,
     );
   });
+
+  it("records only source-proven DOCX run continuations", () => {
+    const request = buildSemanticParseRequest(document, [
+      {
+        text: "Senior Backend ",
+        order: 0,
+        format: "docx",
+        context: "paragraph",
+        location: {
+          kind: "docx_run",
+          packagePart: "word/document.xml",
+          paragraphIndex: 4,
+          runIndex: 0,
+          characterOffsetStart: 0,
+          characterOffsetEnd: 15,
+          readingOrder: 0,
+        },
+      },
+      {
+        text: "Engineer",
+        order: 1,
+        format: "docx",
+        context: "paragraph",
+        location: {
+          kind: "docx_run",
+          packagePart: "word/document.xml",
+          paragraphIndex: 4,
+          runIndex: 1,
+          characterOffsetStart: 15,
+          characterOffsetEnd: 23,
+          readingOrder: 1,
+        },
+      },
+      {
+        text: "Different paragraph",
+        order: 2,
+        format: "docx",
+        context: "paragraph",
+        location: {
+          kind: "docx_run",
+          packagePart: "word/document.xml",
+          paragraphIndex: 5,
+          runIndex: 0,
+          characterOffsetStart: 0,
+          characterOffsetEnd: 19,
+          readingOrder: 2,
+        },
+      },
+    ]);
+
+    expect(
+      request.sourceFragments.map((fragment) => fragment.continuationToNext),
+    ).toEqual(["space", undefined, undefined]);
+  });
+
+  it("records conservative same-line PDF continuations but rejects wraps and columns", () => {
+    const pdf = (
+      text: string,
+      order: number,
+      x: number,
+      y: number,
+      width: number,
+    ): ResumeSourceFragment => ({
+      text,
+      order,
+      format: "pdf",
+      location: {
+        kind: "pdf_text_item",
+        pageNumber: 1,
+        itemIndex: order,
+        readingOrder: order,
+        boundingBox: { x, y, width, height: 10, unit: "pdf_point" },
+        hasEol: false,
+      },
+    });
+    const request = buildSemanticParseRequest(document, [
+      pdf("Senior Backend", 0, 10, 700, 70),
+      pdf("Engineer", 1, 82, 700, 40),
+      pdf("Wrapped", 2, 10, 686, 45),
+      pdf("Other column", 3, 300, 686, 60),
+    ]);
+
+    expect(
+      request.sourceFragments.map((fragment) => fragment.continuationToNext),
+    ).toEqual(["space", undefined, undefined, undefined]);
+  });
 });

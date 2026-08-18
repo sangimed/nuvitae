@@ -43,7 +43,7 @@ describe("Semantic V2 parser instructions", () => {
       "Every key is required in the canonical shape and accepts either one grounded atom or null",
     );
     expect(semanticParserInstructions).toContain(
-      "For every non-null contact value, include exactly one sourceRefs entry",
+      "For every non-null contact value, include one direct sourceRef, or an ordered source-proven continuation sequence",
     );
     expect(semanticParserInstructions).toContain(
       "Never invent a contact value, phone country code, location, URL, website title, or identity",
@@ -68,18 +68,21 @@ describe("Semantic V2 parser instructions", () => {
     );
   });
 
-  it("makes scalar source-reference ownership unambiguous for nested groups", () => {
+  it("makes grounded split-scalar ownership and reconstruction unambiguous", () => {
     expect(semanticParserInstructions).toContain(
-      "Every scalar atom must contain exactly one sourceRef",
+      "Use exactly one sourceRef whenever one fragment directly contains the complete scalar",
     );
     expect(semanticParserInstructions).toContain(
-      "Multiple sourceRefs are allowed only for summary, work responsibilities, work achievements, and project descriptions",
+      "A scalar may use ordered multiple sourceRefs only when the complete value genuinely crosses consecutive fragments",
     );
     expect(semanticParserInstructions).toContain(
       "Do not attach sourceRefs to a workExperience, role, or education group object",
     );
     expect(semanticParserInstructions).toContain(
-      "headline, employerName, role title, role dates, institution, degree, fieldOfStudy, and education dates each require exactly one sourceRef",
+      'continuationToNext "none" inserts no character and "space" inserts one ordinary space',
+    );
+    expect(semanticParserInstructions).toContain(
+      "These scalar rules apply uniformly to contact, headline, employerName, role fields, education fields, skills, languages, project names, certifications, and links",
     );
   });
 

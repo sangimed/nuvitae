@@ -458,6 +458,66 @@ anchors reject only the affected group while valid sibling groups survive.
 T258 remains unchecked, Tranche 1 remains incomplete, T219 remains blocked,
 T203 remains NO-GO, and no live retry is authorized by this record.
 
+### T258 generic split-scalar evidence correction (2026-08-18)
+
+The anti-overfitting audit supersedes the prompt-only diagnosis above without
+rewriting its historical checkpoint. Semantic V2 atoms already permit one to
+eight source refs, PDF.js text items and DOCX runs are intentionally granular,
+and a legitimate scalar can cross those extraction boundaries. Requiring one
+ref for every non-long-form scalar therefore leaves some grounded values
+unrepresentable; this is generic and is not specific to a provider, fixture,
+resume section, count, or source offset.
+
+The selected design is ordered multi-ref scalar reconstruction gated by a
+Nuvitae-owned continuation edge on the source fragment preceding each boundary.
+The existing atom and canonical evidence arrays already distinguish one-ref
+from multi-ref evidence, so a second composite atom shape would add an
+externally meaningful representation without adding proof. Pre-parser fragment
+coalescing was rejected because it would hide the original evidence boundary
+and could merge PDF columns/tables/wrapped lines or DOCX paragraphs/cells.
+
+For an accepted split scalar, refs must resolve uniquely, use distinct
+consecutive fragments in source order, touch the end/start of every shared
+boundary, and cross only an explicit `continuationToNext` edge. `none` inserts
+no character; `space` inserts exactly one normalized space. The submitted
+value, after the existing NFKC and whitespace normalization, must equal that
+reconstruction, and typed date/link/language validation still applies. Unknown,
+malformed, duplicate, overlapping, reordered, non-consecutive, edge-skipping,
+or unsupported-boundary refs fail closed. Group-level refs remain unsupported,
+and existing required-group plus sibling-survival semantics are unchanged.
+
+DOCX continuation is permitted only for contiguous runs in the same package
+part, paragraph, and table cell, with matching character offsets; the join is
+derived from the extracted run text. PDF continuation is deliberately
+conservative: same page, adjacent item/reading order, `hasEOL=false`, aligned
+baseline, non-overlapping left-to-right geometry, and at most a half-line-height
+gap. Extracted boundary whitespace wins; otherwise a touching boundary yields
+no separator and a small positive gap yields one normalized space. Cross-line
+wraps, columns, ordinary table gaps, and page changes are rejected. Punctuation
+and hyphens are preserved exactly. No dehyphenation or other guessed character
+transformation is supported. Style/font boundaries alone neither authorize nor
+invalidate a join.
+
+This is a bounded correction within `nuvitae.semantic-extraction.v2`, not a new
+response-contract version: the source-ref array cardinality and provider atom
+shape do not change, and existing one-ref output remains valid. The
+provider-neutral parse request gains optional Nuvitae-owned continuation
+metadata so providers can emit only sequences the canonicalizer can prove.
+Long-form reconstruction remains unchanged. The first T258 live smoke remains
+a consumed `QUALITY FAIL`; there is no second authorized attempt. T258 remains
+unchecked, Tranche 1 remains incomplete, T219 remains blocked, T203 remains
+NO-GO, and T246 remains finalized FAILED and immutable.
+
+The existing sanitized Semantic V2, realistic, anonymous PDF/DOCX, French,
+T246 corpus, sparse/ambiguity, prompt-instruction, worker, mapper, confirmation,
+and long-form suites retain their prior classifications. The only intended
+acceptance delta is synthetic scalars whose ordered refs cross explicit safe
+continuation edges; the corresponding reordered, unrelated, repeated-location,
+duplicate, overlapping, wrap, hyphenation, and extra-ref cases remain rejected.
+Provider request-size evidence changed only because the corrected instructions
+are longer; fragment/response counts and semantic classification did not
+change.
+
 ## Decision: Ship Nuvitae Community as the first MVP (product-first, not architecture-first)
 
 **Rationale**: The import→review→confirm journey is implemented and tested, but no real user can complete it today: production wiring registers no AI provider, so uploads terminate at `provider_unavailable`. The highest-value next move is one decisive vertical slice that makes the product promise real for a real user — not continued hardening. Community (self-hosted, Docker-first, free, user's own Codex access) proves the complete AI-powered resume experience with minimal business risk before a hosted commercial edition is built.

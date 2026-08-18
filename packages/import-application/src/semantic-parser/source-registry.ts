@@ -14,6 +14,7 @@ export interface SourceRegistryFragmentInput {
   readonly start?: number;
   readonly end?: number;
   readonly text: string;
+  readonly continuationToNext?: "none" | "space" | null;
 }
 
 export interface CanonicalSourceFragment {
@@ -26,6 +27,7 @@ export interface CanonicalSourceFragment {
   readonly end: number;
   readonly text: string;
   readonly hash: string;
+  readonly continuationToNext: "none" | "space" | null;
 }
 
 export type SourceReferenceFailureReason =
@@ -115,6 +117,7 @@ export function createSourceRegistryFromSemanticParseRequest(
       start: fragment.bounds.start,
       end: fragment.bounds.end,
       text: fragment.text,
+      continuationToNext: fragment.continuationToNext ?? null,
     })),
   );
 }
@@ -136,6 +139,14 @@ function toCanonicalFragment(
   const fragmentId = input.fragmentId ?? `fragment-${input.order + 1}`;
   if (!/^[A-Za-z0-9._:-]{1,120}$/u.test(fragmentId)) {
     throw new SourceRegistryError("invalid source fragment ID");
+  }
+  if (
+    input.continuationToNext !== undefined &&
+    input.continuationToNext !== null &&
+    input.continuationToNext !== "none" &&
+    input.continuationToNext !== "space"
+  ) {
+    throw new SourceRegistryError("invalid scalar continuation metadata");
   }
 
   const lineStart = input.lineStart ?? input.line;
@@ -166,6 +177,7 @@ function toCanonicalFragment(
     end,
     text,
     hash: sha256(text),
+    continuationToNext: input.continuationToNext ?? null,
   };
 }
 
