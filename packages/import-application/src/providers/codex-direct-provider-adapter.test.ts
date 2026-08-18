@@ -454,7 +454,10 @@ describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
       "The sections.contact object is required and has exactly these allowed keys and no others: fullName, email, phone, location, website.",
     );
     expect(invocation?.instructions).toContain(
-      "For every non-null contact value, include at least one sourceRefs entry",
+      "For every non-null contact value, include exactly one sourceRefs entry",
+    );
+    expect(invocation?.instructions).toContain(
+      "Every scalar atom must contain exactly one sourceRef",
     );
     expect(invocation?.instructions).toContain("object depth 10");
     expect(invocation?.instructions).toContain("total atoms 600");

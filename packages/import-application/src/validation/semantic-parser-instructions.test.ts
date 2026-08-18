@@ -43,7 +43,7 @@ describe("Semantic V2 parser instructions", () => {
       "Every key is required in the canonical shape and accepts either one grounded atom or null",
     );
     expect(semanticParserInstructions).toContain(
-      "For every non-null contact value, include at least one sourceRefs entry",
+      "For every non-null contact value, include exactly one sourceRefs entry",
     );
     expect(semanticParserInstructions).toContain(
       "Never invent a contact value, phone country code, location, URL, website title, or identity",
@@ -65,6 +65,21 @@ describe("Semantic V2 parser instructions", () => {
     );
     expect(semanticParserInstructions).toContain(
       "Contact values must not be copied into another section.",
+    );
+  });
+
+  it("makes scalar source-reference ownership unambiguous for nested groups", () => {
+    expect(semanticParserInstructions).toContain(
+      "Every scalar atom must contain exactly one sourceRef",
+    );
+    expect(semanticParserInstructions).toContain(
+      "Multiple sourceRefs are allowed only for summary, work responsibilities, work achievements, and project descriptions",
+    );
+    expect(semanticParserInstructions).toContain(
+      "Do not attach sourceRefs to a workExperience, role, or education group object",
+    );
+    expect(semanticParserInstructions).toContain(
+      "headline, employerName, role title, role dates, institution, degree, fieldOfStudy, and education dates each require exactly one sourceRef",
     );
   });
 

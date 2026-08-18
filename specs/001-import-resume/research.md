@@ -413,6 +413,51 @@ NO-GO. T235 stays in Tranche 5 as the later full-MVP install-to-PDF/release
 demonstration; using it as a Tranche-1 prerequisite would be circular because
 it depends on Tranches 1-5.
 
+### T258 consumed live attempt and offline quality diagnosis (2026-08-18)
+
+The single authorized T258 Community smoke is consumed. Production owner
+authentication passed, the real browser OAuth callback completed without the
+`SameSite=Strict` Community session cookie, pending server-side state resolved
+the initiating owner, and the connection reached ready. The callback fix in
+`f671ecc` is therefore live-proven and remains isolated. The browser returned
+to the home page after callback rather than directly to the import screen; this
+is recorded as a minor UX observation only, not expanded into T258 scope.
+
+Exactly one upload and one primary provider invocation were used. The provider
+returned HTTP 2xx, SSE began, `response.completed` and normal EOF were observed,
+canonicalization completed, `v2_partial_acceptance` persisted a draft, and
+review became available. No transport failure, second invocation, or
+deterministic fallback was observed. The result is nevertheless an immutable
+`QUALITY FAIL`: meaningful Work and Education structure was not usable, and
+headline was rejected. The opaque import id is
+`c8b06e96-3024-4f8c-a52a-3dc9e03f005b`; no source filename or resume content is
+recorded here.
+
+Privacy-safe runtime diagnostics identify the structural cause. Scalar atoms
+for headline, all four work-role title anchors, and education institution,
+degree, and field-of-study fields carried multiple otherwise well-shaped
+`sourceRefs`. The canonicalizer correctly classified these as
+`ambiguous_source_refs`; it then removed each role whose required title was
+ineligible, removed employer groups with no eligible role, and removed an
+education group when its required institution was ineligible. The V2 schema
+uses a bounded source-reference array because long-form fields may span
+fragments, but the generated provider instructions did not state clearly that
+ordinary scalar atoms require exactly one reference. They also used “at least
+one” language for contact. The faulty layer is therefore the provider
+contract/prompt guidance, not extraction, transport, parsing, source-registry
+resolution, canonicalization, group validation, draft mapping, OAuth, or the
+recent callback change.
+
+The offline correction makes source-reference ownership explicit: every scalar
+atom has exactly one direct reference; only summary, work responsibilities,
+work achievements, and project descriptions may use multiple ordered refs when
+the complete value genuinely spans fragments; group objects never own refs.
+Fail-closed canonical validation is unchanged. Synthetic repeated-text Work and
+Education coverage reproduces the consumed response shape and proves malformed
+anchors reject only the affected group while valid sibling groups survive.
+T258 remains unchecked, Tranche 1 remains incomplete, T219 remains blocked,
+T203 remains NO-GO, and no live retry is authorized by this record.
+
 ## Decision: Ship Nuvitae Community as the first MVP (product-first, not architecture-first)
 
 **Rationale**: The import→review→confirm journey is implemented and tested, but no real user can complete it today: production wiring registers no AI provider, so uploads terminate at `provider_unavailable`. The highest-value next move is one decisive vertical slice that makes the product promise real for a real user — not continued hardening. Community (self-hosted, Docker-first, free, user's own Codex access) proves the complete AI-powered resume experience with minimal business risk before a hosted commercial edition is built.
