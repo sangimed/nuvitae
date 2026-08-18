@@ -379,10 +379,10 @@ rejected because it is explicitly development-only. Building full multi-user
 authentication now was rejected because it is not required for the V1 product
 promise and would delay the missing production boundary. The roadmap repair was
 T257 before T212. T257 completed on 2026-08-18 with deterministic, host-side
-smoke, and manual-browser validation; T212 is now the next installation/
-onboarding task.
+smoke, and manual-browser validation; T212 subsequently completed its
+installation/onboarding scope. T258 is now the next Tranche-1 closure task.
 
-## Community localhost cookie and OAuth callback limitation (2026-08-18)
+## Community localhost cookie and OAuth callback limitation and Tranche-1 closure (2026-08-18)
 
 Community V1's supported browser URL is `http://localhost:3000` on the same
 machine as Docker. Modern browsers treat localhost and loopback origins as
@@ -395,9 +395,23 @@ The existing direct OAuth callback returns from a cross-site authorization
 origin to `http://localhost:1455/auth/callback`, while the Community session
 cookie is `SameSite=Strict` and the callback is authenticated. The cookie may
 therefore be absent from that callback. This is a Community-runtime
-compatibility concern for future real install-to-OAuth validation (including
-T235), not an HTTPS blocker and not a T212 authentication/OAuth redesign. T212
-must neither weaken SameSite nor claim OAuth completion validation.
+compatibility concern, not an HTTPS blocker and not a T212 authentication/OAuth
+redesign. T212 correctly neither weakened SameSite nor claimed OAuth completion
+validation.
+
+This exposed a roadmap contradiction: every explicitly listed Tranche-1
+implementation task (T257, T212, and T213-T218) is complete, while the stated
+Tranche-1 outcome still requires a real owner → Connect Codex → cross-site
+callback → ready → real PDF/DOCX import → review journey that has not been
+proven after the new Community owner/session boundary. T258 is therefore the
+smallest explicit Tranche-1 closure task. It must first resolve callback
+compatibility without blindly changing SameSite, then pass deterministic
+owner-bound one-time-state/security tests and one bounded, no-retry real
+Community smoke. This smoke is not T246, model qualification, or a T203
+re-evaluation: T246 remains finalized FAILED and immutable, and T203 remains
+NO-GO. T235 stays in Tranche 5 as the later full-MVP install-to-PDF/release
+demonstration; using it as a Tranche-1 prerequisite would be circular because
+it depends on Tranches 1-5.
 
 ## Decision: Ship Nuvitae Community as the first MVP (product-first, not architecture-first)
 

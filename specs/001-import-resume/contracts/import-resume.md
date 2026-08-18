@@ -267,7 +267,7 @@ These service boundaries add the Community MVP surface (Codex connection, visual
 
 **Errors**: state mismatch, authorization declined, exchange failure, callback timeout.
 
-**Rules**: The broker validates state, exchanges the authorization code, and persists encrypted credentials. The application records only provider-neutral connection state and a broker-owned credential reference. No authorization code, access token, refresh token, or account identifier appears in any application response, log, or diagnostic.
+**Rules**: The broker validates state, exchanges the authorization code, and persists encrypted credentials. For Community, state must be unguessable, one-time, expiring, and resolved server-side to the owner who initiated the connection; the cross-site return to `http://localhost:1455/auth/callback` must not depend incorrectly on the normal `SameSite=Strict` Community session cookie being resent. The callback must not accept a browser-selected owner or Local Play identity, and a callback failure must leave the connection recoverable. The application records only provider-neutral connection state and a broker-owned credential reference. No authorization code, access token, refresh token, or account identifier appears in any application response, log, or diagnostic. Normal protected APIs remain owner-authenticated; any narrowly scoped cookie behavior required for the callback must not weaken them.
 
 ### Codex Connection Status
 

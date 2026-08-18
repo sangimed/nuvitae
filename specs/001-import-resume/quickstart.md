@@ -416,11 +416,30 @@ Use this when Docker-managed caches or local service data need a clean state.
 
 ## Validation Scenarios
 
-> **Community V1 status:** T257 completed the production owner/session
-> boundary; T212 clean-install validation is the next task.
+> **Community V1 status:** T257, T212, and T213-T218 are complete for their
+> scoped runtime, installation, capability, and deterministic/local evidence.
+> Tranche 1 is nevertheless incomplete: T258 must resolve and validate the
+> `SameSite=Strict` cross-site OAuth callback boundary and perform its one-shot
+> Community owner → Codex OAuth → one import → review smoke before Tranche 2
+> may begin.
 > The local-play identity is development-only; it must not be used as a
 > Community sign-in substitute. The scenarios below describe the required
 > authenticated behavior now available through that boundary.
+
+### Community OAuth callback and real import closure (T258; future execution)
+
+T258 is a Tranche-1 gate, not a replacement for T246 or T235. After its
+deterministic callback-security implementation is green, use one normal
+Community Docker installation, a production owner session, a normal browser,
+the existing real Codex OAuth flow, and one realistic existing private PDF or
+DOCX fixture. Click **Connect Codex** once, complete authorization, verify the
+callback and ready state, upload exactly one document, and verify exactly one
+primary provider invocation reaches review with usable grounded content and no
+deterministic fallback. Do not retry or make a second invocation. On failure,
+preserve evidence, classify `AUTH CALLBACK FAIL`, `PROVIDER FAIL`, `PROTOCOL
+FAIL`, `PRODUCT IMPORT FAIL`, or `QUALITY FAIL`, and stop. This does not rerun
+or alter finalized-FAILED T246, does not qualify Codex globally, and does not
+change T203's NO-GO. T235 remains the later full-MVP install-to-PDF validation.
 
 ### 0. Manual Entry Draft
 

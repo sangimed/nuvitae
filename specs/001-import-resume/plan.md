@@ -66,6 +66,18 @@ and worker must receive required private-storage roots plus signing/encryption
 secrets through production-safe configuration; no default or checked-in
 production secret is acceptable. This is T257 scope, not T212 scope.
 
+**Community OAuth callback closure constraint**: T257's `SameSite=Strict`
+owner session and T212's clean-install proof do not establish that a cross-site
+provider redirect to `http://localhost:1455/auth/callback` can complete the
+Community OAuth flow. T258 is the required Tranche-1 closure gate: it must
+choose and test the smallest safe callback design, with unguessable one-time
+expiring owner-bound state resolved server-side, no browser-selected owner or
+Local Play adoption, token-blind browser/application surfaces, and no weakening
+of normal owner-authenticated routes. It then requires one non-retryable real
+Community owner → OAuth → ready → one-import → review smoke. This integration
+proof does not rerun T246, qualify Codex globally, or change T203's NO-GO;
+T235 remains the later Tranche-5 full install-to-PDF release demonstration.
+
 **AI Provider Runtime Constraints**: Provider invocation must be non-interactive from the worker, Docker-compatible, session-isolated per authenticated user/self-hosted installation, and restricted to semantic parsing only. The corrected Codex candidate uses the flow `Nuvitae worker -> ResumeSemanticParserProvider -> CodexDirectProviderAdapter -> isolated CodexOAuthBroker -> OpenAI-hosted OAuth -> direct Codex ChatGPT transport`. The web application, browser storage, import domain, API controllers, regular worker jobs, database domain entities, semantic extraction contracts, logs, and diagnostics remain token-blind. Only the dedicated infrastructure broker may generate PKCE verifier/challenge, generate and validate OAuth state, host a loopback callback, exchange authorization codes, store encrypted access and refresh tokens, refresh access tokens, perform logout/local deletion, expose privacy-safe connection status, execute Codex provider requests, and return provider-neutral results. The spike must compare whether the broker should be a dedicated Docker service, isolated worker-side process, or another bounded infrastructure component before selecting a production topology. Provider states include connected, not configured, login pending, login cancelled, disconnected, authentication expired, authentication revoked, unavailable, rate limited, subscription/quota exceeded, timeout, malformed output, and unsupported capability. Failures map to retry, reconnect, choose another configured provider, limited deterministic partial extraction where available, or manual entry.
 
 **Initial Configurable Resource Limits**: Maximum uploaded file size 10 MB; maximum rendered length 5 pages; maximum foreground processing duration 3 minutes; maximum parser-process memory 512 MiB; maximum per user 1 active processing job and 2 queued processing jobs; maximum 5 upload or processing-start attempts per rolling 10-minute window per authenticated user. Limits must be configurable by environment but must not be disabled in production. Rate or concurrency limit responses reject the operation, return a rate-limit response such as HTTP 429, include `Retry-After` where applicable, and show a plain-language recovery message. Parser memory and timeout enforcement terminate the isolated parser process, clean up files and source-reconstructing artifacts for the failed attempt, and offer retry, replacement upload, and manual-entry recovery. Memory-limit breaches must not create an import review draft from partial output produced before termination.
