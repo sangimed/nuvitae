@@ -55,8 +55,9 @@ services:
       NODE_ENV: production
       PORT: 3000
       HOSTNAME: 0.0.0.0
+      NUVITAE_LOCAL_PLAY_MODE: "false"
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     healthcheck:
       test:
         [
@@ -87,6 +88,7 @@ services:
       POSTGRES_CONNECTION_TIMEOUT_MS: 3000
       POSTGRES_STATEMENT_TIMEOUT_MS: 2000
       NUVITAE_RUN_MIGRATIONS: "true"
+      NUVITAE_LOCAL_PLAY_MODE: "false"
       QUEUE_HOST: queue
       QUEUE_PORT: 6379
       QUEUE_PASSWORD: ${QUEUE_PASSWORD:-nuvitae_queue_password}
@@ -100,7 +102,6 @@ services:
       NUVITAE_COMMUNITY_COOKIE_SECURE: ${NUVITAE_COMMUNITY_COOKIE_SECURE:?NUVITAE_COMMUNITY_COOKIE_SECURE must be configured}
       NUVITAE_COMMUNITY_SESSION_TTL_SECONDS: ${NUVITAE_COMMUNITY_SESSION_TTL_SECONDS:-86400}
     ports:
-      - "3001:3001"
       - "127.0.0.1:1455:3001"
       - "[::1]:1455:3001"
     volumes:
@@ -129,6 +130,7 @@ services:
     image: nuvitae-worker:0.1.0
     environment:
       NODE_ENV: production
+      NUVITAE_LOCAL_PLAY_MODE: "false"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_USER: ${POSTGRES_USER:-nuvitae}

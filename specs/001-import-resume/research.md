@@ -382,6 +382,23 @@ T257 before T212. T257 completed on 2026-08-18 with deterministic, host-side
 smoke, and manual-browser validation; T212 is now the next installation/
 onboarding task.
 
+## Community localhost cookie and OAuth callback limitation (2026-08-18)
+
+Community V1's supported browser URL is `http://localhost:3000` on the same
+machine as Docker. Modern browsers treat localhost and loopback origins as
+potentially trustworthy for Secure cookies, so the production
+`NUVITAE_COMMUNITY_COOKIE_SECURE=true` session setting remains required for
+that local path. This exception does not support plain-HTTP LAN or public
+deployment; any remote Community deployment requires HTTPS and is outside T212.
+
+The existing direct OAuth callback returns from a cross-site authorization
+origin to `http://localhost:1455/auth/callback`, while the Community session
+cookie is `SameSite=Strict` and the callback is authenticated. The cookie may
+therefore be absent from that callback. This is a Community-runtime
+compatibility concern for future real install-to-OAuth validation (including
+T235), not an HTTPS blocker and not a T212 authentication/OAuth redesign. T212
+must neither weaken SameSite nor claim OAuth completion validation.
+
 ## Decision: Ship Nuvitae Community as the first MVP (product-first, not architecture-first)
 
 **Rationale**: The import→review→confirm journey is implemented and tested, but no real user can complete it today: production wiring registers no AI provider, so uploads terminate at `provider_unavailable`. The highest-value next move is one decisive vertical slice that makes the product promise real for a real user — not continued hardening. Community (self-hosted, Docker-first, free, user's own Codex access) proves the complete AI-powered resume experience with minimal business risk before a hosted commercial edition is built.

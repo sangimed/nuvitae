@@ -14,7 +14,7 @@ export default function Home() {
   return (
     <main className="shell">
       <section className="panel home-panel" aria-labelledby="page-title">
-        <p className="eyebrow">Nuvitae</p>
+        <p className="eyebrow">Nuvitae Community</p>
         <h1 id="page-title">Create your resume</h1>
         <p>
           Start from an existing resume or create a structured draft manually.
@@ -25,7 +25,17 @@ export default function Home() {
             local Docker volumes and this is not production authentication.
           </div>
         ) : null}
-        {!localPlayMode ? <CommunityOwnerAccess /> : null}
+        {!localPlayMode ? (
+          <>
+            <p>
+              Owner access is required. Your installation generated the owner
+              access secret; retrieve it with{" "}
+              <code>sh scripts/community-owner-secret.sh</code>. Local Play is a
+              development mode, not Community production mode.
+            </p>
+            <CommunityOwnerAccess />
+          </>
+        ) : null}
         <div className="choice-grid">
           <Link className="primary-action" href="/import-resume">
             Import an existing resume
@@ -34,6 +44,12 @@ export default function Home() {
             Create a resume manually
           </Link>
         </div>
+        {!localPlayMode ? (
+          <p>
+            After signing in, create a resume manually or import one. Codex can
+            be connected from the import flow.
+          </p>
+        ) : null}
         <dl className="status-list">
           <div>
             <dt>Web</dt>
