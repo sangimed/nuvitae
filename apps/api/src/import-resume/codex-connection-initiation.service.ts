@@ -30,11 +30,9 @@ export class CodexConnectionInitiationService {
     };
   }
 
-  async completeCallback(ownerUserId: string, callback: ProviderOAuthCallback) {
-    const connectionId = this.oauthBoundary.resolvePendingLogin(
-      ownerUserId,
-      callback.state,
-    );
+  async completeCallback(callback: ProviderOAuthCallback) {
+    const { ownerUserId, connectionId } =
+      this.oauthBoundary.resolvePendingLogin(callback.state);
     return this.providerConnections.completeLogin(
       ownerUserId,
       connectionId,

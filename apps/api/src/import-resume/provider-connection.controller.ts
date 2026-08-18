@@ -92,21 +92,14 @@ export class ProviderConnectionController {
     "import-resume/provider-connections/codex/oauth/callback",
     "auth/callback",
   ])
-  @UseGuards(VerifiedPrincipalGuard)
   @ApiOperation({ summary: "Complete the Codex browser connection callback" })
-  @ApiUnauthorizedResponse({ description: "Authentication is required." })
   async completeCallback(
-    @Req() request: object,
     @Query() query: Record<string, unknown>,
     @Res() response: { redirect: (status: number, url: string) => void },
   ): Promise<void> {
-    const authenticated = getGuardedAuthenticatedContext(request);
     const callback = normalizeCallbackQuery(query);
     try {
-      await this.connectionInitiation.completeCallback(
-        authenticated.userId,
-        callback,
-      );
+      await this.connectionInitiation.completeCallback(callback);
       response.redirect(303, localProductReturnUrl("connected"));
     } catch (error) {
       const safeError = mapCallbackError(error);

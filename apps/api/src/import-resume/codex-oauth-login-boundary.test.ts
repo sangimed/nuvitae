@@ -155,9 +155,7 @@ describe("CodexOAuthLoginBoundary (T213)", () => {
     const replacement = await boundary.startLogin(owner, null);
 
     expect(replacement.browserHandoff).not.toEqual(first.browserHandoff);
-    expect(() =>
-      boundary.resolvePendingLogin(owner.ownerUserId, firstState),
-    ).toThrowError(
+    expect(() => boundary.resolvePendingLogin(firstState)).toThrowError(
       expect.objectContaining({
         code: "provider_connection_login_invalid_state",
       }),
@@ -225,11 +223,10 @@ describe("CodexOAuthLoginBoundary callback completion (T214)", () => {
     const state = new URL(
       login.browserHandoff!.authorizationUrl,
     ).searchParams.get("state")!;
-    const connectionId = boundary.resolvePendingLogin(
-      context.ownerUserId,
-      state,
-    );
-    expect(connectionId).toBe(context.connectionId);
+    expect(boundary.resolvePendingLogin(state)).toEqual({
+      ownerUserId: context.ownerUserId,
+      connectionId: context.connectionId,
+    });
 
     const result = await boundary.completeLogin(context, null, {
       state,
@@ -333,8 +330,30 @@ describe("CodexOAuthLoginBoundary callback completion (T214)", () => {
         providerError: "access_denied",
       }),
     ).rejects.toMatchObject({ code: "provider_connection_login_cancelled" });
+    expect(() => boundary.resolvePendingLogin(state)).toThrowError(
+      expect.objectContaining({
+        code: "provider_connection_login_invalid_state",
+      }),
+    );
+  });
+
+  it("resolves a cross-site callback to its initiating owner without a Community session", async () => {
+    const boundary = new CodexOAuthLoginBoundary();
+    const owner = context(
+      "10000000-0000-4000-8000-000000000001",
+      "20000000-0000-4000-8000-000000000001",
+    );
+    const login = await boundary.startLogin(owner, null);
+    const state = new URL(
+      login.browserHandoff!.authorizationUrl,
+    ).searchParams.get("state")!;
+
+    expect(boundary.resolvePendingLogin(state)).toEqual({
+      ownerUserId: owner.ownerUserId,
+      connectionId: owner.connectionId,
+    });
     expect(() =>
-      boundary.resolvePendingLogin(owner.ownerUserId, state),
+      boundary.resolvePendingLogin(`${state}-tampered`),
     ).toThrowError(
       expect.objectContaining({
         code: "provider_connection_login_invalid_state",

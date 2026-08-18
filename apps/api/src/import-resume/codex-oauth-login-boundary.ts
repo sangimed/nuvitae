@@ -283,12 +283,19 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
     throw unsupportedUntilFutureState("quota_state");
   }
 
-  /** Resolves the state to its initiating connection without trusting the browser. */
-  resolvePendingLogin(ownerUserId: string, state: string): string {
+  /**
+   * Resolves a cross-site callback to its initiating owner and connection.
+   * The callback must never take an owner identity from browser input or rely
+   * on the ordinary Community session cookie being present.
+   */
+  resolvePendingLogin(state: string): {
+    readonly ownerUserId: string;
+    readonly connectionId: string;
+  } {
     const pending = [...this.pending.values()].find(
       (candidate) => candidate.state === state,
     );
-    if (pending === undefined || pending.ownerUserId !== ownerUserId) {
+    if (pending === undefined) {
       throw new ProviderConnectionError(
         "provider_connection_login_invalid_state",
       );
@@ -297,7 +304,10 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
       this.pending.delete(`${pending.ownerUserId}:${pending.connectionId}`);
       throw new ProviderConnectionError("provider_connection_login_expired");
     }
-    return pending.connectionId;
+    return {
+      ownerUserId: pending.ownerUserId,
+      connectionId: pending.connectionId,
+    };
   }
 
   private buildAuthorizationUrl(state: string, codeChallenge: string): string {
