@@ -55,7 +55,7 @@ export function CommunityOwnerAccess() {
   if (state === "checking") return <p role="status">Checking owner access…</p>;
   if (state === "signed-in") {
     return (
-      <div className="local-banner" role="status">
+      <div className="owner-access-status" role="status">
         Owner access is active.{" "}
         <button type="button" onClick={signOut}>
           Sign out

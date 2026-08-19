@@ -91,4 +91,43 @@ describe("CommunityOwnerAccess", () => {
       }),
     );
   });
+
+  it("keeps authenticated owner status and logout reachable", async () => {
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/api/community-auth/session/status")) {
+        return Promise.resolve(jsonResponse({ authenticated: true }));
+      }
+      if (
+        String(input).endsWith("/api/community-auth/session") &&
+        init?.method === "DELETE"
+      ) {
+        return Promise.resolve(new Response(null, { status: 204 }));
+      }
+      throw new Error(`Unexpected request: ${String(input)}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(<CommunityOwnerAccess />);
+    });
+
+    const signOut = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "Sign out",
+    );
+    expect(signOut).toBeDefined();
+
+    await act(async () => {
+      signOut!.click();
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/community-auth/session",
+      expect.objectContaining({
+        credentials: "same-origin",
+        method: "DELETE",
+      }),
+    );
+    expect(container.textContent).toContain("Owner access secret");
+  });
 });
