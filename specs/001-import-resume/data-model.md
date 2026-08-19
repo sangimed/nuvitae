@@ -187,13 +187,14 @@ or `unusable`; fields distinguish `explicit` from `inferred`, support
 confirm/edit/exclude/intentionally-leave actions. Confidence is a separate
 attribute and is not proof of evidence validity.
 
-The current Semantic V2 mapping does not yet exercise that full distinction:
-canonical candidates are projected as explicit, high-confidence,
-`not_inferred`, and the current extraction-draft builder excludes inferred
-candidates. T259 must determine whether the existing states can safely retain
-fully grounded semantic uncertainty end to end or whether a new state is
-genuinely required. It must not add a duplicate state merely to rename
-`requires_review` or `inferred_needs_review`.
+T259 confirmed that the existing states safely express the distinction; no new
+candidate state is required. A fully grounded long-form candidate linked to a
+bounded classification/grouping ambiguity is projected as
+`inferred_needs_review`, remains `unreviewed`, retains canonical semantic
+evidence provenance and a field-bound warning, and cannot enter structured data
+until explicit confirmation or edit transitions it to `confirmed_inference`.
+Provenance-bearing review-only candidates may be retained in an import draft;
+location-less inferred values remain ineligible.
 
 The product boundary has three categories:
 
@@ -222,9 +223,8 @@ The product boundary has three categories:
 This invariant is field-generic: fully grounded is necessary but not sufficient
 for review-required eligibility. It does not reopen T258's completed scalar
 implementation or extend T259 beyond long-form evidence. A genuinely ambiguous
-source boundary is different from a deterministically known omission; T259 may
-investigate whether the former is truthfully representable without pre-deciding
-the state model.
+source boundary is different from a deterministically known omission; only a
+bounded, evidence-linked ambiguity may use the existing review-required state.
 
 `value_not_grounded` is Category 3, not a low-confidence Category 2 shortcut.
 The T258 Attempt #3 Summary therefore remains rejected under current evidence.

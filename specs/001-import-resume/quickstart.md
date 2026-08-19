@@ -531,7 +531,7 @@ unsupported-language fixtures.
 
 **Expected Outcome**: Confirmation is blocked until all warnings are addressed. After resolution, confirmation succeeds only if at least one supported field is user-confirmed.
 
-### 5a. Long-Form Evidence Stability And Semantic Review Eligibility (T259 future offline validation)
+### 5a. Long-Form Evidence Stability And Semantic Review Eligibility (T259 deterministic validation)
 
 Use only independently constructed sanitized PDF/DOCX source representations
 and deterministic provider-response fixtures. Exercise Summary, Work
@@ -565,6 +565,20 @@ truthfully source-assisted or manual. Invented, invalid, unsupported, or
 provenance-ambiguous values also remain rejected/unusable; provider text is not
 shown as a warning-badged suggestion. No OAuth, provider call, upload, live
 Semantic V2 run, benchmark, or private resume fixture is part of this scenario.
+
+**Implemented deterministic result**: the long-form matrix uses the real
+Summary, Work responsibility, Work achievement, and project-description paths.
+The supported equivalence is a complete fragment cited once versus the same
+complete fragment partitioned into ordered refs separated only by whitespace;
+both produce identical canonical evidence. Complete consecutive fragments pass.
+Partial-fragment values, missing/reordered/duplicate/overlapping/unsupported
+refs, invented content, non-unique provenance, and deterministically incomplete
+grounded prefixes fail closed. Evidence-linked section/group ambiguity retains
+the complete candidate as inactive `inferred_needs_review` with field-bound
+warning and canonical semantic provenance. Explicit confirmation is required
+and audited. The deterministic sanitized corpus and the existing Semantic V2,
+scalar-continuation, PDF/DOCX continuation, mapping, draft, and confirmation
+regressions are the validation boundary; no live smoke is required.
 
 ### 6. Multiple Roles And Ongoing Role
 

@@ -158,14 +158,17 @@ guessing to decide whether a grounded scalar is conceptually complete.
 
 Semantic V2 long-form fields are Summary, Work responsibilities, Work
 achievements, and project descriptions. Their refs are ordered evidence and are
-not governed by the scalar-continuation rule. T259 must define whether and when
-different valid provider ref selections are deterministically equivalent and
-canonicalizable. Complete provable long-form values must have stable outcomes
-under any such proven equivalence. Partial coverage, missing intermediate
-evidence, unsupported ref order, repeated text with non-unique provenance,
-invalid refs, invented characters, and any other evidence that cannot prove the
-submitted complete value remain field-level failures; validation never silently
-truncates the value or invents a replacement chain.
+not governed by the scalar-continuation rule. A provider long-form value must
+cite complete source fragments in authoritative consecutive order. Multiple
+ordered refs within one fragment are equivalent to one whole-fragment ref only
+when they cover the complete fragment and every gap is whitespace; Nuvitae
+coalesces that proven partition into one canonical evidence record. No other ref
+selection equivalence is implied. Partial-fragment coverage, missing
+intermediate evidence, unsupported ref order, duplicate/overlapping/extra refs,
+repeated text with non-unique provenance, invalid refs, invented characters,
+and any other evidence that cannot prove the submitted complete value remain
+field-level failures; validation never silently truncates the value or invents
+a replacement chain.
 
 Semantic acceptance and review eligibility are separate decisions. A value may
 enter ordinary verified review behavior only after complete grounding and

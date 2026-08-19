@@ -743,6 +743,18 @@ function sourceLocationToPublic(location: SourceLocation) {
       paragraphNumber: location.paragraphIndex + 1,
     };
   }
+  if (location.kind === "semantic") {
+    return {
+      kind: "semantic" as const,
+      evidence: location.evidence.map((item) => ({
+        fragmentId: item.fragmentId,
+        fragmentHash: item.fragmentHash,
+        line: item.line,
+        start: item.start,
+        end: item.end,
+      })),
+    };
+  }
   return {
     kind: "minimal" as const,
     label: "imported_from_initial_resume" as const,

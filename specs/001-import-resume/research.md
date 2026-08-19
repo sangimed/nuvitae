@@ -729,6 +729,89 @@ complete with qualification FAILED and immutable; T203 remains NO-GO. T259 is
 parallelizable with T220-T222, required before T236 and Tranche-2 completion,
 and does not reopen Tranche 1.
 
+#### T259 implementation decision and deterministic findings
+
+The pre-implementation characterization exposed two independent gaps. First,
+long-form canonicalization accepted any monotonic, non-overlapping ref list
+whose selected quotes reconstructed the submitted value. That admitted skipped
+intermediate fragments and a grounded prefix/subset taken from a larger source
+fragment, so grounding alone could hide material provider truncation. Second,
+Semantic V2 discarded the evidence-to-ambiguity association: all accepted
+candidates were projected as explicit `not_inferred` values, and the draft
+builder discarded inferred candidates before determining whether they could be
+reviewed. The evidence validator and the review state model therefore owned the
+right concepts but were not connected end to end.
+
+The selected evidence rule is deliberately narrow. A long-form provider value
+must cite one or more complete source fragments in authoritative consecutive
+source order. Multiple ordered refs within the same fragment are equivalent to
+one whole-fragment ref only when their combined span covers that fragment and
+every omitted character between refs is whitespace. Canonicalization coalesces
+that representation into one full-fragment evidence record. This is the only
+alternate representation proved equivalent by the current source registry.
+Exact duplicate refs, overlapping refs, missing intermediate fragments,
+reordered refs, unsupported extra refs, and partial-fragment spans remain
+fail-closed. Redundant evidence is therefore accepted only when it is a genuine
+partition of one complete fragment; duplicate or provenance-broadening
+redundancy is rejected. Normalized-empty PDF/DOCX physical boundaries remain an
+adapter-owned continuation concern and do not alter this long-form rule.
+
+The provider remains responsible for selecting the complete claimed semantic
+concept, its exact text, ordered source refs, field classification, group
+ownership, and any bounded ambiguity signal. Nuvitae may resolve those refs,
+verify hashes/coordinates and authoritative order, coalesce a proven complete
+same-fragment partition, reconstruct complete consecutive fragments, derive
+canonical evidence/identity, and associate a valid ambiguity signal with a
+grounded candidate by evidence overlap and existing group paths. It may not
+expand to neighbors, invent text or positions, choose a group, infer
+continuation metadata, or use confidence as evidence.
+
+No new candidate state is required. The existing
+`inferred_needs_review`/unreviewed field state, field-bound warning, retained
+canonical semantic provenance, and `confirmed_inference` transition represent
+Category B truthfully. Only the bounded `ambiguous_section`,
+`ambiguous_grouping`, and `ambiguous_role_association` signal kinds may produce
+this state, and only for already fully grounded long-form candidates linked by
+deterministic evidence/group paths. A provenance-bearing review-only candidate
+may create a draft but remains inactive until explicit confirmation or edit.
+The confirmation audit continues to distinguish the original provider value,
+canonical evidence, pre-confirmation state, and user action. Rejected candidates
+never enter this path.
+
+The sanitized regression matrix proves complete single-fragment and ordered
+multi-fragment Summary, Work responsibility, Work achievement, and project
+description values; whole-fragment/split-ref equivalence; exact redundancy
+behavior; long multi-sentence reconstruction; mixed-sibling isolation;
+normalized-empty adapter continuity; bounded field/group ambiguity; and
+explicit confirmation. It rejects partial coverage of a longer submitted
+value, a complete-value ref chain with a missing intermediate fragment,
+reordered/duplicate/overlapping/extra/invalid refs, non-unique repeated-text
+provenance, an invented token, and a materially incomplete grounded prefix of a
+deterministically complete fragment. Metamorphic variants prove stability under
+opaque fragment-ID changes and unrelated appended fragments, rejection after
+necessary-evidence removal, authoritative source order, and the inability of
+provider variation to manufacture provenance.
+
+Alternatives rejected were fuzzy or semantic matching, confidence thresholds,
+automatic neighboring-fragment expansion, arbitrary multi-ref acceptance,
+warning-badging unsafe text, weakening `value_not_grounded`, extending T258's
+scalar continuation rule, and adding a duplicate review state. All test sources
+and provider responses are independently constructed and sanitized; none encode
+the private T258 source, its wording, identity, layout, offsets, fragment count,
+filename, or live provider response.
+
+Docker-only deterministic validation passed 29 test files and 373 tests. This
+includes the 24-case focused T259 suite; existing Semantic V2 contract,
+canonicalization, fidelity, source-registry, mapping, warning, worker, draft,
+review, and confirmation regressions; all 19 T258 split-scalar regressions; PDF
+and DOCX adapter/continuation regressions; and the provider-independent
+sanitized corpus at 337/337 facts with precision, recall, grouping, and evidence
+all 1.000 and inventions 0.000. Contracts, domain, import-application, API, and
+worker typechecks passed. Changed-source ESLint, changed-file Prettier,
+`git diff --check`, and bounded secret/privacy scans passed. No provider, OAuth,
+upload, live Semantic V2 execution, qualification, benchmark gate, or private
+fixture was used.
+
 ## Decision: Ship Nuvitae Community as the first MVP (product-first, not architecture-first)
 
 **Rationale**: The import→review→confirm journey is implemented and tested, but no real user can complete it today: production wiring registers no AI provider, so uploads terminate at `provider_unavailable`. The highest-value next move is one decisive vertical slice that makes the product promise real for a real user — not continued hardening. Community (self-hosted, Docker-first, free, user's own Codex access) proves the complete AI-powered resume experience with minimal business risk before a hosted commercial edition is built.

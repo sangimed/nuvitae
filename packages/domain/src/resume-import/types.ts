@@ -174,8 +174,23 @@ export interface MinimalImportProvenance {
   readonly sourceDeletedAt?: Date;
 }
 
+export interface SemanticEvidenceLocation {
+  readonly kind: "semantic";
+  readonly documentId: string;
+  readonly evidence: readonly {
+    readonly fragmentId: string;
+    readonly fragmentHash: string;
+    readonly line: number;
+    readonly start: number;
+    readonly end: number;
+  }[];
+}
+
 export type SourceLocation =
-  PdfSourceLocation | DocxSourceLocation | MinimalImportProvenance;
+  | PdfSourceLocation
+  | DocxSourceLocation
+  | SemanticEvidenceLocation
+  | MinimalImportProvenance;
 
 export type ExtractedValue =
   | { readonly kind: "text"; readonly value: string }

@@ -190,7 +190,8 @@ export function reduceStructuredResumeSourceProvenance(
     const shouldReduce =
       text.sourceStatus === "explicit_source" ||
       text.sourceLocation?.kind === "pdf" ||
-      text.sourceLocation?.kind === "docx";
+      text.sourceLocation?.kind === "docx" ||
+      text.sourceLocation?.kind === "semantic";
     return {
       ...text,
       ...(shouldReduce

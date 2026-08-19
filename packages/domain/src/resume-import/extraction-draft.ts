@@ -69,9 +69,17 @@ export interface ExtractionDraftBuildResult {
 export function buildExtractionDraft(
   input: ExtractionDraftBuildInput,
 ): ExtractionDraftBuildResult {
-  const fields = input.fields
+  const activeFields = input.fields
     .filter((candidate) => candidate.inferenceStatus === "not_inferred")
     .map((candidate) => toField(candidate, input.ids.fieldId(), input.now));
+  const inferredFields = input.fields
+    .filter(
+      (candidate) =>
+        candidate.inferenceStatus === "inferred_needs_review" &&
+        candidate.sourceLocation !== undefined,
+    )
+    .map((candidate) => toField(candidate, input.ids.fieldId(), input.now));
+  const fields = [...activeFields, ...inferredFields];
   const threshold = summarizeExtractionThreshold(
     fields,
     input.missingOrUnprocessedSections,

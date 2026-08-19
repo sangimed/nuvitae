@@ -51,7 +51,7 @@ export interface V2CanonicalSemanticCandidate {
   readonly valueKind: V2CanonicalValueKind;
   readonly sourceStatus: "explicit_source";
   readonly confidence: "high";
-  readonly inferenceStatus: "not_inferred";
+  readonly inferenceStatus: "not_inferred" | "inferred_needs_review";
   readonly reviewStatus: "unreviewed";
   readonly evidence: readonly V2CanonicalEvidence[];
   readonly linkLabel?: string;
@@ -60,6 +60,7 @@ export interface V2CanonicalSemanticCandidate {
 export interface V2CanonicalSignal {
   readonly kind: SemanticExtractionV2Signal["kind"];
   readonly evidence: readonly V2CanonicalEvidence[];
+  readonly affectedFieldPaths: readonly string[];
 }
 
 export interface V2RejectedField {
@@ -72,6 +73,7 @@ export interface V2RejectedField {
     | "duplicate_source_ref"
     | "overlapping_source_refs"
     | "value_not_grounded"
+    | "materially_truncated_value"
     | "value_ambiguous"
     | "unsupported_typed_value"
     | "malformed_group"
@@ -488,7 +490,23 @@ export function canonicalizeSemanticExtractionV2(input: {
     rejected,
   );
 
-  return { ok: true, candidates, signals, rejected };
+  const classifiedSignals = signals.map((signal) => ({
+    ...signal,
+    affectedFieldPaths: affectedLongFormFieldPaths(signal, candidates),
+  }));
+  const reviewRequired = new Set(
+    classifiedSignals.flatMap((signal) => signal.affectedFieldPaths),
+  );
+  return {
+    ok: true,
+    candidates: candidates.map((candidate) =>
+      reviewRequired.has(candidate.fieldPath)
+        ? { ...candidate, inferenceStatus: "inferred_needs_review" as const }
+        : candidate,
+    ),
+    signals: classifiedSignals,
+    rejected,
+  };
 }
 
 /**
@@ -650,7 +668,7 @@ function acceptSignals(
       rejected.push({ path, code: "signal_source_invalid" });
       return;
     }
-    accepted.push({ kind: parsed.data.kind, evidence });
+    accepted.push({ kind: parsed.data.kind, evidence, affectedFieldPaths: [] });
   });
 }
 
@@ -897,6 +915,7 @@ function resolveLongFormAtom(
         | "duplicate_source_ref"
         | "overlapping_source_refs"
         | "value_not_grounded"
+        | "materially_truncated_value"
         | "unsupported_typed_value";
     } {
   if (kind !== "text") return { ok: false, code: "unsupported_typed_value" };
@@ -930,7 +949,48 @@ function resolveLongFormAtom(
       return { ok: false, code: "overlapping_source_refs" };
     }
   }
-  const reconstructed = resolved.map((item) => item.quote).join(" ");
+  const canonicalSpans: Array<{
+    readonly fragment: (typeof resolved)[number]["fragment"];
+    readonly start: number;
+    readonly end: number;
+  }> = [];
+  for (const item of resolved) {
+    const previous = canonicalSpans.at(-1);
+    if (previous?.fragment.fragmentId === item.fragment.fragmentId) {
+      const omitted = item.fragment.text.slice(previous.end, item.start);
+      if (omitted.trim().length > 0)
+        return { ok: false, code: "ambiguous_source_refs" };
+      canonicalSpans[canonicalSpans.length - 1] = {
+        fragment: previous.fragment,
+        start: previous.start,
+        end: item.end,
+      };
+      continue;
+    }
+    if (
+      previous !== undefined &&
+      item.fragment.order !== previous.fragment.order + 1
+    ) {
+      return { ok: false, code: "ambiguous_source_refs" };
+    }
+    canonicalSpans.push({
+      fragment: item.fragment,
+      start: item.start,
+      end: item.end,
+    });
+  }
+
+  if (
+    canonicalSpans.some(
+      (span) => span.start !== 0 || span.end !== span.fragment.text.length,
+    )
+  ) {
+    return { ok: false, code: "materially_truncated_value" };
+  }
+
+  const reconstructed = canonicalSpans
+    .map((span) => span.fragment.text)
+    .join(" ");
   if (normalizeSourceText(value) !== normalizeSourceText(reconstructed)) {
     return { ok: false, code: "value_not_grounded" };
   }
@@ -940,16 +1000,79 @@ function resolveLongFormAtom(
       value: reconstructed,
       normalizedValue: normalizeSourceText(reconstructed),
       valueKind: kind,
-      evidence: resolved.map((result) => ({
-        fragmentId: result.fragment.fragmentId,
-        fragmentHash: result.fragment.hash,
-        line: result.fragment.line,
-        start: result.fragment.start + result.start,
-        end: result.fragment.start + result.end,
-        quote: result.quote,
+      evidence: canonicalSpans.map((span) => ({
+        fragmentId: span.fragment.fragmentId,
+        fragmentHash: span.fragment.hash,
+        line: span.fragment.line,
+        start: span.fragment.start,
+        end: span.fragment.start + span.fragment.text.length,
+        quote: span.fragment.text,
       })),
     },
   };
+}
+
+const groundedReviewSignalKinds = new Set<SemanticExtractionV2Signal["kind"]>([
+  "ambiguous_section",
+  "ambiguous_grouping",
+  "ambiguous_role_association",
+]);
+
+function affectedLongFormFieldPaths(
+  signal: V2CanonicalSignal,
+  candidates: readonly V2CanonicalSemanticCandidate[],
+): readonly string[] {
+  if (!groundedReviewSignalKinds.has(signal.kind)) return [];
+  const anchors = candidates.filter((candidate) =>
+    candidate.evidence.some((candidateEvidence) =>
+      signal.evidence.some((signalEvidence) =>
+        evidenceOverlaps(candidateEvidence, signalEvidence),
+      ),
+    ),
+  );
+  if (signal.kind === "ambiguous_section") {
+    return anchors
+      .filter(isLongFormCandidate)
+      .map((candidate) => candidate.fieldPath);
+  }
+  return candidates
+    .filter(
+      (candidate) =>
+        isLongFormCandidate(candidate) &&
+        anchors.some((anchor) => groupPathsAreRelated(anchor, candidate)),
+    )
+    .map((candidate) => candidate.fieldPath);
+}
+
+function evidenceOverlaps(
+  left: V2CanonicalEvidence,
+  right: V2CanonicalEvidence,
+): boolean {
+  return (
+    left.fragmentId === right.fragmentId &&
+    left.start < right.end &&
+    right.start < left.end
+  );
+}
+
+function groupPathsAreRelated(
+  left: V2CanonicalSemanticCandidate,
+  right: V2CanonicalSemanticCandidate,
+): boolean {
+  return (
+    left.groupPath === right.groupPath ||
+    left.groupPath.startsWith(`${right.groupPath}.`) ||
+    right.groupPath.startsWith(`${left.groupPath}.`)
+  );
+}
+
+function isLongFormCandidate(candidate: V2CanonicalSemanticCandidate): boolean {
+  return (
+    candidate.fieldPath === "summary" ||
+    candidate.fieldPath.includes(".responsibilities.") ||
+    candidate.fieldPath.includes(".achievements.") ||
+    /^projects\.\d+\.description$/u.test(candidate.fieldPath)
+  );
 }
 
 function findValueOffset(
