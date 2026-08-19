@@ -177,6 +177,61 @@ or rejection. A grounded prefix may therefore be provenance-valid while still
 being product-invalid provider output; deterministic validation must not invent
 the missing concept through fuzzy matching or dictionaries.
 
+### Grounding and semantic-review eligibility
+
+The domain already contains most of the vocabulary needed to distinguish
+evidence validity from semantic certainty: extraction-response acceptance may
+be `accepted`, `rejected`, or `requires_review`; evidence is `valid`, `invalid`,
+or `unusable`; fields distinguish `explicit` from `inferred`, support
+`inferred_needs_review`, retain provenance and warnings, and record explicit
+confirm/edit/exclude/intentionally-leave actions. Confidence is a separate
+attribute and is not proof of evidence validity.
+
+The current Semantic V2 mapping does not yet exercise that full distinction:
+canonical candidates are projected as explicit, high-confidence,
+`not_inferred`, and the current extraction-draft builder excludes inferred
+candidates. T259 must determine whether the existing states can safely retain
+fully grounded semantic uncertainty end to end or whether a new state is
+genuinely required. It must not add a duplicate state merely to rename
+`requires_review` or `inferred_needs_review`.
+
+The product boundary has three categories:
+
+1. **Verified candidate**: the complete textual value, canonical evidence, and
+   provenance are deterministically valid, and classification/grouping is
+   sufficiently resolved. Existing import rules may keep the field active.
+2. **Grounded review-required candidate**: the complete candidate text and its
+   provenance are deterministically grounded; no deterministic source/provenance
+   evidence establishes that the provider materially truncated the semantic
+   concept it claims to represent; and only a bounded classification, grouping,
+   or genuinely ambiguous source boundary remains unresolved. The field stays
+   visibly distinct, retains provenance, never auto-activates or silently
+   upgrades, and requires explicit user confirmation or correction. Provider
+   proposal, evidence, and user action remain auditable separately.
+3. **Rejected or unusable candidate**: any part of the value is ungrounded or
+   invented; refs are invalid, incomplete, or unable to prove the submitted
+   value; provenance is non-unique; ambiguity prevents deterministic
+   attribution; or deterministic evidence proves that the grounded provider
+   value is a materially truncated prefix/subset of its claimed semantic
+   concept. The provider value stays outside the review field set. Existing
+   deterministic evidence rules may reconstruct a complete value only when
+   they prove it without guessing; otherwise a warning may offer manual entry
+   or safe source-assisted recovery, but must not launder the provider text into
+   a suggestion.
+
+This invariant is field-generic: fully grounded is necessary but not sufficient
+for review-required eligibility. It does not reopen T258's completed scalar
+implementation or extend T259 beyond long-form evidence. A genuinely ambiguous
+source boundary is different from a deterministically known omission; T259 may
+investigate whether the former is truthfully representable without pre-deciding
+the state model.
+
+`value_not_grounded` is Category 3, not a low-confidence Category 2 shortcut.
+The T258 Attempt #3 Summary therefore remains rejected under current evidence.
+T259 may change a future outcome only by deterministically proving complete
+source evidence; it may not reinterpret the historical attempt or weaken the
+failure code.
+
 ## ExtractedField
 
 Candidate resume value shown during review.
@@ -185,7 +240,7 @@ Candidate resume value shown during review.
 
 **Relationships**: Belongs to one `ImportDraft`; may be linked to one `ImportWarning`; may be superseded by `UserCorrection`.
 
-**Validation Rules**: Supported sections are personal/contact information, professional headline, summary, work experience, education, skills, languages, projects, certifications, and professional links. Source location exists only while the source document exists. PDF source locations include page number and text-item geometry. DOCX source locations include package part plus paragraph/table/cell/run indexes and character offsets; rendered DOCX coordinates are not guaranteed. Confidence status values are `high`, `medium`, `low`, and `not_applicable`; low confidence means extraction can associate a value with document evidence but cannot reliably classify the field, date meaning, section, role association, semantic grouping, duplicate, or conflict without review. Classification status records explicit versus inferred. Semantic grouping, ambiguous date interpretation, section classification, and work-experience association by inference require review. Skills must not be inferred from titles, responsibilities, seniority, metrics, or relationships.
+**Validation Rules**: Supported sections are personal/contact information, professional headline, summary, work experience, education, skills, languages, projects, certifications, and professional links. Source location exists only while the source document exists. PDF source locations include page number and text-item geometry. DOCX source locations include package part plus paragraph/table/cell/run indexes and character offsets; rendered DOCX coordinates are not guaranteed. Confidence status values are `high`, `medium`, `low`, and `not_applicable`; low confidence means extraction can associate a value with document evidence but cannot reliably classify the field, date meaning, section, role association, semantic grouping, duplicate, or conflict without review. Classification status records explicit versus inferred. Semantic grouping, ambiguous date interpretation, section classification, and work-experience association by inference require review only when the complete field value and provenance are independently valid and no deterministic evidence proves material semantic truncation. Skills must not be inferred from titles, responsibilities, seniority, metrics, or relationships. Ungrounded, partially grounded, invented, invalid-ref, provenance-ambiguous, or deterministically truncated provider values are not eligible `ExtractedField` records.
 
 **State Transitions**: `unreviewed` -> `confirmed`, `edited`, `excluded`, or `intentionally_left`; all warnings must leave `unreviewed` before structured resume confirmation.
 

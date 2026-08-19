@@ -419,8 +419,9 @@ Use this when Docker-managed caches or local service data need a clean state.
 > **Community V1 status:** T257, T212, T213-T218, and T258 are complete.
 > T258 Attempt #3 passed the bounded Community owner → persisted Codex
 > connection → one upload → one primary invocation → usable grounded review
-> gate. Tranche 1 is complete, and T219 is the exact next unblocked canonical
-> task. Tranche 2 implementation has not started.
+> gate. Tranche 1 is complete; T219 completed on 2026-08-20. T220, T221,
+> T222, and the planning-added T259 long-form evidence stability task are the
+> independently executable next Tranche-2 tasks.
 > The local-play identity is development-only; it must not be used as a
 > Community sign-in substitute. The scenarios below describe the required
 > authenticated behavior now available through that boundary.
@@ -448,8 +449,9 @@ fallback or material invention was observed. Summary remained rejected as not
 grounded, and some optional-field projection remains incomplete, so exhaustive
 field fidelity is not claimed. T258 is complete and Tranche 1 is complete. This
 does not rerun or alter finalized-FAILED T246, qualify Codex globally, or change
-T203's NO-GO. T219 is the exact next unblocked canonical task; it has not
-started. T235 remains the later full-MVP install-to-PDF validation.
+T203's NO-GO. T219 later completed independently. T259 records the generic
+long-form stability and grounded-semantic-uncertainty follow-up; it does not
+reopen T258. T235 remains the later full-MVP install-to-PDF validation.
 
 ### 0. Manual Entry Draft
 
@@ -528,6 +530,41 @@ unsupported-language fixtures.
 4. Resolve each warning by confirming, editing, excluding, or intentionally leaving it.
 
 **Expected Outcome**: Confirmation is blocked until all warnings are addressed. After resolution, confirmation succeeds only if at least one supported field is user-confirmed.
+
+### 5a. Long-Form Evidence Stability And Semantic Review Eligibility (T259 future offline validation)
+
+Use only independently constructed sanitized PDF/DOCX source representations
+and deterministic provider-response fixtures. Exercise Summary, Work
+responsibilities, Work achievements, and project descriptions across complete
+single-fragment and ordered multi-fragment evidence; provably equivalent
+evidence representations where the contract supports them; redundant refs;
+partial, missing-intermediate, reordered, malformed, and ambiguous repeated-text
+refs; normalized-empty continuation boundaries; long multi-sentence content;
+and mixed valid/invalid siblings. Add metamorphic variants that rename fragment
+IDs while preserving provenance/content, add unrelated fragments, remove
+necessary evidence, and vary provider ref selection without manufacturing
+provenance.
+
+Separately exercise verified grounded values; fully grounded text with
+ambiguous field classification, grouping, or genuinely ambiguous source
+boundary; one invented token; a longer submitted value with only partial
+evidence; a materially shortened submitted prefix/subset whose own characters
+are grounded but whose claimed complete concept is deterministically
+identifiable; invalid refs; repeated text with non-unique provenance; and
+explicit user confirmation of an eligible review-required candidate.
+
+**Expected Outcome**: Complete provably equivalent evidence has one stable
+canonical result when equivalence is deterministically demonstrable. Fully
+grounded semantic uncertainty may remain visibly review-required and inactive
+until explicit user action only when deterministic evidence does not prove
+material truncation of the claimed concept. Both partial evidence for a longer
+submitted value and a materially truncated grounded submitted value remain
+rejected/unusable. Deterministic reconstruction is allowed only when existing
+evidence rules prove the complete value without guessing; otherwise recovery is
+truthfully source-assisted or manual. Invented, invalid, unsupported, or
+provenance-ambiguous values also remain rejected/unusable; provider text is not
+shown as a warning-badged suggestion. No OAuth, provider call, upload, live
+Semantic V2 run, benchmark, or private resume fixture is part of this scenario.
 
 ### 6. Multiple Roles And Ongoing Role
 

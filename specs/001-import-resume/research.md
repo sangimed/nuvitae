@@ -645,6 +645,90 @@ Attempt #3 is not qualification evidence. T203 remains NO-GO. With T257, T212,
 T213-T218, and T258 complete, Tranche 1 is complete. T219 is the exact next
 unblocked canonical task, but it has not started.
 
+### Post-T258 long-form evidence stability and review-eligibility follow-up (2026-08-20)
+
+T258 remains complete and Attempt #3 remains a PASS. It closed the Community
+integration gate with a persisted owner-scoped Codex connection, one upload,
+one primary invocation, and a usable grounded review. The same bounded result
+also exposed a non-blocking limitation worth separating into generic Tranche-2
+work: the source contained genuine extractible long-form presentation,
+Attempt #3 rejected `sections.summary` as `value_not_grounded`, an earlier
+consumed attempt on the same source had accepted Summary, and deterministic
+long-form regression coverage remained green. No private source value,
+filename, layout, offset, identity, employer, school, contact datum, or other
+PII is retained in this follow-up.
+
+The evidence supports investigation, not a Summary-specific relaxation. The
+active Semantic V2 contract classifies Summary, Work responsibilities, Work
+achievements, and project descriptions as long-form. Provider-selected refs can
+span multiple fragments without scalar continuation metadata, while Nuvitae
+currently accepts their whitespace-normalized ordered quote concatenation. T259
+must determine which alternative legitimate evidence shapes, if any, prove the
+same complete value and can be canonicalized consistently without guessing.
+Incomplete, missing-intermediate, reordered where order is authoritative,
+repeated-location ambiguous, invalid, unsupported, or invented evidence remains
+fail-closed. The task must not broaden scalar evidence behavior addressed by
+T258.
+
+The domain audit also shows a meaningful distinction between evidence validity
+and semantic certainty. Existing concepts include response-level
+`accepted`/`rejected`/`requires_review`, evidence-level
+`valid`/`invalid`/`unusable`, explicit-versus-inferred classification,
+`inferred_needs_review`, warnings, provenance, and explicit user review actions.
+However, current Semantic V2 candidates are projected as explicit,
+high-confidence, and `not_inferred`, and the extraction-draft builder filters
+inferred candidates. T259 must determine whether the existing concepts can
+safely retain fully grounded text with unresolved semantic classification,
+grouping, or a genuinely ambiguous source boundary, or whether a new state is
+necessary. It must not conflate low model confidence with eligibility.
+
+The durable boundary is three-way: verified candidates have complete valid
+evidence and resolved semantics; grounded review-required candidates may exist
+only when the complete candidate text and provenance are deterministically
+proven, no deterministic evidence establishes material truncation of the
+claimed semantic concept, and a truthfully representable classification,
+grouping, or genuine boundary ambiguity remains. Unsafe candidates contain or
+depend on ungrounded, partial, invented, invalid, or non-uniquely attributable
+content, or are grounded provider prefixes/subsets that deterministic evidence
+proves materially omit part of the claimed concept. They remain rejected or
+unusable. Existing deterministic evidence rules may reconstruct the complete
+value only when they prove it without guessing; otherwise recovery is
+source-assisted or manual. Review-required candidates never auto-activate and
+retain an auditable separation between provider proposal, evidence, and user
+confirmation. Unsafe provider text is not laundered into a suggestion with a
+warning badge. `value_not_grounded` is therefore not automatically reviewable,
+and the historical Attempt #3 Summary remains on the unsafe side under current
+evidence.
+
+This is a generic product/domain invariant: fully grounded is necessary but not
+sufficient for review-required eligibility when deterministic evidence proves
+material omission. It does not reopen T258's completed scalar implementation;
+T259 remains the bounded long-form investigation. Genuine source-boundary
+ambiguity is distinct from known truncation and may be investigated without
+pre-selecting an implementation state.
+
+T259 uses independently constructed sanitized sources and deterministic offline
+provider-response variants, including metamorphic changes to fragment identity,
+unrelated fragments, valid evidence representation, required-evidence removal,
+ref order, redundancy, partial coverage, malformed refs, grounded semantic
+ambiguity, and a grounded prefix/subset of a deterministically identifiable
+complete semantic concept. Tests must distinguish (1) a longer submitted value
+whose refs prove only part from (2) a materially shortened submitted value whose
+own characters are all grounded; both remain unsafe unless existing evidence
+rules deterministically prove a complete reconstruction. It must not optimize
+against the private T258 source, its Summary, layout, fragment count, offsets,
+FlowCV, live response wording, or any exact source text. Fuzzy matching,
+semantic similarity, another LLM as judge,
+arbitrary or neighboring refs without deterministic provenance/layout proof,
+guessed sentences, invented coordinates/hashes/grouping, disabled grounding or
+ambiguity checks, and confidence-as-evidence are prohibited.
+
+This follow-up is not a T246 retry, replacement consumed arm, qualification
+run, benchmark, provider comparison, or T203 re-evaluation. T246 remains
+complete with qualification FAILED and immutable; T203 remains NO-GO. T259 is
+parallelizable with T220-T222, required before T236 and Tranche-2 completion,
+and does not reopen Tranche 1.
+
 ## Decision: Ship Nuvitae Community as the first MVP (product-first, not architecture-first)
 
 **Rationale**: The import→review→confirm journey is implemented and tested, but no real user can complete it today: production wiring registers no AI provider, so uploads terminate at `provider_unavailable`. The highest-value next move is one decisive vertical slice that makes the product promise real for a real user — not continued hardening. Community (self-hosted, Docker-first, free, user's own Codex access) proves the complete AI-powered resume experience with minimal business risk before a hosted commercial edition is built.

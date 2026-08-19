@@ -156,6 +156,35 @@ verifies exact grounding, ordered continuation, and provenance; it does not use
 fuzzy similarity, dictionaries, field-specific title patterns, or semantic
 guessing to decide whether a grounded scalar is conceptually complete.
 
+Semantic V2 long-form fields are Summary, Work responsibilities, Work
+achievements, and project descriptions. Their refs are ordered evidence and are
+not governed by the scalar-continuation rule. T259 must define whether and when
+different valid provider ref selections are deterministically equivalent and
+canonicalizable. Complete provable long-form values must have stable outcomes
+under any such proven equivalence. Partial coverage, missing intermediate
+evidence, unsupported ref order, repeated text with non-unique provenance,
+invalid refs, invented characters, and any other evidence that cannot prove the
+submitted complete value remain field-level failures; validation never silently
+truncates the value or invents a replacement chain.
+
+Semantic acceptance and review eligibility are separate decisions. A value may
+enter ordinary verified review behavior only after complete grounding and
+resolved classification/grouping. A fully grounded value may enter review
+through an explicit review-required state only when no deterministic
+source/provenance evidence proves that the provider materially truncated the
+semantic concept it claims to represent and the remaining uncertainty is a
+bounded classification, grouping, or genuinely ambiguous source boundary. It
+retains provenance and cannot activate automatically. A grounded prefix/subset
+of a deterministically identifiable larger claimed concept is rejected or
+unusable unless existing evidence rules reconstruct the complete value without
+guessing. The same is true for factual/provenance uncertainty, including
+`value_not_grounded`; provider text is not returned as a warning-badged
+suggestion. Confidence is descriptive metadata, not evidence eligibility.
+
+This semantic-completeness invariant applies across supported field types even
+though T259 investigates only the long-form evidence boundary. It does not
+reopen or extend completed T258 scalar behavior.
+
 ### Provider Failure Recovery
 
 **Input**: provider connection state, provider failure reason, import id or draft id.
@@ -184,7 +213,7 @@ guessing to decide whether a grounded scalar is conceptually complete.
 
 **Input**: authenticated user, import draft id.
 
-**Output**: grouped sections, extracted candidate fields, warnings, review statuses, evidence/source locations while source exists, confidence categories, explicit-versus-inferred classification, retention expiry, available actions.
+**Output**: grouped sections, verified extracted candidate fields, eligible grounded review-required candidate fields, warnings, review statuses, evidence/source locations while source exists, confidence categories, explicit-versus-inferred classification, retention expiry, available actions. Rejected or unusable provider values are not candidate fields and their text is not exposed as a suggestion.
 
 **Errors**: not found, forbidden, expired, source deleted with no resumable draft, no supported field extracted.
 
@@ -194,7 +223,7 @@ guessing to decide whether a grounded scalar is conceptually complete.
 
 **Output**: updated review state and remaining warnings.
 
-**Rules**: Actions are confirm, edit, remove, add, exclude, and intentionally leave. Updating review never changes the uploaded source document.
+**Rules**: Actions are confirm, edit, remove, add, exclude, and intentionally leave. A grounded review-required candidate remains inactive until an explicit user confirm or edit action; ignoring, excluding, or intentionally leaving it must not activate it. Updating review never changes the uploaded source document. Audit state must distinguish the provider proposal, canonical evidence, and user action.
 
 ### Confirm Structured Resume
 
