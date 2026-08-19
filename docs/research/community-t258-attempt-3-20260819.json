@@ -1,0 +1,86 @@
+{
+  "schemaVersion": "nuvitae.t258.consumed-attempt.v1",
+  "taskId": "T258",
+  "attempt": 3,
+  "state": "CONSUMED",
+  "finalClassification": "PASS",
+  "importId": "36265543-febb-42ee-a9b3-b9e92236c219",
+  "oauth": {
+    "existingConnectionReused": true,
+    "newAuthorizationPerformed": false
+  },
+  "budget": {
+    "uploads": 1,
+    "primaryProviderInvocations": 1,
+    "secondaryProviderInvocations": 0,
+    "deterministicFallbackObserved": false
+  },
+  "transport": {
+    "uploadAccepted": true,
+    "persistenceCompleted": true,
+    "queueEnqueueCompleted": true,
+    "workerStarted": true,
+    "pdfValidationAccepted": true,
+    "extractionCompleted": true,
+    "normalizationCompleted": true,
+    "providerStarted": true,
+    "httpStatusCategory": "2xx",
+    "sseStarted": true,
+    "firstSemanticOutputReceived": true,
+    "responseCompletedReceived": true,
+    "normalResponseEof": true,
+    "transportFailureCategory": "none",
+    "sseFrameCount": 2730,
+    "canonicalizationCompleted": true,
+    "outcome": "v2_partial_acceptance",
+    "draftPersisted": true,
+    "reviewAvailable": true
+  },
+  "timingsMsApproximate": {
+    "uploadToProviderStart": 574,
+    "providerToHeaders": 1510,
+    "providerToFirstSemanticOutput": 13330,
+    "providerTotal": 62320,
+    "uploadToPersistedDraft": 62990
+  },
+  "review": {
+    "activeDraftFieldCount": 57,
+    "warningCount": 1,
+    "materiallyUsableAndGrounded": true,
+    "materialInventionObserved": false,
+    "expectedContactFieldsPreserved": true,
+    "majorWorkGroupsPresent": 4,
+    "workEmployerAnchorsPreserved": true,
+    "workRoleTitlesMateriallyComplete": true,
+    "workLocationsAndDatesPreserved": true,
+    "workResponsibilitiesAndAchievementsMateriallyRetained": true,
+    "majorEducationGroupsPresent": 3,
+    "educationInstitutionAndCredentialValuesMateriallyComplete": true,
+    "educationLocationsAndDatesPreserved": true,
+    "meaningfulSkillsRetained": true,
+    "sourceLanguagesRetained": 2
+  },
+  "knownLimitations": {
+    "summaryActive": false,
+    "summaryFirstRejectedPath": "sections.summary",
+    "summaryDiagnosticCategories": [
+      "other_schema_violation",
+      "value_not_grounded"
+    ],
+    "optionalHeadlineAndProfessionalLinkProjectionIncomplete": true,
+    "exhaustiveFieldFidelityClaimed": false
+  },
+  "scope": {
+    "t258IntegrationGateSatisfied": true,
+    "t246QualificationChanged": false,
+    "t203DecisionChanged": false,
+    "benchmark": false
+  },
+  "authorization": {
+    "fourthLiveAttemptAuthorized": false,
+    "additionalOauthAuthorized": false,
+    "additionalUploadAuthorized": false,
+    "additionalProviderInvocationAuthorized": false,
+    "benchmarkAuthorized": false
+  }
+}

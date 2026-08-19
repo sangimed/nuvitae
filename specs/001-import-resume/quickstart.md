@@ -416,20 +416,19 @@ Use this when Docker-managed caches or local service data need a clean state.
 
 ## Validation Scenarios
 
-> **Community V1 status:** T257, T212, and T213-T218 are complete for their
-> scoped runtime, installation, capability, and deterministic/local evidence.
-> Tranche 1 is nevertheless incomplete: T258 must resolve and validate the
-> `SameSite=Strict` cross-site OAuth callback boundary and perform its one-shot
-> Community owner → Codex OAuth → one import → review smoke before Tranche 2
-> may begin.
+> **Community V1 status:** T257, T212, T213-T218, and T258 are complete.
+> T258 Attempt #3 passed the bounded Community owner → persisted Codex
+> connection → one upload → one primary invocation → usable grounded review
+> gate. Tranche 1 is complete, and T219 is the exact next unblocked canonical
+> task. Tranche 2 implementation has not started.
 > The local-play identity is development-only; it must not be used as a
 > Community sign-in substitute. The scenarios below describe the required
 > authenticated behavior now available through that boundary.
 
-### Community OAuth callback and real import closure (T258; two consumed quality fails)
+### Community OAuth callback and real import closure (T258 complete)
 
-T258 is a Tranche-1 gate, not a replacement for T246 or T235. Two bounded live
-attempts are consumed as `QUALITY FAIL`. Attempt #1 proved owner auth,
+T258 is a Tranche-1 gate, not a replacement for T246 or T235. Attempts #1 and
+#2 are consumed as `QUALITY FAIL`. Attempt #1 proved owner auth,
 cookie-free owner-bound OAuth callback, provider-ready state, one upload, one
 primary invocation, canonical partial acceptance, and review availability, but
 invalid redundant scalar evidence removed important Work/Education/headline
@@ -440,11 +439,17 @@ grounded scalars were semantically truncated and Summary was rejected. The
 offline correction preserves strict grounding, restores safe continuations
 across only contiguous normalized-empty extraction items/runs, forbids provider
 semantic shortening, and explicitly separates long-form refs from scalar
-continuation rules. Do not retry, upload again, invoke a provider, or treat the
-correction as live proof without separate explicit authorization. This does not
-rerun or alter finalized-FAILED T246, does not qualify Codex globally, and does
-not change T203's NO-GO. T258 remains unchecked and T235 remains the later
-full-MVP install-to-PDF validation.
+continuation rules. Attempt #3 reused the already live-proven persisted Codex
+connection and used exactly one upload and one primary provider invocation. It
+reached review with 57 active fields and one warning; all four major Work groups
+and all three major Education groups were materially retained, together with
+expected contact fields, meaningful skills, and both source languages. No
+fallback or material invention was observed. Summary remained rejected as not
+grounded, and some optional-field projection remains incomplete, so exhaustive
+field fidelity is not claimed. T258 is complete and Tranche 1 is complete. This
+does not rerun or alter finalized-FAILED T246, qualify Codex globally, or change
+T203's NO-GO. T219 is the exact next unblocked canonical task; it has not
+started. T235 remains the later full-MVP install-to-PDF validation.
 
 ### 0. Manual Entry Draft
 

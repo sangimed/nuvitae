@@ -8,9 +8,9 @@ reconciliation does not reopen T246 or change the T203 decision. T213 and T214
 are complete at the entrypoint/callback/status boundaries; T215 is complete
 for local lifecycle recovery and mocked browser validation. T216 is complete
 for production semantic-provider wiring and offline/local preflight; this does
-not claim live OAuth or provider-import evidence. T217 and T218 are complete;
-the semantic-import recall correction is validated offline only, and one new
-live smoke revalidation remains pending.
+not claim live OAuth or provider-import evidence. T217 and T218 are complete.
+T258 subsequently completed its separately scoped Community integration proof
+on Attempt #3; this does not qualify Codex globally or alter T203/T246.
 
 The transversal semantic-provider boundary redesign is recorded in
 [`docs/research/semantic-provider-boundary-redesign-2026-08-09.md`](../../docs/research/semantic-provider-boundary-redesign-2026-08-09.md).
@@ -601,6 +601,49 @@ previously interrupted only by normalized-empty physical items/runs. T258
 remains unchecked, Tranche 1 remains incomplete, T219 remains blocked, T203
 remains NO-GO, and T246 remains finalized FAILED and immutable. No third live
 attempt is authorized by this record.
+
+### T258 third consumed live attempt and Tranche-1 completion (2026-08-19)
+
+The third bounded T258 Community import attempt is consumed and classified
+`PASS`. It reused the already live-proven persisted Codex connection, so no
+additional OAuth was performed. Exactly one upload and exactly one primary
+provider invocation occurred. Upload persistence, queue enqueue, worker start,
+PDF validation, extraction, normalization, and provider start completed. The
+provider returned HTTP 2xx; SSE began; first semantic output,
+`response.completed`, and normal EOF were observed across 2,730 frames. No
+transport failure, second provider invocation, or deterministic fallback was
+observed. Canonicalization completed as `v2_partial_acceptance`, the draft was
+persisted, and review became available. The opaque import id is
+`36265543-febb-42ee-a9b3-b9e92236c219`.
+
+Privacy-safe approximate timings were 574 ms from upload to provider start,
+1.51 s from provider start to headers, 13.33 s from provider start to first
+semantic output, 62.32 s total provider time, and 62.99 s from upload to the
+persisted draft. These observations describe one bounded integration attempt
+and are not a benchmark.
+
+Review contained 57 active draft fields and one warning. Manual comparison to
+the source established a materially usable and grounded result: expected
+contact fields were preserved; all four major Work groups retained employer
+anchors, complete meaningful role titles, locations, date ranges, and material
+responsibilities/achievements; all three major Education groups retained full
+institution and credential values, locations, and dates; meaningful skills and
+both source languages were retained. No material invention was observed. No
+private resume value, source filename, or source offset is recorded.
+
+The result is not perfect. `sections.summary` was the first rejected path,
+classified as `other_schema_violation` with `value_not_grounded`, so Summary is
+not active. Some optional headline/professional-link projection is incomplete.
+These remain visible non-blocking limitations, and no 100% field-fidelity claim
+is made.
+
+Attempt #3 satisfies T258 because its gate is one supported Community owner,
+the live-proven Codex connection, one real upload, one primary semantic
+invocation, and a usable grounded review. Attempts #1 and #2 remain immutable
+consumed `QUALITY FAIL` evidence. T246 remains finalized FAILED and immutable;
+Attempt #3 is not qualification evidence. T203 remains NO-GO. With T257, T212,
+T213-T218, and T258 complete, Tranche 1 is complete. T219 is the exact next
+unblocked canonical task, but it has not started.
 
 ## Decision: Ship Nuvitae Community as the first MVP (product-first, not architecture-first)
 
