@@ -86,6 +86,27 @@ describe("Semantic V2 parser instructions", () => {
     );
   });
 
+  it("forbids grounded semantic truncation without adding fuzzy validation", () => {
+    expect(semanticParserInstructions).toContain(
+      "Never shorten, simplify, abbreviate, or return only a prefix or token of that concept merely because the shorter text is easier to ground",
+    );
+    expect(semanticParserInstructions).toContain(
+      "If the complete semantic concept cannot be represented by the allowed sourceRefs, omit the atom",
+    );
+    expect(semanticParserInstructions).toContain(
+      "Nuvitae verifies exact grounding and provenance; you remain responsible for identifying the complete semantic concept",
+    );
+  });
+
+  it("separates long-form evidence from scalar continuation rules", () => {
+    expect(semanticParserInstructions).toContain(
+      "The scalar continuation rule above does not apply to these long-form fields",
+    );
+    expect(semanticParserInstructions).toContain(
+      "Long-form refs remain ordered source evidence and do not require continuationToNext metadata",
+    );
+  });
+
   it("prioritizes Education completeness before generic omission guidance", () => {
     const educationPriority = semanticParserInstructions.indexOf(
       "EDUCATION COMPLETENESS PRIORITY",

@@ -147,6 +147,15 @@ the existing retention and deletion contract.
 
 **Rules**: Provider adapters translate provider-native output into a versioned Nuvitae-owned response before the import domain consumes it. The active V1 contract retains flattened transcript coordinates and deterministic native provenance. The `nuvitae.semantic-extraction.v2` response provides semantic values, logical grouping, and bounded `sourceRefs` containing Nuvitae-owned fragment/block ids plus exact quote hints; Nuvitae resolves and verifies those hints and reconstructs canonical evidence, identity, and policy metadata. A V2 scalar normally uses one ref. Multiple ordered refs are accepted only when optional Nuvitae-owned source-continuation metadata proves every consecutive boundary, refs are edge-aligned and non-overlapping, and the scalar exactly equals deterministic reconstruction using only a zero-character or one-normalized-space join. Strict validation rejects malformed output, unknown fields, invalid relationships, unsupported values, provider-native schema leakage, invalid confidence/classification metadata, and missing required source references. Ungrounded or invented values are rejected or marked unusable; they are never silently accepted. Group-level refs and guessed joins, punctuation, dehyphenation, or characters remain unsupported.
 
+For semantic scalars, the provider must identify and return the complete source
+concept rather than a shorter grounded prefix, token, simplification, or
+abbreviation chosen to make evidence easier. If the complete concept cannot be
+represented by the advertised source-reference contract, the provider omits
+the atom and canonical required-group semantics apply. Nuvitae deterministically
+verifies exact grounding, ordered continuation, and provenance; it does not use
+fuzzy similarity, dictionaries, field-specific title patterns, or semantic
+guessing to decide whether a grounded scalar is conceptually complete.
+
 ### Provider Failure Recovery
 
 **Input**: provider connection state, provider failure reason, import id or draft id.

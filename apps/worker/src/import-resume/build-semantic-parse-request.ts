@@ -23,12 +23,15 @@ export function buildSemanticParseRequest(
 ): ResumeSemanticParseRequest {
   // Flattened transcript line numbering is assigned after empty items are
   // removed, so `line` always refers to a line in the normalized transcript.
-  // PDF.js can emit empty text items between rendered lines; they must not
-  // shift the canonical flattened line coordinates (which T210 profiles
-  // declare as the transcript line index).
+  // PDF.js can emit empty text items between rendered lines and between
+  // inline words. They must not shift canonical flattened coordinates. Their
+  // physical positions are retained below solely to prove that two surviving
+  // fragments were separated by ignorable items rather than skipped content
+  // or a layout boundary.
   const normalizedFragments = fragments
-    .map((fragment) => ({
+    .map((fragment, inputIndex) => ({
       fragment,
+      inputIndex,
       text: normalizeFragmentText(fragment.text),
     }))
     .filter((item) => item.text.length > 0);
@@ -47,6 +50,10 @@ export function buildSemanticParseRequest(
       const continuationToNext = continuationBetween(
         item.fragment,
         normalizedFragments[index + 1]?.fragment,
+        fragments.slice(
+          item.inputIndex + 1,
+          normalizedFragments[index + 1]?.inputIndex,
+        ),
       );
       return continuationToNext === undefined ? {} : { continuationToNext };
     })(),
@@ -89,31 +96,37 @@ type ScalarContinuation = "none" | "space";
 function continuationBetween(
   left: ResumeSourceFragment,
   right: ResumeSourceFragment | undefined,
+  skipped: readonly ResumeSourceFragment[],
 ): ScalarContinuation | undefined {
   if (right === undefined || left.format !== right.format) return undefined;
-  if (left.location.readingOrder + 1 !== right.location.readingOrder)
+  const physicalSequence = [left, ...skipped, right];
+  if (
+    skipped.some(
+      (fragment) => normalizeFragmentText(fragment.text).length > 0,
+    ) ||
+    !hasContiguousReadingOrder(physicalSequence)
+  )
     return undefined;
 
   if (left.location.kind === "docx_run" && right.location.kind === "docx_run") {
-    if (
-      left.location.packagePart !== right.location.packagePart ||
-      left.location.paragraphIndex !== right.location.paragraphIndex ||
-      left.location.tableIndex !== right.location.tableIndex ||
-      left.location.rowIndex !== right.location.rowIndex ||
-      left.location.cellIndex !== right.location.cellIndex ||
-      left.location.characterOffsetEnd !== right.location.characterOffsetStart
-    ) {
+    if (!isContiguousDocxRunSequence(physicalSequence)) {
       return undefined;
     }
-    return continuationFromExtractedText(left.text, right.text);
+    return continuationFromExtractedText(
+      physicalSequence
+        .slice(0, -1)
+        .map((fragment) => fragment.text)
+        .join(""),
+      right.text,
+    );
   }
 
   if (
     left.location.kind !== "pdf_text_item" ||
     right.location.kind !== "pdf_text_item" ||
     left.location.pageNumber !== right.location.pageNumber ||
-    left.location.itemIndex + 1 !== right.location.itemIndex ||
-    left.location.hasEol !== false
+    left.location.hasEol !== false ||
+    !isIgnorablePdfGap(physicalSequence)
   ) {
     return undefined;
   }
@@ -137,6 +150,55 @@ function continuationBetween(
     return continuationFromExtractedText(left.text, right.text);
   }
   return gap > contactTolerance ? "space" : "none";
+}
+
+function hasContiguousReadingOrder(
+  fragments: readonly ResumeSourceFragment[],
+): boolean {
+  return fragments.every((fragment, index) => {
+    if (index === 0) return true;
+    const previous = fragments[index - 1];
+    return (
+      previous !== undefined &&
+      previous.location.readingOrder + 1 === fragment.location.readingOrder
+    );
+  });
+}
+
+function isContiguousDocxRunSequence(
+  fragments: readonly ResumeSourceFragment[],
+): boolean {
+  return fragments.every((fragment, index) => {
+    if (fragment.location.kind !== "docx_run") return false;
+    const previous = fragments[index - 1];
+    if (previous === undefined) return true;
+    if (previous.location.kind !== "docx_run") return false;
+    return (
+      previous.location.packagePart === fragment.location.packagePart &&
+      previous.location.paragraphIndex === fragment.location.paragraphIndex &&
+      previous.location.tableIndex === fragment.location.tableIndex &&
+      previous.location.rowIndex === fragment.location.rowIndex &&
+      previous.location.cellIndex === fragment.location.cellIndex &&
+      previous.location.characterOffsetEnd ===
+        fragment.location.characterOffsetStart
+    );
+  });
+}
+
+function isIgnorablePdfGap(
+  fragments: readonly ResumeSourceFragment[],
+): boolean {
+  return fragments.every((fragment, index) => {
+    if (fragment.location.kind !== "pdf_text_item") return false;
+    const previous = fragments[index - 1];
+    if (previous === undefined) return true;
+    if (previous.location.kind !== "pdf_text_item") return false;
+    return (
+      previous.location.pageNumber === fragment.location.pageNumber &&
+      previous.location.itemIndex + 1 === fragment.location.itemIndex &&
+      (index === fragments.length - 1 || fragment.location.hasEol === false)
+    );
+  });
 }
 
 function continuationFromExtractedText(

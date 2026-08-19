@@ -114,6 +114,18 @@ describe("grounded split-scalar evidence", () => {
     expect(values(result)).toContain("Senior Backend Engineer");
   });
 
+  it("C: keeps a shortened grounded prefix provenance-valid at the deterministic boundary", () => {
+    const result = canonical({
+      fragments: [{ order: 0, line: 1, text: "Senior Platform Engineer" }],
+      sectionOverrides: {
+        headline: atom("Senior", [ref(1, "Senior")]),
+      },
+    });
+
+    expect(values(result)).toEqual(["Senior"]);
+    expect(result.rejected).toEqual([]);
+  });
+
   it.each([
     [
       "B: two fragments",
@@ -491,6 +503,26 @@ describe("grounded split-scalar evidence", () => {
     expect(result.rejected).toContainEqual(
       expect.objectContaining({ path: ["sections", "headline"] }),
     );
+  });
+
+  it("I: preserves long-form Summary ordered-ref semantics", () => {
+    const result = canonical({
+      fragments: [
+        { order: 0, line: 1, text: "Built reliable platforms." },
+        { order: 1, line: 2, text: "Led distributed teams." },
+      ],
+      sectionOverrides: {
+        summary: atom("Built reliable platforms. Led distributed teams.", [
+          ref(1, "Built reliable platforms."),
+          ref(2, "Led distributed teams."),
+        ]),
+      },
+    });
+
+    expect(values(result)).toEqual([
+      "Built reliable platforms. Led distributed teams.",
+    ]);
+    expect(result.rejected).toEqual([]);
   });
 });
 

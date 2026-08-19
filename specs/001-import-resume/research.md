@@ -518,6 +518,90 @@ Provider request-size evidence changed only because the corrected instructions
 are longer; fragment/response counts and semantic classification did not
 change.
 
+### T258 second consumed live attempt and semantic-completeness correction (2026-08-19)
+
+The second bounded T258 Community import attempt is consumed and classified
+`QUALITY FAIL`. It reused the already live-proven owner OAuth connection, used
+exactly one upload and exactly one primary provider invocation, received HTTP
+2xx plus SSE, first semantic output, `response.completed`, and normal EOF, then
+completed canonicalization as `v2_partial_acceptance`, persisted a draft, and
+reached review. No second invocation or deterministic fallback was observed.
+Privacy-safe timings were approximately 613 ms from upload to provider start,
+2.58 s to response headers, 12.85 s to first semantic output, and 56.59 s total
+provider time. Review contained 63 active draft fields and five warnings.
+Work and Education group retention materially improved over Attempt #1, but
+important role-title, institution, credential, and headline scalars were
+materially incomplete and Summary was rejected. No private value is recorded.
+
+The offline structural trace used only the retained source, persisted review
+shape, and privacy-safe runtime diagnostics. The source produced 165 non-empty
+provider fragments. Affected active Work title values had 6-9 characters and
+affected institution values had 10 characters; repeated short values resolved
+to one or more exact fragments. The provider therefore submitted shortened
+values with evidence proving only those shortened values. Canonicalization did
+not truncate them: it accepted the exact grounded provider value, the V2 draft
+mapper copied that candidate value unchanged, persistence retained it unchanged,
+and the review projection exposed the persisted value unchanged.
+
+For the affected inline Work/Education concepts, the full source text occupied
+multiple same-page, same-baseline, left-to-right PDF text items. Consecutive
+non-empty words were commonly separated by a PDF.js whitespace-only item with
+zero height and no EOL. Request normalization correctly omitted those empty
+items, but continuation discovery still required the surviving items' original
+`itemIndex` and `readingOrder` to differ by exactly one. It therefore advertised
+no continuation edge even though the intervening source items were empty and
+the existing baseline/gap gates passed. This was an extraction/provenance
+boundary defect, not a canonical grounding defect. The correction permits a
+continuation across one or more intervening items only when every intervening
+item normalizes empty, physical item and reading order remain contiguous, page
+and inline geometry remain valid, and no intervening item carries EOL. DOCX
+receives the equivalent same-part/paragraph/cell and contiguous-offset rule for
+whitespace-only runs. Non-empty gaps, wraps, columns, table-scale gaps, page
+changes, vertical transitions, reordered items, and unsupported joins remain
+closed.
+
+Headline is structurally different in this consumed attempt. Its accepted
+55-character value exactly equalled one complete extraction fragment and had
+no canonical or mapper truncation. The remaining source concept crossed a real
+line transition with EOL and a baseline change, so no continuation chain was
+advertised and this correction intentionally does not manufacture one. The
+provider nevertheless returned the grounded partial fragment. The generic
+provider invariant is therefore: identify the complete semantic concept first;
+never shorten, simplify, abbreviate, or select only a prefix/token merely to
+obtain easier evidence; if the complete concept cannot be represented by the
+advertised refs, omit the atom and let canonical required-group semantics fail
+closed. Nuvitae continues to validate only exact grounding and provenance. It
+does not add fuzzy completeness scoring, dictionaries, title/institution
+patterns, or semantic self-validation.
+
+Summary failed independently. Attempt #2's first rejected path was
+`sections.summary`; privacy-safe diagnostics classified the response as
+`other_schema_violation`/`invalid_source_ref_shape`, and canonical validation
+reported `value_not_grounded`. The long-form reconstruction algorithm and
+long-form instruction text had not changed between Attempts #1 and #2; the
+provider emitted a Summary value/ref combination that did not reconstruct
+exactly. The adjacent new scalar-continuation paragraph did not explicitly say
+that it excluded long-form fields, however, so the instruction partition was
+unnecessarily ambiguous. The correction makes the separation explicit:
+Summary, responsibilities, achievements, and project descriptions retain their
+existing ordered long-form refs, do not require `continuationToNext`, and remain
+subject to exact whitespace-normalized reconstruction. No long-form acceptance
+rule or grounding validator is relaxed.
+
+The synthetic regression matrix is privacy-free: (A) complete single-fragment
+title; (B) complete continuation-proven multi-fragment title; (C) grounded
+short prefix, accepted as provenance-valid by deterministic code but explicitly
+forbidden by the provider contract; (D) multi-fragment institution; (E)
+multi-fragment degree/credential; (F) long headline across proven fragments;
+(G) unsupported boundary rejected/omitted rather than shortened; (H) repeated
+text and redundant/alternative refs fail closed; (I) ordered long-form Summary;
+and (J) multiple Work/Education groups with mixed single/split scalars and
+sibling survival. The intended classification delta is limited to safe chains
+previously interrupted only by normalized-empty physical items/runs. T258
+remains unchecked, Tranche 1 remains incomplete, T219 remains blocked, T203
+remains NO-GO, and T246 remains finalized FAILED and immutable. No third live
+attempt is authorized by this record.
+
 ## Decision: Ship Nuvitae Community as the first MVP (product-first, not architecture-first)
 
 **Rationale**: The import→review→confirm journey is implemented and tested, but no real user can complete it today: production wiring registers no AI provider, so uploads terminate at `provider_unavailable`. The highest-value next move is one decisive vertical slice that makes the product promise real for a real user — not continued hardening. Community (self-hosted, Docker-first, free, user's own Codex access) proves the complete AI-powered resume experience with minimal business risk before a hosted commercial edition is built.

@@ -168,6 +168,15 @@ reconstruction succeeds. Continuation metadata is source-owned proof, not
 provider evidence; it never creates synthetic offsets or hashes. Group objects
 do not own evidence records.
 
+A provider-selected scalar must represent the complete semantic source concept;
+it must not be shortened merely to obtain an easier evidence path. This
+semantic-completeness judgment remains provider-owned. Nuvitae owns only the
+deterministic proof boundary: exact source membership, ordered safe
+continuations, reconstruction, typed-value validation, and fail-closed omission
+or rejection. A grounded prefix may therefore be provenance-valid while still
+being product-invalid provider output; deterministic validation must not invent
+the missing concept through fuzzy matching or dictionaries.
+
 ## ExtractedField
 
 Candidate resume value shown during review.

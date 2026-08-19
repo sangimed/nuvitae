@@ -426,19 +426,25 @@ Use this when Docker-managed caches or local service data need a clean state.
 > Community sign-in substitute. The scenarios below describe the required
 > authenticated behavior now available through that boundary.
 
-### Community OAuth callback and real import closure (T258; consumed quality fail)
+### Community OAuth callback and real import closure (T258; two consumed quality fails)
 
-T258 is a Tranche-1 gate, not a replacement for T246 or T235. Its one
-authorized smoke is consumed as a `QUALITY FAIL`: owner auth, cookie-free
-owner-bound OAuth callback, provider-ready state, one upload, one primary
-provider invocation, canonical partial acceptance, and review availability all
-worked, but generic split scalar evidence made Work/Education/headline content
-unusable. The generic evidence-model correction is deterministic/offline only.
-Do not retry, upload again, invoke a provider, or treat this correction as live
-proof without separate authorization. This does not rerun or alter
-finalized-FAILED T246, does not qualify Codex globally, and does not change
-T203's NO-GO. T258 remains unchecked and T235 remains the later full-MVP
-install-to-PDF validation.
+T258 is a Tranche-1 gate, not a replacement for T246 or T235. Two bounded live
+attempts are consumed as `QUALITY FAIL`. Attempt #1 proved owner auth,
+cookie-free owner-bound OAuth callback, provider-ready state, one upload, one
+primary invocation, canonical partial acceptance, and review availability, but
+invalid redundant scalar evidence removed important Work/Education/headline
+content. Attempt #2 reused the proven OAuth connection and again used exactly
+one upload and one invocation; it reached review with 63 active fields and five
+warnings, materially improving Work/Education group retention, but important
+grounded scalars were semantically truncated and Summary was rejected. The
+offline correction preserves strict grounding, restores safe continuations
+across only contiguous normalized-empty extraction items/runs, forbids provider
+semantic shortening, and explicitly separates long-form refs from scalar
+continuation rules. Do not retry, upload again, invoke a provider, or treat the
+correction as live proof without separate explicit authorization. This does not
+rerun or alter finalized-FAILED T246, does not qualify Codex globally, and does
+not change T203's NO-GO. T258 remains unchecked and T235 remains the later
+full-MVP install-to-PDF validation.
 
 ### 0. Manual Entry Draft
 
