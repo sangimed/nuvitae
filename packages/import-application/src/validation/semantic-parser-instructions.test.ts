@@ -98,12 +98,15 @@ describe("Semantic V2 parser instructions", () => {
     );
   });
 
-  it("separates long-form evidence from scalar continuation rules", () => {
+  it("separates long-form grounding from semantic completeness", () => {
     expect(semanticParserInstructions).toContain(
-      "The scalar continuation rule above does not apply to these long-form fields",
+      "A complete concept may occupy all or only part of an extraction fragment",
     );
     expect(semanticParserInstructions).toContain(
-      "Long-form refs remain ordered source evidence and do not require continuationToNext metadata",
+      "A value may cross consecutive fragments only when every crossed boundary is source-proven by continuationToNext",
+    );
+    expect(semanticParserInstructions).toContain(
+      "does not treat fragment shape or your completeness assertion as deterministic proof of the semantic boundary",
     );
   });
 

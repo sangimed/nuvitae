@@ -157,32 +157,33 @@ fuzzy similarity, dictionaries, field-specific title patterns, or semantic
 guessing to decide whether a grounded scalar is conceptually complete.
 
 Semantic V2 long-form fields are Summary, Work responsibilities, Work
-achievements, and project descriptions. Their refs are ordered evidence and are
-not governed by the scalar-continuation rule. A provider long-form value must
-cite complete source fragments in authoritative consecutive order. Multiple
-ordered refs within one fragment are equivalent to one whole-fragment ref only
-when they cover the complete fragment and every gap is whitespace; Nuvitae
-coalesces that proven partition into one canonical evidence record. No other ref
-selection equivalence is implied. Partial-fragment coverage, missing
-intermediate evidence, unsupported ref order, duplicate/overlapping/extra refs,
-repeated text with non-unique provenance, invalid refs, invented characters,
-and any other evidence that cannot prove the submitted complete value remain
-field-level failures; validation never silently truncates the value or invents
-a replacement chain.
+achievements, and project descriptions. Their refs must prove the exact
+submitted textual value; they do not prove semantic completeness merely by
+covering an extraction fragment. A candidate may select all or a strict
+substring of one fragment. Ordered non-overlapping refs within one fragment
+canonicalize equivalently to a single ref for the same region only when omitted
+gaps are normalization-safe whitespace, reconstructed canonical text is
+identical, and provenance identifies the same source region/content. Crossing
+fragments requires authoritative consecutive order, boundary-aligned refs, and
+source-owned `continuationToNext` proof for every crossed boundary. Nuvitae does
+not append unrelated following text or expand across an unsupported boundary.
+Duplicate, overlapping, reordered, invalid, insufficient, non-unique,
+partially grounding, or invented evidence remains a field-level failure.
 
-Semantic acceptance and review eligibility are separate decisions. A value may
-enter ordinary verified review behavior only after complete grounding and
-resolved classification/grouping. A fully grounded value may enter review
-through an explicit review-required state only when no deterministic
-source/provenance evidence proves that the provider materially truncated the
-semantic concept it claims to represent and the remaining uncertainty is a
-bounded classification, grouping, or genuinely ambiguous source boundary. It
-retains provenance and cannot activate automatically. A grounded prefix/subset
-of a deterministically identifiable larger claimed concept is rejected or
-unusable unless existing evidence rules reconstruct the complete value without
-guessing. The same is true for factual/provenance uncertainty, including
-`value_not_grounded`; provider text is not returned as a warning-badged
-suggestion. Confidence is descriptive metadata, not evidence eligibility.
+Grounding and semantic completeness are separate decisions. Completeness is
+`proven_complete` only when deterministic evidence actually proves the full
+semantic boundary, `unknown` when submitted text and unique provenance are
+grounded but the semantic boundary is not provable, and `proven_incomplete`
+only when deterministic evidence positively proves omission. Fragment, line,
+paragraph, page, punctuation, provider assertion, and confidence are not
+semantic-boundary proof. Under the current source model, otherwise grounded
+long-form values are completeness `unknown`, retain semantic provenance and a
+field-bound warning, use `inferred_needs_review`, and cannot activate without
+explicit confirmation. Partial grounding of the submitted value,
+`value_not_grounded`, invented text, invalid refs, non-unique provenance, and
+positively proven semantic omission remain rejected or unusable. Completeness
+unknown is not rejection. Absence of evidence of truncation is not evidence of
+completeness; extraction boundary is not semantic boundary.
 
 This semantic-completeness invariant applies across supported field types even
 though T259 investigates only the long-form evidence boundary. It does not

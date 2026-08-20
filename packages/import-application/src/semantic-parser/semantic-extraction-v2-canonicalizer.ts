@@ -31,6 +31,13 @@ import {
 
 export type V2CanonicalValueKind = "text" | "date" | "link" | "language";
 
+/**
+ * Semantic completeness is independent from textual grounding. SourceRegistry
+ * fragments prove extraction provenance, not semantic-concept boundaries.
+ */
+export type SemanticCompletenessState =
+  "proven_complete" | "unknown" | "proven_incomplete";
+
 export interface V2CanonicalEvidence {
   readonly fragmentId: string;
   readonly fragmentHash: string;
@@ -54,6 +61,7 @@ export interface V2CanonicalSemanticCandidate {
   readonly inferenceStatus: "not_inferred" | "inferred_needs_review";
   readonly reviewStatus: "unreviewed";
   readonly evidence: readonly V2CanonicalEvidence[];
+  readonly semanticCompleteness?: SemanticCompletenessState;
   readonly linkLabel?: string;
 }
 
@@ -131,6 +139,7 @@ interface GroundedAtom {
   readonly normalizedValue: string;
   readonly valueKind: V2CanonicalValueKind;
   readonly evidence: readonly V2CanonicalEvidence[];
+  readonly semanticCompleteness?: SemanticCompletenessState;
   readonly linkLabel?: string;
 }
 
@@ -500,7 +509,8 @@ export function canonicalizeSemanticExtractionV2(input: {
   return {
     ok: true,
     candidates: candidates.map((candidate) =>
-      reviewRequired.has(candidate.fieldPath)
+      reviewRequired.has(candidate.fieldPath) ||
+      candidate.semanticCompleteness === "unknown"
         ? { ...candidate, inferenceStatus: "inferred_needs_review" as const }
         : candidate,
     ),
@@ -953,6 +963,7 @@ function resolveLongFormAtom(
     readonly fragment: (typeof resolved)[number]["fragment"];
     readonly start: number;
     readonly end: number;
+    readonly continuationToNext?: "none" | "space";
   }> = [];
   for (const item of resolved) {
     const previous = canonicalSpans.at(-1);
@@ -964,14 +975,26 @@ function resolveLongFormAtom(
         fragment: previous.fragment,
         start: previous.start,
         end: item.end,
+        ...(previous.continuationToNext === undefined
+          ? {}
+          : { continuationToNext: previous.continuationToNext }),
       };
       continue;
     }
     if (
       previous !== undefined &&
-      item.fragment.order !== previous.fragment.order + 1
+      (item.fragment.order !== previous.fragment.order + 1 ||
+        previous.end !== previous.fragment.text.length ||
+        item.start !== 0 ||
+        previous.fragment.continuationToNext === null)
     ) {
       return { ok: false, code: "ambiguous_source_refs" };
+    }
+    if (previous !== undefined) {
+      canonicalSpans[canonicalSpans.length - 1] = {
+        ...previous,
+        continuationToNext: previous.fragment.continuationToNext ?? "none",
+      };
     }
     canonicalSpans.push({
       fragment: item.fragment,
@@ -980,17 +1003,13 @@ function resolveLongFormAtom(
     });
   }
 
-  if (
-    canonicalSpans.some(
-      (span) => span.start !== 0 || span.end !== span.fragment.text.length,
-    )
-  ) {
-    return { ok: false, code: "materially_truncated_value" };
-  }
-
   const reconstructed = canonicalSpans
-    .map((span) => span.fragment.text)
-    .join(" ");
+    .map((span, index) => {
+      const selected = span.fragment.text.slice(span.start, span.end);
+      if (index === canonicalSpans.length - 1) return selected;
+      return `${selected}${span.continuationToNext === "space" ? " " : ""}`;
+    })
+    .join("");
   if (normalizeSourceText(value) !== normalizeSourceText(reconstructed)) {
     return { ok: false, code: "value_not_grounded" };
   }
@@ -1000,13 +1019,22 @@ function resolveLongFormAtom(
       value: reconstructed,
       normalizedValue: normalizeSourceText(reconstructed),
       valueKind: kind,
-      evidence: canonicalSpans.map((span) => ({
+      // Absence of evidence of truncation is not evidence of completeness.
+      // Extraction boundaries are not semantic boundaries, so the current
+      // source model can ground this value but cannot generically prove the
+      // complete semantic concept (or prove that it was truncated).
+      semanticCompleteness: "unknown",
+      evidence: canonicalSpans.map((span, index) => ({
         fragmentId: span.fragment.fragmentId,
         fragmentHash: span.fragment.hash,
         line: span.fragment.line,
-        start: span.fragment.start,
-        end: span.fragment.start + span.fragment.text.length,
-        quote: span.fragment.text,
+        start: span.fragment.start + span.start,
+        end: span.fragment.start + span.end,
+        quote: span.fragment.text.slice(span.start, span.end),
+        ...(index === canonicalSpans.length - 1 ||
+        span.continuationToNext === undefined
+          ? {}
+          : { continuationToNext: span.continuationToNext }),
       })),
     },
   };
@@ -1255,6 +1283,9 @@ function toCandidate(
     inferenceStatus: "not_inferred",
     reviewStatus: "unreviewed",
     evidence: grounded.evidence,
+    ...(grounded.semanticCompleteness === undefined
+      ? {}
+      : { semanticCompleteness: grounded.semanticCompleteness }),
     ...(grounded.linkLabel === undefined
       ? {}
       : { linkLabel: grounded.linkLabel }),

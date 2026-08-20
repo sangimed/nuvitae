@@ -731,86 +731,81 @@ and does not reopen Tranche 1.
 
 #### T259 implementation decision and deterministic findings
 
-The pre-implementation characterization exposed two independent gaps. First,
-long-form canonicalization accepted any monotonic, non-overlapping ref list
-whose selected quotes reconstructed the submitted value. That admitted skipped
-intermediate fragments and a grounded prefix/subset taken from a larger source
-fragment, so grounding alone could hide material provider truncation. Second,
-Semantic V2 discarded the evidence-to-ambiguity association: all accepted
-candidates were projected as explicit `not_inferred` values, and the draft
-builder discarded inferred candidates before determining whether they could be
-reviewed. The evidence validator and the review state model therefore owned the
-right concepts but were not connected end to end.
+The final architecture audit corrected the original implementation's central
+assumption: a SourceRegistry fragment is an extraction and provenance boundary,
+not a deterministic semantic-concept boundary. Whole-fragment coverage can
+prove where submitted characters came from, but it cannot prove that the
+provider captured the entire Summary, responsibility, achievement, or project
+description. Therefore `fragment completeness != semantic completeness`.
 
-The selected evidence rule is deliberately narrow. A long-form provider value
-must cite one or more complete source fragments in authoritative consecutive
-source order. Multiple ordered refs within the same fragment are equivalent to
-one whole-fragment ref only when their combined span covers that fragment and
-every omitted character between refs is whitespace. Canonicalization coalesces
-that representation into one full-fragment evidence record. This is the only
-alternate representation proved equivalent by the current source registry.
-Exact duplicate refs, overlapping refs, missing intermediate fragments,
-reordered refs, unsupported extra refs, and partial-fragment spans remain
-fail-closed. Redundant evidence is therefore accepted only when it is a genuine
-partition of one complete fragment; duplicate or provenance-broadening
-redundancy is rejected. Normalized-empty PDF/DOCX physical boundaries remain an
-adapter-owned continuation concern and do not alter this long-form rule.
+T259 now separates two questions. Grounding asks whether every submitted
+character reconstructs exactly from valid, ordered, non-overlapping, uniquely
+attributable source evidence. Completeness asks whether the submitted value is
+the entire semantic concept. The current source model answers the first strongly
+but does not generically answer the second. Two durable logical rules follow:
+`absence of evidence of truncation != evidence of completeness` and
+`extraction boundary != semantic boundary`.
 
-The provider remains responsible for selecting the complete claimed semantic
-concept, its exact text, ordered source refs, field classification, group
-ownership, and any bounded ambiguity signal. Nuvitae may resolve those refs,
-verify hashes/coordinates and authoritative order, coalesce a proven complete
-same-fragment partition, reconstruct complete consecutive fragments, derive
-canonical evidence/identity, and associate a valid ambiguity signal with a
-grounded candidate by evidence overlap and existing group paths. It may not
-expand to neighbors, invent text or positions, choose a group, infer
-continuation metadata, or use confidence as evidence.
+Semantic completeness has three states. `proven_complete` requires positive
+deterministic evidence that represents the full semantic boundary;
+`unknown` means the complete submitted text and unique provenance are grounded
+but the concept boundary cannot be proven; and `proven_incomplete` requires
+positive deterministic evidence that the submitted value omits part of its
+claimed concept. Fragment start/end, line, paragraph, page, punctuation,
+capitalization, headings, provider confidence/assertion, another model,
+embeddings, and similarity are not permitted proof. The present SourceRegistry
+has no generic long-form producer for either proven state, which is acceptable.
+It emits no generic `materially_truncated_value` diagnosis based on offsets.
 
-No new candidate state is required. The existing
-`inferred_needs_review`/unreviewed field state, field-bound warning, retained
-canonical semantic provenance, and `confirmed_inference` transition represent
-Category B truthfully. Only the bounded `ambiguous_section`,
-`ambiguous_grouping`, and `ambiguous_role_association` signal kinds may produce
-this state, and only for already fully grounded long-form candidates linked by
-deterministic evidence/group paths. A provenance-bearing review-only candidate
-may create a draft but remains inactive until explicit confirmation or edit.
-The confirmation audit continues to distinguish the original provider value,
-canonical evidence, pre-confirmation state, and user action. Rejected candidates
-never enter this path.
+Long-form grounding accepts an exact selected region inside a fragment. Ordered
+same-fragment refs canonicalize to the same region as a whole ref only when
+they are non-overlapping, omit only normalization-safe whitespace, reconstruct
+identical canonical text, and point to the same source region/content. Crossing
+fragments requires consecutive authoritative source order, edge alignment at
+the crossed boundaries, and source-owned `continuationToNext` metadata; no
+neighboring text or unsupported boundary is appended automatically. Duplicate,
+overlapping, reordered, invalid, insufficient, non-unique, partially grounding,
+or invented evidence remains fail-closed.
 
-The sanitized regression matrix proves complete single-fragment and ordered
-multi-fragment Summary, Work responsibility, Work achievement, and project
-description values; whole-fragment/split-ref equivalence; exact redundancy
-behavior; long multi-sentence reconstruction; mixed-sibling isolation;
-normalized-empty adapter continuity; bounded field/group ambiguity; and
-explicit confirmation. It rejects partial coverage of a longer submitted
-value, a complete-value ref chain with a missing intermediate fragment,
-reordered/duplicate/overlapping/extra/invalid refs, non-unique repeated-text
-provenance, an invented token, and a materially incomplete grounded prefix of a
-deterministically complete fragment. Metamorphic variants prove stability under
-opaque fragment-ID changes and unrelated appended fragments, rejection after
-necessary-evidence removal, authoritative source order, and the inability of
-provider variation to manufacture provenance.
+Category A requires grounded text, deterministic provenance, resolved
+classification/grouping, and completeness `proven_complete`; therefore the
+current generic long-form source model does not manufacture Category A.
+Category B contains grounded, uniquely attributable candidates for which no
+evidence proves factual invalidity or semantic omission and completeness or
+another semantic property remains unknown. Existing
+`inferred_needs_review`, unreviewed state, field-bound warning, semantic
+provenance, and explicit confirmation represent this lifecycle without a new
+persistence state. Category C contains partial grounding of the submitted
+value, invented text, invalid/insufficient refs, non-unique attribution,
+unsupported evidence ambiguity, and only positively proven semantic omission.
+Completeness unknown is not Category C.
 
-Alternatives rejected were fuzzy or semantic matching, confidence thresholds,
-automatic neighboring-fragment expansion, arbitrary multi-ref acceptance,
-warning-badging unsafe text, weakening `value_not_grounded`, extending T258's
-scalar continuation rule, and adding a duplicate review state. All test sources
-and provider responses are independently constructed and sanitized; none encode
-the private T258 source, its wording, identity, layout, offsets, fragment count,
-filename, or live provider response.
+Ownership is explicit. The provider performs semantic understanding and
+proposes the complete semantic value with exact ordered evidence, omitting what
+it cannot safely represent. Nuvitae validates submitted text, provenance,
+grounding, uncertainty, persistence, source-deletion reduction, and audit
+history. The user resolves semantic uncertainty that Nuvitae cannot
+deterministically prove. Provider assertion remains best-effort rather than
+proof.
 
-Docker-only deterministic validation passed 29 test files and 373 tests. This
-includes the 24-case focused T259 suite; existing Semantic V2 contract,
-canonicalization, fidelity, source-registry, mapping, warning, worker, draft,
-review, and confirmation regressions; all 19 T258 split-scalar regressions; PDF
-and DOCX adapter/continuation regressions; and the provider-independent
-sanitized corpus at 337/337 facts with precision, recall, grouping, and evidence
-all 1.000 and inventions 0.000. Contracts, domain, import-application, API, and
-worker typechecks passed. Changed-source ESLint, changed-file Prettier,
-`git diff --check`, and bounded secret/privacy scans passed. No provider, OAuth,
-upload, live Semantic V2 execution, qualification, benchmark gate, or private
-fixture was used.
+The corrected sanitized matrix is C1-C10: embedded complete value; boundary-end
+unknown; grounded prefix unknown; partial submitted-value grounding rejected;
+invented token rejected; equivalent same-region partitions; unrelated following
+text not appended; unsupported cross-fragment expansion rejected; grounded
+semantic ambiguity retained as inactive review-required; and auditable explicit
+confirmation. It also retains the existing Category-C non-bypass,
+candidate-to-draft-to-confirmation, source-deletion, Semantic V2 canonicalizer,
+T258 scalar, PDF/DOCX continuation, and sanitized corpus gates. Corrected
+Docker-only execution passed 29 focused and integration test files with 398
+tests, including the 32-case corrected T259 suite, Category-B lifecycle,
+Category-C non-bypass, review read/confirmation, Semantic V2 canonicalization,
+all 19 T258 scalar cases, PDF/DOCX adapters, worker/API integration, and the
+sanitized 337/337-fact corpus with precision, recall, grouping, and evidence all
+1.000 and inventions 0.000. Contracts, domain, import-application, API, and
+worker typechecks and affected production builds passed, as did changed-source
+ESLint, changed-file Prettier, `git diff --check`, and bounded secret/privacy
+scans. No prior whole-fragment audit result was reused to qualify the corrected
+design.
 
 ## Decision: Ship Nuvitae Community as the first MVP (product-first, not architecture-first)
 

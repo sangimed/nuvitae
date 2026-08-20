@@ -535,50 +535,46 @@ unsupported-language fixtures.
 
 Use only independently constructed sanitized PDF/DOCX source representations
 and deterministic provider-response fixtures. Exercise Summary, Work
-responsibilities, Work achievements, and project descriptions across complete
-single-fragment and ordered multi-fragment evidence; provably equivalent
-evidence representations where the contract supports them; redundant refs;
-partial, missing-intermediate, reordered, malformed, and ambiguous repeated-text
-refs; normalized-empty continuation boundaries; long multi-sentence content;
-and mixed valid/invalid siblings. Add metamorphic variants that rename fragment
-IDs while preserving provenance/content, add unrelated fragments, remove
-necessary evidence, and vary provider ref selection without manufacturing
-provenance.
+responsibilities, Work achievements, and project descriptions with C1-C10:
+an embedded complete value, a value ending at a fragment boundary, a grounded
+prefix with no semantic-boundary proof, partial grounding of the submitted
+value, an invented token, same-region whole/split partitions, unrelated
+following text, unsupported cross-fragment expansion, grounded semantic
+ambiguity, and explicit confirmation. Add metamorphic variants that rename
+fragment IDs while preserving provenance/content, add unrelated fragments,
+remove necessary evidence, and vary provider ref selection without
+manufacturing provenance.
 
-Separately exercise verified grounded values; fully grounded text with
-ambiguous field classification, grouping, or genuinely ambiguous source
-boundary; one invented token; a longer submitted value with only partial
-evidence; a materially shortened submitted prefix/subset whose own characters
-are grounded but whose claimed complete concept is deterministically
-identifiable; invalid refs; repeated text with non-unique provenance; and
+Separately exercise the three completeness states. `proven_complete` and
+`proven_incomplete` require actual deterministic semantic-boundary evidence;
+do not derive them from extraction shape. `unknown` is the expected current
+state when the submitted value and unique provenance are grounded but the
+semantic concept boundary is not provable. Also exercise invalid refs, repeated
+text with non-unique provenance, draft persistence/readback, Category-C
+non-bypass, review-only versus active data, source-deletion reduction, and
 explicit user confirmation of an eligible review-required candidate.
 
-**Expected Outcome**: Complete provably equivalent evidence has one stable
-canonical result when equivalence is deterministically demonstrable. Fully
-grounded semantic uncertainty may remain visibly review-required and inactive
-until explicit user action only when deterministic evidence does not prove
-material truncation of the claimed concept. Both partial evidence for a longer
-submitted value and a materially truncated grounded submitted value remain
-rejected/unusable. Deterministic reconstruction is allowed only when existing
-evidence rules prove the complete value without guessing; otherwise recovery is
-truthfully source-assisted or manual. Invented, invalid, unsupported, or
-provenance-ambiguous values also remain rejected/unusable; provider text is not
-shown as a warning-badged suggestion. No OAuth, provider call, upload, live
-Semantic V2 run, benchmark, or private resume fixture is part of this scenario.
+**Expected Outcome**: Same-region evidence partitions have one stable canonical
+grounding when equivalence is deterministically demonstrable. A strict
+substring is not rejected or called truncated merely because it leaves other
+fragment text unselected. Grounded completeness-unknown candidates remain
+review-required and inactive until explicit user action. Partial grounding of
+the submitted value, invented text, invalid/unsupported refs, non-unique
+provenance, and only positively proven semantic omission remain rejected or
+unusable. No OAuth, provider call, upload, live Semantic V2 run, benchmark, or
+private resume fixture is part of this scenario.
 
-**Implemented deterministic result**: the long-form matrix uses the real
-Summary, Work responsibility, Work achievement, and project-description paths.
-The supported equivalence is a complete fragment cited once versus the same
-complete fragment partitioned into ordered refs separated only by whitespace;
-both produce identical canonical evidence. Complete consecutive fragments pass.
-Partial-fragment values, missing/reordered/duplicate/overlapping/unsupported
-refs, invented content, non-unique provenance, and deterministically incomplete
-grounded prefixes fail closed. Evidence-linked section/group ambiguity retains
-the complete candidate as inactive `inferred_needs_review` with field-bound
-warning and canonical semantic provenance. Explicit confirmation is required
-and audited. The deterministic sanitized corpus and the existing Semantic V2,
-scalar-continuation, PDF/DOCX continuation, mapping, draft, and confirmation
-regressions are the validation boundary; no live smoke is required.
+**Corrected implementation target**: exact submitted text is reconstructed from
+its selected source region. Same-region whole/split refs produce identical
+canonical evidence. Cross-fragment grounding requires source-owned continuation
+proof; no automatic expansion occurs. Current grounded long-form candidates
+carry canonical completeness `unknown` and map to inactive
+`inferred_needs_review` with a field-bound warning and semantic provenance.
+`materially_truncated_value` has no generic fragment-offset producer. Explicit
+confirmation is required and audited. The deterministic sanitized corpus and
+existing Semantic V2, scalar-continuation, PDF/DOCX continuation, mapping,
+draft, confirmation, read-model, and source-deletion regressions remain the
+Docker-only validation boundary; no live smoke is required.
 
 ### 6. Multiple Roles And Ongoing Role
 

@@ -110,6 +110,21 @@ non-unique provenance into reviewable suggestions, nor preserve a materially
 truncated grounded prefix/subset merely because its submitted characters occur
 in the source.
 
+**T259 architecture correction (2026-08-20)**: SourceRegistry fragments are
+extraction/provenance boundaries, not semantic-concept boundaries. T259 uses an
+explicit completeness state of `proven_complete`, `unknown`, or
+`proven_incomplete`. Current deterministic source structures can strongly prove
+the grounding and unique provenance of the submitted text but do not generically
+prove a semantic boundary. Consequently, otherwise valid long-form values are
+completeness `unknown` and review-required; they are neither verified nor
+rejected based on fragment shape. Only positive deterministic semantic-boundary
+evidence may produce either proven state. Absence of evidence of truncation is
+not evidence of completeness, and extraction boundary is not semantic boundary.
+Same-region whole/split refs canonicalize only when they reconstruct identical
+submitted text and provenance; supported cross-fragment reconstruction still
+requires source-owned continuation metadata. No heuristic semantic boundary is
+introduced.
+
 **AI Provider Runtime Constraints**: Provider invocation must be non-interactive from the worker, Docker-compatible, session-isolated per authenticated user/self-hosted installation, and restricted to semantic parsing only. The corrected Codex candidate uses the flow `Nuvitae worker -> ResumeSemanticParserProvider -> CodexDirectProviderAdapter -> isolated CodexOAuthBroker -> OpenAI-hosted OAuth -> direct Codex ChatGPT transport`. The web application, browser storage, import domain, API controllers, regular worker jobs, database domain entities, semantic extraction contracts, logs, and diagnostics remain token-blind. Only the dedicated infrastructure broker may generate PKCE verifier/challenge, generate and validate OAuth state, host a loopback callback, exchange authorization codes, store encrypted access and refresh tokens, refresh access tokens, perform logout/local deletion, expose privacy-safe connection status, execute Codex provider requests, and return provider-neutral results. The spike must compare whether the broker should be a dedicated Docker service, isolated worker-side process, or another bounded infrastructure component before selecting a production topology. Provider states include connected, not configured, login pending, login cancelled, disconnected, authentication expired, authentication revoked, unavailable, rate limited, subscription/quota exceeded, timeout, malformed output, and unsupported capability. Failures map to retry, reconnect, choose another configured provider, limited deterministic partial extraction where available, or manual entry.
 
 **Initial Configurable Resource Limits**: Maximum uploaded file size 10 MB; maximum rendered length 5 pages; maximum foreground processing duration 3 minutes; maximum parser-process memory 512 MiB; maximum per user 1 active processing job and 2 queued processing jobs; maximum 5 upload or processing-start attempts per rolling 10-minute window per authenticated user. Limits must be configurable by environment but must not be disabled in production. Rate or concurrency limit responses reject the operation, return a rate-limit response such as HTTP 429, include `Retry-After` where applicable, and show a plain-language recovery message. Parser memory and timeout enforcement terminate the isolated parser process, clean up files and source-reconstructing artifacts for the failed attempt, and offer retry, replacement upload, and manual-entry recovery. Memory-limit breaches must not create an import review draft from partial output produced before termination.

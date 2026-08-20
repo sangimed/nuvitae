@@ -508,7 +508,12 @@ describe("grounded split-scalar evidence", () => {
   it("I: preserves long-form Summary ordered-ref semantics", () => {
     const result = canonical({
       fragments: [
-        { order: 0, line: 1, text: "Built reliable platforms." },
+        {
+          order: 0,
+          line: 1,
+          text: "Built reliable platforms.",
+          continuationToNext: "space",
+        },
         { order: 1, line: 2, text: "Led distributed teams." },
       ],
       sectionOverrides: {

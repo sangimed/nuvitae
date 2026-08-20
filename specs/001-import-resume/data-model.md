@@ -187,60 +187,65 @@ or `unusable`; fields distinguish `explicit` from `inferred`, support
 confirm/edit/exclude/intentionally-leave actions. Confidence is a separate
 attribute and is not proof of evidence validity.
 
-T259 confirmed that the existing states safely express the distinction; no new
-candidate state is required. A fully grounded long-form candidate linked to a
-bounded classification/grouping ambiguity is projected as
+T259 uses an explicit canonical completeness state of `proven_complete`,
+`unknown`, or `proven_incomplete`. This state is separate from grounding.
+Current SourceRegistry evidence does not generically prove semantic boundaries,
+so a fully grounded long-form candidate is completeness `unknown`, projected as
 `inferred_needs_review`, remains `unreviewed`, retains canonical semantic
-evidence provenance and a field-bound warning, and cannot enter structured data
-until explicit confirmation or edit transitions it to `confirmed_inference`.
-Provenance-bearing review-only candidates may be retained in an import draft;
-location-less inferred values remain ineligible.
+provenance and a field-bound uncertainty warning, and cannot enter structured
+data until explicit confirmation or edit transitions it to
+`confirmed_inference`. The existing persisted review concepts safely retain the
+uncertainty lifecycle; the canonical completeness enum prevents implementation
+reasoning from silently treating fragment coverage as proof. Provenance-bearing
+review-only candidates may be retained in an import draft; location-less
+inferred values remain ineligible.
 
 The product boundary has three categories:
 
-1. **Verified candidate**: the complete textual value, canonical evidence, and
-   provenance are deterministically valid, and classification/grouping is
-   sufficiently resolved. Existing import rules may keep the field active.
-2. **Grounded review-required candidate**: the complete candidate text and its
-   provenance are deterministically grounded; no deterministic source/provenance
-   evidence establishes that the provider materially truncated the semantic
-   concept it claims to represent; and only a bounded classification, grouping,
-   or genuinely ambiguous source boundary remains unresolved. The field stays
+1. **Verified candidate**: the submitted textual value and provenance are
+   deterministically grounded, classification/grouping is resolved, and
+   semantic completeness is positively `proven_complete`. Fragment coverage,
+   confidence, or provider assertion cannot supply that proof.
+2. **Grounded review-required candidate**: every submitted character and its
+   provenance are deterministically grounded and unique; no deterministic
+   evidence proves factual invalidity or material omission; and completeness is
+   `unknown` or another bounded classification/grouping property is unresolved.
+   The field stays
    visibly distinct, retains provenance, never auto-activates or silently
    upgrades, and requires explicit user confirmation or correction. Provider
    proposal, evidence, and user action remain auditable separately.
-3. **Rejected or unusable candidate**: any part of the value is ungrounded or
+3. **Rejected or unusable candidate**: any part of the submitted value is ungrounded or
    invented; refs are invalid, incomplete, or unable to prove the submitted
    value; provenance is non-unique; ambiguity prevents deterministic
-   attribution; or deterministic evidence proves that the grounded provider
-   value is a materially truncated prefix/subset of its claimed semantic
-   concept. The provider value stays outside the review field set. Existing
+   attribution; or independent deterministic evidence positively establishes
+   completeness `proven_incomplete`. Remaining text in an extraction fragment
+   alone does not establish that state. The provider value stays outside the review field set. Existing
    deterministic evidence rules may reconstruct a complete value only when
    they prove it without guessing; otherwise a warning may offer manual entry
    or safe source-assisted recovery, but must not launder the provider text into
    a suggestion.
 
-This invariant is field-generic: fully grounded is necessary but not sufficient
-for review-required eligibility. It does not reopen T258's completed scalar
-implementation or extend T259 beyond long-form evidence. A genuinely ambiguous
-source boundary is different from a deterministically known omission; only a
-bounded, evidence-linked ambiguity may use the existing review-required state.
+This invariant is field-generic: grounding and semantic completeness are
+orthogonal. Absence of evidence of truncation is not evidence of completeness,
+and an extraction boundary is not a semantic boundary. It does not reopen
+T258's completed scalar implementation or extend T259 beyond long-form
+evidence.
 
 `value_not_grounded` is Category 3, not a low-confidence Category 2 shortcut.
 The T258 Attempt #3 Summary therefore remains rejected under current evidence.
-T259 may change a future outcome only by deterministically proving complete
-source evidence; it may not reinterpret the historical attempt or weaken the
-failure code.
+T259 may change a future outcome only by independently grounding the submitted
+value and classifying its semantic completeness honestly; it may not reinterpret
+the historical attempt or weaken `value_not_grounded`.
 
 ## ExtractedField
 
 Candidate resume value shown during review.
 
-**Fields**: `id`, `importDraftId`, `semanticParseAttemptId`, `evidenceRecordId`, `section`, `fieldPath`, `value`, `normalizedValue`, `sourceStatus`, `sourceLocation`, `sourceFragmentId`, `confidenceStatus`, `classificationStatus`, `inferenceStatus`, `reviewStatus`, `warningId`, `createdAt`, `updatedAt`.
+**Fields**: `id`, `importDraftId`, `semanticParseAttemptId`, `evidenceRecordId`, `section`, `fieldPath`, `value`, `normalizedValue`, `sourceStatus`, `sourceLocation`, `sourceFragmentId`, `confidenceStatus`, `classificationStatus`, `inferenceStatus`, `reviewStatus`, `warningId`, `createdAt`, `updatedAt`. Canonicalization evaluates `semanticCompleteness` before draft mapping; the existing persisted inferred status plus field-bound warning carries current `unknown` into review without a new database state.
 
 **Relationships**: Belongs to one `ImportDraft`; may be linked to one `ImportWarning`; may be superseded by `UserCorrection`.
 
-**Validation Rules**: Supported sections are personal/contact information, professional headline, summary, work experience, education, skills, languages, projects, certifications, and professional links. Source location exists only while the source document exists. PDF source locations include page number and text-item geometry. DOCX source locations include package part plus paragraph/table/cell/run indexes and character offsets; rendered DOCX coordinates are not guaranteed. Confidence status values are `high`, `medium`, `low`, and `not_applicable`; low confidence means extraction can associate a value with document evidence but cannot reliably classify the field, date meaning, section, role association, semantic grouping, duplicate, or conflict without review. Classification status records explicit versus inferred. Semantic grouping, ambiguous date interpretation, section classification, and work-experience association by inference require review only when the complete field value and provenance are independently valid and no deterministic evidence proves material semantic truncation. Skills must not be inferred from titles, responsibilities, seniority, metrics, or relationships. Ungrounded, partially grounded, invented, invalid-ref, provenance-ambiguous, or deterministically truncated provider values are not eligible `ExtractedField` records.
+**Validation Rules**: Supported sections are personal/contact information, professional headline, summary, work experience, education, skills, languages, projects, certifications, and professional links. Source location exists only while the source document exists. PDF source locations include page number and text-item geometry. DOCX source locations include package part plus paragraph/table/cell/run indexes and character offsets; rendered DOCX coordinates are not guaranteed. Confidence status values are `high`, `medium`, `low`, and `not_applicable`; low confidence means extraction can associate a value with document evidence but cannot reliably classify the field, date meaning, section, role association, semantic grouping, duplicate, or conflict without review. Classification status records explicit versus inferred. Long-form semantic completeness uses `proven_complete`, `unknown`, or `proven_incomplete`; only positive deterministic semantic-boundary evidence may produce a proven state. Completeness `unknown` requires review but remains eligible when submitted text and provenance are fully valid. Skills must not be inferred from titles, responsibilities, seniority, metrics, or relationships. Ungrounded, partially grounded, invented, invalid-ref, provenance-ambiguous, or deterministically proven-incomplete provider values are not eligible `ExtractedField` records.
 
 **State Transitions**: `unreviewed` -> `confirmed`, `edited`, `excluded`, or `intentionally_left`; all warnings must leave `unreviewed` before structured resume confirmation.
 

@@ -443,7 +443,12 @@ describe("semantic-extraction.v2 canonicalization", () => {
 
   it("accepts duplicate summary phrases when each sourceRef anchors its own fragment", () => {
     const summaryRegistry = createSourceRegistry([
-      { order: 0, line: 1, text: "Reliable platform delivery." },
+      {
+        order: 0,
+        line: 1,
+        text: "Reliable platform delivery.",
+        continuationToNext: "space",
+      },
       { order: 1, line: 2, text: "Reliable platform delivery." },
     ]);
     const result = canonicalizeSemanticExtractionV2({
@@ -581,11 +586,17 @@ describe("semantic-extraction.v2 canonicalization", () => {
 
   it("reconstructs a complete summary from ordered supporting fragments", () => {
     const summaryRegistry = createSourceRegistry([
-      { order: 0, line: 1, text: "I build dependable platform systems." },
+      {
+        order: 0,
+        line: 1,
+        text: "I build dependable platform systems.",
+        continuationToNext: "space",
+      },
       {
         order: 1,
         line: 2,
         text: "I lead teams through complex migrations with measurable results.",
+        continuationToNext: "space",
       },
       {
         order: 2,
@@ -639,7 +650,12 @@ describe("semantic-extraction.v2 canonicalization", () => {
 
   it("rejects a long-form value that omits a grounded source fragment", () => {
     const longFormRegistry = createSourceRegistry([
-      { order: 0, line: 1, text: "First complete sentence." },
+      {
+        order: 0,
+        line: 1,
+        text: "First complete sentence.",
+        continuationToNext: "space",
+      },
       { order: 1, line: 2, text: "Second complete sentence." },
     ]);
     const result = canonicalizeSemanticExtractionV2({

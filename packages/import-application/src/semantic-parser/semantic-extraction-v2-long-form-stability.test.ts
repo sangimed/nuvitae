@@ -18,6 +18,7 @@ interface FragmentFixture {
   readonly order: number;
   readonly line: number;
   readonly text: string;
+  readonly continuationToNext?: "none" | "space" | null;
 }
 
 const document: ImportedDocument = {
@@ -109,19 +110,29 @@ function summaryCandidate(
 }
 
 describe("T259 long-form evidence stability", () => {
-  it("accepts a complete single-fragment Summary", () => {
+  it("C1 grounds a complete value embedded in a larger extraction fragment as review-required", () => {
     const value =
       "Builds resilient services and documents operational decisions.";
     const result = canonical({
-      fragments: [{ order: 0, line: 1, text: value }],
+      fragments: [
+        {
+          order: 0,
+          line: 1,
+          text: `Profile ${value} Unrelated contact details`,
+        },
+      ],
       sectionOverrides: { summary: atom(value, [ref(1, value)]) },
     });
 
     expect(summaryCandidate(result)?.value).toBe(value);
+    expect(summaryCandidate(result)).toMatchObject({
+      semanticCompleteness: "unknown",
+      inferenceStatus: "inferred_needs_review",
+    });
     expect(result.rejected).toEqual([]);
   });
 
-  it("accepts an ordered multi-fragment long-form value", () => {
+  it("accepts an ordered source-proven multi-fragment long-form value", () => {
     const parts = [
       "Designed a fault-tolerant ingestion path.",
       "Added deterministic recovery and clear runbooks.",
@@ -132,6 +143,7 @@ describe("T259 long-form evidence stability", () => {
         order,
         line: order + 1,
         text,
+        continuationToNext: order === parts.length - 1 ? null : "space",
       })),
       sectionOverrides: {
         summary: atom(
@@ -173,7 +185,7 @@ describe("T259 long-form evidence stability", () => {
     );
   });
 
-  it("rejects a materially shortened grounded prefix of one source fragment", () => {
+  it("C3 grounds a prefix without claiming completeness or material truncation", () => {
     const complete =
       "Led the migration from discovery through rollout and documented recovery procedures.";
     const prefix = "Led the migration from discovery through rollout";
@@ -182,13 +194,15 @@ describe("T259 long-form evidence stability", () => {
       sectionOverrides: { summary: atom(prefix, [ref(1, prefix)]) },
     });
 
-    expect(summaryCandidate(result)).toBeUndefined();
-    expect(result.rejected).toContainEqual(
-      expect.objectContaining({ code: "materially_truncated_value" }),
-    );
+    expect(summaryCandidate(result)).toMatchObject({
+      value: prefix,
+      semanticCompleteness: "unknown",
+      inferenceStatus: "inferred_needs_review",
+    });
+    expect(result.rejected).toEqual([]);
   });
 
-  it("rejects partial evidence for a longer submitted value", () => {
+  it("C4 rejects partial grounding of the submitted value", () => {
     const result = canonical({
       fragments: [{ order: 0, line: 1, text: "Grounded first sentence." }],
       sectionOverrides: {
@@ -202,6 +216,97 @@ describe("T259 long-form evidence stability", () => {
     expect(result.rejected).toContainEqual(
       expect.objectContaining({ code: "value_not_grounded" }),
     );
+  });
+
+  it("C5 rejects an invented token", () => {
+    const grounded = "Grounded source sentence.";
+    const result = canonical({
+      fragments: [{ order: 0, line: 1, text: grounded }],
+      sectionOverrides: {
+        summary: atom(`${grounded} Fabricated`, [ref(1, grounded)]),
+      },
+    });
+
+    expect(summaryCandidate(result)).toBeUndefined();
+    expect(result.rejected).toContainEqual(
+      expect.objectContaining({ code: "value_not_grounded" }),
+    );
+  });
+
+  it.each([
+    {
+      label: "value_not_grounded",
+      fragments: [{ order: 0, line: 1, text: "Grounded text." }],
+      value: "Different submitted text.",
+      refs: [ref(1, "Grounded text.")],
+      code: "value_not_grounded",
+    },
+    {
+      label: "partial submitted-value grounding",
+      fragments: [{ order: 0, line: 1, text: "Grounded prefix." }],
+      value: "Grounded prefix. Unsupported suffix.",
+      refs: [ref(1, "Grounded prefix.")],
+      code: "value_not_grounded",
+    },
+    {
+      label: "invented token",
+      fragments: [{ order: 0, line: 1, text: "Grounded narrative." }],
+      value: "Grounded narrative. Invented",
+      refs: [ref(1, "Grounded narrative.")],
+      code: "value_not_grounded",
+    },
+    {
+      label: "invalid ref",
+      fragments: [{ order: 0, line: 1, text: "Grounded narrative." }],
+      value: "Grounded narrative.",
+      refs: [ref("missing", "Grounded narrative.")],
+      code: "source_fragment_not_found",
+    },
+    {
+      label: "non-unique provenance",
+      fragments: [
+        {
+          order: 0,
+          line: 1,
+          text: "Repeated narrative. Repeated narrative.",
+        },
+      ],
+      value: "Repeated narrative.",
+      refs: [ref(1, "Repeated narrative.")],
+      code: "quote_ambiguous_within_fragment",
+    },
+  ])("keeps Category C $label out of draft and review state", (scenario) => {
+    const result = canonical({
+      fragments: scenario.fragments,
+      sectionOverrides: {
+        summary: atom(scenario.value, scenario.refs),
+      },
+    });
+    const mapped = mapSemanticV2CandidatesToDraft({
+      candidates: result.candidates,
+      rejected: result.rejected,
+      signals: result.signals,
+      document,
+    });
+    const built = buildExtractionDraft({
+      importedDocument: document,
+      fields: mapped.fields,
+      warnings: mapped.warnings,
+      missingOrUnprocessedSections: [],
+      ids: {
+        draftId: () => "20000000-0000-4000-8000-000000000099",
+        fieldId: () => "30000000-0000-4000-8000-000000000099",
+        warningId: () => "40000000-0000-4000-8000-000000000099",
+      },
+      now: new Date("2026-08-20T08:05:00.000Z"),
+    });
+
+    expect(result.rejected).toContainEqual(
+      expect.objectContaining({ code: scenario.code }),
+    );
+    expect(mapped.fields).toEqual([]);
+    expect(built.category).toBe("no_supported_field");
+    expect(built.draft).toBeUndefined();
   });
 
   it("keeps malformed long-form evidence field-bounded from valid siblings", () => {
@@ -304,10 +409,12 @@ describe("T259 long-form evidence stability", () => {
     ]);
   });
 
-  it("canonicalizes provably equivalent whole and split refs to identical evidence", () => {
+  it("C6 canonicalizes valid whole and split refs for the same embedded region", () => {
     const value =
       "Plans durable migrations and publishes clear recovery guidance.";
-    const fragments = [{ order: 0, line: 1, text: value }];
+    const fragments = [
+      { order: 0, line: 1, text: `Summary: ${value} Skills: TypeScript` },
+    ];
     const whole = canonical({
       fragments,
       sectionOverrides: { summary: atom(value, [ref(1, value)]) },
@@ -323,6 +430,23 @@ describe("T259 long-form evidence stability", () => {
     });
 
     expect(summaryCandidate(split)).toEqual(summaryCandidate(whole));
+  });
+
+  it("C2 treats a value ending at a fragment boundary as neither complete nor truncated", () => {
+    const value = "Grounded narrative ending at this extraction boundary.";
+    const result = canonical({
+      fragments: [
+        { order: 0, line: 1, text: value },
+        { order: 1, line: 2, text: "Following fragment of unknown relation." },
+      ],
+      sectionOverrides: { summary: atom(value, [ref(1, value)]) },
+    });
+
+    expect(summaryCandidate(result)).toMatchObject({
+      semanticCompleteness: "unknown",
+      inferenceStatus: "inferred_needs_review",
+    });
+    expect(result.rejected).toEqual([]);
   });
 
   it.each([
@@ -410,7 +534,7 @@ describe("T259 long-form evidence stability", () => {
         ref(1, "Complete source narrative."),
         ref(2, "Unrelated appendix text."),
       ],
-      "value_not_grounded",
+      "ambiguous_source_refs",
     ],
   ])("rejects %s", (_label, refs, code) => {
     const result = canonical({
@@ -520,7 +644,7 @@ describe("T259 long-form evidence stability", () => {
     expect(project(run("opaque-alpha"))).toEqual(project(run("opaque-beta")));
   });
 
-  it("preserves a valid outcome when unrelated fragments are appended", () => {
+  it("C7 does not append unrelated text after a selected substring", () => {
     const value = "Maintains stable evidence under unrelated source growth.";
     const base = canonical({
       fragments: [{ order: 0, line: 1, text: value }],
@@ -537,7 +661,26 @@ describe("T259 long-form evidence stability", () => {
     expect(summaryCandidate(extended)).toEqual(summaryCandidate(base));
   });
 
-  it("marks grounded group ambiguity review-required without changing its text", () => {
+  it("C8 rejects unsupported cross-fragment expansion", () => {
+    const first = "First grounded span.";
+    const second = "Second grounded span.";
+    const result = canonical({
+      fragments: [
+        { order: 0, line: 1, text: first },
+        { order: 1, line: 2, text: second },
+      ],
+      sectionOverrides: {
+        summary: atom(`${first} ${second}`, [ref(1, first), ref(2, second)]),
+      },
+    });
+
+    expect(summaryCandidate(result)).toBeUndefined();
+    expect(result.rejected).toContainEqual(
+      expect.objectContaining({ code: "ambiguous_source_refs" }),
+    );
+  });
+
+  it("C9 keeps semantic ambiguity plus complete textual grounding in Category B", () => {
     const responsibility =
       "Owned release coordination across two service teams.";
     const result = canonical({
@@ -631,10 +774,18 @@ describe("T259 long-form evidence stability", () => {
     );
 
     expect(firstCandidate?.inferenceStatus).toBe("inferred_needs_review");
-    expect(secondCandidate?.inferenceStatus).toBe("not_inferred");
+    expect(secondCandidate?.inferenceStatus).toBe("inferred_needs_review");
+    expect(
+      result.signals.find((signal) => signal.kind === "ambiguous_grouping")
+        ?.affectedFieldPaths,
+    ).toContain(firstCandidate?.fieldPath);
+    expect(
+      result.signals.find((signal) => signal.kind === "ambiguous_grouping")
+        ?.affectedFieldPaths,
+    ).not.toContain(secondCandidate?.fieldPath);
   });
 
-  it("records explicit confirmation without replacing proposal or evidence", () => {
+  it("C10 records explicit confirmation without replacing proposal, uncertainty, or evidence", () => {
     const value = "Coordinates incident learning across service teams.";
     const result = canonical({
       fragments: [

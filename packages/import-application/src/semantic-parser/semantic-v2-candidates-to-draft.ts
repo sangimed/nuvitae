@@ -61,9 +61,26 @@ export function mapSemanticV2CandidatesToDraft(input: {
   const warnings = [
     ...input.rejected.map(rejectedWarning),
     ...input.signals.flatMap(signalWarning),
+    ...input.candidates.flatMap(semanticCompletenessWarning),
     ...(input.completenessDiagnostics ?? []).flatMap(completenessWarning),
   ];
   return { fields, warnings };
+}
+
+function semanticCompletenessWarning(
+  candidate: V2CanonicalSemanticCandidate,
+): readonly DeterministicWarningCandidate[] {
+  if (candidate.semanticCompleteness !== "unknown") return [];
+  return [
+    {
+      warningType: "ambiguous",
+      section: sectionForFieldPath(candidate.fieldPath),
+      fieldPath: draftFieldPath(candidate.fieldPath),
+      message:
+        "The submitted text is grounded, but semantic completeness could not be deterministically proven and needs review.",
+      requiresResolution: true,
+    },
+  ];
 }
 
 function toField(
