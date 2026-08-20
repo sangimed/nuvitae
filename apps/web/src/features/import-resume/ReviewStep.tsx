@@ -13,6 +13,7 @@ import {
   sendReviewMutation,
 } from "../../services/import-resume/review-client";
 import { ConfirmationStep } from "./ConfirmationStep";
+import { needsExplicitConfirmation } from "./actionable-review-items";
 import { ErrorSummary } from "./ErrorSummary";
 import { FieldProvenance } from "./FieldProvenance";
 import {
@@ -515,13 +516,6 @@ function ReviewFieldRow(props: {
         </>
       )}
     </article>
-  );
-}
-
-function needsExplicitConfirmation(field: ReviewField): boolean {
-  return (
-    field.inferenceStatus === "inferred_needs_review" &&
-    field.reviewStatus === "unreviewed"
   );
 }
 

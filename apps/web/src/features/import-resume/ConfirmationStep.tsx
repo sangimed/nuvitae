@@ -13,9 +13,9 @@ import {
   createDiscardRequest,
   discardImportDraft,
 } from "../../services/import-resume/draft-lifecycle-client";
+import { actionableReviewItems } from "./actionable-review-items";
 import { ErrorSummary } from "./ErrorSummary";
 import { focusErrorSummary } from "./focus-management";
-import { reviewSectionLabel } from "./review-labels";
 
 export function ConfirmationStep(props: {
   readonly importId: string;
@@ -42,9 +42,9 @@ export function ConfirmationStep(props: {
     previousErrorRef.current = error;
   }, [error]);
 
-  const unresolvedSections = props.draft.sections.filter((section) =>
-    section.warnings.some((warning) => warning.reviewStatus === "needs_review"),
-  );
+  const actionableItems = actionableReviewItems(props.draft);
+  const readyForConfirmation =
+    props.draft.readyToConfirm && actionableItems.length === 0;
 
   async function runConfirmation() {
     if (pending) return;
@@ -108,7 +108,7 @@ export function ConfirmationStep(props: {
       <div role="status" aria-live="polite" aria-atomic="true">
         {pending ? message : message}
       </div>
-      {props.draft.readyToConfirm ? (
+      {readyForConfirmation ? (
         <div className="message message-success">
           <p>
             This creates a new resume from the valid information you have kept.
@@ -135,18 +135,15 @@ export function ConfirmationStep(props: {
         <div className="message" aria-labelledby="blocked-confirmation-title">
           <h3 id="blocked-confirmation-title">Review remaining details</h3>
           <p>
-            {props.draft.unresolvedWarningCount === 1
+            {actionableItems.length === 1
               ? "1 detail still needs your attention."
-              : `${props.draft.unresolvedWarningCount} details still need your attention.`}{" "}
+              : `${actionableItems.length} details still need your attention.`}{" "}
             Review these items before creating your resume.
           </p>
           <div className="action-row">
-            {unresolvedSections.map((section) => (
-              <a
-                key={section.section}
-                href={`#${section.section}-review-heading`}
-              >
-                Review {reviewSectionLabel(section.section, section.label)}
+            {actionableItems.map((item) => (
+              <a key={item.key} href={item.href}>
+                Review {item.label}
               </a>
             ))}
           </div>

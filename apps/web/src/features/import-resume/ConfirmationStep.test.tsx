@@ -4,7 +4,12 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import type { Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ReviewDraftReadResponse } from "@nuvitae/contracts";
+import type {
+  ReviewDraftReadResponse,
+  ReviewField,
+  ReviewWarning,
+} from "@nuvitae/contracts";
+import { actionableReviewItems } from "./actionable-review-items";
 import { ConfirmationStep } from "./ConfirmationStep";
 
 (
@@ -81,10 +86,6 @@ function renderStep(currentDraft = draft) {
       />,
     ),
   );
-}
-
-function renderStepWith(currentDraft: ReviewDraftReadResponse) {
-  renderStep(currentDraft);
 }
 
 function button(name: string): HTMLButtonElement {
@@ -219,7 +220,7 @@ describe("ConfirmationStep accessible dialogs (T063)", () => {
   });
 
   it("explains remaining review work without internal blocking language", () => {
-    renderStepWith({
+    renderStep({
       ...draft,
       readyToConfirm: false,
       unresolvedWarningCount: 1,
@@ -258,4 +259,165 @@ describe("ConfirmationStep accessible dialogs (T063)", () => {
     expect(container.textContent).not.toContain("Confirmation is blocked");
     expect(container.textContent).not.toMatch(/needs_review|review_required/);
   });
+
+  it("keeps an unconfirmed Category-B field visible when no warning remains", () => {
+    const fieldId = "55555555-5555-4555-8555-555555555555";
+    const field = reviewRequiredField(
+      fieldId,
+      "summary",
+      "A grounded summary.",
+    );
+    const pendingDraft: ReviewDraftReadResponse = {
+      ...draft,
+      readyToConfirm: false,
+      unresolvedWarningCount: 0,
+      sections: [
+        {
+          section: "summary",
+          label: "summary",
+          fields: [field],
+          warnings: [],
+          allowedActions: ["add", "exclude"],
+        },
+      ],
+    };
+
+    renderStep(pendingDraft);
+
+    expect(container.textContent).toContain(
+      "1 detail still needs your attention",
+    );
+    expect(container.textContent).toContain("Review Professional summary");
+    expect(container.textContent).not.toContain("Create my resume");
+    expect(container.textContent).not.toContain(
+      "Your imported information is ready",
+    );
+    expect(
+      container.querySelector(`a[href="#${fieldId}-label"]`),
+    ).not.toBeNull();
+
+    renderStep({
+      ...pendingDraft,
+      readyToConfirm: true,
+      sections: [
+        {
+          ...pendingDraft.sections[0],
+          fields: [
+            {
+              ...field,
+              inferenceStatus: "confirmed_inference",
+              reviewStatus: "confirmed",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(container.textContent).toContain(
+      "This creates a new resume from the valid information you have kept.",
+    );
+    expect(container.textContent).toContain("Create my resume");
+    expect(container.textContent).not.toContain("Review remaining details");
+  });
+
+  it("counts the smallest mixed blocker matrix by persisted identity", () => {
+    const fieldId = "55555555-5555-4555-8555-555555555555";
+    const warningId = "66666666-6666-4666-8666-666666666666";
+    const unrelatedWarningId = "77777777-7777-4777-8777-777777777777";
+    const field = reviewRequiredField(
+      fieldId,
+      "summary",
+      "A grounded summary.",
+    );
+    const warning = reviewWarning(warningId, "summary");
+    const unrelatedWarning = reviewWarning(unrelatedWarningId, "headline");
+    const withReviewState = (
+      fields: ReviewField[],
+      warnings: ReviewWarning[],
+      readyToConfirm = false,
+    ): ReviewDraftReadResponse => ({
+      ...draft,
+      readyToConfirm,
+      unresolvedWarningCount: warnings.length,
+      sections: [
+        {
+          section: "summary",
+          label: "summary",
+          fields,
+          warnings,
+          allowedActions: ["add", "exclude"],
+        },
+      ],
+    });
+
+    expect(actionableReviewItems(withReviewState([], [warning]))).toHaveLength(
+      1,
+    );
+    expect(actionableReviewItems(withReviewState([field], []))).toHaveLength(1);
+    expect(
+      actionableReviewItems(
+        withReviewState([{ ...field, inferenceStatus: "not_inferred" }], []),
+      ),
+    ).toHaveLength(0);
+    expect(
+      actionableReviewItems(
+        withReviewState([{ ...field, warningIds: [warningId] }], [warning]),
+      ),
+    ).toHaveLength(1);
+    expect(
+      actionableReviewItems(withReviewState([field], [unrelatedWarning])),
+    ).toHaveLength(2);
+    expect(
+      actionableReviewItems(
+        withReviewState(
+          [
+            {
+              ...field,
+              inferenceStatus: "confirmed_inference",
+              reviewStatus: "confirmed",
+            },
+          ],
+          [{ ...warning, reviewStatus: "confirmed" }],
+          true,
+        ),
+      ),
+    ).toHaveLength(0);
+  });
 });
+
+function reviewRequiredField(
+  fieldId: string,
+  fieldPath: string,
+  value: string,
+): ReviewField {
+  return {
+    fieldId,
+    fieldPath,
+    value: { kind: "text", value },
+    sourceStatus: "inferred",
+    confidenceStatus: "high",
+    inferenceStatus: "inferred_needs_review",
+    reviewStatus: "unreviewed",
+    provenance: {
+      kind: "inferred",
+      needsConfirmation: true,
+      original: { kind: "pdf", pageNumber: 1 },
+    },
+    warningIds: [],
+    allowedActions: ["confirm", "edit", "remove"],
+  };
+}
+
+function reviewWarning(warningId: string, fieldPath: string): ReviewWarning {
+  return {
+    warningId,
+    warningType: "ambiguous",
+    section: "summary",
+    fieldPath,
+    message: "Please review this detail.",
+    severity: "needs_attention",
+    reviewStatus: "needs_review",
+    requiresResolution: true,
+    allowedActions: ["confirm", "edit", "exclude", "intentionally_leave"],
+  };
+}
