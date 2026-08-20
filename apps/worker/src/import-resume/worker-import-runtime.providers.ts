@@ -49,6 +49,10 @@ import {
   WORKER_IMPORT_RESUME_REPOSITORY,
   WORKER_PERSISTENCE_TRANSACTION_RUNNER,
 } from "../persistence/worker-persistence.module.js";
+import {
+  readWorkerPrivateRuntimeConfig,
+  type WorkerPrivateRuntimeConfig,
+} from "./private-runtime.config.js";
 
 export const WORKER_IMPORT_PROCESSING_LIMITS = Symbol(
   "WORKER_IMPORT_PROCESSING_LIMITS",
@@ -67,6 +71,9 @@ export const WORKER_PROVIDER_CONNECTION_REPOSITORY = Symbol(
 );
 export const WORKER_PROVIDER_SESSION_STORE = Symbol(
   "WORKER_PROVIDER_SESSION_STORE",
+);
+export const WORKER_PRIVATE_RUNTIME_CONFIG = Symbol(
+  "WORKER_PRIVATE_RUNTIME_CONFIG",
 );
 
 /**
@@ -155,6 +162,11 @@ const logger = importEventEmitter;
 
 export const workerImportRuntimeProviders: Provider[] = [
   {
+    provide: WORKER_PRIVATE_RUNTIME_CONFIG,
+    useFactory: (): WorkerPrivateRuntimeConfig =>
+      readWorkerPrivateRuntimeConfig(),
+  },
+  {
     provide: WORKER_IMPORT_CLOCK,
     useValue: { now: () => new Date() },
   },
@@ -189,15 +201,13 @@ export const workerImportRuntimeProviders: Provider[] = [
   },
   {
     provide: WORKER_PRIVATE_IMPORT_STORAGE,
-    useFactory: async () =>
+    useFactory: async (config: WorkerPrivateRuntimeConfig) =>
       await LocalPrivateImportStorage.create({
-        root: requireEnv("NUVITAE_PRIVATE_STORAGE_ROOT"),
-        signingSecret: requireEnv("NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET"),
-        maxSignedReferenceTtlSeconds: Number(
-          process.env
-            .NUVITAE_PRIVATE_STORAGE_MAX_SIGNED_REFERENCE_TTL_SECONDS ?? "300",
-        ),
+        root: config.privateStorageRoot,
+        signingSecret: config.privateStorageSigningSecret,
+        maxSignedReferenceTtlSeconds: config.maxSignedReferenceTtlSeconds,
       }),
+    inject: [WORKER_PRIVATE_RUNTIME_CONFIG],
   },
   {
     provide: WORKER_PRIVATE_SOURCE_READER,
@@ -280,16 +290,13 @@ export const workerImportRuntimeProviders: Provider[] = [
   },
   {
     provide: WORKER_PROVIDER_SESSION_STORE,
-    useFactory: async () =>
+    useFactory: async (config: WorkerPrivateRuntimeConfig) =>
       await LocalProviderSessionStorage.create({
-        root: requireEnv("NUVITAE_PROVIDER_SESSION_ROOT"),
-        encryptionSecret: requireEnv(
-          "NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET",
-        ),
-        maxSessionBytes: Number(
-          process.env.NUVITAE_PROVIDER_SESSION_MAX_BYTES ?? "65536",
-        ),
+        root: config.providerSessionRoot,
+        encryptionSecret: config.providerSessionEncryptionSecret,
+        maxSessionBytes: config.maxProviderSessionBytes,
       }),
+    inject: [WORKER_PRIVATE_RUNTIME_CONFIG],
   },
   {
     provide: WORKER_IMPORT_EXTRACTION_USE_CASE,
@@ -341,14 +348,6 @@ function docxValidationLimits(limits: ImportProcessingLimits) {
     maximumCompressionRatio: 200,
     maximumXmlDepth: 80,
   };
-}
-
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (value === undefined || value.trim() === "") {
-    throw new Error(`${name} is required.`);
-  }
-  return value;
 }
 
 function providerTimingPhase(

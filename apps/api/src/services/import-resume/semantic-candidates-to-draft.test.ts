@@ -378,9 +378,14 @@ describe("mapSemanticCandidates (T172)", () => {
       now,
     });
     expect(draft.draft).toBeDefined();
-    expect(draft.draft?.fields).toHaveLength(1);
+    expect(draft.draft?.fields).toHaveLength(2);
     expect(draft.draft?.fields[0]?.reviewStatus).toBe("unreviewed");
     expect(draft.draft?.fields[0]?.fieldPath).toBe("skills.1.name");
+    expect(draft.draft?.fields[1]).toMatchObject({
+      fieldPath: "skills.0.name",
+      inferenceStatus: "inferred_needs_review",
+      reviewStatus: "unreviewed",
+    });
   });
 
   it("rejects evidence-free candidates as unusable", () => {

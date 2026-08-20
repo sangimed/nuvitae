@@ -100,6 +100,32 @@ describe("Nuvitae-owned source registry", () => {
     ).toEqual({ ok: false, reason: "quote_not_found_in_fragment" });
   });
 
+  it("retains only validated scalar-continuation metadata", () => {
+    const fragments = [
+      {
+        order: 0,
+        line: 1,
+        text: "Senior Backend",
+        continuationToNext: "space" as const,
+      },
+      { order: 1, line: 1, text: "Engineer" },
+    ];
+    const registry = createSourceRegistry(fragments);
+
+    expect(registry.get("fragment-1")?.continuationToNext).toBe("space");
+    expect(registry.get("fragment-2")?.continuationToNext).toBeNull();
+    expect(() =>
+      createSourceRegistry([
+        {
+          order: 0,
+          line: 1,
+          text: "unsafe",
+          continuationToNext: "guessed" as never,
+        },
+      ]),
+    ).toThrow("invalid scalar continuation metadata");
+  });
+
   it("does not rescue a skill whose provider fragment ID points at a sibling", () => {
     const registry = createSourceRegistry([
       { order: 0, line: 1, text: "Python" },
@@ -153,6 +179,7 @@ describe("Nuvitae-owned source registry", () => {
           text: "Alex Martin",
           hash: "0".repeat(64),
           bounds: { lineStart: 1, lineEnd: 1, start: 0, end: 11 },
+          continuationToNext: "space",
         },
       ],
       fragmentHashes: ["0".repeat(64)],
@@ -166,5 +193,6 @@ describe("Nuvitae-owned source registry", () => {
     const registry = createSourceRegistryFromSemanticParseRequest(request);
 
     expect(registry.get("fragment-1")?.hash).toMatch(/^[a-f0-9]{64}$/u);
+    expect(registry.get("fragment-1")?.continuationToNext).toBe("space");
   });
 });

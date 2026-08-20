@@ -31,6 +31,13 @@ import {
 
 export type V2CanonicalValueKind = "text" | "date" | "link" | "language";
 
+/**
+ * Semantic completeness is independent from textual grounding. SourceRegistry
+ * fragments prove extraction provenance, not semantic-concept boundaries.
+ */
+export type SemanticCompletenessState =
+  "proven_complete" | "unknown" | "proven_incomplete";
+
 export interface V2CanonicalEvidence {
   readonly fragmentId: string;
   readonly fragmentHash: string;
@@ -38,6 +45,7 @@ export interface V2CanonicalEvidence {
   readonly start: number;
   readonly end: number;
   readonly quote: string;
+  readonly continuationToNext?: "none" | "space";
 }
 
 export interface V2CanonicalSemanticCandidate {
@@ -50,15 +58,17 @@ export interface V2CanonicalSemanticCandidate {
   readonly valueKind: V2CanonicalValueKind;
   readonly sourceStatus: "explicit_source";
   readonly confidence: "high";
-  readonly inferenceStatus: "not_inferred";
+  readonly inferenceStatus: "not_inferred" | "inferred_needs_review";
   readonly reviewStatus: "unreviewed";
   readonly evidence: readonly V2CanonicalEvidence[];
+  readonly semanticCompleteness?: SemanticCompletenessState;
   readonly linkLabel?: string;
 }
 
 export interface V2CanonicalSignal {
   readonly kind: SemanticExtractionV2Signal["kind"];
   readonly evidence: readonly V2CanonicalEvidence[];
+  readonly affectedFieldPaths: readonly string[];
 }
 
 export interface V2RejectedField {
@@ -71,6 +81,7 @@ export interface V2RejectedField {
     | "duplicate_source_ref"
     | "overlapping_source_refs"
     | "value_not_grounded"
+    | "materially_truncated_value"
     | "value_ambiguous"
     | "unsupported_typed_value"
     | "malformed_group"
@@ -128,6 +139,7 @@ interface GroundedAtom {
   readonly normalizedValue: string;
   readonly valueKind: V2CanonicalValueKind;
   readonly evidence: readonly V2CanonicalEvidence[];
+  readonly semanticCompleteness?: SemanticCompletenessState;
   readonly linkLabel?: string;
 }
 
@@ -487,7 +499,24 @@ export function canonicalizeSemanticExtractionV2(input: {
     rejected,
   );
 
-  return { ok: true, candidates, signals, rejected };
+  const classifiedSignals = signals.map((signal) => ({
+    ...signal,
+    affectedFieldPaths: affectedLongFormFieldPaths(signal, candidates),
+  }));
+  const reviewRequired = new Set(
+    classifiedSignals.flatMap((signal) => signal.affectedFieldPaths),
+  );
+  return {
+    ok: true,
+    candidates: candidates.map((candidate) =>
+      reviewRequired.has(candidate.fieldPath) ||
+      candidate.semanticCompleteness === "unknown"
+        ? { ...candidate, inferenceStatus: "inferred_needs_review" as const }
+        : candidate,
+    ),
+    signals: classifiedSignals,
+    rejected,
+  };
 }
 
 /**
@@ -649,7 +678,7 @@ function acceptSignals(
       rejected.push({ path, code: "signal_source_invalid" });
       return;
     }
-    accepted.push({ kind: parsed.data.kind, evidence });
+    accepted.push({ kind: parsed.data.kind, evidence, affectedFieldPaths: [] });
   });
 }
 
@@ -691,13 +720,6 @@ function groundAtom(
     return undefined;
   }
   const longForm = isLongFormFieldPath(path);
-  if (parsed.data.sourceRefs.length !== 1 && !longForm) {
-    rejected.push({
-      path,
-      code: classifyMultipleRefs(parsed.data.sourceRefs, registry),
-    });
-    return undefined;
-  }
   const references = parsed.data.sourceRefs;
   const reference = references[0];
   if (reference === undefined) {
@@ -717,6 +739,19 @@ function groundAtom(
       return undefined;
     }
     return longFormResult.atom;
+  }
+  if (references.length > 1) {
+    const splitScalarResult = resolveSplitScalarAtom(
+      parsed.data.value,
+      references,
+      valueKind,
+      registry,
+    );
+    if (!splitScalarResult.ok) {
+      rejected.push({ path, code: splitScalarResult.code });
+      return undefined;
+    }
+    return splitScalarResult.atom;
   }
   const resolution = registry.resolve(reference);
   if (!resolution.ok) {
@@ -784,6 +819,97 @@ function groundAtom(
   };
 }
 
+function resolveSplitScalarAtom(
+  value: string,
+  references: readonly Parameters<SourceRegistry["resolve"]>[0][],
+  kind: V2CanonicalValueKind,
+  registry: SourceRegistry,
+):
+  | { readonly ok: true; readonly atom: GroundedAtom }
+  | {
+      readonly ok: false;
+      readonly code:
+        | SourceReferenceFailureReason
+        | "ambiguous_source_refs"
+        | "duplicate_source_ref"
+        | "overlapping_source_refs"
+        | "value_not_grounded"
+        | "unsupported_typed_value";
+    } {
+  const resolved: Array<
+    Extract<SourceReferenceResolution, { readonly ok: true }>
+  > = [];
+  for (const reference of references) {
+    const result = registry.resolve(reference);
+    if (!result.ok) return { ok: false, code: result.reason };
+    const sameFragment = resolved.find(
+      (item) => item.fragment.fragmentId === result.fragment.fragmentId,
+    );
+    if (sameFragment !== undefined) {
+      if (
+        sameFragment.start === result.start &&
+        sameFragment.end === result.end
+      )
+        return { ok: false, code: "duplicate_source_ref" };
+      if (sameFragment.start < result.end && result.start < sameFragment.end)
+        return { ok: false, code: "overlapping_source_refs" };
+      return { ok: false, code: "ambiguous_source_refs" };
+    }
+    resolved.push(result);
+  }
+
+  let reconstructed = resolved[0]?.quote ?? "";
+  for (let index = 1; index < resolved.length; index += 1) {
+    const previous = resolved[index - 1];
+    const current = resolved[index];
+    if (previous === undefined || current === undefined) {
+      return { ok: false, code: "ambiguous_source_refs" };
+    }
+    if (
+      current.fragment.order !== previous.fragment.order + 1 ||
+      previous.end !== previous.fragment.text.length ||
+      current.start !== 0 ||
+      previous.fragment.continuationToNext === null
+    ) {
+      return { ok: false, code: "ambiguous_source_refs" };
+    }
+    reconstructed +=
+      previous.fragment.continuationToNext === "space" ? " " : "";
+    reconstructed += current.quote;
+  }
+
+  if (normalizeSourceText(value) !== reconstructed) {
+    return { ok: false, code: "value_not_grounded" };
+  }
+  const normalized = normalizeTypedValue(reconstructed, kind);
+  if (normalized === undefined) {
+    return { ok: false, code: "unsupported_typed_value" };
+  }
+  return {
+    ok: true,
+    atom: {
+      value: reconstructed,
+      normalizedValue: normalized.value,
+      valueKind: kind,
+      ...(normalized.linkLabel === undefined
+        ? {}
+        : { linkLabel: normalized.linkLabel }),
+      evidence: resolved.map((result, index) => ({
+        fragmentId: result.fragment.fragmentId,
+        fragmentHash: result.fragment.hash,
+        line: result.fragment.line,
+        start: result.fragment.start + result.start,
+        end: result.fragment.start + result.end,
+        quote: result.quote,
+        ...(index === resolved.length - 1 ||
+        result.fragment.continuationToNext === null
+          ? {}
+          : { continuationToNext: result.fragment.continuationToNext }),
+      })),
+    },
+  };
+}
+
 function resolveLongFormAtom(
   value: string,
   references: readonly Parameters<SourceRegistry["resolve"]>[0][],
@@ -799,6 +925,7 @@ function resolveLongFormAtom(
         | "duplicate_source_ref"
         | "overlapping_source_refs"
         | "value_not_grounded"
+        | "materially_truncated_value"
         | "unsupported_typed_value";
     } {
   if (kind !== "text") return { ok: false, code: "unsupported_typed_value" };
@@ -832,7 +959,57 @@ function resolveLongFormAtom(
       return { ok: false, code: "overlapping_source_refs" };
     }
   }
-  const reconstructed = resolved.map((item) => item.quote).join(" ");
+  const canonicalSpans: Array<{
+    readonly fragment: (typeof resolved)[number]["fragment"];
+    readonly start: number;
+    readonly end: number;
+    readonly continuationToNext?: "none" | "space";
+  }> = [];
+  for (const item of resolved) {
+    const previous = canonicalSpans.at(-1);
+    if (previous?.fragment.fragmentId === item.fragment.fragmentId) {
+      const omitted = item.fragment.text.slice(previous.end, item.start);
+      if (omitted.trim().length > 0)
+        return { ok: false, code: "ambiguous_source_refs" };
+      canonicalSpans[canonicalSpans.length - 1] = {
+        fragment: previous.fragment,
+        start: previous.start,
+        end: item.end,
+        ...(previous.continuationToNext === undefined
+          ? {}
+          : { continuationToNext: previous.continuationToNext }),
+      };
+      continue;
+    }
+    if (
+      previous !== undefined &&
+      (item.fragment.order !== previous.fragment.order + 1 ||
+        previous.end !== previous.fragment.text.length ||
+        item.start !== 0 ||
+        previous.fragment.continuationToNext === null)
+    ) {
+      return { ok: false, code: "ambiguous_source_refs" };
+    }
+    if (previous !== undefined) {
+      canonicalSpans[canonicalSpans.length - 1] = {
+        ...previous,
+        continuationToNext: previous.fragment.continuationToNext ?? "none",
+      };
+    }
+    canonicalSpans.push({
+      fragment: item.fragment,
+      start: item.start,
+      end: item.end,
+    });
+  }
+
+  const reconstructed = canonicalSpans
+    .map((span, index) => {
+      const selected = span.fragment.text.slice(span.start, span.end);
+      if (index === canonicalSpans.length - 1) return selected;
+      return `${selected}${span.continuationToNext === "space" ? " " : ""}`;
+    })
+    .join("");
   if (normalizeSourceText(value) !== normalizeSourceText(reconstructed)) {
     return { ok: false, code: "value_not_grounded" };
   }
@@ -842,16 +1019,88 @@ function resolveLongFormAtom(
       value: reconstructed,
       normalizedValue: normalizeSourceText(reconstructed),
       valueKind: kind,
-      evidence: resolved.map((result) => ({
-        fragmentId: result.fragment.fragmentId,
-        fragmentHash: result.fragment.hash,
-        line: result.fragment.line,
-        start: result.fragment.start + result.start,
-        end: result.fragment.start + result.end,
-        quote: result.quote,
+      // Absence of evidence of truncation is not evidence of completeness.
+      // Extraction boundaries are not semantic boundaries, so the current
+      // source model can ground this value but cannot generically prove the
+      // complete semantic concept (or prove that it was truncated).
+      semanticCompleteness: "unknown",
+      evidence: canonicalSpans.map((span, index) => ({
+        fragmentId: span.fragment.fragmentId,
+        fragmentHash: span.fragment.hash,
+        line: span.fragment.line,
+        start: span.fragment.start + span.start,
+        end: span.fragment.start + span.end,
+        quote: span.fragment.text.slice(span.start, span.end),
+        ...(index === canonicalSpans.length - 1 ||
+        span.continuationToNext === undefined
+          ? {}
+          : { continuationToNext: span.continuationToNext }),
       })),
     },
   };
+}
+
+const groundedReviewSignalKinds = new Set<SemanticExtractionV2Signal["kind"]>([
+  "ambiguous_section",
+  "ambiguous_grouping",
+  "ambiguous_role_association",
+]);
+
+function affectedLongFormFieldPaths(
+  signal: V2CanonicalSignal,
+  candidates: readonly V2CanonicalSemanticCandidate[],
+): readonly string[] {
+  if (!groundedReviewSignalKinds.has(signal.kind)) return [];
+  const anchors = candidates.filter((candidate) =>
+    candidate.evidence.some((candidateEvidence) =>
+      signal.evidence.some((signalEvidence) =>
+        evidenceOverlaps(candidateEvidence, signalEvidence),
+      ),
+    ),
+  );
+  if (signal.kind === "ambiguous_section") {
+    return anchors
+      .filter(isLongFormCandidate)
+      .map((candidate) => candidate.fieldPath);
+  }
+  return candidates
+    .filter(
+      (candidate) =>
+        isLongFormCandidate(candidate) &&
+        anchors.some((anchor) => groupPathsAreRelated(anchor, candidate)),
+    )
+    .map((candidate) => candidate.fieldPath);
+}
+
+function evidenceOverlaps(
+  left: V2CanonicalEvidence,
+  right: V2CanonicalEvidence,
+): boolean {
+  return (
+    left.fragmentId === right.fragmentId &&
+    left.start < right.end &&
+    right.start < left.end
+  );
+}
+
+function groupPathsAreRelated(
+  left: V2CanonicalSemanticCandidate,
+  right: V2CanonicalSemanticCandidate,
+): boolean {
+  return (
+    left.groupPath === right.groupPath ||
+    left.groupPath.startsWith(`${right.groupPath}.`) ||
+    right.groupPath.startsWith(`${left.groupPath}.`)
+  );
+}
+
+function isLongFormCandidate(candidate: V2CanonicalSemanticCandidate): boolean {
+  return (
+    candidate.fieldPath === "summary" ||
+    candidate.fieldPath.includes(".responsibilities.") ||
+    candidate.fieldPath.includes(".achievements.") ||
+    /^projects\.\d+\.description$/u.test(candidate.fieldPath)
+  );
 }
 
 function findValueOffset(
@@ -1034,6 +1283,9 @@ function toCandidate(
     inferenceStatus: "not_inferred",
     reviewStatus: "unreviewed",
     evidence: grounded.evidence,
+    ...(grounded.semanticCompleteness === undefined
+      ? {}
+      : { semanticCompleteness: grounded.semanticCompleteness }),
     ...(grounded.linkLabel === undefined
       ? {}
       : { linkLabel: grounded.linkLabel }),
@@ -1163,44 +1415,6 @@ function groupShape(
   return keys.every((key) => Object.prototype.hasOwnProperty.call(value, key))
     ? "valid"
     : "malformed";
-}
-
-function classifyMultipleRefs(
-  references: readonly Parameters<SourceRegistry["resolve"]>[0][],
-  registry: SourceRegistry,
-):
-  | SourceReferenceFailureReason
-  | "duplicate_source_ref"
-  | "overlapping_source_refs"
-  | "ambiguous_source_refs" {
-  const seen = new Set<string>();
-  const resolved: Array<
-    Extract<SourceReferenceResolution, { readonly ok: true }>
-  > = [];
-  for (const reference of references) {
-    const key = `${reference.fragmentId}\u0000${normalizeSourceText(reference.quote)}`;
-    if (seen.has(key)) return "duplicate_source_ref";
-    seen.add(key);
-    const result = registry.resolve(reference);
-    if (!result.ok) return result.reason;
-    resolved.push(result);
-  }
-  for (let index = 0; index < resolved.length; index += 1) {
-    const left = resolved[index];
-    if (left === undefined) continue;
-    for (let next = index + 1; next < resolved.length; next += 1) {
-      const right = resolved[next];
-      if (
-        right !== undefined &&
-        left.fragment.fragmentId === right.fragment.fragmentId &&
-        left.start < right.end &&
-        right.start < left.end
-      ) {
-        return "overlapping_source_refs";
-      }
-    }
-  }
-  return "ambiguous_source_refs";
 }
 
 function wholeResponseFailure(

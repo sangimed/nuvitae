@@ -102,12 +102,35 @@ export const safeProvenanceSchema = z.discriminatedUnion("kind", [
     })
     .strict(),
   z
-    .object({ kind: z.literal("inferred"), needsConfirmation: z.boolean() })
+    .object({
+      kind: z.literal("inferred"),
+      needsConfirmation: z.boolean(),
+      original: z.lazy(() => safeOriginalProvenanceSchema).optional(),
+    })
     .strict(),
   z
     .object({
       kind: z.literal("minimal"),
       label: z.literal("imported_from_initial_resume"),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("semantic"),
+      evidence: z
+        .array(
+          z
+            .object({
+              fragmentId: z.string().min(1).max(120),
+              fragmentHash: z.string().regex(/^[a-f0-9]{64}$/u),
+              line: z.number().int().positive(),
+              start: z.number().int().nonnegative(),
+              end: z.number().int().positive(),
+            })
+            .strict(),
+        )
+        .min(1)
+        .max(8),
     })
     .strict(),
 ]);
@@ -138,6 +161,25 @@ const safeOriginalProvenanceSchema = z.discriminatedUnion("kind", [
     .object({
       kind: z.literal("minimal"),
       label: z.literal("imported_from_initial_resume"),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("semantic"),
+      evidence: z
+        .array(
+          z
+            .object({
+              fragmentId: z.string().min(1).max(120),
+              fragmentHash: z.string().regex(/^[a-f0-9]{64}$/u),
+              line: z.number().int().positive(),
+              start: z.number().int().nonnegative(),
+              end: z.number().int().positive(),
+            })
+            .strict(),
+        )
+        .min(1)
+        .max(8),
     })
     .strict(),
 ]);

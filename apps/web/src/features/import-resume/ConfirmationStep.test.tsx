@@ -4,7 +4,12 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import type { Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ReviewDraftReadResponse } from "@nuvitae/contracts";
+import type {
+  ReviewDraftReadResponse,
+  ReviewField,
+  ReviewWarning,
+} from "@nuvitae/contracts";
+import { actionableReviewItems } from "./actionable-review-items";
 import { ConfirmationStep } from "./ConfirmationStep";
 
 (
@@ -65,7 +70,7 @@ afterEach(() => {
   root = undefined;
 });
 
-function renderStep() {
+function renderStep(currentDraft = draft) {
   if (root === undefined) {
     root = createRoot(container);
   }
@@ -73,7 +78,7 @@ function renderStep() {
     root.render(
       <ConfirmationStep
         importId={importId}
-        draft={draft}
+        draft={currentDraft}
         disabled={false}
         onConfirmed={onConfirmed}
         onDiscarded={onDiscarded}
@@ -111,30 +116,30 @@ function pressKey(element: Element, key: string, shiftKey = false) {
 describe("ConfirmationStep accessible dialogs (T063)", () => {
   it("opens the confirm dialog with accessible semantics and deterministic initial focus", () => {
     renderStep();
-    act(() => button("Create structured resume").click());
+    act(() => button("Create my resume").click());
     const node = dialog();
     expect(node).not.toBeNull();
     expect(node?.getAttribute("role")).toBe("dialog");
     expect(node?.getAttribute("aria-modal")).toBe("true");
-    expect(node?.getAttribute("aria-label")).toBe("Confirm resume creation");
-    expect(document.activeElement).toBe(button("Confirm and create resume"));
+    expect(node?.getAttribute("aria-label")).toBe("Create your resume");
+    expect(document.activeElement).toBe(button("Create resume"));
   });
 
   it("keeps Tab and Shift+Tab inside the confirm dialog", () => {
     renderStep();
-    act(() => button("Create structured resume").click());
-    expect(document.activeElement).toBe(button("Confirm and create resume"));
+    act(() => button("Create my resume").click());
+    expect(document.activeElement).toBe(button("Create resume"));
     pressKey(document.activeElement, "Tab");
     expect(document.activeElement).toBe(button("Cancel"));
     pressKey(document.activeElement, "Tab");
-    expect(document.activeElement).toBe(button("Confirm and create resume"));
+    expect(document.activeElement).toBe(button("Create resume"));
     pressKey(document.activeElement, "Tab", true);
     expect(document.activeElement).toBe(button("Cancel"));
   });
 
   it("returns focus into the dialog when focus escapes to background content", () => {
     renderStep();
-    const trigger = button("Create structured resume");
+    const trigger = button("Create my resume");
     act(() => trigger.click());
     expect(dialog()).not.toBeNull();
     act(() => trigger.focus());
@@ -143,7 +148,7 @@ describe("ConfirmationStep accessible dialogs (T063)", () => {
 
   it("closes on Escape and restores focus to the initiating control", () => {
     renderStep();
-    const trigger = button("Create structured resume");
+    const trigger = button("Create my resume");
     act(() => {
       trigger.focus();
       trigger.click();
@@ -181,9 +186,9 @@ describe("ConfirmationStep accessible dialogs (T063)", () => {
       message: "Resume creation is temporarily unavailable.",
     });
     renderStep();
-    act(() => button("Create structured resume").click());
+    act(() => button("Create my resume").click());
     await act(async () => {
-      button("Confirm and create resume").click();
+      button("Create resume").click();
     });
     const summary = container.querySelector("[data-error-summary]");
     expect(summary).not.toBeNull();
@@ -203,14 +208,216 @@ describe("ConfirmationStep accessible dialogs (T063)", () => {
       },
     });
     renderStep();
-    act(() => button("Create structured resume").click());
+    act(() => button("Create my resume").click());
     await act(async () => {
-      button("Confirm and create resume").click();
+      button("Create resume").click();
     });
     expect(dialog()).toBeNull();
     expect(onConfirmed).toHaveBeenCalledWith(
       "/resumes/44444444-4444-4444-8444-444444444444",
-      "Your structured resume was created.",
+      "Your resume is ready.",
     );
   });
+
+  it("explains remaining review work without internal blocking language", () => {
+    renderStep({
+      ...draft,
+      readyToConfirm: false,
+      unresolvedWarningCount: 1,
+      sections: [
+        {
+          section: "summary",
+          label: "summary",
+          fields: [],
+          warnings: [
+            {
+              warningId: "44444444-4444-4444-8444-444444444444",
+              warningType: "ambiguous",
+              section: "summary",
+              message: "Please review this detail.",
+              severity: "needs_attention",
+              reviewStatus: "needs_review",
+              requiresResolution: true,
+              allowedActions: [
+                "confirm",
+                "edit",
+                "exclude",
+                "intentionally_leave",
+              ],
+            },
+          ],
+          allowedActions: ["add", "exclude"],
+        },
+      ],
+    });
+
+    expect(container.textContent).toContain("Review remaining details");
+    expect(container.textContent).toContain(
+      "1 detail still needs your attention",
+    );
+    expect(container.textContent).toContain("Review Professional summary");
+    expect(container.textContent).not.toContain("Confirmation is blocked");
+    expect(container.textContent).not.toMatch(/needs_review|review_required/);
+  });
+
+  it("keeps an unconfirmed Category-B field visible when no warning remains", () => {
+    const fieldId = "55555555-5555-4555-8555-555555555555";
+    const field = reviewRequiredField(
+      fieldId,
+      "summary",
+      "A grounded summary.",
+    );
+    const pendingDraft: ReviewDraftReadResponse = {
+      ...draft,
+      readyToConfirm: false,
+      unresolvedWarningCount: 0,
+      sections: [
+        {
+          section: "summary",
+          label: "summary",
+          fields: [field],
+          warnings: [],
+          allowedActions: ["add", "exclude"],
+        },
+      ],
+    };
+
+    renderStep(pendingDraft);
+
+    expect(container.textContent).toContain(
+      "1 detail still needs your attention",
+    );
+    expect(container.textContent).toContain("Review Professional summary");
+    expect(container.textContent).not.toContain("Create my resume");
+    expect(container.textContent).not.toContain(
+      "Your imported information is ready",
+    );
+    expect(
+      container.querySelector(`a[href="#${fieldId}-label"]`),
+    ).not.toBeNull();
+
+    renderStep({
+      ...pendingDraft,
+      readyToConfirm: true,
+      sections: [
+        {
+          ...pendingDraft.sections[0],
+          fields: [
+            {
+              ...field,
+              inferenceStatus: "confirmed_inference",
+              reviewStatus: "confirmed",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(container.textContent).toContain(
+      "This creates a new resume from the valid information you have kept.",
+    );
+    expect(container.textContent).toContain("Create my resume");
+    expect(container.textContent).not.toContain("Review remaining details");
+  });
+
+  it("counts the smallest mixed blocker matrix by persisted identity", () => {
+    const fieldId = "55555555-5555-4555-8555-555555555555";
+    const warningId = "66666666-6666-4666-8666-666666666666";
+    const unrelatedWarningId = "77777777-7777-4777-8777-777777777777";
+    const field = reviewRequiredField(
+      fieldId,
+      "summary",
+      "A grounded summary.",
+    );
+    const warning = reviewWarning(warningId, "summary");
+    const unrelatedWarning = reviewWarning(unrelatedWarningId, "headline");
+    const withReviewState = (
+      fields: ReviewField[],
+      warnings: ReviewWarning[],
+      readyToConfirm = false,
+    ): ReviewDraftReadResponse => ({
+      ...draft,
+      readyToConfirm,
+      unresolvedWarningCount: warnings.length,
+      sections: [
+        {
+          section: "summary",
+          label: "summary",
+          fields,
+          warnings,
+          allowedActions: ["add", "exclude"],
+        },
+      ],
+    });
+
+    expect(actionableReviewItems(withReviewState([], [warning]))).toHaveLength(
+      1,
+    );
+    expect(actionableReviewItems(withReviewState([field], []))).toHaveLength(1);
+    expect(
+      actionableReviewItems(
+        withReviewState([{ ...field, inferenceStatus: "not_inferred" }], []),
+      ),
+    ).toHaveLength(0);
+    expect(
+      actionableReviewItems(
+        withReviewState([{ ...field, warningIds: [warningId] }], [warning]),
+      ),
+    ).toHaveLength(1);
+    expect(
+      actionableReviewItems(withReviewState([field], [unrelatedWarning])),
+    ).toHaveLength(2);
+    expect(
+      actionableReviewItems(
+        withReviewState(
+          [
+            {
+              ...field,
+              inferenceStatus: "confirmed_inference",
+              reviewStatus: "confirmed",
+            },
+          ],
+          [{ ...warning, reviewStatus: "confirmed" }],
+          true,
+        ),
+      ),
+    ).toHaveLength(0);
+  });
 });
+
+function reviewRequiredField(
+  fieldId: string,
+  fieldPath: string,
+  value: string,
+): ReviewField {
+  return {
+    fieldId,
+    fieldPath,
+    value: { kind: "text", value },
+    sourceStatus: "inferred",
+    confidenceStatus: "high",
+    inferenceStatus: "inferred_needs_review",
+    reviewStatus: "unreviewed",
+    provenance: {
+      kind: "inferred",
+      needsConfirmation: true,
+      original: { kind: "pdf", pageNumber: 1 },
+    },
+    warningIds: [],
+    allowedActions: ["confirm", "edit", "remove"],
+  };
+}
+
+function reviewWarning(warningId: string, fieldPath: string): ReviewWarning {
+  return {
+    warningId,
+    warningType: "ambiguous",
+    section: "summary",
+    fieldPath,
+    message: "Please review this detail.",
+    severity: "needs_attention",
+    reviewStatus: "needs_review",
+    requiresResolution: true,
+    allowedActions: ["confirm", "edit", "exclude", "intentionally_leave"],
+  };
+}

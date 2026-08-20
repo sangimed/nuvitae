@@ -9,11 +9,11 @@ import type {
 import {
   createReviewMutationRequest,
   createReviewOperationId,
-  projectOptimisticReview,
   readReviewDraft,
   sendReviewMutation,
 } from "../../services/import-resume/review-client";
 import { ConfirmationStep } from "./ConfirmationStep";
+import { needsExplicitConfirmation } from "./actionable-review-items";
 import { ErrorSummary } from "./ErrorSummary";
 import { FieldProvenance } from "./FieldProvenance";
 import {
@@ -23,6 +23,7 @@ import {
 } from "./focus-management";
 import { ReviewWarning } from "./ReviewWarning";
 import { formatReviewDate, formatReviewDateRange } from "./review-date";
+import { reviewFieldLabel, reviewSectionLabel } from "./review-labels";
 import { recordImportTiming } from "../../services/import-resume/import-timing-client";
 
 export function ReviewStep(props: { readonly importId: string }) {
@@ -93,36 +94,76 @@ export function ReviewStep(props: { readonly importId: string }) {
     if (refreshed.ok) setDraft(refreshed.response);
   }
 
-  async function mutate(action: ReviewMutationAction) {
-    if (draft === undefined || pending) return;
-    const snapshot = draft;
+  async function persistMutation(
+    currentDraft: ReviewDraftReadResponse,
+    action: ReviewMutationAction,
+  ) {
     setPending(true);
     setError(undefined);
     setMessage("Saving review change.");
-    setDraft(projectOptimisticReview(draft, action));
     const request = createReviewMutationRequest({
       operationId: createReviewOperationId(),
-      expectedReviewRevision: draft.reviewRevision,
+      expectedReviewRevision: currentDraft.reviewRevision,
       action,
     });
     const outcome = await sendReviewMutation({
       importId: props.importId,
       request,
     });
-    setPending(false);
     if (outcome.ok) {
       setDraft(outcome.response.draft);
       setMessage(outcome.response.userMessage);
+      setPending(false);
       focusNextLogicalHeading(shellRef.current);
-      return;
+      return outcome.response.draft;
     }
-    setDraft(snapshot);
     if (outcome.category === "stale_review") {
       const refreshed = await readReviewDraft({ importId: props.importId });
       if (refreshed.ok) setDraft(refreshed.response);
-      setError("The review changed. Current server data has been reloaded.");
+      setError("Your review has changed. We reloaded the latest information.");
     } else {
       setError(outcome.message);
+    }
+    setPending(false);
+    return undefined;
+  }
+
+  async function mutate(action: ReviewMutationAction) {
+    if (draft === undefined || pending) return undefined;
+    return persistMutation(draft, action);
+  }
+
+  async function confirmReviewRequiredField(field: ReviewField) {
+    if (pending || draft === undefined) return;
+    let updated = await persistMutation(draft, {
+      type: "confirm_field",
+      fieldId: field.fieldId,
+    });
+    if (updated === undefined) return;
+
+    // T259 keeps proposal/evidence and the field-bound review record separate.
+    // Resolve only the warnings explicitly linked by the canonical read model,
+    // using the existing warning-confirmation command and the persisted revision.
+    const linkedWarnings = updated.sections
+      .flatMap((section) => section.warnings)
+      .filter(
+        (warning) =>
+          field.warningIds.includes(warning.warningId) &&
+          warning.reviewStatus === "needs_review",
+      );
+    for (const warning of linkedWarnings) {
+      const current = await persistMutation(updated, {
+        type: "resolve_warning",
+        warningId: warning.warningId,
+        resolution: "confirmed",
+      });
+      if (current === undefined) {
+        setError(
+          "Your confirmation was saved, but one related review item still needs attention.",
+        );
+        return;
+      }
+      updated = current;
     }
   }
 
@@ -130,7 +171,7 @@ export function ReviewStep(props: { readonly importId: string }) {
     return (
       <section className="import-card" aria-busy="true">
         <h1>Loading import review</h1>
-        <p role="status">Loading the private review draft.</p>
+        <p role="status">Loading your resume information.</p>
       </section>
     );
   }
@@ -158,8 +199,10 @@ export function ReviewStep(props: { readonly importId: string }) {
       aria-labelledby="review-title"
       ref={shellRef}
     >
-      <p className="eyebrow">Import review</p>
-      <h1 id="review-title">Review imported resume</h1>
+      <p className="eyebrow">Resume review</p>
+      <h1 id="review-title">
+        Check the information Nuvitae needs you to confirm
+      </h1>
       <div
         ref={liveRef}
         tabIndex={-1}
@@ -177,8 +220,7 @@ export function ReviewStep(props: { readonly importId: string }) {
           role="status"
           tabIndex={-1}
         >
-          {finalized.message}{" "}
-          <a href={finalized.resumeUrl}>Open structured resume</a>
+          {finalized.message} <a href={finalized.resumeUrl}>Open my resume</a>
         </div>
       ) : (
         <div
@@ -207,20 +249,7 @@ export function ReviewStep(props: { readonly importId: string }) {
         />
       )}
 
-      <dl className="status-list compact">
-        <div>
-          <dt>Active fields</dt>
-          <dd>{draft.activeFieldCount}</dd>
-        </div>
-        <div>
-          <dt>Needs review</dt>
-          <dd>{draft.unresolvedWarningCount}</dd>
-        </div>
-        <div>
-          <dt>Review revision</dt>
-          <dd>{draft.reviewRevision}</dd>
-        </div>
-      </dl>
+      <ReviewSummary draft={draft} />
 
       <ConfirmationStep
         importId={props.importId}
@@ -244,18 +273,19 @@ export function ReviewStep(props: { readonly importId: string }) {
           key={section.section}
           aria-labelledby={`${section.section}-review-heading`}
         >
-          <h2 id={`${section.section}-review-heading`}>{section.label}</h2>
+          <h2 id={`${section.section}-review-heading`}>
+            {reviewSectionLabel(section.section, section.label)}
+          </h2>
           {section.fields.length === 0 ? (
             <p>No imported information is active in this section.</p>
           ) : null}
-          {section.fields.map((field) => (
-            <ReviewFieldRow
-              key={field.fieldId}
-              field={field}
-              pending={pending || finalized !== undefined}
-              onAction={mutate}
-            />
-          ))}
+          <SectionFields
+            fields={section.fields}
+            section={section.section}
+            pending={pending || finalized !== undefined}
+            onAction={mutate}
+            onConfirmReviewRequired={confirmReviewRequiredField}
+          />
           {section.warnings.map((warning) => (
             <ReviewWarning
               key={warning.warningId}
@@ -301,10 +331,89 @@ export function ReviewStep(props: { readonly importId: string }) {
   );
 }
 
+function ReviewSummary(props: { readonly draft: ReviewDraftReadResponse }) {
+  const needsConfirmation = props.draft.sections.flatMap((section) =>
+    section.fields.filter(needsExplicitConfirmation),
+  );
+  return (
+    <section className="review-summary" aria-labelledby="review-summary-title">
+      <h2 id="review-summary-title">
+        {needsConfirmation.length === 0
+          ? "Your imported information is ready"
+          : "A few details need your confirmation"}
+      </h2>
+      <p>
+        {needsConfirmation.length === 0
+          ? "The remaining imported information is ready to carry into your resume. You can still make changes below."
+          : "Nuvitae found these details in your resume. Confirm them, edit them, or leave them out before continuing."}
+      </p>
+      {needsConfirmation.length === 0 ? null : (
+        <ul className="review-summary-list">
+          {needsConfirmation.map((field) => (
+            <li key={field.fieldId}>
+              <a href={`#${field.fieldId}-label`}>
+                {reviewFieldLabel(field.fieldPath)}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function SectionFields(props: {
+  readonly fields: readonly ReviewField[];
+  readonly section: string;
+  readonly pending: boolean;
+  readonly onAction: (action: ReviewMutationAction) => Promise<unknown>;
+  readonly onConfirmReviewRequired: (field: ReviewField) => Promise<void>;
+}) {
+  if (props.section !== "work_experience") {
+    return props.fields.map((field) => (
+      <ReviewFieldRow
+        key={field.fieldId}
+        field={field}
+        pending={props.pending}
+        onAction={props.onAction}
+        onConfirmReviewRequired={props.onConfirmReviewRequired}
+      />
+    ));
+  }
+  return groupWorkFields(props.fields).map((group) => (
+    <section
+      className="work-review-group"
+      key={group.key}
+      aria-label={group.label}
+    >
+      <h3>{group.label}</h3>
+      {group.roles.map((role) => (
+        <section
+          className="work-review-role"
+          key={role.key}
+          aria-label={role.label}
+        >
+          <h4>{role.label}</h4>
+          {role.fields.map((field) => (
+            <ReviewFieldRow
+              key={field.fieldId}
+              field={field}
+              pending={props.pending}
+              onAction={props.onAction}
+              onConfirmReviewRequired={props.onConfirmReviewRequired}
+            />
+          ))}
+        </section>
+      ))}
+    </section>
+  ));
+}
+
 function ReviewFieldRow(props: {
   readonly field: ReviewField;
   readonly pending: boolean;
-  readonly onAction: (action: ReviewMutationAction) => void;
+  readonly onAction: (action: ReviewMutationAction) => Promise<unknown>;
+  readonly onConfirmReviewRequired: (field: ReviewField) => Promise<void>;
 }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState(valueToText(props.field.value));
@@ -312,16 +421,14 @@ function ReviewFieldRow(props: {
 
   return (
     <article
-      className="review-field"
+      className={`review-field ${needsExplicitConfirmation(props.field) ? "review-field-needs-confirmation" : "review-field-accepted"}`}
       aria-labelledby={`${props.field.fieldId}-label`}
     >
       <h3 id={`${props.field.fieldId}-label`}>
-        {fieldLabel(props.field.fieldPath)}
+        {reviewFieldLabel(props.field.fieldPath)}
       </h3>
-      <p id={statusId}>
-        Review state: {props.field.reviewStatus.replaceAll("_", " ")}.
-        Confidence: {props.field.confidenceStatus.replaceAll("_", " ")}.
-        Inference: {props.field.inferenceStatus.replaceAll("_", " ")}.
+      <p id={statusId} className="review-field-status" role="status">
+        {fieldStatus(props.field)}
       </p>
       <p>
         <FieldProvenance
@@ -372,18 +479,16 @@ function ReviewFieldRow(props: {
         <>
           <p aria-describedby={statusId}>{valueToText(props.field.value)}</p>
           <div className="action-row">
-            <button
-              type="button"
-              disabled={props.pending}
-              onClick={() =>
-                props.onAction({
-                  type: "confirm_field",
-                  fieldId: props.field.fieldId,
-                })
-              }
-            >
-              Confirm field
-            </button>
+            {needsExplicitConfirmation(props.field) ? (
+              <button
+                type="button"
+                className="primary-action"
+                disabled={props.pending}
+                onClick={() => props.onConfirmReviewRequired(props.field)}
+              >
+                Confirm this information
+              </button>
+            ) : null}
             <button
               type="button"
               disabled={props.pending}
@@ -401,12 +506,12 @@ function ReviewFieldRow(props: {
                 })
               }
             >
-              Remove from draft
+              Leave out
             </button>
           </div>
           <p className="message">
-            Removing affects this review draft only. It does not change the
-            uploaded source.
+            This only changes the information shown here. It does not change
+            your uploaded file.
           </p>
         </>
       )}
@@ -414,9 +519,58 @@ function ReviewFieldRow(props: {
   );
 }
 
-function fieldLabel(fieldPath: string): string {
-  const parts = fieldPath.split(".");
-  return parts[parts.length - 1]?.replaceAll("_", " ") ?? fieldPath;
+function fieldStatus(field: ReviewField): string {
+  if (needsExplicitConfirmation(field)) {
+    return "Confirmation needed before this information is used.";
+  }
+  if (field.reviewStatus === "confirmed" || field.reviewStatus === "edited") {
+    return "Accepted for your resume.";
+  }
+  if (field.reviewStatus === "excluded") return "Left out of your resume.";
+  return "Imported from your resume.";
+}
+
+function groupWorkFields(fields: readonly ReviewField[]) {
+  const groups = new Map<
+    string,
+    {
+      label: string;
+      roles: Map<string, { label: string; fields: ReviewField[] }>;
+    }
+  >();
+  for (const field of fields) {
+    const match = /^work_experience\.(\d+)(?:\.roles\.(\d+))?/.exec(
+      field.fieldPath,
+    );
+    const employerKey = match?.[1] ?? "ungrouped";
+    const roleKey = match?.[2] ?? "details";
+    const group = groups.get(employerKey) ?? {
+      label: `Employer ${Number(employerKey) + 1 || "details"}`,
+      roles: new Map(),
+    };
+    if (field.fieldPath.endsWith(".employer"))
+      group.label = valueToText(field.value);
+    const role = group.roles.get(roleKey) ?? {
+      label:
+        roleKey === "details"
+          ? "Employment details"
+          : `Role ${Number(roleKey) + 1}`,
+      fields: [],
+    };
+    if (field.fieldPath.endsWith(".title"))
+      role.label = valueToText(field.value);
+    role.fields.push(field);
+    group.roles.set(roleKey, role);
+    groups.set(employerKey, group);
+  }
+  return [...groups.entries()].map(([key, group]) => ({
+    key,
+    label: group.label,
+    roles: [...group.roles.entries()].map(([roleKey, role]) => ({
+      ...role,
+      key: roleKey,
+    })),
+  }));
 }
 
 function valueToText(value: ReviewField["value"]): string {

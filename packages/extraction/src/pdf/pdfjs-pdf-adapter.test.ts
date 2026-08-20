@@ -63,6 +63,7 @@ describe("PdfJsPdfAdapter", () => {
         pageNumber: 1,
         itemIndex: 0,
         boundingBox: { unit: "pdf_point" },
+        hasEol: expect.any(Boolean),
       });
       expect(items[0]?.provenance.boundingBox.width).toBeGreaterThan(0);
     }

@@ -10,7 +10,7 @@ const contactSource =
 const sourceRegistry = createSourceRegistry([
   { order: 0, line: 1, text: contactSource },
   { order: 1, line: 2, text: "Platform Engineer — Northstar Systems — Lyon" },
-  { order: 2, line: 3, text: "Summary: Builds reliable systems." },
+  { order: 2, line: 3, text: "Builds reliable systems." },
   { order: 3, line: 4, text: "Example University — Master of Engineering" },
   { order: 4, line: 5, text: "Portfolio: https://example.test/alex" },
   { order: 5, line: 6, text: "Alex's website" },

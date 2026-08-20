@@ -27,7 +27,12 @@ export const API_MANUAL_RESUME_DRAFT_REPOSITORY = Symbol(
 export function createApiTypeOrmModuleOptions(
   env: NodeJS.ProcessEnv = process.env,
 ) {
-  return createTypeOrmModuleOptions(readPersistenceConfigFromEnv(env));
+  return {
+    ...createTypeOrmModuleOptions(readPersistenceConfigFromEnv(env)),
+    // The Community API owns its normal startup migration pass. Workers never
+    // perform migrations, avoiding competing runtime schema changes.
+    migrationsRun: env.NUVITAE_RUN_MIGRATIONS === "true",
+  };
 }
 
 export const apiPersistenceRepositoryProviders: Provider[] = [

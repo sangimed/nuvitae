@@ -24,6 +24,14 @@ Development, dependency installation, checks, tests, builds, and runtime
 services run through Docker Compose. The host workflow requires Docker, Git,
 GitHub CLI, and the coding agent only.
 
+### Nuvitae Community quick start
+
+For a same-machine Community installation, use the generated configuration and
+the loopback-only Compose deployment described in
+[the Community installation guide](docs/community-installation.md). Community
+uses production authentication for one installation owner; Local Play below is
+a separate development-only mode.
+
 Pinned bootstrap versions:
 
 - Node.js Docker base: `node:24.15.0-bookworm-slim`
@@ -119,8 +127,10 @@ rewrites that prefix to the internal API service (`http://api:3001`) in Compose,
 so browsers do not see internal hostnames and CORS is not required. Next.js does
 not contain API business logic and does not connect to PostgreSQL.
 
-Application startup never runs migrations. `local-play-up.sh` runs migrations
-explicitly through the workspace container before starting web, API, and worker.
+For the Community Compose path, the API owns versioned migration execution at
+startup (`NUVITAE_RUN_MIGRATIONS=true`). `local-play-up.sh` also runs migrations
+explicitly through the workspace container before starting the application
+services, so the development flow remains deterministic.
 
 Inspect logs:
 
@@ -179,9 +189,10 @@ docker compose up -d web api worker
 docker compose up --wait
 ```
 
-Application startup never runs migrations. Both `synchronize` and
-`migrationsRun` remain `false`, so deployments must complete the migration step
-before starting or updating API and worker instances.
+TypeORM `synchronize` and the persistence default `migrationsRun` remain
+`false`. The canonical Community Compose API explicitly enables its versioned
+migration runner at startup; its worker never runs migrations. Development
+commands may run migrations explicitly before starting services.
 
 Stop it without deleting Docker-managed data:
 

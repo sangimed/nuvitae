@@ -41,15 +41,15 @@ export function ConfirmedResumeView(props: { readonly resumeId: string }) {
   if (resume === undefined) {
     return (
       <section className="import-card" aria-busy="true">
-        <h1>Loading structured resume</h1>
-        <p role="status">Loading your confirmed resume.</p>
+        <h1>Loading your resume</h1>
+        <p role="status">Loading your resume.</p>
       </section>
     );
   }
   return (
     <section className="resume-read-view" aria-labelledby="resume-title">
-      <p className="eyebrow">Structured resume</p>
-      <h1 id="resume-title">Confirmed structured resume</h1>
+      <p className="eyebrow">Resume</p>
+      <h1 id="resume-title">Your resume is ready</h1>
       <p>{resume.userMessage}</p>
       <StructuredResumeProvenance resume={resume} />
       <ResumeSection title="Personal" values={resume.content.personal} />
@@ -58,7 +58,10 @@ export function ConfirmedResumeView(props: { readonly resumeId: string }) {
         <ResumeSection title="Headline" values={[resume.content.headline]} />
       )}
       {resume.content.summary === undefined ? null : (
-        <ResumeSection title="Summary" values={[resume.content.summary]} />
+        <ResumeSection
+          title="Professional summary"
+          values={[resume.content.summary]}
+        />
       )}
       <ResumeSection
         title="Skills"

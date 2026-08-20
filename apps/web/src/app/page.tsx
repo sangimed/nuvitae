@@ -1,19 +1,14 @@
-import { bootstrapHealthSchema } from "@nuvitae/contracts";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 export default function Home() {
-  const health = bootstrapHealthSchema.parse({
-    service: "web",
-    status: "ok",
-  });
   const localPlayMode = process.env.NUVITAE_LOCAL_PLAY_MODE === "true";
 
   return (
     <main className="shell">
       <section className="panel home-panel" aria-labelledby="page-title">
-        <p className="eyebrow">Nuvitae</p>
+        <p className="eyebrow">Home</p>
         <h1 id="page-title">Create your resume</h1>
         <p>
           Start from an existing resume or create a structured draft manually.
@@ -24,6 +19,14 @@ export default function Home() {
             local Docker volumes and this is not production authentication.
           </div>
         ) : null}
+        {!localPlayMode ? (
+          <p>
+            Owner access is required. Your installation generated the owner
+            access secret; retrieve it with{" "}
+            <code>sh scripts/community-owner-secret.sh</code>, then sign in from
+            the application header.
+          </p>
+        ) : null}
         <div className="choice-grid">
           <Link className="primary-action" href="/import-resume">
             Import an existing resume
@@ -32,16 +35,12 @@ export default function Home() {
             Create a resume manually
           </Link>
         </div>
-        <dl className="status-list">
-          <div>
-            <dt>Web</dt>
-            <dd>{health.status}</dd>
-          </div>
-          <div>
-            <dt>API route</dt>
-            <dd>/api</dd>
-          </div>
-        </dl>
+        {!localPlayMode ? (
+          <p>
+            After signing in, create a resume manually or import one. Codex can
+            be connected from the import flow.
+          </p>
+        ) : null}
       </section>
     </main>
   );

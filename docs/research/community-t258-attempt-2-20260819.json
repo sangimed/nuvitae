@@ -1,0 +1,70 @@
+{
+  "schemaVersion": "nuvitae.t258.consumed-attempt.v1",
+  "taskId": "T258",
+  "attempt": 2,
+  "state": "CONSUMED",
+  "finalClassification": "QUALITY_FAIL",
+  "importId": "b5c84c3c-5817-4040-85f0-439c9da5ce3c",
+  "oauth": {
+    "existingConnectionReused": true,
+    "newAuthorizationPerformed": false
+  },
+  "budget": {
+    "uploads": 1,
+    "primaryProviderInvocations": 1,
+    "secondaryProviderInvocations": 0,
+    "deterministicFallbackObserved": false
+  },
+  "transport": {
+    "uploadAccepted": true,
+    "extractionAccepted": true,
+    "normalizationCompleted": true,
+    "httpStatusCategory": "2xx",
+    "sseStarted": true,
+    "firstSemanticOutputReceived": true,
+    "responseCompletedReceived": true,
+    "normalResponseEof": true,
+    "transportFailure": false,
+    "canonicalizationCompleted": true,
+    "outcome": "v2_partial_acceptance",
+    "draftPersisted": true,
+    "reviewAvailable": true
+  },
+  "timingsMsApproximate": {
+    "uploadToProviderStart": 613,
+    "providerToHeaders": 2580,
+    "providerToFirstSemanticOutput": 12850,
+    "providerTotal": 56590
+  },
+  "review": {
+    "activeDraftFieldCount": 63,
+    "warningCount": 5,
+    "workGroupRetentionMateriallyImproved": true,
+    "educationGroupRetentionMateriallyImproved": true,
+    "importantScalarValuesMateriallyTruncated": true,
+    "summaryRejected": true
+  },
+  "privacySafeDiagnosis": {
+    "providerFragmentCount": 165,
+    "affectedWorkTitleCharacterBucket": "6-9",
+    "affectedInstitutionCharacterBucket": "10",
+    "providerReturnedShortGroundedValues": true,
+    "nuvitaeCanonicalizerTruncatedValues": false,
+    "reviewMapperTruncatedValues": false,
+    "inlineContinuationGapCause": "normalized_empty_pdf_items_preserved_original_index_gap",
+    "headlineCrossedUnsupportedLineBoundary": true,
+    "summaryFirstRejectedPath": "sections.summary",
+    "summaryDiagnosticCategories": [
+      "other_schema_violation",
+      "invalid_source_ref_shape",
+      "value_not_grounded"
+    ]
+  },
+  "authorization": {
+    "thirdLiveAttemptAuthorized": false,
+    "oauthAuthorized": false,
+    "uploadAuthorized": false,
+    "providerInvocationAuthorized": false,
+    "benchmarkAuthorized": false
+  }
+}

@@ -10,6 +10,8 @@ import { SemanticImportProcessingStates1722427200000 } from "./migrations/172242
 import { SemanticParserPersistence1722513600000 } from "./migrations/1722513600000-SemanticParserPersistence.js";
 import { ProviderRuntimeConnections1722600000000 } from "./migrations/1722600000000-ProviderRuntimeConnections.js";
 import { ImportLimitAttempts1785801600000 } from "./migrations/1785801600000-ImportLimitAttempts.js";
+import { communityAuthPersistenceEntities } from "./entities/community-auth.entities.js";
+import { CommunityInstanceAuth1785888000000 } from "./migrations/1785888000000-CommunityInstanceAuth.js";
 
 export interface PersistenceConfig {
   readonly host: string;
@@ -145,6 +147,7 @@ export function createTypeOrmOptions(
       ...persistenceEntities,
       ...semanticParserPersistenceEntities,
       ...importLimitAttemptPersistenceEntities,
+      ...communityAuthPersistenceEntities,
     ],
     migrations: [
       InitialImportResumePersistence1722168000000,
@@ -154,6 +157,7 @@ export function createTypeOrmOptions(
       SemanticParserPersistence1722513600000,
       ProviderRuntimeConnections1722600000000,
       ImportLimitAttempts1785801600000,
+      CommunityInstanceAuth1785888000000,
     ],
     migrationsTableName: "typeorm_migrations",
     migrationsRun: false,

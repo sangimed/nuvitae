@@ -83,7 +83,7 @@ describe("project-local TypeORM migration workflow", () => {
     const tracking = await database.dataSource.query<{ count: string }[]>(
       `SELECT count(*) FROM "${database.schema}"."typeorm_migrations"`,
     );
-    expect(tracking[0]?.count).toBe("7");
+    expect(tracking[0]?.count).toBe("8");
 
     await command("db:migration:revert");
     const reverted = await command("db:migration:show");
@@ -136,7 +136,7 @@ describe("project-local TypeORM migration workflow", () => {
     const rerun = await database.dataSource.query<{ count: string }[]>(
       `SELECT count(*) FROM "${database.schema}"."typeorm_migrations"`,
     );
-    expect(rerun[0]?.count).toBe("7");
+    expect(rerun[0]?.count).toBe("8");
 
     const result = await command("db:migration:create");
     expect(result.stdout).toContain(".tmp/migrations/");

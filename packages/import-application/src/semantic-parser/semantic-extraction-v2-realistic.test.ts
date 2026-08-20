@@ -285,8 +285,8 @@ describe("semantic-extraction.v2 realistic structural limits", () => {
       request: {
         normalizedTranscriptCharacterCount: 2946,
         fragmentCount: 181,
-        requestJsonBytes: 22367,
-        instructionBytes: 7876,
+        requestJsonBytes: 24943,
+        instructionBytes: 10441,
         documentPayloadBytes: 12011,
         semanticInputBytes: 12068,
         transportEnvelopeBytes: 530,
@@ -360,6 +360,70 @@ describe("semantic-extraction.v2 realistic structural limits", () => {
         expect.objectContaining({ fieldPath: "education.1.institution" }),
       ]),
     );
+  });
+
+  it("fails closed on multi-ref scalar anchors without deleting valid sibling groups", () => {
+    const fixture = repeatedTextFixture();
+    const firstWorkTitle =
+      fixture.response.sections.workExperience[0]?.roles[0]?.title;
+    const firstInstitution =
+      fixture.response.sections.education[0]?.institution;
+    if (firstWorkTitle === undefined || firstInstitution === undefined)
+      throw new Error("synthetic fixture anchors missing");
+
+    fixture.response.sections.headline.sourceRefs = [
+      { fragmentId: "fragment-2", quote: "Senior Backend Engineer" },
+      { fragmentId: "fragment-5", quote: "Senior Backend Engineer" },
+    ];
+    firstWorkTitle.sourceRefs = [
+      { fragmentId: "fragment-2", quote: "Senior Backend Engineer" },
+      { fragmentId: "fragment-5", quote: "Senior Backend Engineer" },
+    ];
+    firstInstitution.sourceRefs = [
+      { fragmentId: "fragment-3", quote: "Example University" },
+      { fragmentId: "fragment-6", quote: "Example University" },
+    ];
+
+    const result = canonical(fixture.response, fixture.sourceRegistry);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.rejected).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: ["sections", "headline"],
+          code: "ambiguous_source_refs",
+        }),
+        expect.objectContaining({
+          path: ["sections", "workExperience", 0, "roles", 0, "title"],
+          code: "ambiguous_source_refs",
+        }),
+        expect.objectContaining({
+          path: ["sections", "education", 0, "institution"],
+          code: "ambiguous_source_refs",
+        }),
+      ]),
+    );
+    expect(
+      result.candidates.some((item) =>
+        item.fieldPath.startsWith("workExperience.0."),
+      ),
+    ).toBe(false);
+    expect(
+      result.candidates.some(
+        (item) => item.fieldPath === "workExperience.1.roles.0.title",
+      ),
+    ).toBe(true);
+    expect(
+      result.candidates.some((item) =>
+        item.fieldPath.startsWith("education.0."),
+      ),
+    ).toBe(false);
+    expect(
+      result.candidates.some(
+        (item) => item.fieldPath === "education.1.institution",
+      ),
+    ).toBe(true);
   });
 
   it("accepts an anonymous senior-engineer CV substantially larger than the smoke fixture", () => {

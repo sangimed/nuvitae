@@ -12,71 +12,111 @@ export function ReviewWarning(props: {
   const warning = props.warning;
   return (
     <article
-      className="review-warning"
+      className={warningTone(warning)}
       aria-labelledby={`${warning.warningId}-title`}
     >
-      <h3 id={`${warning.warningId}-title`}>
-        {warningTypeLabel(warning.warningType)}
-      </h3>
-      <p>{warning.message}</p>
-      <p>
-        Severity: {severityLabel(warning.severity)}. Review state:{" "}
-        {stateLabel(warning.reviewStatus)}.
-      </p>
+      <h3 id={`${warning.warningId}-title`}>{warningTitle(warning)}</h3>
+      <p>{warningMessage(warning)}</p>
       {warning.fieldPath === undefined ? null : (
-        <p>Related field: {warning.fieldPath}</p>
+        <p className="review-warning-context">
+          This relates to imported information in this section.
+        </p>
       )}
       {warning.reviewStatus === "needs_review" ? (
-        <div className="action-row">
-          <button
-            type="button"
-            disabled={props.pending}
-            onClick={() => props.onResolve("confirmed")}
-          >
-            Confirm warning
-          </button>
-          <button
-            type="button"
-            disabled={props.pending}
-            onClick={() => props.onResolve("edited")}
-          >
-            Mark edited
-          </button>
-          <button
-            type="button"
-            disabled={props.pending}
-            onClick={() => props.onResolve("excluded")}
-          >
-            Exclude
-          </button>
-          <button
-            type="button"
-            disabled={props.pending}
-            onClick={() => props.onResolve("intentionally_left")}
-          >
-            Intentionally leave
-          </button>
-        </div>
+        <WarningActions {...props} />
       ) : (
-        <p>This warning is {stateLabel(warning.reviewStatus)}.</p>
+        <p>This item is {stateLabel(warning.reviewStatus)}.</p>
       )}
     </article>
   );
 }
 
-function warningTypeLabel(type: ReviewWarningContract["warningType"]): string {
-  return type.replaceAll("_", " ");
+function WarningActions(props: {
+  readonly warning: ReviewWarningContract;
+  readonly pending: boolean;
+  readonly onResolve: (
+    resolution: "confirmed" | "edited" | "excluded" | "intentionally_left",
+  ) => void;
+}) {
+  if (isUnsafeExtraction(props.warning)) {
+    return (
+      <div className="action-row">
+        <button
+          type="button"
+          disabled={props.pending}
+          onClick={() => props.onResolve("intentionally_left")}
+        >
+          Leave out for now
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className="action-row">
+      <button
+        type="button"
+        disabled={props.pending}
+        onClick={() => props.onResolve("confirmed")}
+      >
+        Confirm
+      </button>
+      <button
+        type="button"
+        disabled={props.pending}
+        onClick={() => props.onResolve("edited")}
+      >
+        Edit information
+      </button>
+      <button
+        type="button"
+        disabled={props.pending}
+        onClick={() => props.onResolve("excluded")}
+      >
+        Exclude
+      </button>
+      <button
+        type="button"
+        disabled={props.pending}
+        onClick={() => props.onResolve("intentionally_left")}
+      >
+        Leave out for now
+      </button>
+    </div>
+  );
 }
 
-function severityLabel(severity: ReviewWarningContract["severity"]): string {
-  switch (severity) {
-    case "info":
-      return "information";
-    case "needs_attention":
-      return "needs attention";
-    case "blocking":
-      return "must be addressed";
+function warningTitle(warning: ReviewWarningContract): string {
+  if (isUnsafeExtraction(warning)) return "Information not included";
+  if (warning.warningType === "missing")
+    return "Information to add or leave out";
+  if (warning.warningType === "ambiguous")
+    return "Please choose how to use this information";
+  return "A quick review is needed";
+}
+
+function warningMessage(warning: ReviewWarningContract): string {
+  if (isUnsafeExtraction(warning)) {
+    return "Nuvitae could not safely use some information from your resume. It was left out; you can add it yourself if you want it included.";
   }
+  if (warning.warningType === "missing") {
+    return "This information was not added automatically. You can add it, or leave it out for now.";
+  }
+  return warning.message;
+}
+
+function warningTone(warning: ReviewWarningContract): string {
+  return isUnsafeExtraction(warning)
+    ? "review-warning review-warning-recovery"
+    : "review-warning";
+}
+
+function isUnsafeExtraction(warning: ReviewWarningContract): boolean {
+  return (
+    warning.warningType === "unsupported" ||
+    warning.warningType === "unsafe" ||
+    warning.warningType === "partial" ||
+    warning.warningType === "incomplete"
+  );
 }
 
 function stateLabel(state: ReviewWarningContract["reviewStatus"]): string {

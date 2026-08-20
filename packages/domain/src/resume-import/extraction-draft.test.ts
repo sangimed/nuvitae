@@ -60,7 +60,7 @@ describe("buildExtractionDraft", () => {
     });
   });
 
-  it("rejects inferred-only or location-less candidates", () => {
+  it("rejects a location-less inferred candidate", () => {
     const result = buildExtractionDraft({
       importedDocument: document,
       fields: [
@@ -81,5 +81,49 @@ describe("buildExtractionDraft", () => {
     });
     expect(result.draft).toBeUndefined();
     expect(result.category).toBe("no_supported_field");
+  });
+
+  it("preserves a provenance-bearing inferred-only candidate for review", () => {
+    const value = "Designs durable delivery systems.";
+    const result = buildExtractionDraft({
+      importedDocument: document,
+      fields: [
+        {
+          section: "summary",
+          fieldPath: "summary",
+          value: { kind: "text", value },
+          sourceLocation: {
+            kind: "semantic",
+            documentId: document.id,
+            evidence: [
+              {
+                fragmentId: "synthetic-summary",
+                fragmentHash: "a".repeat(64),
+                line: 4,
+                start: 80,
+                end: 80 + value.length,
+              },
+            ],
+          },
+          confidence: "high",
+          inferenceStatus: "inferred_needs_review",
+          sourceOrder: 4,
+        },
+      ],
+      warnings: [],
+      missingOrUnprocessedSections: [],
+      ids,
+      now: new Date("2026-07-02T00:00:00.000Z"),
+    });
+
+    expect(result.category).toBe("complete");
+    expect(result.draft?.fields).toEqual([
+      expect.objectContaining({
+        fieldPath: "summary",
+        inferenceStatus: "inferred_needs_review",
+        reviewStatus: "unreviewed",
+        sourceLocation: expect.objectContaining({ kind: "semantic" }),
+      }),
+    ]);
   });
 });

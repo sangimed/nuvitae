@@ -341,6 +341,13 @@ export const semanticSourceFragmentSchema = z
     text: boundedTextSchema,
     hash: sha256Schema,
     bounds: sourceFragmentBoundsSchema,
+    /**
+     * Nuvitae-owned proof that this fragment and the next ordered fragment
+     * are one continuous scalar text unit. `none` preserves a source-proven
+     * zero-character boundary; `space` preserves one normalized source/layout
+     * whitespace boundary. Null/omitted means scalar continuation is unsafe.
+     */
+    continuationToNext: z.enum(["none", "space"]).nullable().optional(),
   })
   .strict();
 

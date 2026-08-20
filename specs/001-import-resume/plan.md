@@ -18,6 +18,18 @@ The implementation plan adopts a container-only workflow for development, build,
 Multimodal Import (V2)** architecture is documented in
 [`docs/research/grounded-multimodal-import-v2.md`](../../docs/research/grounded-multimodal-import-v2.md).
 It is research-only and does not alter this plan or create implementation work.
+
+**Community identity decision (2026-08-18)**: Community V1 is **one self-hosted
+installation = one owner**. It still requires a real production-safe
+authentication/session boundary that establishes a `VerifiedPrincipal`; it is
+not anonymous access, local-play, or a global-domain-owner shortcut. The
+production-shaped runtime previously lacked that boundary; T257 completed it
+on 2026-08-18, so T212 can now validate installation.
+Future V2 may allow multiple authenticated users per deployment by replacing a
+`CommunitySingleOwnerAuthAdapter` with a `MultiUserAuthAdapter`. The stable
+boundary is `VerifiedPrincipal` and its opaque `ownerUserId`; resume, import,
+manual-draft, provider-connection, repository, and authorization ownership
+semantics must remain unchanged.
 V1 remains **Grounded Text Import**, with the current deterministic PDF.js and
 OOXML extraction active and canonical Nuvitae-owned evidence authoritative for
 grounding. The proposed long-term boundary is a provider-neutral Document
@@ -43,6 +55,77 @@ multimodal provider capability is assumed or selected.
 **Performance Goals**: Accepted uploads either reach review or a recoverable timeout/provider-failure state within 3 minutes. Supported documents are limited to 10 MB and 5 rendered pages. At least 90% of supported uploads processed with a connected usable AI provider and containing one supported field with required document evidence produce a reviewable partial or complete extraction.
 
 **Constraints**: Authentication required before upload; PDF/DOCX only; French, English, and bilingual French-English only; selectable text required; AI-assisted semantic parsing is the primary semantic extraction path whenever a usable provider is connected; deterministic processing remains responsible for document validation, safety, parser isolation, storage, schema validation, evidence validation, provenance, no-invention enforcement, review, confirmation, and retention; no structured resume creation from inferred-only data, evidence-free candidates, invalid provider output, or abruptly terminated partial parser output; all warnings must be addressed before confirmation; source and source-reconstructing artifacts deleted within 7 days of original upload; source deletion does not delete confirmed structured resumes; raw source content, provider payloads, credentials, session material, prompts, and full resumes must not be logged. The import domain must not depend directly on Codex, OpenAI, ChatGPT, Claude, Ollama, provider-native JSON, or provider SDKs. Developers must not install or execute Node.js, npm, pnpm, PostgreSQL, Redis, LibreOffice, Playwright browsers, PDF/DOCX libraries, linters, formatters, compilers, or test runners on the host for Nuvitae work.
+
+**Community authentication/runtime constraint**: The intended production Compose
+runtime must establish its single Community owner through a credential-verifying
+server-side adapter and a bounded authenticated session before protected APIs
+are usable. `VerifiedPrincipalGuard` remains authoritative; owner identity is
+never selected from request input. Local-play remains non-production-only and
+its fixed principal must never become Community production identity. The API
+and worker must receive required private-storage roots plus signing/encryption
+secrets through production-safe configuration; no default or checked-in
+production secret is acceptable. This is T257 scope, not T212 scope.
+
+**Community OAuth callback closure constraint**: T257's `SameSite=Strict`
+owner session and T212's clean-install proof do not establish that a cross-site
+provider redirect to `http://localhost:1455/auth/callback` can complete the
+Community OAuth flow. T258 is the required Tranche-1 closure gate: it must
+choose and test the smallest safe callback design, with unguessable one-time
+expiring owner-bound state resolved server-side, no browser-selected owner or
+Local Play adoption, token-blind browser/application surfaces, and no weakening
+of normal owner-authenticated routes. It then requires one non-retryable real
+Community owner → OAuth → ready → one-import → review smoke. This integration
+proof does not rerun T246, qualify Codex globally, or change T203's NO-GO;
+T235 remains the later Tranche-5 full install-to-PDF release demonstration.
+
+**Closure result (2026-08-19)**: T258 Attempt #3 passed after the generic
+provenance/completeness corrections. It reused the already live-proven
+persisted connection and completed one upload, one primary semantic invocation,
+and a materially usable grounded review without fallback. Attempts #1 and #2
+remain consumed `QUALITY FAIL` evidence. Summary and some optional-field
+projection remain known non-blocking limitations; exhaustive fidelity is not
+claimed. T257, T212, T213-T218, and T258 are complete, so Tranche 1 is complete.
+T219 completed on 2026-08-20 after deterministic and manual UI validation, and
+T221 completed on 2026-08-20 after bounded review-model validation; Tranche 2
+remains in progress with T220, T222, and T259 next unblocked. T236 remains
+blocked by T223 and T225-T227.
+T246 remains finalized FAILED and immutable; T203 remains NO-GO.
+
+**Roadmap repair (2026-08-20)**: T258 remains complete and Attempt #3 remains
+a Community integration PASS. Its non-blocking rejected Summary exposed a
+generic follow-up: the same source contained extractible long-form presentation,
+an earlier consumed attempt accepted Summary, the final attempt reported
+`value_not_grounded`, and deterministic long-form tests stayed green. T259
+therefore investigates stable canonical behavior for provably equivalent
+multi-fragment long-form evidence across Summary, Work responsibilities, Work
+achievements, and project descriptions. It also determines how the existing
+`requires_review`, `inferred_needs_review`, warning, provenance, and explicit
+confirmation concepts can represent fully grounded text whose semantic
+classification, grouping, or source boundary remains genuinely uncertain,
+provided deterministic evidence does not prove material truncation of the
+claimed semantic concept. Fully grounded is necessary but not sufficient for
+review-required eligibility. This generic product invariant applies beyond
+long-form fields, while T259 remains long-form-only and does not reopen T258's
+completed scalar implementation. This work must not convert
+`value_not_grounded`, partial evidence, invalid refs, invented text, or
+non-unique provenance into reviewable suggestions, nor preserve a materially
+truncated grounded prefix/subset merely because its submitted characters occur
+in the source.
+
+**T259 architecture correction (2026-08-20)**: SourceRegistry fragments are
+extraction/provenance boundaries, not semantic-concept boundaries. T259 uses an
+explicit completeness state of `proven_complete`, `unknown`, or
+`proven_incomplete`. Current deterministic source structures can strongly prove
+the grounding and unique provenance of the submitted text but do not generically
+prove a semantic boundary. Consequently, otherwise valid long-form values are
+completeness `unknown` and review-required; they are neither verified nor
+rejected based on fragment shape. Only positive deterministic semantic-boundary
+evidence may produce either proven state. Absence of evidence of truncation is
+not evidence of completeness, and extraction boundary is not semantic boundary.
+Same-region whole/split refs canonicalize only when they reconstruct identical
+submitted text and provenance; supported cross-fragment reconstruction still
+requires source-owned continuation metadata. No heuristic semantic boundary is
+introduced.
 
 **AI Provider Runtime Constraints**: Provider invocation must be non-interactive from the worker, Docker-compatible, session-isolated per authenticated user/self-hosted installation, and restricted to semantic parsing only. The corrected Codex candidate uses the flow `Nuvitae worker -> ResumeSemanticParserProvider -> CodexDirectProviderAdapter -> isolated CodexOAuthBroker -> OpenAI-hosted OAuth -> direct Codex ChatGPT transport`. The web application, browser storage, import domain, API controllers, regular worker jobs, database domain entities, semantic extraction contracts, logs, and diagnostics remain token-blind. Only the dedicated infrastructure broker may generate PKCE verifier/challenge, generate and validate OAuth state, host a loopback callback, exchange authorization codes, store encrypted access and refresh tokens, refresh access tokens, perform logout/local deletion, expose privacy-safe connection status, execute Codex provider requests, and return provider-neutral results. The spike must compare whether the broker should be a dedicated Docker service, isolated worker-side process, or another bounded infrastructure component before selecting a production topology. Provider states include connected, not configured, login pending, login cancelled, disconnected, authentication expired, authentication revoked, unavailable, rate limited, subscription/quota exceeded, timeout, malformed output, and unsupported capability. Failures map to retry, reconnect, choose another configured provider, limited deterministic partial extraction where available, or manual entry.
 
@@ -378,11 +461,11 @@ of this plan. See the dedicated record at
 
 ## Community MVP Critical Path (Vertical Tranches)
 
-Each tranche includes backend behavior, UI behavior, error and recovery states, responsive behavior, Docker validation, and end-to-end demonstration criteria. See `tasks.md` for the concrete task mapping (existing IDs preserved; new T212-T242 tasks added, plus spike convergence tasks T243-T249 mapped to Tranche 1 and the direct-OAuth spike sequence).
+Each tranche includes backend behavior, UI behavior, error and recovery states, responsive behavior, Docker validation, and end-to-end demonstration criteria. See `tasks.md` for the concrete task mapping (existing IDs preserved; Community tasks T212-T242, post-T256 prerequisite T257, post-T258 Tranche-2 task T259, and spike convergence tasks T243-T249 mapped to Tranche 1 and the direct-OAuth spike sequence).
 
-**Tranche 1 — Community setup and real Codex import.** Docker installation documented and reproducible; Codex OAuth connection works; connection status and recovery work; real semantic parsing wired through the one authoritative Codex path (gated on the T201/T203 conditions); bounded deterministic fallback wired; a real PDF/DOCX reaches review; confirmation does not lose untouched fields. Spike convergence tasks T243-T249 map to this tranche: T243/T244 complete (Campaign-B execution and T202 re-measurement), T245 accepted 2026-08-07 (lifecycle proof; unblocks T213-T215), T213 entrypoint/browser handoff, T214 callback/status/ready-state, and T215 local lifecycle recovery are complete 2026-08-08, T246 is finalized as FAILED and must not be rerun, T247 closes the T208 bookkeeping dependency used by T246, T248 (real French PDF fixture proof) is complete 2026-08-07, and T249 (2026-08-07) completes the T246 real-document corpus prerequisites offline without authorizing any live run.
+**Tranche 1 — Community setup and real Codex import.** The canonical critical path is **T257 Community single-owner authentication and production runtime wiring → T212 Community installation and first-run validation → T213-T218 scoped capability/validation → T258 Community Codex OAuth callback compatibility and real import smoke → Tranche 1 complete**. T257, T212, T213-T218, and T258 are complete as of 2026-08-19. T258 Attempt #3 passed the supported integration gate after the generic provenance/completeness corrections; Attempts #1 and #2 remain consumed `QUALITY FAIL` evidence. Summary and some optional-field projection remain non-blocking limitations. T246 remains finalized FAILED and immutable, and T203 remains NO-GO. Tranche 1 is complete. T219 completed on 2026-08-20 after deterministic and manual UI validation, and T221 completed on 2026-08-20 after bounded review-model validation, so Tranche 2 remains in progress with T220, T222, and T259 next unblocked; T236 remains blocked by T223 and T225-T227.
 
-**Tranche 2 — First credible resume and PDF.** Clean application shell; simplified review language; one structured-resume screen; one credible template; live preview; ATS-friendly PDF export; import-to-PDF end-to-end test.
+**Tranche 2 — First credible resume and PDF.** Clean application shell; simplified review language; one structured-resume screen; stable canonical long-form evidence; truthful presentation of eligible grounded semantic uncertainty; one credible template; live preview; ATS-friendly PDF export; import-to-PDF end-to-end test. After completed T219, T220, T222, and T259 may proceed independently; T221 is complete. T221 owns generic review presentation and interaction against the existing review contract; T259 owns evidence eligibility, provenance, semantic uncertainty, and fail-closed policy. T236 follows T221, T223, T225-T227, and T259, and remains blocked until T223 and T225-T227 complete. T259 and T236 are required before Tranche 2 completes.
 
 **Tranche 3 — Usable visual editor.** Split-pane editor on desktop; tabbed editor/preview on mobile; manual editing; section reordering; visible save status; save and reopen; preview and export fidelity.
 
@@ -400,15 +483,17 @@ The existing persistence foundation remains valid. New persistence work is addit
 
 The implementation is organized as vertical slices (tranches), not infrastructure batches. Each tranche is independently implementable and demoable. Historical phases remain preserved in the task history and dependency notes; the execution order below is the Community critical path.
 
-1. Preserve and verify existing Docker, web, API, worker, persistence, private storage, parser, manual-entry, review, confirmation, retention, deletion, and Playwright foundations.
-2. Complete the Codex direct-OAuth production wiring on the Community critical path: reuse the validated spike evidence (T196-T200) where it qualifies, finish the T201 semantic matrix, satisfy the T203 decision gate and the T164/T165 mandatory conditions, then implement the `CodexDirectProviderAdapter` + response converter behind `ResumeSemanticParserProvider`; add provider-neutral runtime connection state, broker-scoped credential lifecycle, token-blind application surfaces, revocation boundaries, and provider capability reporting.
-3. Wire worker orchestration so the Codex provider is the one authoritative semantic parsing path and the bounded deterministic fallback plus `ProviderRecoveryActions` are integrated (no silent `provider_unavailable` dead end), then extend API/web contracts for provider disclosure, provider connection/reconnect/disconnect/status, provider failure states, manual fallback, and review of grounded candidates.
-4. Correct confirmation semantics so all reviewed fields carry into the structured resume and exclusion is explicit only.
-5. Build the Community application shell, lightweight design system, simplified review UX, one credible template, live preview, ATS-friendly PDF export, and the import-to-PDF end-to-end journey.
-6. Build the visual editor (split-pane desktop, tabbed mobile, section reordering, visible save status), lightweight undo, save-and-reopen, and the minimal resume dashboard.
-7. Build up to five reversible contextual Codex AI actions with before/after review, accept/reject/regenerate/undo, fact-preservation checks, and job-description adaptation if retained in MVP.
-8. Add Community alpha readiness: first-run onboarding, source privacy controls, designed loading/empty/success/error states, documentation, privacy-safe metrics, and a controlled Community release checklist.
-9. Run evaluations and tests for provider output quality, prompt injection, malformed output, invented facts, evidence quality, privacy-safe logging, timeout/quota/auth failures, accessibility, and end-to-end Playwright flows, plus the fact-preservation and fidelity regression gates.
+1. Preserve and verify existing Docker, web, API, worker, persistence, private storage, parser, manual-entry, review, confirmation, retention, deletion, ownership, and Playwright foundations.
+2. Complete T257: establish the Community V1 owner through a production-safe, replaceable `CommunitySingleOwnerAuthAdapter`, wire normal API/worker runtime dependencies and private storage outside local-play, and preserve `VerifiedPrincipal` plus opaque owner-scoped application semantics.
+3. Complete T212 only after T257: document and validate Docker installation, database initialization/migrations, first-run owner/session guidance, usable application reachability, manual entry, Codex entrypoint, restart, and troubleshooting.
+4. Complete the Codex direct-OAuth production wiring on the Community critical path: reuse the validated spike evidence (T196-T200) where it qualifies, finish the T201 semantic matrix, satisfy the T203 decision gate and the T164/T165 mandatory conditions, then implement the `CodexDirectProviderAdapter` + response converter behind `ResumeSemanticParserProvider`; add provider-neutral runtime connection state, broker-scoped credential lifecycle, token-blind application surfaces, revocation boundaries, and provider capability reporting.
+5. Wire worker orchestration so the Codex provider is the one authoritative semantic parsing path and the bounded deterministic fallback plus `ProviderRecoveryActions` are integrated (no silent `provider_unavailable` dead end), then extend API/web contracts for provider disclosure, provider connection/reconnect/disconnect/status, provider failure states, manual fallback, and review of grounded candidates.
+6. Correct confirmation semantics so all reviewed fields carry into the structured resume and exclusion is explicit only.
+7. Build the Community application shell, lightweight design system, simplified review UX, one credible template, live preview, ATS-friendly PDF export, and the import-to-PDF end-to-end journey; in parallel, stabilize generic long-form Semantic V2 evidence and the evidence-based boundary between verified, grounded review-required, and unsafe candidates before the final Tranche-2 proof.
+8. Build the visual editor (split-pane desktop, tabbed mobile, section reordering, visible save status), lightweight undo, save-and-reopen, and the minimal resume dashboard.
+9. Build up to five reversible contextual Codex AI actions with before/after review, accept/reject/regenerate/undo, fact-preservation checks, and job-description adaptation if retained in MVP.
+10. Add Community alpha readiness: first-run onboarding, source privacy controls, designed loading/empty/success/error states, documentation, privacy-safe metrics, and a controlled Community release checklist.
+11. Run evaluations and tests for provider output quality, prompt injection, malformed output, invented facts, evidence quality, privacy-safe logging, timeout/quota/auth failures, accessibility, and end-to-end Playwright flows, plus the fact-preservation and fidelity regression gates.
 
 The Document Understanding Layer benchmark is not an implementation phase in
 this V1 plan. It may be scheduled separately as a future, non-blocking spike
@@ -418,6 +503,8 @@ after the corpus and evaluation contract are reviewed.
 
 - Provider-independent contracts, validation, grounding, persistence, review, confirmation, recovery, and fallback work may continue independently.
 - The Community product decision (2026-08-05) reclassifies direct Codex OAuth as the production primary AI path and MVP-critical, and the validated T196-T200 spike evidence is reusable for that path. The T201 semantic matrix is complete and T202 is measured. T216 now supplies the thin production adapter and worker wiring behind `ResumeSemanticParserProvider`; this offline implementation completion does not claim a GO or live qualification under T203.
+- T257, T212, T213-T218, and T258 are complete. T258 closes the Community integration path with a usable grounded Attempt #3 after two consumed quality failures; it does not change T203 or T246. Tranche 1 is complete. T219 completed on 2026-08-20 after deterministic and manual UI validation, and T221 completed on 2026-08-20 after bounded review-model validation; T220, T222, and T259 are the next unblocked Tranche-2 tasks. T236 remains blocked by T223 and T225-T227.
+- T259 depends only on completed Semantic V2 foundations T251-T252 and completed integration proof T258. It may proceed in parallel with T220-T222. T221 remains independently executable because the current review contract/domain already has inferred review-required fields, warnings, provenance, and explicit user actions; T259 must reuse or refine those concepts rather than creating a confidence-only duplicate state. T221 must not surface rejected/unusable Category-C provider values. T236 depends on both T221 and T259, preserving parallel UI, renderer, and semantic work while ensuring the final import-to-PDF proof cannot pass before common long-form evidence is stable.
 - T245 (credential lifecycle proof) is accepted as of 2026-08-07 and satisfies T203 re-evaluation trigger 1; T213-T215 are unblocked by T245. T213 is complete as the production connection entrypoint/browser handoff; T214 is complete as callback/status/ready-state; T215 is complete as local reconnect/disconnect/session-deletion/provider-unavailable recovery with mocked browser coverage. T216 production semantic-provider wiring and T217 bounded-fallback production wiring are complete as of 2026-08-08. T246 is finalized as FAILED / qualification not passed; its C01/C04 semantic failures remain terminal and must not be retried. Automated onboarding feasibility now passes the deterministic/local lifecycle coverage, while live production OAuth/import evidence and moderated human validation remain pending; evidence is `docs/research/codex-direct-oauth-onboarding-feasibility.md`.
 - T218 confirmation data preservation is complete as of 2026-08-09 and satisfies FR-034: valid grounded non-inferred fields carry into the structured resume by default, including fields still marked `unreviewed`; explicit exclusions, rejected/invalid fields, and unresolved inferred fields remain excluded or blocking under existing rules. The mapper correction and regressions are offline evidence only and do not alter the T203/T246 live-proof boundary.
 - The current T203 blocker list is limited to finalized T246 semantic failure, missing live provider/import evidence, and not-yet-performed moderated human onboarding validation. T214 callback/status/ready-state work, T215 recovery, T216 production wiring, and T217 fallback are complete; T248 and T249 are complete prerequisites.
@@ -425,6 +512,7 @@ after the corpus and evaluation contract are reviewed.
 - Direct-OAuth production Codex integration is wired under T216, but a GO or qualifying CONDITIONAL GO is still required before claiming qualified live Community use; the separately authorized real OAuth/import proof and moderated validation remain gated by T203.
 - The second spike does not implement production provider integration.
 - No OAuth task is marked complete merely because Community now depends on it.
+- Community V2 multi-user identity is future scope only. A later `MultiUserAuthAdapter` may replace the V1 adapter without rewriting `VerifiedPrincipal`, opaque `ownerUserId`, owner-scoped repositories, authorization checks, or import/resume/provider ownership. Possible future work includes user accounts, multi-session login/logout, passwordless or external OIDC identity, hosted identity, recovery, administration, and later organization/team support.
 - The current PDF.js/OOXML extractor remains active for V1. The proposed
   Document Understanding Layer and `NuvitaeDocument` do not select Docling,
   change the runtime path, or create a T203 blocker.

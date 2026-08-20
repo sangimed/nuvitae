@@ -261,7 +261,13 @@ function publicProvenance(field: ExtractedField): ReviewField["provenance"] {
     };
   }
   if (field.inferenceStatus === "inferred_needs_review") {
-    return { kind: "inferred", needsConfirmation: true };
+    return {
+      kind: "inferred",
+      needsConfirmation: true,
+      ...(field.sourceLocation === undefined
+        ? {}
+        : { original: safeOriginalProvenance(field.sourceLocation) }),
+    };
   }
   if (field.sourceLocation === undefined) {
     return { kind: "minimal", label: "imported_from_initial_resume" };
@@ -293,6 +299,18 @@ function safeOriginalProvenance(
       ...(location.cellIndex === undefined
         ? {}
         : { cellNumber: location.cellIndex + 1 }),
+    };
+  }
+  if (location.kind === "semantic") {
+    return {
+      kind: "semantic",
+      evidence: location.evidence.map((item) => ({
+        fragmentId: item.fragmentId,
+        fragmentHash: item.fragmentHash,
+        line: item.line,
+        start: item.start,
+        end: item.end,
+      })),
     };
   }
   return { kind: "minimal", label: "imported_from_initial_resume" };

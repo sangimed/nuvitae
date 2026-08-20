@@ -416,13 +416,51 @@ Use this when Docker-managed caches or local service data need a clean state.
 
 ## Validation Scenarios
 
+> **Community V1 status:** T257, T212, T213-T218, and T258 are complete.
+> T258 Attempt #3 passed the bounded Community owner → persisted Codex
+> connection → one upload → one primary invocation → usable grounded review
+> gate. Tranche 1 is complete; T219 completed on 2026-08-20 and T221 completed
+> on 2026-08-20 after bounded review-model validation. T220, T222, and the
+> planning-added T259 long-form evidence stability task remain the independently
+> executable next Tranche-2 tasks; T236 remains blocked by T223 and T225-T227.
+> The local-play identity is development-only; it must not be used as a
+> Community sign-in substitute. The scenarios below describe the required
+> authenticated behavior now available through that boundary.
+
+### Community OAuth callback and real import closure (T258 complete)
+
+T258 is a Tranche-1 gate, not a replacement for T246 or T235. Attempts #1 and
+#2 are consumed as `QUALITY FAIL`. Attempt #1 proved owner auth,
+cookie-free owner-bound OAuth callback, provider-ready state, one upload, one
+primary invocation, canonical partial acceptance, and review availability, but
+invalid redundant scalar evidence removed important Work/Education/headline
+content. Attempt #2 reused the proven OAuth connection and again used exactly
+one upload and one invocation; it reached review with 63 active fields and five
+warnings, materially improving Work/Education group retention, but important
+grounded scalars were semantically truncated and Summary was rejected. The
+offline correction preserves strict grounding, restores safe continuations
+across only contiguous normalized-empty extraction items/runs, forbids provider
+semantic shortening, and explicitly separates long-form refs from scalar
+continuation rules. Attempt #3 reused the already live-proven persisted Codex
+connection and used exactly one upload and one primary provider invocation. It
+reached review with 57 active fields and one warning; all four major Work groups
+and all three major Education groups were materially retained, together with
+expected contact fields, meaningful skills, and both source languages. No
+fallback or material invention was observed. Summary remained rejected as not
+grounded, and some optional-field projection remains incomplete, so exhaustive
+field fidelity is not claimed. T258 is complete and Tranche 1 is complete. This
+does not rerun or alter finalized-FAILED T246, qualify Codex globally, or change
+T203's NO-GO. T219 later completed independently. T259 records the generic
+long-form stability and grounded-semantic-uncertainty follow-up; it does not
+reopen T258. T235 remains the later full-MVP install-to-PDF validation.
+
 ### 0. Manual Entry Draft
 
 1. Start the API and web stack with migrations already run.
 2. Visit `/resumes/new/manual`.
 3. If signed out, verify the page shows an authentication-required state and no
    manual draft is created.
-4. Sign in and visit `/resumes/new/manual` again.
+4. Establish the normal Community owner session and visit `/resumes/new/manual` again.
 5. Verify one blank manual structured-resume draft is created or resumed with
    `source: manual_entry`, `status: editing`, all supported sections present,
    and personal, contact, work experience, education, skills, languages,
@@ -450,7 +488,7 @@ resolution are not implemented yet.
 ### 1. Happy Path Import
 
 1. Start the stack with `docker compose up`.
-2. Sign in as `user-a`.
+2. Establish the normal Community owner session.
 3. Start resume creation.
 4. Verify import is presented as the recommended path and manual entry is available.
 5. Upload a supported selectable-text PDF or DOCX under 10 MB and 5 rendered pages.
@@ -493,6 +531,51 @@ unsupported-language fixtures.
 4. Resolve each warning by confirming, editing, excluding, or intentionally leaving it.
 
 **Expected Outcome**: Confirmation is blocked until all warnings are addressed. After resolution, confirmation succeeds only if at least one supported field is user-confirmed.
+
+### 5a. Long-Form Evidence Stability And Semantic Review Eligibility (T259 deterministic validation)
+
+Use only independently constructed sanitized PDF/DOCX source representations
+and deterministic provider-response fixtures. Exercise Summary, Work
+responsibilities, Work achievements, and project descriptions with C1-C10:
+an embedded complete value, a value ending at a fragment boundary, a grounded
+prefix with no semantic-boundary proof, partial grounding of the submitted
+value, an invented token, same-region whole/split partitions, unrelated
+following text, unsupported cross-fragment expansion, grounded semantic
+ambiguity, and explicit confirmation. Add metamorphic variants that rename
+fragment IDs while preserving provenance/content, add unrelated fragments,
+remove necessary evidence, and vary provider ref selection without
+manufacturing provenance.
+
+Separately exercise the three completeness states. `proven_complete` and
+`proven_incomplete` require actual deterministic semantic-boundary evidence;
+do not derive them from extraction shape. `unknown` is the expected current
+state when the submitted value and unique provenance are grounded but the
+semantic concept boundary is not provable. Also exercise invalid refs, repeated
+text with non-unique provenance, draft persistence/readback, Category-C
+non-bypass, review-only versus active data, source-deletion reduction, and
+explicit user confirmation of an eligible review-required candidate.
+
+**Expected Outcome**: Same-region evidence partitions have one stable canonical
+grounding when equivalence is deterministically demonstrable. A strict
+substring is not rejected or called truncated merely because it leaves other
+fragment text unselected. Grounded completeness-unknown candidates remain
+review-required and inactive until explicit user action. Partial grounding of
+the submitted value, invented text, invalid/unsupported refs, non-unique
+provenance, and only positively proven semantic omission remain rejected or
+unusable. No OAuth, provider call, upload, live Semantic V2 run, benchmark, or
+private resume fixture is part of this scenario.
+
+**Corrected implementation target**: exact submitted text is reconstructed from
+its selected source region. Same-region whole/split refs produce identical
+canonical evidence. Cross-fragment grounding requires source-owned continuation
+proof; no automatic expansion occurs. Current grounded long-form candidates
+carry canonical completeness `unknown` and map to inactive
+`inferred_needs_review` with a field-bound warning and semantic provenance.
+`materially_truncated_value` has no generic fragment-offset producer. Explicit
+confirmation is required and audited. The deterministic sanitized corpus and
+existing Semantic V2, scalar-continuation, PDF/DOCX continuation, mapping,
+draft, confirmation, read-model, and source-deletion regressions remain the
+Docker-only validation boundary; no live smoke is required.
 
 ### 6. Multiple Roles And Ongoing Role
 

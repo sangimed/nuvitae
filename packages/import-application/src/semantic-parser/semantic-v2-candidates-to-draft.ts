@@ -60,10 +60,27 @@ export function mapSemanticV2CandidatesToDraft(input: {
 
   const warnings = [
     ...input.rejected.map(rejectedWarning),
-    ...input.signals.map(signalWarning),
+    ...input.signals.flatMap(signalWarning),
+    ...input.candidates.flatMap(semanticCompletenessWarning),
     ...(input.completenessDiagnostics ?? []).flatMap(completenessWarning),
   ];
   return { fields, warnings };
+}
+
+function semanticCompletenessWarning(
+  candidate: V2CanonicalSemanticCandidate,
+): readonly DeterministicWarningCandidate[] {
+  if (candidate.semanticCompleteness !== "unknown") return [];
+  return [
+    {
+      warningType: "ambiguous",
+      section: sectionForFieldPath(candidate.fieldPath),
+      fieldPath: draftFieldPath(candidate.fieldPath),
+      message:
+        "The submitted text is grounded, but semantic completeness could not be deterministically proven and needs review.",
+      requiresResolution: true,
+    },
+  ];
 }
 
 function toField(
@@ -74,9 +91,12 @@ function toField(
     section: sectionForFieldPath(candidate.fieldPath),
     fieldPath: draftFieldPath(candidate.fieldPath),
     value: extractedValue(candidate),
-    sourceLocation: minimalLocation(document),
+    sourceLocation:
+      candidate.inferenceStatus === "inferred_needs_review"
+        ? semanticLocation(document, candidate)
+        : minimalLocation(document),
     confidence: candidate.confidence,
-    inferenceStatus: "not_inferred",
+    inferenceStatus: candidate.inferenceStatus,
     sourceOrder: candidate.evidence[0]?.line ?? 0,
   };
 }
@@ -255,6 +275,7 @@ function rejectedDiagnosticMessage(code: V2RejectedField["code"]): string {
     code === "ambiguous_source_refs" ||
     code === "duplicate_source_ref" ||
     code === "overlapping_source_refs" ||
+    code === "materially_truncated_value" ||
     code === "value_ambiguous"
   )
     return "An imported field could not be verified against the source and was not included.";
@@ -263,16 +284,23 @@ function rejectedDiagnosticMessage(code: V2RejectedField["code"]): string {
 
 function signalWarning(
   signal: V2CanonicalSignal,
-): DeterministicWarningCandidate {
+): readonly DeterministicWarningCandidate[] {
   const ambiguous = signal.kind.startsWith("ambiguous");
-  return {
+  const base = {
     warningType: ambiguous ? "ambiguous" : "conflicting",
-    section: "summary",
     message: ambiguous
       ? "Some imported information is ambiguous and needs your review."
       : "Some imported information conflicts and needs your review.",
     requiresResolution: true,
-  };
+  } as const;
+  if (signal.affectedFieldPaths.length === 0) {
+    return [{ ...base, section: "summary" }];
+  }
+  return signal.affectedFieldPaths.map((fieldPath) => ({
+    ...base,
+    section: sectionForFieldPath(fieldPath),
+    fieldPath: draftFieldPath(fieldPath),
+  }));
 }
 
 function rejectedFieldPath(
@@ -292,5 +320,22 @@ function minimalLocation(document: ImportedDocument) {
     confirmedByUser: false,
     sourceDeletedAt: undefined,
     documentId: document.id,
+  };
+}
+
+function semanticLocation(
+  document: ImportedDocument,
+  candidate: V2CanonicalSemanticCandidate,
+) {
+  return {
+    kind: "semantic" as const,
+    documentId: document.id,
+    evidence: candidate.evidence.map((item) => ({
+      fragmentId: item.fragmentId,
+      fragmentHash: item.fragmentHash,
+      line: item.line,
+      start: item.start,
+      end: item.end,
+    })),
   };
 }

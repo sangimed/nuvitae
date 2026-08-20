@@ -8,7 +8,7 @@ This contract describes the user-facing flow and service boundaries for the init
 
 **Trigger**: Authenticated or unauthenticated user starts resume creation.
 
-**Required Behavior**: Present import as the recommended path and manual entry as an available fallback. Manual entry routes to `/resumes/new/manual` and creates a blank editable structured-resume draft without creating an imported document or import job. If the user is not authenticated and chooses upload, require sign-in before accepting the file.
+**Required Behavior**: Present import as the recommended path and manual entry as an available fallback. Manual entry routes to `/resumes/new/manual` and creates a blank editable structured-resume draft without creating an imported document or import job. If the user is not authenticated and chooses upload, require the normal Community owner session before accepting the file. Community V1 is one installation = one owner, but that owner is still established through a production-safe `VerifiedPrincipal` boundary, not a client-selected ID or local-play identity.
 
 ### Upload Step
 
@@ -145,7 +145,49 @@ the existing retention and deletion contract.
 
 **Output**: versioned Nuvitae extraction response, accepted candidate fields and relationships, rejected/unusable candidates, grounding results, warnings.
 
-**Rules**: Provider adapters translate provider-native output into a versioned Nuvitae-owned response before the import domain consumes it. The active V1 contract retains flattened transcript coordinates and deterministic native provenance. The future `nuvitae.semantic-extraction.v2` response instead provides semantic values, logical grouping, and bounded `sourceRefs` containing Nuvitae-owned fragment/block ids plus exact quote hints; Nuvitae resolves and verifies those hints and reconstructs canonical evidence, identity, and policy metadata. Strict validation rejects malformed output, unknown fields, invalid relationships, unsupported values, provider-native schema leakage, invalid confidence/classification metadata, and missing required source references. Ungrounded or invented values are rejected or marked unusable; they are never silently accepted.
+**Rules**: Provider adapters translate provider-native output into a versioned Nuvitae-owned response before the import domain consumes it. The active V1 contract retains flattened transcript coordinates and deterministic native provenance. The `nuvitae.semantic-extraction.v2` response provides semantic values, logical grouping, and bounded `sourceRefs` containing Nuvitae-owned fragment/block ids plus exact quote hints; Nuvitae resolves and verifies those hints and reconstructs canonical evidence, identity, and policy metadata. A V2 scalar normally uses one ref. Multiple ordered refs are accepted only when optional Nuvitae-owned source-continuation metadata proves every consecutive boundary, refs are edge-aligned and non-overlapping, and the scalar exactly equals deterministic reconstruction using only a zero-character or one-normalized-space join. Strict validation rejects malformed output, unknown fields, invalid relationships, unsupported values, provider-native schema leakage, invalid confidence/classification metadata, and missing required source references. Ungrounded or invented values are rejected or marked unusable; they are never silently accepted. Group-level refs and guessed joins, punctuation, dehyphenation, or characters remain unsupported.
+
+For semantic scalars, the provider must identify and return the complete source
+concept rather than a shorter grounded prefix, token, simplification, or
+abbreviation chosen to make evidence easier. If the complete concept cannot be
+represented by the advertised source-reference contract, the provider omits
+the atom and canonical required-group semantics apply. Nuvitae deterministically
+verifies exact grounding, ordered continuation, and provenance; it does not use
+fuzzy similarity, dictionaries, field-specific title patterns, or semantic
+guessing to decide whether a grounded scalar is conceptually complete.
+
+Semantic V2 long-form fields are Summary, Work responsibilities, Work
+achievements, and project descriptions. Their refs must prove the exact
+submitted textual value; they do not prove semantic completeness merely by
+covering an extraction fragment. A candidate may select all or a strict
+substring of one fragment. Ordered non-overlapping refs within one fragment
+canonicalize equivalently to a single ref for the same region only when omitted
+gaps are normalization-safe whitespace, reconstructed canonical text is
+identical, and provenance identifies the same source region/content. Crossing
+fragments requires authoritative consecutive order, boundary-aligned refs, and
+source-owned `continuationToNext` proof for every crossed boundary. Nuvitae does
+not append unrelated following text or expand across an unsupported boundary.
+Duplicate, overlapping, reordered, invalid, insufficient, non-unique,
+partially grounding, or invented evidence remains a field-level failure.
+
+Grounding and semantic completeness are separate decisions. Completeness is
+`proven_complete` only when deterministic evidence actually proves the full
+semantic boundary, `unknown` when submitted text and unique provenance are
+grounded but the semantic boundary is not provable, and `proven_incomplete`
+only when deterministic evidence positively proves omission. Fragment, line,
+paragraph, page, punctuation, provider assertion, and confidence are not
+semantic-boundary proof. Under the current source model, otherwise grounded
+long-form values are completeness `unknown`, retain semantic provenance and a
+field-bound warning, use `inferred_needs_review`, and cannot activate without
+explicit confirmation. Partial grounding of the submitted value,
+`value_not_grounded`, invented text, invalid refs, non-unique provenance, and
+positively proven semantic omission remain rejected or unusable. Completeness
+unknown is not rejection. Absence of evidence of truncation is not evidence of
+completeness; extraction boundary is not semantic boundary.
+
+This semantic-completeness invariant applies across supported field types even
+though T259 investigates only the long-form evidence boundary. It does not
+reopen or extend completed T258 scalar behavior.
 
 ### Provider Failure Recovery
 
@@ -175,7 +217,7 @@ the existing retention and deletion contract.
 
 **Input**: authenticated user, import draft id.
 
-**Output**: grouped sections, extracted candidate fields, warnings, review statuses, evidence/source locations while source exists, confidence categories, explicit-versus-inferred classification, retention expiry, available actions.
+**Output**: grouped sections, verified extracted candidate fields, eligible grounded review-required candidate fields, warnings, review statuses, evidence/source locations while source exists, confidence categories, explicit-versus-inferred classification, retention expiry, available actions. Rejected or unusable provider values are not candidate fields and their text is not exposed as a suggestion.
 
 **Errors**: not found, forbidden, expired, source deleted with no resumable draft, no supported field extracted.
 
@@ -185,7 +227,7 @@ the existing retention and deletion contract.
 
 **Output**: updated review state and remaining warnings.
 
-**Rules**: Actions are confirm, edit, remove, add, exclude, and intentionally leave. Updating review never changes the uploaded source document.
+**Rules**: Actions are confirm, edit, remove, add, exclude, and intentionally leave. A grounded review-required candidate remains inactive until an explicit user confirm or edit action; ignoring, excluding, or intentionally leaving it must not activate it. Updating review never changes the uploaded source document. Audit state must distinguish the provider proposal, canonical evidence, and user action.
 
 ### Confirm Structured Resume
 
@@ -267,7 +309,7 @@ These service boundaries add the Community MVP surface (Codex connection, visual
 
 **Errors**: state mismatch, authorization declined, exchange failure, callback timeout.
 
-**Rules**: The broker validates state, exchanges the authorization code, and persists encrypted credentials. The application records only provider-neutral connection state and a broker-owned credential reference. No authorization code, access token, refresh token, or account identifier appears in any application response, log, or diagnostic.
+**Rules**: The broker validates state, exchanges the authorization code, and persists encrypted credentials. For Community, state must be unguessable, one-time, expiring, and resolved server-side to the owner who initiated the connection; the cross-site return to `http://localhost:1455/auth/callback` must not depend incorrectly on the normal `SameSite=Strict` Community session cookie being resent. The callback must not accept a browser-selected owner or Local Play identity, and a callback failure must leave the connection recoverable. The application records only provider-neutral connection state and a broker-owned credential reference. No authorization code, access token, refresh token, or account identifier appears in any application response, log, or diagnostic. Normal protected APIs remain owner-authenticated; any narrowly scoped cookie behavior required for the callback must not weaken them.
 
 ### Codex Connection Status
 
@@ -365,7 +407,7 @@ These service boundaries add the Community MVP surface (Codex connection, visual
 
 ## Authorization Contract
 
-Every import operation must verify that the authenticated user owns the imported document, draft, extracted fields, warnings, corrections, deletion job, and resulting structured resume. Forbidden responses must not reveal personal data from another user's import.
+Every import operation must verify that the authenticated principal owns the imported document, draft, extracted fields, warnings, corrections, deletion job, and resulting structured resume. Community V1's single owner does not weaken this requirement: repositories remain owner-scoped and headers, query parameters, and bodies cannot select or override owner identity. Forbidden responses must not reveal personal data from another user's import. Future multi-user deployment support relies on this unchanged opaque-owner boundary.
 
 ## Logging Contract
 

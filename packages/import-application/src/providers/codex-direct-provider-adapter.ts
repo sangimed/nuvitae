@@ -541,6 +541,10 @@ function buildSemanticInput(request: ResumeSemanticParseRequest): string {
         fragmentId: `fragment-${fragment.order + 1}`,
         order: fragment.order,
         text: fragment.text,
+        ...(fragment.continuationToNext === undefined ||
+        fragment.continuationToNext === null
+          ? {}
+          : { continuationToNext: fragment.continuationToNext }),
       })),
     },
   });

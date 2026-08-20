@@ -113,6 +113,7 @@ export class PdfJsPdfAdapter
                         height: finiteNumber(candidate.height),
                         unit: "pdf_point" as const,
                       }),
+                      hasEol: candidate.hasEOL,
                     }),
                   }),
                 );

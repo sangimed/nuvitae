@@ -8,9 +8,9 @@ reconciliation does not reopen T246 or change the T203 decision. T213 and T214
 are complete at the entrypoint/callback/status boundaries; T215 is complete
 for local lifecycle recovery and mocked browser validation. T216 is complete
 for production semantic-provider wiring and offline/local preflight; this does
-not claim live OAuth or provider-import evidence. T217 and T218 are complete;
-the semantic-import recall correction is validated offline only, and one new
-live smoke revalidation remains pending.
+not claim live OAuth or provider-import evidence. T217 and T218 are complete.
+T258 subsequently completed its separately scoped Community integration proof
+on Attempt #3; this does not qualify Codex globally or alter T203/T246.
 
 The transversal semantic-provider boundary redesign is recorded in
 [`docs/research/semantic-provider-boundary-redesign-2026-08-09.md`](../../docs/research/semantic-provider-boundary-redesign-2026-08-09.md).
@@ -335,6 +335,477 @@ The development workspace image contains pinned Node.js, Corepack, pnpm, and sha
 # Community MVP Research Update (2026-08-05)
 
 The approved strategic direction is product-first: Nuvitae Community is the first MVP. The decisions below supersede the earlier architecture-first/hardening-first assumptions in this research file only where noted; earlier decisions remain valid except as amended.
+
+## Decision: Community V1 is one installation = one owner, with real authentication (2026-08-18)
+
+**Rationale**: The bounded T212 runtime audit found that the production-shaped
+Compose runtime cannot establish an authenticated principal: `AppModule` only
+loads `LocalPlayRuntimeModule` when `NUVITAE_LOCAL_PLAY_MODE=true`, while that
+development-only module supplies import/provider runtime wiring and a fixed
+verified development principal. `VerifiedPrincipalGuard` correctly protects
+import, manual-resume, and provider-connection APIs, but no production
+credential-verifying adapter currently attaches a principal. The plan was
+therefore contradictory: it required authenticated, owner-scoped Community
+flows and a usable self-hosted installation without scheduling the mechanism
+that creates the Community owner. Local-play cannot be promoted because it is
+non-production, has a fixed identity, and would turn an internal development
+convenience into implicit production trust.
+
+Community V1 deliberately limits product scope to one self-hosted installation
+and one owner. The smallest safe implementation is a replaceable
+`CommunitySingleOwnerAuthAdapter` at runtime infrastructure: establish a
+stable opaque owner at installation/first-run, authenticate it server-side,
+and issue a bounded session that produces `VerifiedPrincipal`. This avoids a
+premature signup, multi-user account, email/password, recovery, social-login,
+or external-IdP system, while still requiring real credentials, fail-closed
+validation, session expiry/invalidation, and protected APIs. Network locality
+alone is not authentication. The adapter must also wire normal production API,
+worker, queue, persistence, and private-storage configuration rather than
+depending on local-play.
+
+Existing resource ownership remains unchanged: services receive a real opaque
+`ownerUserId`; repositories stay owner-scoped; and authorization compares a
+resource owner to the authenticated principal. This is deliberately compatible
+with V2, where a `MultiUserAuthAdapter` may replace the V1 adapter for multiple
+users, hosted identity, passwordless/OIDC options, recovery, administration,
+or later teams/organizations without rewriting resume/import/provider domain
+logic. Reconsider the V1 model when multiple people share a self-hosted
+instance, when hosted or multi-tenant deployment begins, or when organization
+requirements arise.
+
+**Alternatives considered**: Treating every request as the owner was rejected
+because it removes authentication. Reusing the local-play fixed principal was
+rejected because it is explicitly development-only. Building full multi-user
+authentication now was rejected because it is not required for the V1 product
+promise and would delay the missing production boundary. The roadmap repair was
+T257 before T212. T257 completed on 2026-08-18 with deterministic, host-side
+smoke, and manual-browser validation; T212 subsequently completed its
+installation/onboarding scope. T258 is now the next Tranche-1 closure task.
+
+## Community localhost cookie and OAuth callback limitation and Tranche-1 closure (2026-08-18)
+
+Community V1's supported browser URL is `http://localhost:3000` on the same
+machine as Docker. Modern browsers treat localhost and loopback origins as
+potentially trustworthy for Secure cookies, so the production
+`NUVITAE_COMMUNITY_COOKIE_SECURE=true` session setting remains required for
+that local path. This exception does not support plain-HTTP LAN or public
+deployment; any remote Community deployment requires HTTPS and is outside T212.
+
+The existing direct OAuth callback returns from a cross-site authorization
+origin to `http://localhost:1455/auth/callback`, while the Community session
+cookie is `SameSite=Strict` and the callback is authenticated. The cookie may
+therefore be absent from that callback. This is a Community-runtime
+compatibility concern, not an HTTPS blocker and not a T212 authentication/OAuth
+redesign. T212 correctly neither weakened SameSite nor claimed OAuth completion
+validation.
+
+This exposed a roadmap contradiction: every explicitly listed Tranche-1
+implementation task (T257, T212, and T213-T218) is complete, while the stated
+Tranche-1 outcome still requires a real owner → Connect Codex → cross-site
+callback → ready → real PDF/DOCX import → review journey that has not been
+proven after the new Community owner/session boundary. T258 is therefore the
+smallest explicit Tranche-1 closure task. It must first resolve callback
+compatibility without blindly changing SameSite, then pass deterministic
+owner-bound one-time-state/security tests and one bounded, no-retry real
+Community smoke. This smoke is not T246, model qualification, or a T203
+re-evaluation: T246 remains finalized FAILED and immutable, and T203 remains
+NO-GO. T235 stays in Tranche 5 as the later full-MVP install-to-PDF/release
+demonstration; using it as a Tranche-1 prerequisite would be circular because
+it depends on Tranches 1-5.
+
+### T258 consumed live attempt and offline quality diagnosis (2026-08-18)
+
+The single authorized T258 Community smoke is consumed. Production owner
+authentication passed, the real browser OAuth callback completed without the
+`SameSite=Strict` Community session cookie, pending server-side state resolved
+the initiating owner, and the connection reached ready. The callback fix in
+`f671ecc` is therefore live-proven and remains isolated. The browser returned
+to the home page after callback rather than directly to the import screen; this
+is recorded as a minor UX observation only, not expanded into T258 scope.
+
+Exactly one upload and one primary provider invocation were used. The provider
+returned HTTP 2xx, SSE began, `response.completed` and normal EOF were observed,
+canonicalization completed, `v2_partial_acceptance` persisted a draft, and
+review became available. No transport failure, second invocation, or
+deterministic fallback was observed. The result is nevertheless an immutable
+`QUALITY FAIL`: meaningful Work and Education structure was not usable, and
+headline was rejected. The opaque import id is
+`c8b06e96-3024-4f8c-a52a-3dc9e03f005b`; no source filename or resume content is
+recorded here.
+
+Privacy-safe runtime diagnostics identify the structural cause. Scalar atoms
+for headline, all four work-role title anchors, and education institution,
+degree, and field-of-study fields carried multiple otherwise well-shaped
+`sourceRefs`. The canonicalizer correctly classified these as
+`ambiguous_source_refs`; it then removed each role whose required title was
+ineligible, removed employer groups with no eligible role, and removed an
+education group when its required institution was ineligible. The V2 schema
+uses a bounded source-reference array because long-form fields may span
+fragments, but the generated provider instructions did not state clearly that
+ordinary scalar atoms require exactly one reference. They also used “at least
+one” language for contact. The faulty layer is therefore the provider
+contract/prompt guidance, not extraction, transport, parsing, source-registry
+resolution, canonicalization, group validation, draft mapping, OAuth, or the
+recent callback change.
+
+The offline correction makes source-reference ownership explicit: every scalar
+atom has exactly one direct reference; only summary, work responsibilities,
+work achievements, and project descriptions may use multiple ordered refs when
+the complete value genuinely spans fragments; group objects never own refs.
+Fail-closed canonical validation is unchanged. Synthetic repeated-text Work and
+Education coverage reproduces the consumed response shape and proves malformed
+anchors reject only the affected group while valid sibling groups survive.
+T258 remains unchecked, Tranche 1 remains incomplete, T219 remains blocked,
+T203 remains NO-GO, and no live retry is authorized by this record.
+
+### T258 generic split-scalar evidence correction (2026-08-18)
+
+The anti-overfitting audit supersedes the prompt-only diagnosis above without
+rewriting its historical checkpoint. Semantic V2 atoms already permit one to
+eight source refs, PDF.js text items and DOCX runs are intentionally granular,
+and a legitimate scalar can cross those extraction boundaries. Requiring one
+ref for every non-long-form scalar therefore leaves some grounded values
+unrepresentable; this is generic and is not specific to a provider, fixture,
+resume section, count, or source offset.
+
+The selected design is ordered multi-ref scalar reconstruction gated by a
+Nuvitae-owned continuation edge on the source fragment preceding each boundary.
+The existing atom and canonical evidence arrays already distinguish one-ref
+from multi-ref evidence, so a second composite atom shape would add an
+externally meaningful representation without adding proof. Pre-parser fragment
+coalescing was rejected because it would hide the original evidence boundary
+and could merge PDF columns/tables/wrapped lines or DOCX paragraphs/cells.
+
+For an accepted split scalar, refs must resolve uniquely, use distinct
+consecutive fragments in source order, touch the end/start of every shared
+boundary, and cross only an explicit `continuationToNext` edge. `none` inserts
+no character; `space` inserts exactly one normalized space. The submitted
+value, after the existing NFKC and whitespace normalization, must equal that
+reconstruction, and typed date/link/language validation still applies. Unknown,
+malformed, duplicate, overlapping, reordered, non-consecutive, edge-skipping,
+or unsupported-boundary refs fail closed. Group-level refs remain unsupported,
+and existing required-group plus sibling-survival semantics are unchanged.
+
+DOCX continuation is permitted only for contiguous runs in the same package
+part, paragraph, and table cell, with matching character offsets; the join is
+derived from the extracted run text. PDF continuation is deliberately
+conservative: same page, adjacent item/reading order, `hasEOL=false`, aligned
+baseline, non-overlapping left-to-right geometry, and at most a half-line-height
+gap. Extracted boundary whitespace wins; otherwise a touching boundary yields
+no separator and a small positive gap yields one normalized space. Cross-line
+wraps, columns, ordinary table gaps, and page changes are rejected. Punctuation
+and hyphens are preserved exactly. No dehyphenation or other guessed character
+transformation is supported. Style/font boundaries alone neither authorize nor
+invalidate a join.
+
+This is a bounded correction within `nuvitae.semantic-extraction.v2`, not a new
+response-contract version: the source-ref array cardinality and provider atom
+shape do not change, and existing one-ref output remains valid. The
+provider-neutral parse request gains optional Nuvitae-owned continuation
+metadata so providers can emit only sequences the canonicalizer can prove.
+Long-form reconstruction remains unchanged. The first T258 live smoke remains
+a consumed `QUALITY FAIL`; there is no second authorized attempt. T258 remains
+unchecked, Tranche 1 remains incomplete, T219 remains blocked, T203 remains
+NO-GO, and T246 remains finalized FAILED and immutable.
+
+The existing sanitized Semantic V2, realistic, anonymous PDF/DOCX, French,
+T246 corpus, sparse/ambiguity, prompt-instruction, worker, mapper, confirmation,
+and long-form suites retain their prior classifications. The only intended
+acceptance delta is synthetic scalars whose ordered refs cross explicit safe
+continuation edges; the corresponding reordered, unrelated, repeated-location,
+duplicate, overlapping, wrap, hyphenation, and extra-ref cases remain rejected.
+Provider request-size evidence changed only because the corrected instructions
+are longer; fragment/response counts and semantic classification did not
+change.
+
+### T258 second consumed live attempt and semantic-completeness correction (2026-08-19)
+
+The second bounded T258 Community import attempt is consumed and classified
+`QUALITY FAIL`. It reused the already live-proven owner OAuth connection, used
+exactly one upload and exactly one primary provider invocation, received HTTP
+2xx plus SSE, first semantic output, `response.completed`, and normal EOF, then
+completed canonicalization as `v2_partial_acceptance`, persisted a draft, and
+reached review. No second invocation or deterministic fallback was observed.
+Privacy-safe timings were approximately 613 ms from upload to provider start,
+2.58 s to response headers, 12.85 s to first semantic output, and 56.59 s total
+provider time. Review contained 63 active draft fields and five warnings.
+Work and Education group retention materially improved over Attempt #1, but
+important role-title, institution, credential, and headline scalars were
+materially incomplete and Summary was rejected. No private value is recorded.
+
+The offline structural trace used only the retained source, persisted review
+shape, and privacy-safe runtime diagnostics. The source produced 165 non-empty
+provider fragments. Affected active Work title values had 6-9 characters and
+affected institution values had 10 characters; repeated short values resolved
+to one or more exact fragments. The provider therefore submitted shortened
+values with evidence proving only those shortened values. Canonicalization did
+not truncate them: it accepted the exact grounded provider value, the V2 draft
+mapper copied that candidate value unchanged, persistence retained it unchanged,
+and the review projection exposed the persisted value unchanged.
+
+For the affected inline Work/Education concepts, the full source text occupied
+multiple same-page, same-baseline, left-to-right PDF text items. Consecutive
+non-empty words were commonly separated by a PDF.js whitespace-only item with
+zero height and no EOL. Request normalization correctly omitted those empty
+items, but continuation discovery still required the surviving items' original
+`itemIndex` and `readingOrder` to differ by exactly one. It therefore advertised
+no continuation edge even though the intervening source items were empty and
+the existing baseline/gap gates passed. This was an extraction/provenance
+boundary defect, not a canonical grounding defect. The correction permits a
+continuation across one or more intervening items only when every intervening
+item normalizes empty, physical item and reading order remain contiguous, page
+and inline geometry remain valid, and no intervening item carries EOL. DOCX
+receives the equivalent same-part/paragraph/cell and contiguous-offset rule for
+whitespace-only runs. Non-empty gaps, wraps, columns, table-scale gaps, page
+changes, vertical transitions, reordered items, and unsupported joins remain
+closed.
+
+Headline is structurally different in this consumed attempt. Its accepted
+55-character value exactly equalled one complete extraction fragment and had
+no canonical or mapper truncation. The remaining source concept crossed a real
+line transition with EOL and a baseline change, so no continuation chain was
+advertised and this correction intentionally does not manufacture one. The
+provider nevertheless returned the grounded partial fragment. The generic
+provider invariant is therefore: identify the complete semantic concept first;
+never shorten, simplify, abbreviate, or select only a prefix/token merely to
+obtain easier evidence; if the complete concept cannot be represented by the
+advertised refs, omit the atom and let canonical required-group semantics fail
+closed. Nuvitae continues to validate only exact grounding and provenance. It
+does not add fuzzy completeness scoring, dictionaries, title/institution
+patterns, or semantic self-validation.
+
+Summary failed independently. Attempt #2's first rejected path was
+`sections.summary`; privacy-safe diagnostics classified the response as
+`other_schema_violation`/`invalid_source_ref_shape`, and canonical validation
+reported `value_not_grounded`. The long-form reconstruction algorithm and
+long-form instruction text had not changed between Attempts #1 and #2; the
+provider emitted a Summary value/ref combination that did not reconstruct
+exactly. The adjacent new scalar-continuation paragraph did not explicitly say
+that it excluded long-form fields, however, so the instruction partition was
+unnecessarily ambiguous. The correction makes the separation explicit:
+Summary, responsibilities, achievements, and project descriptions retain their
+existing ordered long-form refs, do not require `continuationToNext`, and remain
+subject to exact whitespace-normalized reconstruction. No long-form acceptance
+rule or grounding validator is relaxed.
+
+The synthetic regression matrix is privacy-free: (A) complete single-fragment
+title; (B) complete continuation-proven multi-fragment title; (C) grounded
+short prefix, accepted as provenance-valid by deterministic code but explicitly
+forbidden by the provider contract; (D) multi-fragment institution; (E)
+multi-fragment degree/credential; (F) long headline across proven fragments;
+(G) unsupported boundary rejected/omitted rather than shortened; (H) repeated
+text and redundant/alternative refs fail closed; (I) ordered long-form Summary;
+and (J) multiple Work/Education groups with mixed single/split scalars and
+sibling survival. The intended classification delta is limited to safe chains
+previously interrupted only by normalized-empty physical items/runs. T258
+remains unchecked, Tranche 1 remains incomplete, T219 remains blocked, T203
+remains NO-GO, and T246 remains finalized FAILED and immutable. No third live
+attempt is authorized by this record.
+
+### T258 third consumed live attempt and Tranche-1 completion (2026-08-19)
+
+The third bounded T258 Community import attempt is consumed and classified
+`PASS`. It reused the already live-proven persisted Codex connection, so no
+additional OAuth was performed. Exactly one upload and exactly one primary
+provider invocation occurred. Upload persistence, queue enqueue, worker start,
+PDF validation, extraction, normalization, and provider start completed. The
+provider returned HTTP 2xx; SSE began; first semantic output,
+`response.completed`, and normal EOF were observed across 2,730 frames. No
+transport failure, second provider invocation, or deterministic fallback was
+observed. Canonicalization completed as `v2_partial_acceptance`, the draft was
+persisted, and review became available. The opaque import id is
+`36265543-febb-42ee-a9b3-b9e92236c219`.
+
+Privacy-safe approximate timings were 574 ms from upload to provider start,
+1.51 s from provider start to headers, 13.33 s from provider start to first
+semantic output, 62.32 s total provider time, and 62.99 s from upload to the
+persisted draft. These observations describe one bounded integration attempt
+and are not a benchmark.
+
+Review contained 57 active draft fields and one warning. Manual comparison to
+the source established a materially usable and grounded result: expected
+contact fields were preserved; all four major Work groups retained employer
+anchors, complete meaningful role titles, locations, date ranges, and material
+responsibilities/achievements; all three major Education groups retained full
+institution and credential values, locations, and dates; meaningful skills and
+both source languages were retained. No material invention was observed. No
+private resume value, source filename, or source offset is recorded.
+
+The result is not perfect. `sections.summary` was the first rejected path,
+classified as `other_schema_violation` with `value_not_grounded`, so Summary is
+not active. Some optional headline/professional-link projection is incomplete.
+These remain visible non-blocking limitations, and no 100% field-fidelity claim
+is made.
+
+Attempt #3 satisfies T258 because its gate is one supported Community owner,
+the live-proven Codex connection, one real upload, one primary semantic
+invocation, and a usable grounded review. Attempts #1 and #2 remain immutable
+consumed `QUALITY FAIL` evidence. T246 remains finalized FAILED and immutable;
+Attempt #3 is not qualification evidence. T203 remains NO-GO. With T257, T212,
+T213-T218, and T258 complete, Tranche 1 is complete. T219 is the exact next
+unblocked canonical task, but it has not started.
+
+### Post-T258 long-form evidence stability and review-eligibility follow-up (2026-08-20)
+
+T258 remains complete and Attempt #3 remains a PASS. It closed the Community
+integration gate with a persisted owner-scoped Codex connection, one upload,
+one primary invocation, and a usable grounded review. The same bounded result
+also exposed a non-blocking limitation worth separating into generic Tranche-2
+work: the source contained genuine extractible long-form presentation,
+Attempt #3 rejected `sections.summary` as `value_not_grounded`, an earlier
+consumed attempt on the same source had accepted Summary, and deterministic
+long-form regression coverage remained green. No private source value,
+filename, layout, offset, identity, employer, school, contact datum, or other
+PII is retained in this follow-up.
+
+The evidence supports investigation, not a Summary-specific relaxation. The
+active Semantic V2 contract classifies Summary, Work responsibilities, Work
+achievements, and project descriptions as long-form. Provider-selected refs can
+span multiple fragments without scalar continuation metadata, while Nuvitae
+currently accepts their whitespace-normalized ordered quote concatenation. T259
+must determine which alternative legitimate evidence shapes, if any, prove the
+same complete value and can be canonicalized consistently without guessing.
+Incomplete, missing-intermediate, reordered where order is authoritative,
+repeated-location ambiguous, invalid, unsupported, or invented evidence remains
+fail-closed. The task must not broaden scalar evidence behavior addressed by
+T258.
+
+The domain audit also shows a meaningful distinction between evidence validity
+and semantic certainty. Existing concepts include response-level
+`accepted`/`rejected`/`requires_review`, evidence-level
+`valid`/`invalid`/`unusable`, explicit-versus-inferred classification,
+`inferred_needs_review`, warnings, provenance, and explicit user review actions.
+However, current Semantic V2 candidates are projected as explicit,
+high-confidence, and `not_inferred`, and the extraction-draft builder filters
+inferred candidates. T259 must determine whether the existing concepts can
+safely retain fully grounded text with unresolved semantic classification,
+grouping, or a genuinely ambiguous source boundary, or whether a new state is
+necessary. It must not conflate low model confidence with eligibility.
+
+The durable boundary is three-way: verified candidates have complete valid
+evidence and resolved semantics; grounded review-required candidates may exist
+only when the complete candidate text and provenance are deterministically
+proven, no deterministic evidence establishes material truncation of the
+claimed semantic concept, and a truthfully representable classification,
+grouping, or genuine boundary ambiguity remains. Unsafe candidates contain or
+depend on ungrounded, partial, invented, invalid, or non-uniquely attributable
+content, or are grounded provider prefixes/subsets that deterministic evidence
+proves materially omit part of the claimed concept. They remain rejected or
+unusable. Existing deterministic evidence rules may reconstruct the complete
+value only when they prove it without guessing; otherwise recovery is
+source-assisted or manual. Review-required candidates never auto-activate and
+retain an auditable separation between provider proposal, evidence, and user
+confirmation. Unsafe provider text is not laundered into a suggestion with a
+warning badge. `value_not_grounded` is therefore not automatically reviewable,
+and the historical Attempt #3 Summary remains on the unsafe side under current
+evidence.
+
+This is a generic product/domain invariant: fully grounded is necessary but not
+sufficient for review-required eligibility when deterministic evidence proves
+material omission. It does not reopen T258's completed scalar implementation;
+T259 remains the bounded long-form investigation. Genuine source-boundary
+ambiguity is distinct from known truncation and may be investigated without
+pre-selecting an implementation state.
+
+T259 uses independently constructed sanitized sources and deterministic offline
+provider-response variants, including metamorphic changes to fragment identity,
+unrelated fragments, valid evidence representation, required-evidence removal,
+ref order, redundancy, partial coverage, malformed refs, grounded semantic
+ambiguity, and a grounded prefix/subset of a deterministically identifiable
+complete semantic concept. Tests must distinguish (1) a longer submitted value
+whose refs prove only part from (2) a materially shortened submitted value whose
+own characters are all grounded; both remain unsafe unless existing evidence
+rules deterministically prove a complete reconstruction. It must not optimize
+against the private T258 source, its Summary, layout, fragment count, offsets,
+FlowCV, live response wording, or any exact source text. Fuzzy matching,
+semantic similarity, another LLM as judge,
+arbitrary or neighboring refs without deterministic provenance/layout proof,
+guessed sentences, invented coordinates/hashes/grouping, disabled grounding or
+ambiguity checks, and confidence-as-evidence are prohibited.
+
+This follow-up is not a T246 retry, replacement consumed arm, qualification
+run, benchmark, provider comparison, or T203 re-evaluation. T246 remains
+complete with qualification FAILED and immutable; T203 remains NO-GO. T259 is
+parallelizable with T220-T222, required before T236 and Tranche-2 completion,
+and does not reopen Tranche 1.
+
+#### T259 implementation decision and deterministic findings
+
+The final architecture audit corrected the original implementation's central
+assumption: a SourceRegistry fragment is an extraction and provenance boundary,
+not a deterministic semantic-concept boundary. Whole-fragment coverage can
+prove where submitted characters came from, but it cannot prove that the
+provider captured the entire Summary, responsibility, achievement, or project
+description. Therefore `fragment completeness != semantic completeness`.
+
+T259 now separates two questions. Grounding asks whether every submitted
+character reconstructs exactly from valid, ordered, non-overlapping, uniquely
+attributable source evidence. Completeness asks whether the submitted value is
+the entire semantic concept. The current source model answers the first strongly
+but does not generically answer the second. Two durable logical rules follow:
+`absence of evidence of truncation != evidence of completeness` and
+`extraction boundary != semantic boundary`.
+
+Semantic completeness has three states. `proven_complete` requires positive
+deterministic evidence that represents the full semantic boundary;
+`unknown` means the complete submitted text and unique provenance are grounded
+but the concept boundary cannot be proven; and `proven_incomplete` requires
+positive deterministic evidence that the submitted value omits part of its
+claimed concept. Fragment start/end, line, paragraph, page, punctuation,
+capitalization, headings, provider confidence/assertion, another model,
+embeddings, and similarity are not permitted proof. The present SourceRegistry
+has no generic long-form producer for either proven state, which is acceptable.
+It emits no generic `materially_truncated_value` diagnosis based on offsets.
+
+Long-form grounding accepts an exact selected region inside a fragment. Ordered
+same-fragment refs canonicalize to the same region as a whole ref only when
+they are non-overlapping, omit only normalization-safe whitespace, reconstruct
+identical canonical text, and point to the same source region/content. Crossing
+fragments requires consecutive authoritative source order, edge alignment at
+the crossed boundaries, and source-owned `continuationToNext` metadata; no
+neighboring text or unsupported boundary is appended automatically. Duplicate,
+overlapping, reordered, invalid, insufficient, non-unique, partially grounding,
+or invented evidence remains fail-closed.
+
+Category A requires grounded text, deterministic provenance, resolved
+classification/grouping, and completeness `proven_complete`; therefore the
+current generic long-form source model does not manufacture Category A.
+Category B contains grounded, uniquely attributable candidates for which no
+evidence proves factual invalidity or semantic omission and completeness or
+another semantic property remains unknown. Existing
+`inferred_needs_review`, unreviewed state, field-bound warning, semantic
+provenance, and explicit confirmation represent this lifecycle without a new
+persistence state. Category C contains partial grounding of the submitted
+value, invented text, invalid/insufficient refs, non-unique attribution,
+unsupported evidence ambiguity, and only positively proven semantic omission.
+Completeness unknown is not Category C.
+
+Ownership is explicit. The provider performs semantic understanding and
+proposes the complete semantic value with exact ordered evidence, omitting what
+it cannot safely represent. Nuvitae validates submitted text, provenance,
+grounding, uncertainty, persistence, source-deletion reduction, and audit
+history. The user resolves semantic uncertainty that Nuvitae cannot
+deterministically prove. Provider assertion remains best-effort rather than
+proof.
+
+The corrected sanitized matrix is C1-C10: embedded complete value; boundary-end
+unknown; grounded prefix unknown; partial submitted-value grounding rejected;
+invented token rejected; equivalent same-region partitions; unrelated following
+text not appended; unsupported cross-fragment expansion rejected; grounded
+semantic ambiguity retained as inactive review-required; and auditable explicit
+confirmation. It also retains the existing Category-C non-bypass,
+candidate-to-draft-to-confirmation, source-deletion, Semantic V2 canonicalizer,
+T258 scalar, PDF/DOCX continuation, and sanitized corpus gates. Corrected
+Docker-only execution passed 29 focused and integration test files with 398
+tests, including the 32-case corrected T259 suite, Category-B lifecycle,
+Category-C non-bypass, review read/confirmation, Semantic V2 canonicalization,
+all 19 T258 scalar cases, PDF/DOCX adapters, worker/API integration, and the
+sanitized 337/337-fact corpus with precision, recall, grouping, and evidence all
+1.000 and inventions 0.000. Contracts, domain, import-application, API, and
+worker typechecks and affected production builds passed, as did changed-source
+ESLint, changed-file Prettier, `git diff --check`, and bounded secret/privacy
+scans. No prior whole-fragment audit result was reused to qualify the corrected
+design.
 
 ## Decision: Ship Nuvitae Community as the first MVP (product-first, not architecture-first)
 

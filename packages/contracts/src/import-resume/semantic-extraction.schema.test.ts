@@ -114,6 +114,25 @@ describe("semantic parser request contract", () => {
     },
   );
 
+  it("accepts only bounded Nuvitae scalar-continuation metadata", () => {
+    const request = validRequest("pdf");
+    const fragment = request.sourceFragments[0];
+    expect(fragment).toBeDefined();
+    if (fragment === undefined) return;
+    expect(
+      resumeSemanticParseRequestSchema.safeParse({
+        ...request,
+        sourceFragments: [{ ...fragment, continuationToNext: "space" }],
+      }).success,
+    ).toBe(true);
+    expect(
+      resumeSemanticParseRequestSchema.safeParse({
+        ...request,
+        sourceFragments: [{ ...fragment, continuationToNext: "guessed" }],
+      }).success,
+    ).toBe(false);
+  });
+
   it("rejects unknown request fields, raw paths, and provider-shaped metadata", () => {
     expect(
       resumeSemanticParseRequestSchema.safeParse({

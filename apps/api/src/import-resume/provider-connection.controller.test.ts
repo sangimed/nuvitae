@@ -155,11 +155,14 @@ describe("ProviderConnectionController (T214)", () => {
     );
     const redirect = vi.fn();
     await controller.completeCallback(
-      authenticatedRequest(),
-      { state: "valid-state", code: "one-time-code" },
+      {
+        state: "valid-state",
+        code: "one-time-code",
+        ownerUserId: "attacker-selected-owner",
+      },
       { redirect },
     );
-    expect(completeCallback).toHaveBeenCalledWith(ownerUserId, {
+    expect(completeCallback).toHaveBeenCalledWith({
       state: "valid-state",
       authorizationCode: "one-time-code",
     });
@@ -168,6 +171,9 @@ describe("ProviderConnectionController (T214)", () => {
       "http://localhost:3000/import-resume?codex=connected",
     );
     expect(JSON.stringify(redirect.mock.calls)).not.toContain("one-time-code");
+    expect(JSON.stringify(completeCallback.mock.calls)).not.toContain(
+      "attacker-selected-owner",
+    );
   });
 
   it("rejects a wrong-state callback with a sanitized response", async () => {
@@ -182,7 +188,6 @@ describe("ProviderConnectionController (T214)", () => {
     );
     await expect(
       controller.completeCallback(
-        authenticatedRequest(),
         { state: "wrong-state", code: "one-time-code" },
         { redirect: vi.fn() },
       ),

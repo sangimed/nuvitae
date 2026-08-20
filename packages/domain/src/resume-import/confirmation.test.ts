@@ -555,6 +555,65 @@ describe("structured resume confirmation mapper", () => {
     expect(reduced.content.headline?.sourceLocation?.kind).toBe("minimal");
     expect(mapped.resume.content.headline?.sourceLocation?.kind).toBe("pdf");
   });
+
+  it("reduces retained semantic evidence after source deletion", () => {
+    const value = "Builds dependable release systems.";
+    const original = draft({
+      fields: [
+        field({
+          section: "summary",
+          fieldPath: "summary",
+          value: { kind: "text", value },
+          sourceLocation: {
+            kind: "semantic",
+            documentId: id(10),
+            evidence: [
+              {
+                fragmentId: "synthetic-summary",
+                fragmentHash: "b".repeat(64),
+                line: 5,
+                start: 120,
+                end: 120 + value.length,
+              },
+            ],
+          },
+          inferenceStatus: "confirmed_inference",
+          reviewStatus: "confirmed",
+        }),
+      ],
+    });
+    const mapped = mapReviewedImportDraftToStructuredResume({
+      draft: original,
+      corrections: [],
+      structuredResumeId: id(9),
+      childIds: ids(),
+      confirmedAt: now,
+      now,
+    });
+
+    expect(mapped.ok).toBe(true);
+    if (!mapped.ok) return;
+    expect(mapped.resume.content.summary?.sourceLocation?.kind).toBe(
+      "semantic",
+    );
+    const sourceDeletedAt = new Date("2026-08-04T08:00:00.000Z");
+    const reduced = reduceStructuredResumeSourceProvenance(
+      mapped.resume,
+      sourceDeletedAt,
+    );
+    expect(reduced.content.summary).toMatchObject({
+      value,
+      sourceLocation: {
+        kind: "minimal",
+        label: "imported_from_initial_resume",
+        confirmedByUser: true,
+        sourceDeletedAt,
+      },
+    });
+    expect(mapped.resume.content.summary?.sourceLocation?.kind).toBe(
+      "semantic",
+    );
+  });
 });
 
 function id(number: number): string {

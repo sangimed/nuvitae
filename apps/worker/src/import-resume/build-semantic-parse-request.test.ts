@@ -76,4 +76,205 @@ describe("buildSemanticParseRequest", () => {
       educationCompletenessFixtureV1.length,
     );
   });
+
+  it("records only source-proven DOCX run continuations", () => {
+    const request = buildSemanticParseRequest(document, [
+      {
+        text: "Senior Backend ",
+        order: 0,
+        format: "docx",
+        context: "paragraph",
+        location: {
+          kind: "docx_run",
+          packagePart: "word/document.xml",
+          paragraphIndex: 4,
+          runIndex: 0,
+          characterOffsetStart: 0,
+          characterOffsetEnd: 15,
+          readingOrder: 0,
+        },
+      },
+      {
+        text: "Engineer",
+        order: 1,
+        format: "docx",
+        context: "paragraph",
+        location: {
+          kind: "docx_run",
+          packagePart: "word/document.xml",
+          paragraphIndex: 4,
+          runIndex: 1,
+          characterOffsetStart: 15,
+          characterOffsetEnd: 23,
+          readingOrder: 1,
+        },
+      },
+      {
+        text: "Different paragraph",
+        order: 2,
+        format: "docx",
+        context: "paragraph",
+        location: {
+          kind: "docx_run",
+          packagePart: "word/document.xml",
+          paragraphIndex: 5,
+          runIndex: 0,
+          characterOffsetStart: 0,
+          characterOffsetEnd: 19,
+          readingOrder: 2,
+        },
+      },
+    ]);
+
+    expect(
+      request.sourceFragments.map((fragment) => fragment.continuationToNext),
+    ).toEqual(["space", undefined, undefined]);
+  });
+
+  it("records conservative same-line PDF continuations but rejects wraps and columns", () => {
+    const pdf = (
+      text: string,
+      order: number,
+      x: number,
+      y: number,
+      width: number,
+    ): ResumeSourceFragment => ({
+      text,
+      order,
+      format: "pdf",
+      location: {
+        kind: "pdf_text_item",
+        pageNumber: 1,
+        itemIndex: order,
+        readingOrder: order,
+        boundingBox: { x, y, width, height: 10, unit: "pdf_point" },
+        hasEol: false,
+      },
+    });
+    const request = buildSemanticParseRequest(document, [
+      pdf("Senior Backend", 0, 10, 700, 70),
+      pdf("Engineer", 1, 82, 700, 40),
+      pdf("Wrapped", 2, 10, 686, 45),
+      pdf("Other column", 3, 300, 686, 60),
+    ]);
+
+    expect(
+      request.sourceFragments.map((fragment) => fragment.continuationToNext),
+    ).toEqual(["space", undefined, undefined, undefined]);
+  });
+
+  it("keeps a same-line PDF continuation across only ignorable empty PDF.js items", () => {
+    const pdf = (
+      text: string,
+      order: number,
+      x: number,
+      width: number,
+      height = 10,
+      hasEol = false,
+    ): ResumeSourceFragment => ({
+      text,
+      order,
+      format: "pdf",
+      location: {
+        kind: "pdf_text_item",
+        pageNumber: 1,
+        itemIndex: order,
+        readingOrder: order,
+        boundingBox: {
+          x,
+          y: 700,
+          width,
+          height,
+          unit: "pdf_point",
+        },
+        hasEol,
+      },
+    });
+    const request = buildSemanticParseRequest(document, [
+      pdf("Senior Platform", 0, 10, 70),
+      pdf(" ", 1, 80, 3, 0),
+      pdf("Engineer", 2, 82, 40),
+    ]);
+
+    expect(request.sourceFragments.map((fragment) => fragment.text)).toEqual([
+      "Senior Platform",
+      "Engineer",
+    ]);
+    expect(
+      request.sourceFragments.map((fragment) => fragment.continuationToNext),
+    ).toEqual(["space", undefined]);
+  });
+
+  it.each([
+    ["an empty item carrying EOL", true, 82],
+    ["column-scale geometry", false, 300],
+  ])("rejects PDF continuation across %s", (_name, skippedHasEol, rightX) => {
+    const pdf = (
+      text: string,
+      order: number,
+      x: number,
+      width: number,
+      height = 10,
+      hasEol = false,
+    ): ResumeSourceFragment => ({
+      text,
+      order,
+      format: "pdf",
+      location: {
+        kind: "pdf_text_item",
+        pageNumber: 1,
+        itemIndex: order,
+        readingOrder: order,
+        boundingBox: {
+          x,
+          y: 700,
+          width,
+          height,
+          unit: "pdf_point",
+        },
+        hasEol,
+      },
+    });
+    const request = buildSemanticParseRequest(document, [
+      pdf("Senior Platform", 0, 10, 70),
+      pdf(" ", 1, 80, 3, 0, skippedHasEol),
+      pdf("Engineer", 2, rightX, 40),
+    ]);
+
+    expect(request.sourceFragments[0]?.continuationToNext).toBeUndefined();
+  });
+
+  it("keeps a DOCX continuation across only contiguous whitespace-only runs", () => {
+    const run = (
+      text: string,
+      runIndex: number,
+      start: number,
+      end: number,
+    ): ResumeSourceFragment => ({
+      text,
+      order: runIndex,
+      format: "docx",
+      context: "paragraph",
+      location: {
+        kind: "docx_run",
+        packagePart: "word/document.xml",
+        paragraphIndex: 4,
+        runIndex,
+        characterOffsetStart: start,
+        characterOffsetEnd: end,
+        readingOrder: runIndex,
+      },
+    });
+    const request = buildSemanticParseRequest(document, [
+      run("Master of", 0, 0, 9),
+      run(" ", 1, 9, 10),
+      run("Engineering", 2, 10, 21),
+    ]);
+
+    expect(request.sourceFragments.map((fragment) => fragment.text)).toEqual([
+      "Master of",
+      "Engineering",
+    ]);
+    expect(request.sourceFragments[0]?.continuationToNext).toBe("space");
+  });
 });

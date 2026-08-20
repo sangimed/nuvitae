@@ -35,7 +35,14 @@ const atom = (text: string, lineText = text) => {
   };
 };
 const sourceRegistry = createSourceRegistry(
-  lines.map((text, order) => ({ order, line: order + 1, text })),
+  lines.map((text, order) => ({
+    order,
+    line: order + 1,
+    text,
+    ...(/^(?:I build dependable|I lead complex migrations)/u.test(text)
+      ? { continuationToNext: "space" as const }
+      : {}),
+  })),
 );
 
 function role(input: {
@@ -390,7 +397,15 @@ describe("semantic-extraction.v2 realistic source fidelity", () => {
       professional_links: 3,
     });
     expect(mapped.fields).toHaveLength(70);
-    expect(mapped.warnings).toEqual([]);
+    expect(mapped.warnings).toHaveLength(11);
+    expect(mapped.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          warningType: "ambiguous",
+          fieldPath: "summary",
+        }),
+      ]),
+    );
     expect(canonical.rejected).toEqual([]);
     expect(canonical.signals).toEqual([]);
 
@@ -421,13 +436,17 @@ describe("semantic-extraction.v2 realistic source fidelity", () => {
           return () =>
             `20000000-0000-4000-8000-${String(next++).padStart(12, "0")}`;
         })(),
-        warningId: () => "20000000-0000-4000-8000-000000000100",
+        warningId: (() => {
+          let next = 100;
+          return () =>
+            `20000000-0000-4000-8000-${String(next++).padStart(12, "0")}`;
+        })(),
       },
       now: new Date("2026-08-11T10:01:00.000Z"),
     });
     expect(draftResult.category).toBe("complete");
     expect(draftResult.draft?.fields).toHaveLength(70);
-    expect(draftResult.draft?.warnings).toEqual([]);
+    expect(draftResult.draft?.warnings).toHaveLength(11);
     expect(
       draftResult.draft?.fields.filter((field) => field.section === "projects"),
     ).toEqual([]);
@@ -480,7 +499,7 @@ describe("semantic-extraction.v2 realistic source fidelity", () => {
         document: document(),
       }),
     ).toEqual(mapped);
-    expect(mapped.warnings).toEqual([]);
+    expect(mapped.warnings).toHaveLength(11);
     const draftResult = buildExtractionDraft({
       importedDocument: document(),
       fields: mapped.fields,
@@ -493,7 +512,11 @@ describe("semantic-extraction.v2 realistic source fidelity", () => {
           return () =>
             `20000000-0000-4000-8000-${String(next++).padStart(12, "0")}`;
         })(),
-        warningId: () => "20000000-0000-4000-8000-000000000099",
+        warningId: (() => {
+          let next = 200;
+          return () =>
+            `20000000-0000-4000-8000-${String(next++).padStart(12, "0")}`;
+        })(),
       },
       now: new Date("2026-08-11T10:01:00.000Z"),
     });
@@ -526,6 +549,15 @@ describe("semantic-extraction.v2 realistic source fidelity", () => {
       fields: draftResult.draft.fields.map((field) => ({
         ...field,
         reviewStatus: "confirmed" as const,
+        inferenceStatus:
+          field.inferenceStatus === "inferred_needs_review"
+            ? ("confirmed_inference" as const)
+            : field.inferenceStatus,
+      })),
+      warnings: draftResult.draft.warnings.map((warning) => ({
+        ...warning,
+        reviewStatus: "confirmed" as const,
+        resolvedAt: new Date("2026-08-11T10:02:00.000Z"),
       })),
     };
     const confirmed = mapReviewedImportDraftToStructuredResume({

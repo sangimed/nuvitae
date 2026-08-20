@@ -43,7 +43,7 @@ describe("Semantic V2 parser instructions", () => {
       "Every key is required in the canonical shape and accepts either one grounded atom or null",
     );
     expect(semanticParserInstructions).toContain(
-      "For every non-null contact value, include at least one sourceRefs entry",
+      "For every non-null contact value, include one direct sourceRef, or an ordered source-proven continuation sequence",
     );
     expect(semanticParserInstructions).toContain(
       "Never invent a contact value, phone country code, location, URL, website title, or identity",
@@ -65,6 +65,48 @@ describe("Semantic V2 parser instructions", () => {
     );
     expect(semanticParserInstructions).toContain(
       "Contact values must not be copied into another section.",
+    );
+  });
+
+  it("makes grounded split-scalar ownership and reconstruction unambiguous", () => {
+    expect(semanticParserInstructions).toContain(
+      "Use exactly one sourceRef whenever one fragment directly contains the complete scalar",
+    );
+    expect(semanticParserInstructions).toContain(
+      "A scalar may use ordered multiple sourceRefs only when the complete value genuinely crosses consecutive fragments",
+    );
+    expect(semanticParserInstructions).toContain(
+      "Do not attach sourceRefs to a workExperience, role, or education group object",
+    );
+    expect(semanticParserInstructions).toContain(
+      'continuationToNext "none" inserts no character and "space" inserts one ordinary space',
+    );
+    expect(semanticParserInstructions).toContain(
+      "These scalar rules apply uniformly to contact, headline, employerName, role fields, education fields, skills, languages, project names, certifications, and links",
+    );
+  });
+
+  it("forbids grounded semantic truncation without adding fuzzy validation", () => {
+    expect(semanticParserInstructions).toContain(
+      "Never shorten, simplify, abbreviate, or return only a prefix or token of that concept merely because the shorter text is easier to ground",
+    );
+    expect(semanticParserInstructions).toContain(
+      "If the complete semantic concept cannot be represented by the allowed sourceRefs, omit the atom",
+    );
+    expect(semanticParserInstructions).toContain(
+      "Nuvitae verifies exact grounding and provenance; you remain responsible for identifying the complete semantic concept",
+    );
+  });
+
+  it("separates long-form grounding from semantic completeness", () => {
+    expect(semanticParserInstructions).toContain(
+      "A complete concept may occupy all or only part of an extraction fragment",
+    );
+    expect(semanticParserInstructions).toContain(
+      "A value may cross consecutive fragments only when every crossed boundary is source-proven by continuationToNext",
+    );
+    expect(semanticParserInstructions).toContain(
+      "does not treat fragment shape or your completeness assertion as deterministic proof of the semantic boundary",
     );
   });
 
