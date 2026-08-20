@@ -419,9 +419,10 @@ Use this when Docker-managed caches or local service data need a clean state.
 > **Community V1 status:** T257, T212, T213-T218, and T258 are complete.
 > T258 Attempt #3 passed the bounded Community owner → persisted Codex
 > connection → one upload → one primary invocation → usable grounded review
-> gate. Tranche 1 is complete; T219 completed on 2026-08-20. T220, T221,
-> T222, and the planning-added T259 long-form evidence stability task are the
-> independently executable next Tranche-2 tasks.
+> gate. Tranche 1 is complete; T219 completed on 2026-08-20 and T221 completed
+> on 2026-08-20 after bounded review-model validation. T220, T222, and the
+> planning-added T259 long-form evidence stability task remain the independently
+> executable next Tranche-2 tasks; T236 remains blocked by T223 and T225-T227.
 > The local-play identity is development-only; it must not be used as a
 > Community sign-in substitute. The scenarios below describe the required
 > authenticated behavior now available through that boundary.
