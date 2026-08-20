@@ -73,6 +73,12 @@ describe("T221 simplified review", () => {
     );
     expect(container.textContent).toContain("Example employer");
     expect(container.textContent).toContain("Example role");
+    expect(container.textContent).toContain("Professional summary");
+    expect(container.textContent).not.toContain("inferred_needs_review");
+    expect(container.textContent).not.toContain("review_required");
+    expect(document.getElementById("summary-review-heading")?.textContent).toBe(
+      "Professional summary",
+    );
     expect(
       container.querySelectorAll(".review-field-needs-confirmation"),
     ).toHaveLength(3);

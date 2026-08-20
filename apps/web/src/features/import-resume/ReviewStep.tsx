@@ -22,6 +22,7 @@ import {
 } from "./focus-management";
 import { ReviewWarning } from "./ReviewWarning";
 import { formatReviewDate, formatReviewDateRange } from "./review-date";
+import { reviewFieldLabel, reviewSectionLabel } from "./review-labels";
 import { recordImportTiming } from "../../services/import-resume/import-timing-client";
 
 export function ReviewStep(props: { readonly importId: string }) {
@@ -118,7 +119,7 @@ export function ReviewStep(props: { readonly importId: string }) {
     if (outcome.category === "stale_review") {
       const refreshed = await readReviewDraft({ importId: props.importId });
       if (refreshed.ok) setDraft(refreshed.response);
-      setError("The review changed. Current server data has been reloaded.");
+      setError("Your review has changed. We reloaded the latest information.");
     } else {
       setError(outcome.message);
     }
@@ -169,7 +170,7 @@ export function ReviewStep(props: { readonly importId: string }) {
     return (
       <section className="import-card" aria-busy="true">
         <h1>Loading import review</h1>
-        <p role="status">Loading the private review draft.</p>
+        <p role="status">Loading your resume information.</p>
       </section>
     );
   }
@@ -218,8 +219,7 @@ export function ReviewStep(props: { readonly importId: string }) {
           role="status"
           tabIndex={-1}
         >
-          {finalized.message}{" "}
-          <a href={finalized.resumeUrl}>Open structured resume</a>
+          {finalized.message} <a href={finalized.resumeUrl}>Open my resume</a>
         </div>
       ) : (
         <div
@@ -272,7 +272,9 @@ export function ReviewStep(props: { readonly importId: string }) {
           key={section.section}
           aria-labelledby={`${section.section}-review-heading`}
         >
-          <h2 id={`${section.section}-review-heading`}>{section.label}</h2>
+          <h2 id={`${section.section}-review-heading`}>
+            {reviewSectionLabel(section.section, section.label)}
+          </h2>
           {section.fields.length === 0 ? (
             <p>No imported information is active in this section.</p>
           ) : null}
@@ -349,7 +351,7 @@ function ReviewSummary(props: { readonly draft: ReviewDraftReadResponse }) {
           {needsConfirmation.map((field) => (
             <li key={field.fieldId}>
               <a href={`#${field.fieldId}-label`}>
-                {fieldLabel(field.fieldPath)}
+                {reviewFieldLabel(field.fieldPath)}
               </a>
             </li>
           ))}
@@ -422,7 +424,7 @@ function ReviewFieldRow(props: {
       aria-labelledby={`${props.field.fieldId}-label`}
     >
       <h3 id={`${props.field.fieldId}-label`}>
-        {fieldLabel(props.field.fieldPath)}
+        {reviewFieldLabel(props.field.fieldPath)}
       </h3>
       <p id={statusId} className="review-field-status" role="status">
         {fieldStatus(props.field)}
@@ -507,8 +509,8 @@ function ReviewFieldRow(props: {
             </button>
           </div>
           <p className="message">
-            Removing affects this review draft only. It does not change the
-            uploaded source.
+            This only changes the information shown here. It does not change
+            your uploaded file.
           </p>
         </>
       )}
@@ -575,11 +577,6 @@ function groupWorkFields(fields: readonly ReviewField[]) {
       key: roleKey,
     })),
   }));
-}
-
-function fieldLabel(fieldPath: string): string {
-  const parts = fieldPath.split(".");
-  return parts[parts.length - 1]?.replaceAll("_", " ") ?? fieldPath;
 }
 
 function valueToText(value: ReviewField["value"]): string {

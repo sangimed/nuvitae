@@ -102,18 +102,18 @@ test("real selectable-text PDF vertical slice reaches review, confirmation, and 
     page.locator(".status-list div", { hasText: "Needs review" }).last(),
   ).toContainText("0");
   await expect(
-    page.getByRole("button", { name: "Create structured resume" }),
+    page.getByRole("button", { name: "Create my resume" }),
   ).toHaveCount(0);
 
   await confirmAllUnreviewedFields(page);
   await expect(
-    page.getByRole("button", { name: "Create structured resume" }),
+    page.getByRole("button", { name: "Create my resume" }),
   ).toBeEnabled();
-  await page.getByRole("button", { name: "Create structured resume" }).click();
+  await page.getByRole("button", { name: "Create my resume" }).click();
   await expect(
-    page.getByRole("dialog", { name: "Confirm resume creation" }),
+    page.getByRole("dialog", { name: "Create your resume" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Confirm and create resume" }).click();
+  await page.getByRole("button", { name: "Create resume" }).click();
   await expect(page).toHaveURL(/\/resumes\/[0-9a-f-]+/);
 
   // Exactly one import draft and exactly one structured resume for the source.
@@ -123,17 +123,18 @@ test("real selectable-text PDF vertical slice reaches review, confirmation, and 
 
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Confirmed structured resume" }),
+    page.getByRole("heading", { name: "Your resume is ready" }),
   ).toBeVisible();
   await expect(page.getByText("Jordan Avery")).toBeVisible();
   await expect(
     page.getByText("Created from your reviewed initial resume").first(),
   ).toBeVisible();
 
-  // The structured resume is distinct from the uploaded source and no internal
+  // The confirmed resume is distinct from the uploaded source and no internal
   // diagnostics, storage paths, or fixture identity leak into the browser.
   const body = await page.locator("body").innerText();
   expect(body).not.toMatch(technicalDiagnosticPattern);
+  expect(body).not.toContain("Structured resume");
   expect(body).not.toContain("semantic-vertical-slice-jordan-avery.pdf");
 });
 
@@ -169,16 +170,16 @@ test("real DOCX vertical slice proves OOXML extraction and review-required ambig
     page.locator(".status-list div", { hasText: "Needs review" }).last(),
   ).toContainText("1");
   await expect(
-    page.getByRole("heading", { name: "Confirmation is blocked" }),
+    page.getByRole("heading", { name: "Review remaining details" }),
   ).toBeVisible();
 
   await resolveAllVisibleWarnings(page);
   await confirmAllUnreviewedFields(page);
   await expect(
-    page.getByRole("button", { name: "Create structured resume" }),
+    page.getByRole("button", { name: "Create my resume" }),
   ).toBeEnabled();
-  await page.getByRole("button", { name: "Create structured resume" }).click();
-  await page.getByRole("button", { name: "Confirm and create resume" }).click();
+  await page.getByRole("button", { name: "Create my resume" }).click();
+  await page.getByRole("button", { name: "Create resume" }).click();
   await expect(page).toHaveURL(/\/resumes\/[0-9a-f-]+/);
 
   const invariants = await readImportInvariants(importId);
@@ -187,7 +188,7 @@ test("real DOCX vertical slice proves OOXML extraction and review-required ambig
 
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Confirmed structured resume" }),
+    page.getByRole("heading", { name: "Your resume is ready" }),
   ).toBeVisible();
   await expect(page.getByText("Maya Chen")).toBeVisible();
 

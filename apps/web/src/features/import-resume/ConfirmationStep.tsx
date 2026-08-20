@@ -15,6 +15,7 @@ import {
 } from "../../services/import-resume/draft-lifecycle-client";
 import { ErrorSummary } from "./ErrorSummary";
 import { focusErrorSummary } from "./focus-management";
+import { reviewSectionLabel } from "./review-labels";
 
 export function ConfirmationStep(props: {
   readonly importId: string;
@@ -49,7 +50,7 @@ export function ConfirmationStep(props: {
     if (pending) return;
     setPending(true);
     setError(undefined);
-    setMessage("Creating structured resume.");
+    setMessage("Creating your resume.");
     const outcome = await confirmStructuredResume({
       importId: props.importId,
       request: createConfirmationRequest({
@@ -59,17 +60,14 @@ export function ConfirmationStep(props: {
     });
     setPending(false);
     if (outcome.ok) {
-      setMessage("Structured resume created.");
+      setMessage("Your resume is ready.");
       setDialog(undefined);
-      props.onConfirmed(
-        outcome.response.resumeUrl,
-        outcome.response.userMessage,
-      );
+      props.onConfirmed(outcome.response.resumeUrl, "Your resume is ready.");
       return;
     }
     if (outcome.category === "stale_review") {
       await props.onStaleReview();
-      setError("The review changed. Current server data has been reloaded.");
+      setError("Your review has changed. We reloaded the latest information.");
     } else {
       setError(outcome.message);
     }
@@ -106,17 +104,17 @@ export function ConfirmationStep(props: {
       className="confirmation-panel"
       aria-labelledby="confirmation-title"
     >
-      <h2 id="confirmation-title">Create structured resume</h2>
+      <h2 id="confirmation-title">Finish your review</h2>
       <div role="status" aria-live="polite" aria-atomic="true">
         {pending ? message : message}
       </div>
       {props.draft.readyToConfirm ? (
         <div className="message message-success">
           <p>
-            This creates a new structured resume from every valid imported field
-            that you have not excluded. Edited fields use their edited values;
-            fields do not need individual confirmation clicks to be retained.
-            The uploaded source remains separate and temporary.
+            This creates a new resume from the valid information you have kept.
+            Changes use your edited values. You do not have to confirm every
+            imported field individually for it to be included. Your uploaded
+            file stays separate and is available temporarily.
           </p>
           <p>
             Original upload retention ends{" "}
@@ -130,16 +128,17 @@ export function ConfirmationStep(props: {
             disabled={props.disabled || pending}
             onClick={() => setDialog("confirm")}
           >
-            Create structured resume
+            Create my resume
           </button>
         </div>
       ) : (
         <div className="message" aria-labelledby="blocked-confirmation-title">
-          <h3 id="blocked-confirmation-title">Confirmation is blocked</h3>
+          <h3 id="blocked-confirmation-title">Review remaining details</h3>
           <p>
-            {props.draft.unresolvedWarningCount} warning
-            {props.draft.unresolvedWarningCount === 1 ? "" : "s"} still need
-            review. Resolve the blocking review items before creating a resume.
+            {props.draft.unresolvedWarningCount === 1
+              ? "1 detail still needs your attention."
+              : `${props.draft.unresolvedWarningCount} details still need your attention.`}{" "}
+            Review these items before creating your resume.
           </p>
           <div className="action-row">
             {unresolvedSections.map((section) => (
@@ -147,7 +146,7 @@ export function ConfirmationStep(props: {
                 key={section.section}
                 href={`#${section.section}-review-heading`}
               >
-                Review {section.label}
+                Review {reviewSectionLabel(section.section, section.label)}
               </a>
             ))}
           </div>
@@ -165,9 +164,7 @@ export function ConfirmationStep(props: {
       </div>
       <AccessibleDialog
         open={dialog !== undefined}
-        label={
-          dialog === "confirm" ? "Confirm resume creation" : "Discard import"
-        }
+        label={dialog === "confirm" ? "Create your resume" : "Discard import"}
         describedBy={`${dialog ?? "dialog"}-dialog-description`}
         closeOnEscape
         closeOnBackdropClick={false}
@@ -180,13 +177,11 @@ export function ConfirmationStep(props: {
         {dialog === undefined ? null : (
           <>
             <h3 id={`${dialog}-dialog-title`}>
-              {dialog === "confirm"
-                ? "Confirm resume creation"
-                : "Discard import"}
+              {dialog === "confirm" ? "Create your resume" : "Discard import"}
             </h3>
             <p id={`${dialog}-dialog-description`}>
               {dialog === "confirm"
-                ? "Nuvitae will create a new structured resume. The uploaded source and temporary artifacts are not modified and keep their original retention deadline."
+                ? "Nuvitae will create your resume. Your uploaded file will not change and remains available until its original expiry date."
                 : "Nuvitae will discard this unconfirmed draft and schedule source cleanup. Deletion is not complete immediately, and an already confirmed resume would not be deleted by this action."}
             </p>
             <ErrorSummary
@@ -220,7 +215,7 @@ export function ConfirmationStep(props: {
                 {pending
                   ? "Working"
                   : dialog === "confirm"
-                    ? "Confirm and create resume"
+                    ? "Create resume"
                     : "Discard import"}
               </button>
               <button
