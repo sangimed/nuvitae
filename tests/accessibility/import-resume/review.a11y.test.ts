@@ -26,7 +26,7 @@ test.describe("import review accessibility", () => {
         return;
       }
       revision += 1;
-      const ready = revision >= 6;
+      const ready = revision >= 2;
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -45,18 +45,39 @@ test.describe("import review accessibility", () => {
 
     await page.goto(`/import-resume/${importId}/review`);
     await expect(
-      page.getByRole("heading", { name: "Review imported resume" }),
+      page.getByRole("heading", {
+        name: "Check the information Nuvitae needs you to confirm",
+      }),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Summary", exact: true }),
     ).toBeVisible();
-    await expect(page.getByText("Imported from page 2")).toBeVisible();
-    await expect(page.getByText("Severity: needs attention")).toBeVisible();
+    await expect(
+      page.getByText("Found in your resume — your confirmation is needed"),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Confirmation needed before this information is used."),
+    ).toBeVisible();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(
+      page.getByRole("button", { name: "Confirm this information" }),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth,
+      ),
+    ).toBe(true);
 
     await page.keyboard.press("Tab");
     await expectFocusedElementHasVisibleFocus(page);
-    await page.getByRole("button", { name: "Confirm field" }).press("Enter");
+    await page
+      .getByRole("button", { name: "Confirm this information" })
+      .press("Enter");
     await expect(page.getByText("Your review change was saved.")).toBeVisible();
+    await expect(page.getByText("Accepted for your resume.")).toBeVisible();
 
     await page.getByRole("button", { name: "Edit field" }).press("Enter");
     await expect(page.getByLabel("Edit value")).toBeVisible();
@@ -65,14 +86,11 @@ test.describe("import review accessibility", () => {
     await page.getByLabel("Edit value").fill("Edited synthetic summary");
     await page.getByRole("button", { name: "Save change" }).press("Enter");
     await page
-      .getByRole("button", { name: "Remove from draft" })
+      .getByRole("button", { name: "Leave out", exact: true })
       .press("Enter");
     await page
       .getByRole("button", { name: "Add information" })
       .first()
-      .press("Enter");
-    await page
-      .getByRole("button", { name: "Intentionally leave" })
       .press("Enter");
     await page
       .getByRole("button", { name: "Exclude section" })
@@ -123,9 +141,17 @@ function reviewResponse(reviewRevision: number, readyToConfirm: boolean) {
                 value: { kind: "text", value: "Synthetic summary" },
                 sourceStatus: "explicit_source",
                 confidenceStatus: "high",
-                inferenceStatus: "not_inferred",
+                inferenceStatus: readyToConfirm
+                  ? "confirmed_inference"
+                  : "inferred_needs_review",
                 reviewStatus: readyToConfirm ? "confirmed" : "unreviewed",
-                provenance: { kind: "pdf", pageNumber: 2 },
+                provenance: readyToConfirm
+                  ? { kind: "pdf", pageNumber: 2 }
+                  : {
+                      kind: "inferred",
+                      needsConfirmation: true,
+                      original: { kind: "pdf", pageNumber: 2 },
+                    },
                 warningIds: [warningId],
                 allowedActions: ["confirm", "edit", "remove"],
               },
@@ -136,10 +162,10 @@ function reviewResponse(reviewRevision: number, readyToConfirm: boolean) {
           ? [
               {
                 warningId,
-                warningType: "missing",
+                warningType: "ambiguous",
                 section,
                 fieldPath: "summary",
-                message: "Review this synthetic warning.",
+                message: "This synthetic information needs confirmation.",
                 severity: "needs_attention",
                 reviewStatus: readyToConfirm
                   ? "intentionally_left"

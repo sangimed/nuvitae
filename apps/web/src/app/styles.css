@@ -521,6 +521,64 @@ legend {
   padding-block: 1rem;
 }
 
+.review-summary,
+.review-field-needs-confirmation {
+  border: 1px solid #9bc8d7;
+  border-radius: 8px;
+  background: #f0f9fb;
+  padding: 1rem;
+}
+
+.review-summary h2,
+.review-field h3,
+.work-review-group h3,
+.work-review-role h4 {
+  margin-top: 0;
+}
+
+.review-summary-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.review-summary-list a {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.review-field-accepted {
+  border-left: 4px solid #b9c6d1;
+  padding-left: 1rem;
+}
+
+.review-field-status,
+.review-warning-context {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.work-review-group {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.work-review-role {
+  margin-top: 0.75rem;
+}
+
+.review-warning {
+  margin-top: 1rem;
+  border-left: 4px solid #d09b32;
+  background: #fffaf0;
+  padding: 1rem;
+}
+
+.review-warning-recovery {
+  border-left-color: #5f6c80;
+  background: #f5f7fa;
+}
+
 .field-provenance {
   color: var(--accent);
   font-weight: 700;
@@ -649,5 +707,13 @@ legend {
   .manual-header {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .review-shell,
+  .review-section,
+  .confirmation-panel,
+  .review-summary,
+  .review-field {
+    min-width: 0;
   }
 }

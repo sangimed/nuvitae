@@ -9,7 +9,7 @@ describe("ReviewStep source contract", () => {
     );
     expect(source).toContain("readReviewDraft");
     expect(source).toContain("sendReviewMutation");
-    expect(source).toContain("projectOptimisticReview");
+    expect(source).not.toContain("projectOptimisticReview");
     expect(source).toContain("ConfirmationStep");
     expect(source).not.toContain("StructuredResume");
     expect(source).not.toContain("typeorm");

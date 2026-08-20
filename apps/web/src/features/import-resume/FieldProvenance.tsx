@@ -18,7 +18,7 @@ function label(
   inferenceStatus: ReviewField["inferenceStatus"],
 ): string {
   if (inferenceStatus === "inferred_needs_review") {
-    return "Grouping inferred - confirmation required";
+    return "Found in your resume — your confirmation is needed";
   }
   switch (provenance.kind) {
     case "pdf":
@@ -34,8 +34,10 @@ function label(
         ? `Edited by you; originally imported from page ${provenance.original.pageNumber}`
         : "Edited by you";
     case "inferred":
-      return "Grouping inferred - confirmation required";
+      return "Found in your resume — your confirmation is needed";
     case "minimal":
       return "Imported from initial resume";
+    case "semantic":
+      return "Found in your resume";
   }
 }
