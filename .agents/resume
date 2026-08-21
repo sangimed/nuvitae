@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v docker >/dev/null 2>&1; then
+  printf 'Docker is missing; run .agents/setup.\n' >&2
+  exit 1
+fi
+
+if sudo docker info >/dev/null 2>&1; then
+  exit 0
+fi
+
+amp orb service start docker-daemon --command 'sudo dockerd'
+for _ in {1..32}; do
+  if sudo docker info >/dev/null 2>&1; then
+    exit 0
+  fi
+  sleep 0.25
+done
+
+printf 'Docker daemon did not become ready.\n' >&2
+exit 1

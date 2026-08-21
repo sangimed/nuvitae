@@ -43,3 +43,6 @@ Thumbs.db
 /local/fixtures/import-resume/
 
 .turbo/
+
+# Amp orb portal manifests
+.amp/portals/*

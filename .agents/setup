@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+run_step() {
+  local label="$1"
+  shift
+  local started=$SECONDS
+  printf '==> %s\n' "$label"
+  "$@"
+  printf '<== %s (%ss)\n' "$label" "$((SECONDS - started))"
+}
+
+install_docker() {
+  if command -v docker >/dev/null 2>&1; then
+    return
+  fi
+
+  export DEBIAN_FRONTEND=noninteractive
+  sudo install -m 0755 -d /etc/apt/keyrings
+  sudo curl -fsSL https://download.docker.com/linux/debian/gpg \
+    -o /etc/apt/keyrings/docker.asc
+  sudo chmod a+r /etc/apt/keyrings/docker.asc
+  printf 'deb [arch=%s signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian %s stable\n' \
+    "$(dpkg --print-architecture)" \
+    "$(. /etc/os-release && printf '%s' "$VERSION_CODENAME")" \
+    | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+  sudo apt-get update
+  sudo apt-get install -y \
+    docker-ce \
+    docker-ce-cli \
+    containerd.io \
+    docker-buildx-plugin \
+    docker-compose-plugin
+}
+
+start_docker() {
+  if sudo docker info >/dev/null 2>&1; then
+    return
+  fi
+
+  amp orb service start docker-daemon --command 'sudo dockerd'
+  for _ in {1..40}; do
+    if sudo docker info >/dev/null 2>&1; then
+      return
+    fi
+    sleep 0.25
+  done
+
+  printf 'Docker daemon did not become ready.\n' >&2
+  return 1
+}
+
+create_test_database() {
+  local test_database="${POSTGRES_TEST_DB:-nuvitae_test}"
+  if [[ ! "$test_database" =~ ^[a-z_][a-z0-9_]*_test$ ]]; then
+    printf 'POSTGRES_TEST_DB must be a safe identifier ending in _test.\n' >&2
+    return 1
+  fi
+
+  sudo docker compose exec -T \
+    -e "POSTGRES_TEST_DB=$test_database" \
+    postgres sh -euc '
+      if ! psql --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
+        --tuples-only --no-align \
+        --command "SELECT 1 FROM pg_database WHERE datname = '\''$POSTGRES_TEST_DB'\''" \
+        | grep -qx 1; then
+        createdb --username "$POSTGRES_USER" "$POSTGRES_TEST_DB"
+      fi
+    '
+}
+
+run_step 'Install Docker when missing' install_docker
+run_step 'Start Docker daemon' start_docker
+
+if [[ ! -f .env ]]; then
+  run_step 'Create development environment file' cp -- .env.example .env
+fi
+
+run_step 'Build workspace image' sudo docker compose build workspace
+run_step 'Install locked dependencies' \
+  sudo docker compose run --rm --no-deps workspace pnpm install --frozen-lockfile
+run_step 'Start test dependencies' sudo docker compose up -d --wait postgres queue
+run_step 'Create test database when missing' create_test_database
