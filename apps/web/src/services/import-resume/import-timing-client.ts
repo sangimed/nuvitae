@@ -1,4 +1,4 @@
-import { importResumeApiPath } from "./config";
+import { apiPath } from "../api-config";
 
 export type ClientImportTimingPhase =
   "review_first_poll" | "review_available_to_client" | "review_rendered";
@@ -19,7 +19,7 @@ export function recordImportTiming(input: {
     input.durationMs === undefined
       ? undefined
       : Math.max(0, Math.min(86_400_000, Math.round(input.durationMs)));
-  void fetcher(importResumeApiPath(`/import-resume/${input.importId}/timing`), {
+  void fetcher(apiPath(`/import-resume/${input.importId}/timing`), {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({

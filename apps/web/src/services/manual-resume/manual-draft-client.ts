@@ -5,7 +5,7 @@ import {
   type ManualDraftResponse,
   type StructuredResumeContentContract,
 } from "@nuvitae/contracts";
-import { importResumeApiPath } from "../import-resume/config";
+import { apiPath } from "../api-config";
 
 export type ManualDraftClientOutcome =
   | { readonly ok: true; readonly response: ManualDraftResponse }
@@ -104,7 +104,7 @@ async function requestManualDraft(input: {
             body: JSON.stringify(input.body),
           }),
     };
-    const response = await fetcher(importResumeApiPath(input.path), init);
+    const response = await fetcher(apiPath(input.path), init);
     if (!response.ok) return mapManualError(response.status);
     const parsed = manualDraftResponseSchema.safeParse(await response.json());
     if (!parsed.success) {

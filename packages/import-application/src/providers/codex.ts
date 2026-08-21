@@ -7,16 +7,6 @@ export {
   type CodexModelSelectionErrorCode,
 } from "./codex-model-selection.js";
 export {
-  createIssue25BenchmarkTransport,
-  invokeIssue25BenchmarkTransport,
-  resolveIssue25BenchmarkModel,
-  Issue25BenchmarkAuthorizationError,
-  type Issue25BenchmarkArm,
-  type Issue25BenchmarkAuthorization,
-  type Issue25BenchmarkAuthorizationState,
-  type Issue25BenchmarkTransportOptions,
-} from "./issue-25-model-selection.js";
-export {
   parseCodexSessionMaterial,
   type CodexSessionMaterial,
 } from "./codex-session.js";

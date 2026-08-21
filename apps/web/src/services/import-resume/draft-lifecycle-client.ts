@@ -5,7 +5,7 @@ import {
   type DiscardImportResponse,
 } from "@nuvitae/contracts";
 import { createBrowserUuid } from "../browser-ids";
-import { importResumeApiPath } from "./config";
+import { apiPath } from "../api-config";
 
 export type DraftLifecycleErrorCategory =
   | "authentication_required"
@@ -57,7 +57,7 @@ export async function discardImportDraft(input: {
   const fetcher = input.fetchImpl ?? fetch;
   try {
     const response = await fetcher(
-      importResumeApiPath(`/import-resume/${input.importId}/discard`),
+      apiPath(`/import-resume/${input.importId}/discard`),
       {
         method: "POST",
         headers: { "content-type": "application/json" },

@@ -1,11 +1,57 @@
 # Issue #47 architecture audit and target proposal
 
-**Status:** proposal only; no migration has started  
-**Audit date:** 2026-08-20  
-**Scope:** phases 1–4 of issue #47, plus the requested current-to-target map and incremental migration plan  
-**Decision state:** ready for maintainer review; every statement labelled **Observed** describes the repository at commit `ecc4365`, while **Proposed** and **Judgment** describe a possible future.
+**Status:** implemented incrementally; retained compatibility is documented by ADR 0007<br>
+**Audit date:** 2026-08-20<br>
+**Implementation review:** 2026-08-21<br>
+**Scope:** issue #47 audit, target architecture, and completed migration slices<br>
+**Decision state:** the original **Observed** findings describe commit `ecc4365`; the implementation status below describes current `main` after PR #48 and the issue-completion commits.
 
-> This document deliberately does not authorize file moves or code changes. The target tree is illustrative, not a checklist. A move is justified only when it strengthens an ownership boundary or makes a later change safer.
+> The target tree remains illustrative, not a checklist. Implemented moves strengthen ownership or dependency direction; historical paths retained only for compatibility are not current ownership boundaries.
+
+## Implementation status
+
+The architecture migration is now implemented to the scope and compatibility
+limits agreed in ADRs 0005–0007:
+
+- import application policy owns repository/transaction ports; TypeORM remains
+  behind canonical persistence adapter subpaths;
+- `SemanticImportWorkflow` owns extraction, semantic-provider invocation,
+  validation, fallback, lifecycle, draft persistence, capacity, and event
+  policy in `@nuvitae/import-application`;
+- the BullMQ processor validates durable jobs, delegates to application
+  workflows, and maps BullMQ-only behavior; the former worker semantic
+  processor and request-builder paths are compatibility re-exports only;
+- provider-neutral production code does not import Codex. Concrete Codex
+  runtime behavior is available only through the explicit adapter subpath, and
+  Issue #25 benchmark/research modules are not exported by production barrels
+  or reachable from production dependency paths;
+- `ProductRuntimeModule` composes feature-owned import and provider-connection
+  runtime modules instead of constructing their queues, repositories, storage,
+  sessions, services, and tokens itself;
+- API import use cases, HTTP transport, ports, and adapters have one
+  `import-resume` feature owner; identity establishment is shared under
+  `auth`, while resource authorization remains feature-local;
+- persistence has canonical `ports` and `typeorm` subpaths, contracts declares
+  an explicit root export, and production code is prevented from using the
+  deprecated persistence catch-all barrel;
+- web features consume feature-owned client facades. Shared API configuration
+  and resume date presentation no longer depend on import-resume ownership;
+  historical clients remain behind compatibility facades, while config/date
+  paths are compatibility re-exports; and
+- lightweight TypeScript import tests enforce these boundaries, exact provider
+  edges, research isolation, Semantic V1 write prohibition, and package export
+  surfaces.
+
+The following are intentional retained surfaces, not unfinished architecture:
+
+- Semantic V1 read compatibility, migrations, and fixtures under ADR 0006;
+- root persistence and `@nuvitae/import-application/codex` compatibility
+  exports for ADR 0007's documented deprecation cycle; and
+- historical API/web implementation paths behind current feature facades.
+
+Removing those surfaces requires the separately approved consumer inventory,
+migration notes, and deletion approval required by ADR 0007. No API, job,
+database, Semantic V2, security/privacy, or UI contract changed in this work.
 
 ## A. Executive assessment
 

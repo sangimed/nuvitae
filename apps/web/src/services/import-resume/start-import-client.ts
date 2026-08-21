@@ -1,6 +1,6 @@
 import { importInitializationResponseSchema } from "@nuvitae/contracts";
 import type { ImportInitializationResponse } from "@nuvitae/contracts";
-import { importResumeApiPath } from "./config";
+import { apiPath } from "../api-config";
 
 export type StartImportClientOutcome =
   | {
@@ -31,7 +31,7 @@ export async function startImportUpload(input: {
   const fetcher = input.fetchImpl ?? fetch;
 
   try {
-    const response = await fetcher(importResumeApiPath("/import-resume"), {
+    const response = await fetcher(apiPath("/import-resume"), {
       method: "POST",
       body,
       ...(input.signal === undefined ? {} : { signal: input.signal }),

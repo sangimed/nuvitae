@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { ProductRuntimeConfig } from "./product-runtime.module.js";
+import type { ProductRuntimeConfig } from "./product-runtime.config.js";
 
 export function readCommunityProductRuntimeConfig(
   env: NodeJS.ProcessEnv = process.env,

@@ -2,7 +2,7 @@ import {
   publicImportStatusResponseSchema,
   type PublicImportStatusResponse,
 } from "@nuvitae/contracts";
-import { importResumeApiPath } from "./config";
+import { apiPath } from "../api-config";
 
 const terminalStatuses = new Set<PublicImportStatusResponse["status"]>([
   "draft_ready",
@@ -42,7 +42,7 @@ export async function readImportStatus(input: {
   const fetcher = input.fetchImpl ?? fetch;
   try {
     const response = await fetcher(
-      importResumeApiPath(`/import-resume/${input.importId}/status`),
+      apiPath(`/import-resume/${input.importId}/status`),
       {
         method: "GET",
         ...(input.signal === undefined ? {} : { signal: input.signal }),

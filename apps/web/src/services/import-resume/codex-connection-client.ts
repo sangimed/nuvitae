@@ -3,7 +3,7 @@ import {
   providerConnectionStatusResponseSchema,
   type ProviderConnectionStatusResponse,
 } from "@nuvitae/contracts";
-import { importResumeApiPath } from "./config";
+import { apiPath } from "../api-config";
 
 export type BeginCodexConnectionOutcome =
   | {
@@ -37,7 +37,7 @@ export async function readCodexConnectionStatus(
 ): Promise<ReadCodexConnectionStatusOutcome> {
   try {
     const response = await (input.fetchImpl ?? fetch)(
-      importResumeApiPath("/import-resume/provider-connections/codex/status"),
+      apiPath("/import-resume/provider-connections/codex/status"),
       {
         method: "GET",
         ...(input.signal === undefined ? {} : { signal: input.signal }),
@@ -75,9 +75,7 @@ export async function beginCodexConnection(
 ): Promise<BeginCodexConnectionOutcome> {
   try {
     const response = await (input.fetchImpl ?? fetch)(
-      importResumeApiPath(
-        "/import-resume/provider-connections/codex/oauth/start",
-      ),
+      apiPath("/import-resume/provider-connections/codex/oauth/start"),
       {
         method: "POST",
         ...(input.signal === undefined ? {} : { signal: input.signal }),
@@ -139,9 +137,7 @@ export async function disconnectCodexConnection(
 ): Promise<DisconnectCodexConnectionOutcome> {
   try {
     const response = await (input.fetchImpl ?? fetch)(
-      importResumeApiPath(
-        "/import-resume/provider-connections/codex/disconnect",
-      ),
+      apiPath("/import-resume/provider-connections/codex/disconnect"),
       {
         method: "POST",
         ...(input.signal === undefined ? {} : { signal: input.signal }),

@@ -20,6 +20,7 @@ import {
   type ImportProcessingLimits,
   type ImportEventEmitter,
   type ImportWorkflowRepository,
+  SemanticImportWorkflow,
 } from "@nuvitae/import-application";
 import {
   CodexDirectProviderAdapter,
@@ -42,7 +43,6 @@ import {
   WORKER_IMPORT_EXTRACTION_USE_CASE,
   WORKER_IMPORT_VALIDATION_USE_CASE,
 } from "./import-processing.processor.js";
-import { SemanticImportProcessor } from "./semantic-import.processor.js";
 import { parseWorkerImportProcessingLimits } from "./import-processing-limits.js";
 import { WORKER_IMPORT_WORKFLOW_REPOSITORY } from "../persistence/worker-persistence.module.js";
 import {
@@ -308,7 +308,7 @@ export const workerImportRuntimeProviders: Provider[] = [
         sourceReader,
         docxValidationLimits(limits),
       );
-      return new SemanticImportProcessor({
+      return new SemanticImportWorkflow({
         repository,
         sourceReader,
         pdfTextExtractor: pdf,

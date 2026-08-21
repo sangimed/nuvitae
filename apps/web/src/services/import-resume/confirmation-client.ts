@@ -7,7 +7,7 @@ import {
   type ConfirmedStructuredResumeReadResponse,
 } from "@nuvitae/contracts";
 import { createBrowserUuid } from "../browser-ids";
-import { importResumeApiPath } from "./config";
+import { apiPath } from "../api-config";
 
 export type ConfirmationClientErrorCategory =
   | "authentication_required"
@@ -65,7 +65,7 @@ export async function confirmStructuredResume(input: {
   const fetcher = input.fetchImpl ?? fetch;
   try {
     const response = await fetcher(
-      importResumeApiPath(`/import-resume/${input.importId}/confirm`),
+      apiPath(`/import-resume/${input.importId}/confirm`),
       {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -92,7 +92,7 @@ export async function readConfirmedStructuredResume(input: {
   const fetcher = input.fetchImpl ?? fetch;
   try {
     const response = await fetcher(
-      importResumeApiPath(`/structured-resumes/${input.resumeId}`),
+      apiPath(`/structured-resumes/${input.resumeId}`),
       {
         method: "GET",
         ...(input.signal === undefined ? {} : { signal: input.signal }),

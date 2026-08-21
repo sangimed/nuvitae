@@ -48,6 +48,10 @@ const semanticWorkerPath = join(
   repositoryRoot,
   "apps/worker/src/import-resume/semantic-import.processor.ts",
 );
+const semanticWorkflowPath = join(
+  repositoryRoot,
+  "packages/import-application/src/semantic-import-workflow.ts",
+);
 const workerPersistencePath = join(
   repositoryRoot,
   "apps/worker/src/persistence/worker-persistence.module.ts",
@@ -57,6 +61,10 @@ const communityAuthServicePath = join(
   "apps/api/src/community-auth/community-auth.service.ts",
 );
 const apiSourceRoot = join(repositoryRoot, "apps/api/src");
+const productRuntimeModulePath = join(
+  repositoryRoot,
+  "apps/api/src/runtime/product-runtime.module.ts",
+);
 const webFeatureRoot = join(repositoryRoot, "apps/web/src/features");
 const semanticProviderRoot = join(
   repositoryRoot,
@@ -251,7 +259,7 @@ describe("architecture dependency direction", () => {
   });
 
   it("keeps semantic worker transaction details behind the import workflow repository", () => {
-    const violations = sourceImports(semanticWorkerPath)
+    const violations = sourceImports(semanticWorkflowPath)
       .filter(
         ({ specifier }) =>
           specifier === "@nuvitae/persistence" || specifier === "typeorm",
@@ -259,6 +267,18 @@ describe("architecture dependency direction", () => {
       .map(display);
 
     expect(violations).toEqual([]);
+  });
+
+  it("keeps the historical semantic worker surface as a thin compatibility bridge", () => {
+    const source = readFileSync(semanticWorkerPath, "utf8");
+    const imports = sourceImports(semanticWorkerPath);
+
+    expect(imports.map(({ specifier }) => specifier)).toEqual([
+      "@nuvitae/import-application",
+    ]);
+    expect(source).not.toContain("class SemanticImportProcessor");
+    expect(source).not.toContain("@nuvitae/persistence");
+    expect(source).not.toContain("@nuvitae/extraction");
   });
 
   it("does not reintroduce generic worker repository or transaction-runner tokens", () => {
@@ -270,9 +290,20 @@ describe("architecture dependency direction", () => {
   });
 
   it("keeps production hosts off the persistence catch-all barrel", () => {
-    const violations = ["api", "worker"]
-      .flatMap((app) =>
-        productionSourceFiles(join(repositoryRoot, "apps", app, "src")),
+    const productionRoots = [
+      "apps/api/src",
+      "apps/worker/src",
+      "apps/web/src",
+      "packages/contracts/src",
+      "packages/domain/src",
+      "packages/extraction/src",
+      "packages/import-application/src",
+      "packages/persistence/src",
+      "packages/storage/src",
+    ];
+    const violations = productionRoots
+      .flatMap((directory) =>
+        productionSourceFiles(join(repositoryRoot, directory)),
       )
       .flatMap(sourceImports)
       .filter(({ specifier }) => specifier === "@nuvitae/persistence")
@@ -281,12 +312,67 @@ describe("architecture dependency direction", () => {
     expect(violations).toEqual([]);
   });
 
+  it("keeps research and benchmark APIs out of production package barrels", () => {
+    const applicationRoot = readFileSync(
+      join(repositoryRoot, "packages/import-application/src/index.ts"),
+      "utf8",
+    );
+    const codexRuntime = readFileSync(
+      join(
+        repositoryRoot,
+        "packages/import-application/src/providers/codex.ts",
+      ),
+      "utf8",
+    );
+
+    expect(applicationRoot).not.toContain("semantic-benchmark-gate");
+    expect(codexRuntime).not.toContain("issue-25-model-selection");
+    expect(codexRuntime).not.toContain("Issue25Benchmark");
+  });
+
+  it("declares intentional package export surfaces", () => {
+    const packageExports = (packageName: string) =>
+      JSON.parse(
+        readFileSync(
+          join(repositoryRoot, `packages/${packageName}/package.json`),
+          "utf8",
+        ),
+      ).exports;
+
+    expect(Object.keys(packageExports("contracts"))).toEqual(["."]);
+    expect(Object.keys(packageExports("import-application"))).toEqual([
+      ".",
+      "./codex",
+      "./testing",
+    ]);
+    expect(Object.keys(packageExports("persistence"))).toEqual([
+      ".",
+      "./ports",
+      "./typeorm",
+    ]);
+  });
+
   it("keeps community authentication policy behind its feature-owned repository", () => {
     const violations = sourceImports(communityAuthServicePath)
       .filter(({ specifier }) => specifier.startsWith("@nuvitae/persistence"))
       .map(display);
 
     expect(violations).toEqual([]);
+  });
+
+  it("keeps product runtime composition out of feature implementation details", () => {
+    const forbidden = sourceImports(productRuntimeModulePath)
+      .filter(
+        ({ specifier }) =>
+          specifier.startsWith("@nuvitae/") ||
+          specifier.startsWith("@nestjs/bullmq") ||
+          specifier === "typeorm" ||
+          specifier.includes("/ports/") ||
+          specifier.includes("/adapters/"),
+      )
+      .map(display);
+
+    expect(forbidden).toEqual([]);
   });
 
   it("uses the shared identity/access guard rather than the historical import bridge", () => {
@@ -329,6 +415,27 @@ describe("architecture dependency direction", () => {
       .map(display);
 
     expect(violations).toEqual([]);
+  });
+
+  it("keeps shared web API configuration and resume presentation out of import ownership", () => {
+    const manualClient = readFileSync(
+      join(
+        repositoryRoot,
+        "apps/web/src/services/manual-resume/manual-draft-client.ts",
+      ),
+      "utf8",
+    );
+    const resumeEditor = readFileSync(
+      join(
+        repositoryRoot,
+        "apps/web/src/features/resume-editor/StructuredResumeSections.tsx",
+      ),
+      "utf8",
+    );
+
+    expect(manualClient).not.toContain("services/import-resume");
+    expect(manualClient).not.toContain("../import-resume");
+    expect(resumeEditor).not.toContain("../import-resume");
   });
 
   it("reserves semantic v1 for compatibility and prevents new provider writes", () => {

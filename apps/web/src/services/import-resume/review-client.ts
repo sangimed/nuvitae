@@ -8,7 +8,7 @@ import {
   type ReviewMutationResponse,
 } from "@nuvitae/contracts";
 import { createBrowserUuid } from "../browser-ids";
-import { importResumeApiPath } from "./config";
+import { apiPath } from "../api-config";
 
 export type ReviewClientErrorCategory =
   | "authentication_required"
@@ -38,7 +38,7 @@ export async function readReviewDraft(input: {
   const fetcher = input.fetchImpl ?? fetch;
   try {
     const response = await fetcher(
-      importResumeApiPath(`/import-resume/${input.importId}/review`),
+      apiPath(`/import-resume/${input.importId}/review`),
       {
         method: "GET",
         ...(input.signal === undefined ? {} : { signal: input.signal }),
@@ -78,7 +78,7 @@ export async function sendReviewMutation(input: {
   const fetcher = input.fetchImpl ?? fetch;
   try {
     const response = await fetcher(
-      importResumeApiPath(`/import-resume/${input.importId}/review`),
+      apiPath(`/import-resume/${input.importId}/review`),
       {
         method: "PATCH",
         headers: { "content-type": "application/json" },

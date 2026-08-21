@@ -2,7 +2,7 @@
 
 import type { StructuredResumeContentContract } from "@nuvitae/contracts";
 import { createBrowserUuid } from "../../services/browser-ids";
-import { formatReviewDate } from "../import-resume/review-date";
+import { formatResumeDate } from "./date";
 
 type Content = StructuredResumeContentContract;
 type TextValue = Content["personal"][number];
@@ -342,7 +342,7 @@ function RoleEditor(props: {
         value={
           props.role.startDate === undefined
             ? ""
-            : formatReviewDate(props.role.startDate)
+            : formatResumeDate(props.role.startDate)
         }
         disabled={props.disabled}
         onChange={(year) =>
@@ -357,7 +357,7 @@ function RoleEditor(props: {
             ? "Present"
             : props.role.endDate === undefined
               ? ""
-              : formatReviewDate(props.role.endDate)
+              : formatResumeDate(props.role.endDate)
         }
         disabled={props.disabled || props.role.isOngoing}
         error={props.errors?.[`${props.path}.endDate`]}

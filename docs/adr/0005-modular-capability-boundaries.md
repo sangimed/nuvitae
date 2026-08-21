@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted incrementally
+Accepted and implemented incrementally
 
 Accepted date: 2026-08-21
 
@@ -91,6 +91,23 @@ Migration follows independently reviewable slices from the issue #47 audit:
 Each slice must preserve HTTP/job contracts, database behavior, authorization,
 privacy events, queue retry semantics, and user-visible behavior unless a
 separate product change explicitly says otherwise.
+
+### Implemented result
+
+The migration completed the dependency correction without introducing the
+rejected framework layers:
+
+- import workflows and persistence ports are application-owned;
+- TypeORM transaction context remains inside persistence adapters;
+- BullMQ processing delegates to provider-neutral application workflows;
+- Codex is confined to its explicit adapter surface and composition edges;
+- API runtime wiring is feature-owned rather than centralized in the product
+  composition root; and
+- architecture tests ratchet package, provider, persistence, API, worker, and
+  web dependency rules.
+
+ADR 0006 Semantic V1 readers and ADR 0007 compatibility exports remain by
+design and are not exceptions to the production dependency direction.
 
 ## Rejected Alternatives
 

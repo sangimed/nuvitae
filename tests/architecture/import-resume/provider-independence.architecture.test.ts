@@ -29,8 +29,11 @@ const productionProviderEdgeFiles = new Set([
   join(applicationRoot, "providers", "codex-direct-transport.ts"),
   join(applicationRoot, "providers", "codex-model-selection.ts"),
   join(applicationRoot, "providers", "codex-session.ts"),
-  join(applicationRoot, "providers", "issue-25-model-selection.ts"),
   join(applicationRoot, "providers", "provider-payload-shape-audit.ts"),
+]);
+const researchFiles = new Set([
+  join(applicationRoot, "providers", "issue-25-model-selection.ts"),
+  join(applicationRoot, "semantic-parser", "semantic-benchmark-gate.ts"),
 ]);
 const applicationPublicEntry = join(applicationRoot, "index.ts");
 
@@ -191,6 +194,7 @@ function productionApplicationFiles(): string[] {
     (file) =>
       !file.endsWith(".test.ts") &&
       !file.startsWith(testingProviderDirectory) &&
+      !researchFiles.has(file) &&
       !productionProviderEdgeFiles.has(file),
   );
 }
@@ -233,6 +237,23 @@ describe("provider independence architecture boundary", () => {
         }
       }
     }
+    expect(violations).toEqual([]);
+  });
+
+  it("keeps historical research modules out of production dependency paths", () => {
+    const violations = collectSourceFiles(applicationRoot)
+      .filter((file) => !file.endsWith(".test.ts") && !researchFiles.has(file))
+      .flatMap((file) =>
+        collectImportReferences(file)
+          .map((reference) => resolveSourceTarget(file, reference.specifier))
+          .filter((target): target is string => target !== undefined)
+          .filter((target) => researchFiles.has(target))
+          .map(
+            (target) =>
+              `${relative(repositoryRoot, file)} -> ${relative(repositoryRoot, target)}`,
+          ),
+      );
+
     expect(violations).toEqual([]);
   });
 
