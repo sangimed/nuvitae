@@ -5,7 +5,7 @@ import {
   type PublicImportStatusResponse,
 } from "@nuvitae/contracts";
 import type { ImportDraft, ImportedDocument } from "@nuvitae/domain";
-import type { ImportResumeRepository } from "@nuvitae/persistence";
+import type { ImportWorkflowReader } from "@nuvitae/import-application";
 import { z } from "zod";
 import type { ImportEventEmitter } from "../observability/import-events.js";
 import { API_IMPORT_RESUME_REPOSITORY } from "../persistence/api-persistence.module.js";
@@ -42,7 +42,7 @@ const queueProgressSchema = z
 export class ImportStatusService {
   constructor(
     @Inject(API_IMPORT_RESUME_REPOSITORY)
-    private readonly repository: ImportResumeRepository,
+    private readonly repository: ImportWorkflowReader,
     @Inject(IMPORT_STATUS_REQUEST_ID_GENERATOR)
     private readonly requestIds: ImportStatusRequestIdGenerator,
     @Inject(START_IMPORT_PRIVACY_LOGGER)

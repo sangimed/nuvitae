@@ -17,7 +17,7 @@ import {
   emitImportTiming,
   type ImportEventEmitter,
 } from "../observability/import-events.js";
-import type { ImportResumeRepository } from "@nuvitae/persistence";
+import type { ImportWorkflowReader } from "@nuvitae/import-application";
 import { API_IMPORT_RESUME_REPOSITORY } from "../persistence/api-persistence.module.js";
 import {
   START_IMPORT_CLOCK,
@@ -45,7 +45,10 @@ const clientTimingSchema = z
 export class ImportTimingController {
   constructor(
     @Inject(API_IMPORT_RESUME_REPOSITORY)
-    private readonly repository: ImportResumeRepository,
+    private readonly repository: Pick<
+      ImportWorkflowReader,
+      "findImportByOwner"
+    >,
     @Inject(START_IMPORT_PRIVACY_LOGGER)
     private readonly logger: ImportEventEmitter,
     @Optional()

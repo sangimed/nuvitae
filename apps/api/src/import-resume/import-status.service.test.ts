@@ -1,8 +1,8 @@
 import type { ImportDraft, ImportedDocument } from "@nuvitae/domain";
 import type {
-  ImportAggregate,
-  ImportResumeRepository,
-} from "@nuvitae/persistence";
+  ImportWorkflowAggregate,
+  ImportWorkflowReader,
+} from "@nuvitae/import-application";
 import { describe, expect, it, vi } from "vitest";
 import type { ImportStatusQueueReader } from "./import-status.ports.js";
 import { ImportStatusService } from "./import-status.service.js";
@@ -187,14 +187,14 @@ function createHarness(options: {
   readonly draft?: ImportDraft | null;
   readonly queueProgress?: unknown;
 }) {
-  const aggregate: ImportAggregate | null =
+  const aggregate: ImportWorkflowAggregate | null =
     options.document === null
       ? null
       : { document: options.document, artifacts: [] };
   const repository = {
     findImportByOwner: vi.fn(async () => aggregate),
     findDraftByImportAndOwner: vi.fn(async () => options.draft ?? null),
-  } as unknown as ImportResumeRepository & {
+  } as ImportWorkflowReader & {
     findImportByOwner: ReturnType<typeof vi.fn>;
   };
   const queueReader: ImportStatusQueueReader = {

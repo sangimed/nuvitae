@@ -18,7 +18,7 @@ import {
   type ResumeSection,
   type SourceLocation,
 } from "@nuvitae/domain";
-import type { ImportResumeRepository } from "@nuvitae/persistence";
+import type { ImportWorkflowReader } from "@nuvitae/import-application";
 import type { ImportEventEmitter } from "../../observability/import-events.js";
 import { emitImportTiming } from "../../observability/import-events.js";
 import { API_IMPORT_RESUME_REPOSITORY } from "../../persistence/api-persistence.module.js";
@@ -72,7 +72,7 @@ export type ReadReviewDraftResult =
 export class ReadImportDraftService {
   constructor(
     @Inject(API_IMPORT_RESUME_REPOSITORY)
-    private readonly repository: ImportResumeRepository,
+    private readonly repository: ImportWorkflowReader,
     @Inject(IMPORT_STATUS_REQUEST_ID_GENERATOR)
     private readonly requestIds: ImportStatusRequestIdGenerator,
     @Inject(START_IMPORT_PRIVACY_LOGGER)
@@ -106,7 +106,7 @@ export class ReadImportDraftService {
           "We could not find that import. It may be unavailable or no longer accessible.",
       };
     }
-    const draft = await this.repository.findReviewDraftByImportAndOwner(
+    const draft = await this.repository.findDraftByImportAndOwner(
       input.importId,
       input.ownerUserId,
     );

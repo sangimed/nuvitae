@@ -23,6 +23,12 @@ const forbiddenImportApplicationDependencies = new Set([
   "typeorm",
 ]);
 
+const importReadPathFiles = [
+  "apps/api/src/import-resume/import-status.service.ts",
+  "apps/api/src/import-resume/import-timing.controller.ts",
+  "apps/api/src/services/import-resume/read-draft.ts",
+].map((path) => join(repositoryRoot, path));
+
 function productionSourceFiles(root: string): string[] {
   const files: string[] = [];
   const visit = (directory: string): void => {
@@ -151,5 +157,17 @@ describe("architecture dependency direction", () => {
     });
 
     expect(staleEntries).toEqual([]);
+  });
+
+  it("keeps import status, timing, and review reads behind the application-owned reader port", () => {
+    const violations = importReadPathFiles
+      .flatMap(sourceImports)
+      .filter(
+        ({ specifier }) =>
+          specifier === "@nuvitae/persistence" || specifier === "typeorm",
+      )
+      .map(display);
+
+    expect(violations).toEqual([]);
   });
 });
