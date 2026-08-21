@@ -5,17 +5,14 @@ import { join, resolve } from "node:path";
 import { NestFactory } from "@nestjs/core";
 import {
   PersistenceConfigError,
-  TypeOrmImportResumeRepository,
+  TypeOrmImportWorkflowRepository,
 } from "@nuvitae/persistence";
 import { DataSource } from "typeorm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AppModule } from "../../../apps/api/src/app.module.js";
 import { createApiTypeOrmModuleOptions } from "../../../apps/api/src/persistence/api-persistence.module.js";
 import {
-  WORKER_IMPORT_RESUME_REPOSITORY,
-  WORKER_PERSISTENCE_EXECUTION,
-  WORKER_PERSISTENCE_TRANSACTION_RUNNER,
-  WorkerPersistenceExecution,
+  WORKER_IMPORT_WORKFLOW_REPOSITORY,
   createWorkerTypeOrmModuleOptions,
 } from "../../../apps/worker/src/persistence/worker-persistence.module.js";
 import { startWorkerRuntime } from "../../../apps/worker/src/runtime/worker-runtime.js";
@@ -180,19 +177,17 @@ describe("final API and worker persistence runtime integration", () => {
         status: "ok",
       });
 
-      const repository = application!.get(WORKER_IMPORT_RESUME_REPOSITORY);
-      const transactionRunner = application!.get(
-        WORKER_PERSISTENCE_TRANSACTION_RUNNER,
-      );
-      const execution = application!.get<WorkerPersistenceExecution>(
-        WORKER_PERSISTENCE_EXECUTION,
-      );
+      const repository = application!.get(WORKER_IMPORT_WORKFLOW_REPOSITORY);
       const managedDataSource = application!.get(DataSource);
 
-      expect(repository).toBeInstanceOf(TypeOrmImportResumeRepository);
-      expect(transactionRunner).toBe(repository);
+      expect(repository).toBeInstanceOf(TypeOrmImportWorkflowRepository);
+      await repository.transaction(
+        async (scoped: {
+          findImportByOwner(importId: string, userId: string): Promise<unknown>;
+        }) => scoped.findImportByOwner("missing-import", "missing-owner"),
+      );
 
-      await execution.execute(async (manager) => {
+      await managedDataSource.transaction(async (manager) => {
         await manager.query(
           "CREATE TABLE worker_transaction_probe (id integer PRIMARY KEY)",
         );
@@ -207,7 +202,7 @@ describe("final API and worker persistence runtime integration", () => {
       ).toEqual([{ id: 1 }]);
 
       await expect(
-        execution.execute(async (manager) => {
+        managedDataSource.transaction(async (manager) => {
           await manager.query(
             "INSERT INTO worker_transaction_probe (id) VALUES (2)",
           );

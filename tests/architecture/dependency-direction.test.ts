@@ -48,6 +48,10 @@ const semanticWorkerPath = join(
   repositoryRoot,
   "apps/worker/src/import-resume/semantic-import.processor.ts",
 );
+const workerPersistencePath = join(
+  repositoryRoot,
+  "apps/worker/src/persistence/worker-persistence.module.ts",
+);
 
 function productionSourceFiles(root: string): string[] {
   const files: string[] = [];
@@ -245,5 +249,13 @@ describe("architecture dependency direction", () => {
       .map(display);
 
     expect(violations).toEqual([]);
+  });
+
+  it("does not reintroduce generic worker repository or transaction-runner tokens", () => {
+    const source = readFileSync(workerPersistencePath, "utf8");
+
+    expect(source).not.toContain("WORKER_IMPORT_RESUME_REPOSITORY");
+    expect(source).not.toContain("WORKER_PERSISTENCE_TRANSACTION_RUNNER");
+    expect(source).not.toContain("WORKER_PERSISTENCE_EXECUTION");
   });
 });
