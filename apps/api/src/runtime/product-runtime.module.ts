@@ -6,7 +6,7 @@ import { IMPORT_RESUME_PROCESSING_QUEUE } from "@nuvitae/contracts";
 import {
   TypeOrmAIProviderRuntimeConnectionsRepository,
   TypeOrmImportLimitAttemptsRepository,
-} from "@nuvitae/persistence";
+} from "@nuvitae/persistence/typeorm";
 import type { AIProviderRuntimeConnectionsRepository } from "@nuvitae/import-application";
 import {
   LocalPrivateImportStorage,

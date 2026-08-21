@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import type { CommunityAuthRepository } from "@nuvitae/persistence";
+import type { CommunityAuthRepository } from "@nuvitae/persistence/ports";
 
-export type { CommunityAuthRepository } from "@nuvitae/persistence";
+export type { CommunityAuthRepository } from "@nuvitae/persistence/ports";
 
 export class CommunityAuthenticationError extends Error {
   readonly code = "community_authentication_failed";

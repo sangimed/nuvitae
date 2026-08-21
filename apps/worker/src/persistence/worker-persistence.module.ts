@@ -4,7 +4,7 @@ import {
   TypeOrmImportWorkflowRepository,
   createTypeOrmModuleOptions,
   readPersistenceConfigFromEnv,
-} from "@nuvitae/persistence";
+} from "@nuvitae/persistence/typeorm";
 import { DataSource } from "typeorm";
 export const WORKER_IMPORT_WORKFLOW_REPOSITORY = Symbol(
   "WORKER_IMPORT_WORKFLOW_REPOSITORY",

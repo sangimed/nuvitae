@@ -5,8 +5,8 @@ import {
   TypeOrmImportWorkflowRepository,
   createTypeOrmModuleOptions,
   readPersistenceConfigFromEnv,
-  type ImportResumeRepository,
-} from "@nuvitae/persistence";
+} from "@nuvitae/persistence/typeorm";
+import type { ImportResumeRepository } from "@nuvitae/persistence/ports";
 import { DataSource } from "typeorm";
 import { TypeOrmManualResumeDraftRepository } from "./typeorm-manual-resume-draft.repository.js";
 import type { ManualResumeDraftRepository } from "../manual-resume/manual-resume.repository.js";

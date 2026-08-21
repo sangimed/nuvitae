@@ -258,4 +258,16 @@ describe("architecture dependency direction", () => {
     expect(source).not.toContain("WORKER_PERSISTENCE_TRANSACTION_RUNNER");
     expect(source).not.toContain("WORKER_PERSISTENCE_EXECUTION");
   });
+
+  it("keeps production hosts off the persistence catch-all barrel", () => {
+    const violations = ["api", "worker"]
+      .flatMap((app) =>
+        productionSourceFiles(join(repositoryRoot, "apps", app, "src")),
+      )
+      .flatMap(sourceImports)
+      .filter(({ specifier }) => specifier === "@nuvitae/persistence")
+      .map(display);
+
+    expect(violations).toEqual([]);
+  });
 });

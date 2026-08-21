@@ -21,6 +21,8 @@
         "packages/import-application/src/providers/testing/index.ts"
       ],
       "@nuvitae/persistence": ["packages/persistence/src/index.ts"],
+      "@nuvitae/persistence/ports": ["packages/persistence/src/ports.ts"],
+      "@nuvitae/persistence/typeorm": ["packages/persistence/src/typeorm.ts"],
       "@nuvitae/storage": ["packages/storage/src/index.ts"],
       "@nuvitae/test-fixtures": ["packages/test-fixtures/src/index.ts"]
     }

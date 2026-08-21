@@ -29,7 +29,7 @@ import type { AIProviderRuntimeConnectionsRepository } from "@nuvitae/import-app
 import {
   TypeOrmAIProviderRuntimeConnectionsRepository,
   TypeOrmImportLimitAttemptsRepository,
-} from "@nuvitae/persistence";
+} from "@nuvitae/persistence/typeorm";
 import { DataSource } from "typeorm";
 import {
   LocalPrivateImportStorage,

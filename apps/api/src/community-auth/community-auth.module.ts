@@ -5,7 +5,7 @@ import {
   RequestMethod,
 } from "@nestjs/common";
 import { DataSource } from "typeorm";
-import { TypeOrmCommunityAuthRepository } from "@nuvitae/persistence";
+import { TypeOrmCommunityAuthRepository } from "@nuvitae/persistence/typeorm";
 import { ApiPersistenceModule } from "../persistence/api-persistence.module.js";
 import {
   readCommunityAuthConfig,

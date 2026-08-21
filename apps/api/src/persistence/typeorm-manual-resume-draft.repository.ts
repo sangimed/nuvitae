@@ -1,5 +1,5 @@
 import type { ManualStructuredResumeDraft } from "@nuvitae/domain";
-import { TypeOrmImportResumeRepository } from "@nuvitae/persistence";
+import { TypeOrmImportResumeRepository } from "@nuvitae/persistence/typeorm";
 import type { DataSource, EntityManager } from "typeorm";
 import type { ManualResumeDraftRepository } from "../manual-resume/manual-resume.repository.js";
 
