@@ -23,10 +23,10 @@ import {
   type ImportEventEmitter,
 } from "@nuvitae/import-application";
 import type {
-  AIProviderRuntimeConnectionsRepository,
   ImportResumeRepository,
   PersistenceTransactionRunner,
 } from "@nuvitae/persistence";
+import type { AIProviderRuntimeConnectionsRepository } from "@nuvitae/import-application";
 import {
   TypeOrmAIProviderRuntimeConnectionsRepository,
   TypeOrmImportLimitAttemptsRepository,

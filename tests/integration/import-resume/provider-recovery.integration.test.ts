@@ -50,10 +50,10 @@ import {
   type DeterministicFixtureProfile,
 } from "@nuvitae/import-application/testing";
 import type {
-  AIProviderRuntimeConnectionsRepository,
   ManualResumeDraftRepository,
   PersistenceTransactionRunner,
 } from "@nuvitae/persistence";
+import type { AIProviderRuntimeConnectionsRepository } from "@nuvitae/import-application";
 import type { EntityManager } from "typeorm";
 import { CreateManualResumeDraftService } from "../../../apps/api/src/manual-resume/create-manual-resume-draft.service.js";
 
@@ -974,9 +974,9 @@ class FakeConnectionsRepository implements AIProviderRuntimeConnectionsRepositor
   readonly rows = new Map<string, AIProviderRuntimeConnection>();
 
   async transaction<T>(
-    work: (manager: EntityManager) => Promise<T>,
+    work: (repository: AIProviderRuntimeConnectionsRepository) => Promise<T>,
   ): Promise<T> {
-    return work({} as EntityManager);
+    return work(this);
   }
 
   async createConnection(

@@ -7,7 +7,6 @@ import type {
   ProviderRuntimeCapabilities,
   ProviderRuntimeConnectionStatus,
 } from "@nuvitae/domain";
-import type { AIProviderRuntimeConnectionsRepository } from "@nuvitae/persistence";
 import { randomUUID } from "node:crypto";
 import type {
   ImportEventEmitter,
@@ -38,6 +37,37 @@ export interface ProviderSessionStore {
     input: ProviderSessionStorageInput,
   ): Promise<{ readonly deleted: boolean }>;
   hasSession(input: ProviderSessionStorageInput): Promise<boolean>;
+}
+
+/**
+ * Application-owned persistence port for provider connection metadata.
+ *
+ * A transaction supplies a repository already scoped to the infrastructure
+ * transaction. This keeps TypeORM's EntityManager out of application policy
+ * while still requiring every operation in the callback to share the same
+ * transaction.
+ */
+export interface AIProviderRuntimeConnectionsRepository {
+  transaction<T>(
+    work: (repository: AIProviderRuntimeConnectionsRepository) => Promise<T>,
+  ): Promise<T>;
+  createConnection(
+    connection: AIProviderRuntimeConnection,
+  ): Promise<AIProviderRuntimeConnection>;
+  findConnectionByOwner(
+    connectionId: string,
+    userId: string,
+  ): Promise<AIProviderRuntimeConnection | null>;
+  findConnectionByProviderAndOwner(
+    providerKind: string,
+    userId: string,
+  ): Promise<AIProviderRuntimeConnection | null>;
+  listConnectionsByOwner(
+    userId: string,
+  ): Promise<readonly AIProviderRuntimeConnection[]>;
+  saveConnection(
+    connection: AIProviderRuntimeConnection,
+  ): Promise<AIProviderRuntimeConnection>;
 }
 
 export interface ProviderRuntimeAdapterContext {
@@ -828,7 +858,7 @@ export class ProviderConnectionService {
     const connections =
       await this.ports.repository.listConnectionsByOwner(ownerUserId);
     const expired: AIProviderRuntimeConnection[] = [];
-    await this.ports.repository.transaction(async (manager) => {
+    await this.ports.repository.transaction(async (repository) => {
       for (const connection of connections) {
         if (
           connection.deletedAt !== null ||
@@ -845,7 +875,7 @@ export class ProviderConnectionService {
           availabilityStatus: "unknown",
           lastCheckedAt: now,
         };
-        expired.push(await this.ports.repository.saveConnection(next, manager));
+        expired.push(await repository.saveConnection(next));
       }
     });
     return expired;
@@ -1036,8 +1066,8 @@ export class ProviderConnectionService {
     next: AIProviderRuntimeConnection,
   ): Promise<AIProviderRuntimeConnection> {
     try {
-      return await this.ports.repository.transaction((manager) =>
-        this.ports.repository.saveConnection(next, manager),
+      return await this.ports.repository.transaction((repository) =>
+        repository.saveConnection(next),
       );
     } catch (error) {
       throw mapPersistenceError(error);

@@ -1,28 +1,30 @@
 import type { AIProviderRuntimeConnection } from "@nuvitae/domain";
-import type { EntityManager } from "typeorm";
 
+/**
+ * Persistence package compatibility surface for the provider-connection port.
+ * Application code owns and imports the equivalent port from
+ * `@nuvitae/import-application`; this structural contract remains exported for
+ * persistence consumers while keeping TypeORM transaction types private.
+ */
 export interface AIProviderRuntimeConnectionsRepository {
-  transaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T>;
+  transaction<T>(
+    work: (repository: AIProviderRuntimeConnectionsRepository) => Promise<T>,
+  ): Promise<T>;
   createConnection(
     connection: AIProviderRuntimeConnection,
-    manager?: EntityManager,
   ): Promise<AIProviderRuntimeConnection>;
   findConnectionByOwner(
     connectionId: string,
     userId: string,
-    manager?: EntityManager,
   ): Promise<AIProviderRuntimeConnection | null>;
   findConnectionByProviderAndOwner(
     providerKind: string,
     userId: string,
-    manager?: EntityManager,
   ): Promise<AIProviderRuntimeConnection | null>;
   listConnectionsByOwner(
     userId: string,
-    manager?: EntityManager,
   ): Promise<readonly AIProviderRuntimeConnection[]>;
   saveConnection(
     connection: AIProviderRuntimeConnection,
-    manager?: EntityManager,
   ): Promise<AIProviderRuntimeConnection>;
 }

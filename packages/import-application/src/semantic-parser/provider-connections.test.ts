@@ -3,9 +3,8 @@ import type {
   AIProviderRuntimeConnection,
   ProviderRuntimeCapabilities,
 } from "@nuvitae/domain";
-import type { AIProviderRuntimeConnectionsRepository } from "@nuvitae/persistence";
-import type { EntityManager } from "typeorm";
 import {
+  type AIProviderRuntimeConnectionsRepository,
   ProviderConnectionError,
   ProviderConnectionService,
   type ProviderAdapterConnectedResult,
@@ -86,9 +85,9 @@ class FakeRepository implements AIProviderRuntimeConnectionsRepository {
   failSave = false;
 
   async transaction<T>(
-    work: (manager: EntityManager) => Promise<T>,
+    work: (repository: AIProviderRuntimeConnectionsRepository) => Promise<T>,
   ): Promise<T> {
-    return work({} as EntityManager);
+    return work(this);
   }
 
   async createConnection(

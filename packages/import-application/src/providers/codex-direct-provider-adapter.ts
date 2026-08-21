@@ -4,9 +4,9 @@ import {
   type ResumeSemanticParseRequest,
 } from "@nuvitae/contracts";
 import type { AIProviderRuntimeConnection } from "@nuvitae/domain";
-import type { AIProviderRuntimeConnectionsRepository } from "@nuvitae/persistence";
 import {
   isProviderConnectionReady,
+  type AIProviderRuntimeConnectionsRepository,
   type ProviderSessionStore,
 } from "../semantic-parser/provider-connections.js";
 import {
