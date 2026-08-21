@@ -40,6 +40,10 @@ const startImportPath = join(
   repositoryRoot,
   "apps/api/src/import-resume/start-import.service.ts",
 );
+const manualResumeMutationPaths = [
+  "apps/api/src/manual-resume/create-manual-resume-draft.service.ts",
+  "apps/api/src/manual-resume/update-manual-resume-draft.service.ts",
+].map((path) => join(repositoryRoot, path));
 
 function productionSourceFiles(root: string): string[] {
   const files: string[] = [];
@@ -207,6 +211,18 @@ describe("architecture dependency direction", () => {
 
   it("keeps import creation transaction details behind its application-owned repository", () => {
     const violations = sourceImports(startImportPath)
+      .filter(
+        ({ specifier }) =>
+          specifier === "@nuvitae/persistence" || specifier === "typeorm",
+      )
+      .map(display);
+
+    expect(violations).toEqual([]);
+  });
+
+  it("keeps manual resume transaction details behind its feature-owned repository", () => {
+    const violations = manualResumeMutationPaths
+      .flatMap(sourceImports)
       .filter(
         ({ specifier }) =>
           specifier === "@nuvitae/persistence" || specifier === "typeorm",

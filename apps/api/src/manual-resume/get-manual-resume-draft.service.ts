@@ -2,7 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { requireOwnedResource } from "../auth/ownership.js";
 import type { AuthenticatedUserContext } from "../auth/user-context.js";
 import { API_MANUAL_RESUME_DRAFT_REPOSITORY } from "../persistence/api-persistence.module.js";
-import type { ManualResumeDraftRepository } from "@nuvitae/persistence";
+import type { ManualResumeDraftRepository } from "./manual-resume.repository.js";
 import type { ManualResumeRequestIdGenerator } from "./manual-resume.ports.js";
 import { MANUAL_RESUME_REQUEST_ID_GENERATOR } from "./manual-resume.tokens.js";
 import { manualDraftResponse } from "./manual-resume.response.js";

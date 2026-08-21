@@ -33,6 +33,7 @@ import {
 } from "@nuvitae/import-application";
 import {
   TypeOrmImportResumeRepository,
+  TypeOrmImportWorkflowRepository,
   type DataSource,
 } from "@nuvitae/persistence";
 import { attachVerifiedPrincipal } from "../../../apps/api/src/auth/user-context.js";
@@ -51,7 +52,7 @@ import {
 } from "../../../apps/api/src/import-resume/start-import.tokens.js";
 import {
   API_IMPORT_RESUME_REPOSITORY,
-  API_PERSISTENCE_TRANSACTION_RUNNER,
+  API_START_IMPORT_REPOSITORY,
 } from "../../../apps/api/src/persistence/api-persistence.module.js";
 import {
   importEventSchemas,
@@ -230,7 +231,10 @@ describe("privacy-safe import logging (T068)", () => {
     };
     const providers: Provider[] = [
       { provide: API_IMPORT_RESUME_REPOSITORY, useValue: repository },
-      { provide: API_PERSISTENCE_TRANSACTION_RUNNER, useValue: repository },
+      {
+        provide: API_START_IMPORT_REPOSITORY,
+        useValue: new TypeOrmImportWorkflowRepository(database.dataSource),
+      },
       { provide: START_IMPORT_PRIVATE_STORAGE, useValue: storage },
       {
         provide: START_IMPORT_LIMIT_SERVICE,

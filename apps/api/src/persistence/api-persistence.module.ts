@@ -6,16 +6,13 @@ import {
   createTypeOrmModuleOptions,
   readPersistenceConfigFromEnv,
   type ImportResumeRepository,
-  type ManualResumeDraftRepository,
-  type PersistenceTransactionRunner,
 } from "@nuvitae/persistence";
-import { DataSource, type EntityManager } from "typeorm";
+import { DataSource } from "typeorm";
+import { TypeOrmManualResumeDraftRepository } from "./typeorm-manual-resume-draft.repository.js";
+import type { ManualResumeDraftRepository } from "../manual-resume/manual-resume.repository.js";
 
 export const API_IMPORT_RESUME_REPOSITORY = Symbol(
   "API_IMPORT_RESUME_REPOSITORY",
-);
-export const API_PERSISTENCE_TRANSACTION_RUNNER = Symbol(
-  "API_PERSISTENCE_TRANSACTION_RUNNER",
 );
 export const API_IMPORT_REVIEW_REPOSITORY = Symbol(
   "API_IMPORT_REVIEW_REPOSITORY",
@@ -67,19 +64,17 @@ export const apiPersistenceRepositoryProviders: Provider[] = [
     inject: [DataSource],
   },
   {
-    provide: API_PERSISTENCE_TRANSACTION_RUNNER,
-    useExisting: API_IMPORT_RESUME_REPOSITORY,
-  },
-  {
     provide: API_MANUAL_RESUME_DRAFT_REPOSITORY,
-    useExisting: API_IMPORT_RESUME_REPOSITORY,
+    useFactory: (dataSource: DataSource) =>
+      new TypeOrmManualResumeDraftRepository(dataSource),
+    inject: [DataSource],
   },
 ];
 
 /**
  * API use cases inject capability tokens instead of TypeORM entities. New
- * import workflows receive transaction-scoped repositories; legacy manual
- * resume use cases still use the transaction runner during their migration.
+ * workflows receive transaction-scoped repositories while TypeORM details
+ * remain in this composition boundary and its adapters.
  */
 @Module({
   imports: [
@@ -93,13 +88,9 @@ export const apiPersistenceRepositoryProviders: Provider[] = [
     API_IMPORT_REVIEW_REPOSITORY,
     API_IMPORT_CONFIRMATION_REPOSITORY,
     API_START_IMPORT_REPOSITORY,
-    API_PERSISTENCE_TRANSACTION_RUNNER,
     API_MANUAL_RESUME_DRAFT_REPOSITORY,
   ],
 })
 export class ApiPersistenceModule {}
 
-// Compile-time documentation of the callback accepted by the transaction token.
-export type ApiPersistenceOperation<T> = (manager: EntityManager) => Promise<T>;
-export type ApiPersistenceRunner = PersistenceTransactionRunner;
 export type ApiManualResumeDraftRepository = ManualResumeDraftRepository;

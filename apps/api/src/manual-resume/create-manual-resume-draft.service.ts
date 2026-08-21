@@ -3,14 +3,7 @@ import {
   createBlankManualStructuredResumeDraft,
   validateManualContent,
 } from "@nuvitae/domain";
-import type {
-  ManualResumeDraftRepository,
-  PersistenceTransactionRunner,
-} from "@nuvitae/persistence";
-import {
-  API_MANUAL_RESUME_DRAFT_REPOSITORY,
-  API_PERSISTENCE_TRANSACTION_RUNNER,
-} from "../persistence/api-persistence.module.js";
+import { API_MANUAL_RESUME_DRAFT_REPOSITORY } from "../persistence/api-persistence.module.js";
 import type {
   ManualResumeClock,
   ManualResumeIdGenerator,
@@ -22,14 +15,13 @@ import {
   MANUAL_RESUME_REQUEST_ID_GENERATOR,
 } from "./manual-resume.tokens.js";
 import { manualDraftResponse } from "./manual-resume.response.js";
+import type { ManualResumeDraftRepository } from "./manual-resume.repository.js";
 
 @Injectable()
 export class CreateManualResumeDraftService {
   constructor(
     @Inject(API_MANUAL_RESUME_DRAFT_REPOSITORY)
     private readonly repository: ManualResumeDraftRepository,
-    @Inject(API_PERSISTENCE_TRANSACTION_RUNNER)
-    private readonly transactionRunner: PersistenceTransactionRunner,
     @Inject(MANUAL_RESUME_CLOCK)
     private readonly clock: ManualResumeClock,
     @Inject(MANUAL_RESUME_ID_GENERATOR)
@@ -42,11 +34,10 @@ export class CreateManualResumeDraftService {
     readonly ownerUserId: string;
     readonly creationKey: string;
   }) {
-    const draft = await this.transactionRunner.transaction(async (manager) => {
-      const existing = await this.repository.findManualDraftByCreationKey(
+    const draft = await this.repository.transaction(async (repository) => {
+      const existing = await repository.findManualDraftByCreationKey(
         input.creationKey,
         input.ownerUserId,
-        manager,
       );
       if (existing !== null) return existing;
 
@@ -60,10 +51,10 @@ export class CreateManualResumeDraftService {
       if (!content.ok) {
         throw new Error("blank_manual_content_invalid");
       }
-      return this.repository.createManualDraft(
-        { draft: candidate, creationKey: input.creationKey },
-        manager,
-      );
+      return repository.createManualDraft({
+        draft: candidate,
+        creationKey: input.creationKey,
+      });
     });
 
     return manualDraftResponse({

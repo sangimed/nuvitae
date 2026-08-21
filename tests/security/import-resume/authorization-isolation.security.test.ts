@@ -68,7 +68,7 @@ import {
 } from "../../../apps/api/src/import-resume/start-import.tokens.js";
 import {
   API_IMPORT_RESUME_REPOSITORY,
-  API_PERSISTENCE_TRANSACTION_RUNNER,
+  API_START_IMPORT_REPOSITORY,
 } from "../../../apps/api/src/persistence/api-persistence.module.js";
 import { createImportEventEmitter } from "../../../apps/api/src/observability/import-events.js";
 import { ImportProcessingProcessor } from "../../../apps/worker/src/import-resume/import-processing.processor.js";
@@ -208,8 +208,8 @@ describe("authorization isolation across the resume-import lifecycle", () => {
         useValue: repository,
       },
       {
-        provide: API_PERSISTENCE_TRANSACTION_RUNNER,
-        useValue: repository,
+        provide: API_START_IMPORT_REPOSITORY,
+        useValue: new TypeOrmImportWorkflowRepository(database.dataSource),
       },
       { provide: START_IMPORT_PRIVATE_STORAGE, useValue: storage },
       {
