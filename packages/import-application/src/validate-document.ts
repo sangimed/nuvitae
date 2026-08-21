@@ -21,11 +21,7 @@ import type {
   PdfSafetyReasonCode,
   SelectableTextAssessment,
 } from "@nuvitae/extraction";
-import type {
-  ImportResumeRepository,
-  PersistenceTransactionRunner,
-} from "@nuvitae/persistence";
-import type { EntityManager } from "typeorm";
+import type { ImportWorkflowRepository } from "./import-workflow-repository.js";
 import type { ImportProcessingLimits } from "./import-processing-limits.js";
 import type { ImportProcessingCapacityPort } from "./import-capacity.js";
 import type {
@@ -70,8 +66,7 @@ export interface ValidateDocumentClock {
 export type ValidateDocumentPrivacyLogger = ImportEventEmitter;
 
 export interface ValidateDocumentPorts {
-  readonly repository: ImportResumeRepository;
-  readonly transactionRunner: PersistenceTransactionRunner;
+  readonly repository: ImportWorkflowRepository;
   readonly sourceReader: ValidateDocumentPrivateSourceReader;
   readonly pdfPageCounter: PdfPageCounter;
   readonly pdfTextExtractor: PdfSelectableTextExtractor;
@@ -247,11 +242,10 @@ export class ValidateDocumentService {
     input: ValidateDocumentInput,
   ): Promise<BeginValidationResult> {
     try {
-      return await this.ports.transactionRunner.transaction(async (manager) => {
-        const aggregate = await this.ports.repository.findImportByOwner(
+      return await this.ports.repository.transaction(async (repository) => {
+        const aggregate = await repository.findImportByOwner(
           input.importedDocumentId,
           input.ownerUserId,
-          manager,
         );
         if (aggregate === null) return { kind: "not_found" as const };
         if (aggregate.document.validationStatus !== "not_started") {
@@ -261,7 +255,7 @@ export class ValidateDocumentService {
           ...aggregate.document,
           validationStatus: "validating" as const,
         };
-        await this.ports.repository.saveImportLifecycle(validating, manager);
+        await repository.saveImportLifecycle(validating);
         return { kind: "started" as const, document: validating };
       });
     } catch {
@@ -415,12 +409,9 @@ export class ValidateDocumentService {
       Partial<Pick<ImportedDocument, "renderedPageCount" | "detectedLanguage">>,
   ): Promise<boolean> {
     try {
-      await this.ports.transactionRunner.transaction(async (manager) => {
-        const current = await this.currentOwnedDocument(original, manager);
-        await this.ports.repository.saveImportLifecycle(
-          { ...current, ...changes },
-          manager,
-        );
+      await this.ports.repository.transaction(async (repository) => {
+        const current = await this.currentOwnedDocument(original, repository);
+        await repository.saveImportLifecycle({ ...current, ...changes });
       });
       return true;
     } catch {
@@ -452,12 +443,12 @@ export class ValidateDocumentService {
     original: ImportedDocument,
   ): Promise<void> {
     try {
-      await this.ports.transactionRunner.transaction(async (manager) => {
-        const current = await this.currentOwnedDocument(original, manager);
-        await this.ports.repository.saveImportLifecycle(
-          { ...current, validationStatus: "not_started" },
-          manager,
-        );
+      await this.ports.repository.transaction(async (repository) => {
+        const current = await this.currentOwnedDocument(original, repository);
+        await repository.saveImportLifecycle({
+          ...current,
+          validationStatus: "not_started",
+        });
       });
     } catch {
       this.ports.logger.emit("validation.state_recovery_failed", {
@@ -469,12 +460,11 @@ export class ValidateDocumentService {
 
   private async currentOwnedDocument(
     original: ImportedDocument,
-    manager: EntityManager,
+    repository: ImportWorkflowRepository,
   ): Promise<ImportedDocument> {
-    const aggregate = await this.ports.repository.findImportByOwner(
+    const aggregate = await repository.findImportByOwner(
       original.id,
       original.ownerUserId,
-      manager,
     );
     if (aggregate === null) throw new Error("import_unavailable");
     return aggregate.document;

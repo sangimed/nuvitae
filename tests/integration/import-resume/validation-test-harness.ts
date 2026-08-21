@@ -16,10 +16,9 @@ import {
 import type {
   ImportAggregate,
   ImportResumeRepository,
-  PersistenceTransactionRunner,
 } from "@nuvitae/persistence";
-import type { EntityManager } from "typeorm";
 import {
+  type ImportWorkflowRepository,
   ValidateDocumentService,
   type ValidateDocumentPrivacyLogger,
 } from "../../../apps/api/src/services/import-resume/validate-document.js";
@@ -94,7 +93,6 @@ export function createValidationHarness(): ValidationHarness {
   let clockSequence = 0;
   const service = new ValidateDocumentService({
     repository,
-    transactionRunner: repository,
     sourceReader,
     pdfPageCounter: pdf,
     pdfTextExtractor: pdf,
@@ -165,7 +163,7 @@ export function addDocument(
 }
 
 export class InMemoryImportResumeRepository
-  implements ImportResumeRepository, PersistenceTransactionRunner
+  implements ImportResumeRepository, ImportWorkflowRepository
 {
   readonly documents = new Map<string, ImportedDocument>();
   draftSaveCount = 0;
@@ -176,9 +174,9 @@ export class InMemoryImportResumeRepository
   private lifecycleSaveAttempt = 0;
 
   async transaction<T>(
-    work: (manager: EntityManager) => Promise<T>,
+    work: (repository: ImportWorkflowRepository) => Promise<T>,
   ): Promise<T> {
-    return await work(undefined as unknown as EntityManager);
+    return await work(this);
   }
 
   async createImportAggregate(

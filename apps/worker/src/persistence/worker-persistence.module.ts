@@ -2,6 +2,7 @@ import { Module, type Provider } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import {
   TypeOrmImportResumeRepository,
+  TypeOrmImportWorkflowRepository,
   createTypeOrmModuleOptions,
   readPersistenceConfigFromEnv,
   type ImportResumeRepository,
@@ -14,6 +15,9 @@ export const WORKER_IMPORT_RESUME_REPOSITORY = Symbol(
 );
 export const WORKER_PERSISTENCE_TRANSACTION_RUNNER = Symbol(
   "WORKER_PERSISTENCE_TRANSACTION_RUNNER",
+);
+export const WORKER_IMPORT_WORKFLOW_REPOSITORY = Symbol(
+  "WORKER_IMPORT_WORKFLOW_REPOSITORY",
 );
 export const WORKER_PERSISTENCE_EXECUTION = Symbol(
   "WORKER_PERSISTENCE_EXECUTION",
@@ -46,6 +50,12 @@ export class WorkerPersistenceExecution {
 
 export const workerPersistenceRepositoryProviders: Provider[] = [
   {
+    provide: WORKER_IMPORT_WORKFLOW_REPOSITORY,
+    useFactory: (dataSource: DataSource) =>
+      new TypeOrmImportWorkflowRepository(dataSource),
+    inject: [DataSource],
+  },
+  {
     provide: WORKER_IMPORT_RESUME_REPOSITORY,
     useFactory: (dataSource: DataSource): ImportResumeRepository =>
       new TypeOrmImportResumeRepository(dataSource),
@@ -73,6 +83,7 @@ export const workerPersistenceRepositoryProviders: Provider[] = [
   ],
   providers: workerPersistenceRepositoryProviders,
   exports: [
+    WORKER_IMPORT_WORKFLOW_REPOSITORY,
     WORKER_IMPORT_RESUME_REPOSITORY,
     WORKER_PERSISTENCE_TRANSACTION_RUNNER,
     WORKER_PERSISTENCE_EXECUTION,

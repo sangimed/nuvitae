@@ -25,10 +25,7 @@ import {
   type PdfSelectableTextExtractor,
   type ResumeSourceFragment,
 } from "@nuvitae/extraction";
-import type {
-  ImportResumeRepository,
-  PersistenceTransactionRunner,
-} from "@nuvitae/persistence";
+import type { ImportWorkflowRepository } from "./import-workflow-repository.js";
 import type { ImportEventEmitter } from "./observability/import-events.js";
 import type { ImportProcessingCapacityPort } from "./import-capacity.js";
 import { ProcessingStartDeniedError } from "./import-capacity.js";
@@ -56,8 +53,7 @@ export interface DeterministicFieldExtractorPort {
   ): ReturnType<DeterministicResumeFieldExtractor["extract"]>;
 }
 export interface ProcessExtractionPorts {
-  readonly repository: ImportResumeRepository;
-  readonly transactionRunner: PersistenceTransactionRunner;
+  readonly repository: ImportWorkflowRepository;
   readonly sourceReader: ExtractionSourceReader;
   readonly pdfTextExtractor: PdfSelectableTextExtractor;
   readonly docxTextExtractor: DocxDeterministicTextExtractor;
@@ -80,7 +76,9 @@ type Begin =
   | {
       readonly kind: "existing";
       readonly draft: NonNullable<
-        Awaited<ReturnType<ImportResumeRepository["findDraftByImportAndOwner"]>>
+        Awaited<
+          ReturnType<ImportWorkflowRepository["findDraftByImportAndOwner"]>
+        >
       >;
     }
   | { readonly kind: "infrastructure" };
@@ -207,18 +205,16 @@ export class ProcessExtractionService {
 
   private async begin(input: ProcessExtractionInput): Promise<Begin> {
     try {
-      return await this.ports.transactionRunner.transaction(async (manager) => {
-        const aggregate = await this.ports.repository.findImportByOwner(
+      return await this.ports.repository.transaction(async (repository) => {
+        const aggregate = await repository.findImportByOwner(
           input.importedDocumentId,
           input.ownerUserId,
-          manager,
         );
         if (!aggregate) return { kind: "not_found" as const };
         const document = aggregate.document;
-        const existing = await this.ports.repository.findDraftByImportAndOwner(
+        const existing = await repository.findDraftByImportAndOwner(
           document.id,
           input.ownerUserId,
-          manager,
         );
         if (existing) {
           if (
@@ -247,10 +243,7 @@ export class ProcessExtractionService {
         };
         return {
           kind: "started" as const,
-          document: await this.ports.repository.saveImportLifecycle(
-            processing,
-            manager,
-          ),
+          document: await repository.saveImportLifecycle(processing),
         };
       });
     } catch {
@@ -324,18 +317,17 @@ export class ProcessExtractionService {
         kind: "existing";
         draft: NonNullable<
           Awaited<
-            ReturnType<ImportResumeRepository["findDraftByImportAndOwner"]>
+            ReturnType<ImportWorkflowRepository["findDraftByImportAndOwner"]>
           >
         >;
       }
     | { kind: "failed" }
   > {
     try {
-      return await this.ports.transactionRunner.transaction(async (manager) => {
-        const current = await this.ports.repository.findImportByOwner(
+      return await this.ports.repository.transaction(async (repository) => {
+        const current = await repository.findImportByOwner(
           document.id,
           document.ownerUserId,
-          manager,
         );
         if (
           !current ||
@@ -345,17 +337,16 @@ export class ProcessExtractionService {
           )
         )
           return { kind: "failed" as const };
-        const existing = await this.ports.repository.findDraftByImportAndOwner(
+        const existing = await repository.findDraftByImportAndOwner(
           document.id,
           document.ownerUserId,
-          manager,
         );
         if (existing) return { kind: "existing" as const, draft: existing };
-        await this.ports.repository.saveDraft(draft, manager);
-        await this.ports.repository.saveImportLifecycle(
-          { ...current.document, processingStatus: "ready_for_review" },
-          manager,
-        );
+        await repository.saveDraft(draft);
+        await repository.saveImportLifecycle({
+          ...current.document,
+          processingStatus: "ready_for_review",
+        });
         this.ports.logger.emit("review.draft_created", {
           importId: current.document.id,
           draftId: draft.id,
@@ -378,17 +369,16 @@ export class ProcessExtractionService {
     status: "failed" | "cancelled",
   ): Promise<void> {
     try {
-      await this.ports.transactionRunner.transaction(async (manager) => {
-        const current = await this.ports.repository.findImportByOwner(
+      await this.ports.repository.transaction(async (repository) => {
+        const current = await repository.findImportByOwner(
           document.id,
           document.ownerUserId,
-          manager,
         );
         if (current && current.document.processingStatus === "processing")
-          await this.ports.repository.saveImportLifecycle(
-            { ...current.document, processingStatus: status },
-            manager,
-          );
+          await repository.saveImportLifecycle({
+            ...current.document,
+            processingStatus: status,
+          });
       });
       await this.releaseCapacity(document.id, document.ownerUserId);
     } catch {
@@ -417,7 +407,7 @@ export class ProcessExtractionService {
   private responseForDraft(
     requestId: string,
     draft: NonNullable<
-      Awaited<ReturnType<ImportResumeRepository["findDraftByImportAndOwner"]>>
+      Awaited<ReturnType<ImportWorkflowRepository["findDraftByImportAndOwner"]>>
     >,
   ): ImportResumeResponse {
     return draft.warnings.length

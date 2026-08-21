@@ -11,10 +11,7 @@ interface ImportReference {
 }
 
 const importApplicationDebt = new Set([
-  "packages/import-application/src/process-extraction.ts -> @nuvitae/persistence",
   "packages/import-application/src/typeorm-import-limit-store.ts -> @nuvitae/persistence",
-  "packages/import-application/src/validate-document.ts -> @nuvitae/persistence",
-  "packages/import-application/src/validate-document.ts -> typeorm",
 ]);
 
 const forbiddenImportApplicationDependencies = new Set([

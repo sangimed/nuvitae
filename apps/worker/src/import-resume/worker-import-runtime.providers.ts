@@ -21,6 +21,7 @@ import {
   type ImportProcessingCapacityPort,
   type ImportProcessingLimits,
   type ImportEventEmitter,
+  type ImportWorkflowRepository,
 } from "@nuvitae/import-application";
 import type {
   ImportResumeRepository,
@@ -47,6 +48,7 @@ import { SemanticImportProcessor } from "./semantic-import.processor.js";
 import { parseWorkerImportProcessingLimits } from "./import-processing-limits.js";
 import {
   WORKER_IMPORT_RESUME_REPOSITORY,
+  WORKER_IMPORT_WORKFLOW_REPOSITORY,
   WORKER_PERSISTENCE_TRANSACTION_RUNNER,
 } from "../persistence/worker-persistence.module.js";
 import {
@@ -218,8 +220,7 @@ export const workerImportRuntimeProviders: Provider[] = [
   {
     provide: WORKER_IMPORT_VALIDATION_USE_CASE,
     useFactory: (
-      repository: ImportResumeRepository,
-      transactionRunner: PersistenceTransactionRunner,
+      repository: ImportWorkflowRepository,
       sourceReader: ExtractionSourceReader,
       limits: ImportProcessingLimits,
       capacity: ImportProcessingCapacityPort,
@@ -251,7 +252,6 @@ export const workerImportRuntimeProviders: Provider[] = [
       );
       return new ValidateDocumentService({
         repository,
-        transactionRunner,
         sourceReader,
         pdfPageCounter: pdf,
         pdfTextExtractor: pdf,
@@ -266,8 +266,7 @@ export const workerImportRuntimeProviders: Provider[] = [
       });
     },
     inject: [
-      WORKER_IMPORT_RESUME_REPOSITORY,
-      WORKER_PERSISTENCE_TRANSACTION_RUNNER,
+      WORKER_IMPORT_WORKFLOW_REPOSITORY,
       WORKER_PRIVATE_SOURCE_READER,
       WORKER_IMPORT_PROCESSING_LIMITS,
       WORKER_IMPORT_CAPACITY_PORT,

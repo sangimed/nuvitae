@@ -1542,6 +1542,10 @@ function extractionHarness(options: { cancelled?: boolean } = {}): {
   });
   const document = documentForWorker(ownerA, docA);
   const repository = {
+    transaction: vi.fn(
+      async (work: (repository: unknown) => Promise<unknown>) =>
+        work(repository),
+    ),
     findImportByOwner: vi.fn(async () => ({
       document,
       artifacts: [],
@@ -1549,11 +1553,6 @@ function extractionHarness(options: { cancelled?: boolean } = {}): {
     findDraftByImportAndOwner: vi.fn(async () => null),
     saveImportLifecycle: vi.fn(async (value: ImportedDocument) => value),
     saveDraft: vi.fn(async (value: unknown) => value),
-  };
-  const transactionRunner = {
-    transaction: vi.fn(async (work: (manager: object) => Promise<unknown>) =>
-      work({}),
-    ),
   };
   const pdfTextExtractor = {
     extractSelectableText: vi.fn(async () =>
@@ -1605,7 +1604,6 @@ function extractionHarness(options: { cancelled?: boolean } = {}): {
   };
   const service = new ProcessExtractionService({
     repository: repository as never,
-    transactionRunner: transactionRunner as never,
     sourceReader: {} as never,
     pdfTextExtractor: pdfTextExtractor as never,
     docxTextExtractor: {} as never,
