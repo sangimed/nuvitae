@@ -1309,12 +1309,11 @@ function semanticHarness(
     findDraftByImportAndOwner: vi.fn(async () => null),
     saveImportLifecycle: vi.fn(async (value: ImportedDocument) => value),
     saveDraft: vi.fn(async (value: unknown) => value),
+    transaction: vi.fn(),
   };
-  const transactionRunner = {
-    transaction: vi.fn(async (work: (manager: object) => Promise<unknown>) =>
-      work({}),
-    ),
-  };
+  repository.transaction.mockImplementation(
+    async (work: (repository: unknown) => Promise<unknown>) => work(repository),
+  );
   const textExtractor = {
     extractSelectableText: vi.fn(async () => ({
       ok: true as const,
@@ -1346,7 +1345,6 @@ function semanticHarness(
   };
   const processor = new SemanticImportProcessor({
     repository: repository as never,
-    transactionRunner: transactionRunner as never,
     sourceReader: {} as never,
     pdfTextExtractor: textExtractor as never,
     docxTextExtractor: {} as never,

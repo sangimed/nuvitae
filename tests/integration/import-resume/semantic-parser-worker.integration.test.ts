@@ -38,6 +38,7 @@ import type {
 } from "@nuvitae/domain";
 import {
   TypeOrmImportResumeRepository,
+  TypeOrmImportWorkflowRepository,
   type DataSource,
 } from "@nuvitae/persistence";
 import {
@@ -452,8 +453,7 @@ describe("semantic parser worker integration", () => {
     });
     const docx = new OoxmlDocxAdapter(fileReader, docxLimits);
     const processor = new SemanticImportProcessor({
-      repository,
-      transactionRunner: repository,
+      repository: new TypeOrmImportWorkflowRepository(database.dataSource),
       sourceReader: fileReader,
       pdfTextExtractor: pdf,
       docxTextExtractor: docx,

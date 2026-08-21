@@ -1009,8 +1009,7 @@ describe("authorization isolation across the resume-import lifecycle", () => {
       });
       const provider = { parse: vi.fn(async () => undefined) };
       const processor = new SemanticImportProcessor({
-        repository,
-        transactionRunner: repository,
+        repository: new TypeOrmImportWorkflowRepository(database.dataSource),
         sourceReader: {} as never,
         pdfTextExtractor: {} as never,
         docxTextExtractor: {} as never,

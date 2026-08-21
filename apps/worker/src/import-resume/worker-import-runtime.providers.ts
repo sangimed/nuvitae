@@ -25,10 +25,6 @@ import {
   CodexDirectProviderAdapter,
   type CodexModelIdentifier,
 } from "@nuvitae/import-application/codex";
-import type {
-  ImportResumeRepository,
-  PersistenceTransactionRunner,
-} from "@nuvitae/persistence";
 import type { AIProviderRuntimeConnectionsRepository } from "@nuvitae/import-application";
 import {
   TypeOrmAIProviderRuntimeConnectionsRepository,
@@ -48,11 +44,7 @@ import {
 } from "./import-processing.processor.js";
 import { SemanticImportProcessor } from "./semantic-import.processor.js";
 import { parseWorkerImportProcessingLimits } from "./import-processing-limits.js";
-import {
-  WORKER_IMPORT_RESUME_REPOSITORY,
-  WORKER_IMPORT_WORKFLOW_REPOSITORY,
-  WORKER_PERSISTENCE_TRANSACTION_RUNNER,
-} from "../persistence/worker-persistence.module.js";
+import { WORKER_IMPORT_WORKFLOW_REPOSITORY } from "../persistence/worker-persistence.module.js";
 import {
   readWorkerPrivateRuntimeConfig,
   type WorkerPrivateRuntimeConfig,
@@ -302,8 +294,7 @@ export const workerImportRuntimeProviders: Provider[] = [
   {
     provide: WORKER_IMPORT_EXTRACTION_USE_CASE,
     useFactory: (
-      repository: ImportResumeRepository,
-      transactionRunner: PersistenceTransactionRunner,
+      repository: ImportWorkflowRepository,
       sourceReader: ExtractionSourceReader,
       limits: ImportProcessingLimits,
       provider: ResumeSemanticParserProvider | undefined,
@@ -319,7 +310,6 @@ export const workerImportRuntimeProviders: Provider[] = [
       );
       return new SemanticImportProcessor({
         repository,
-        transactionRunner,
         sourceReader,
         pdfTextExtractor: pdf,
         docxTextExtractor: docx,
@@ -330,8 +320,7 @@ export const workerImportRuntimeProviders: Provider[] = [
       });
     },
     inject: [
-      WORKER_IMPORT_RESUME_REPOSITORY,
-      WORKER_PERSISTENCE_TRANSACTION_RUNNER,
+      WORKER_IMPORT_WORKFLOW_REPOSITORY,
       WORKER_PRIVATE_SOURCE_READER,
       WORKER_IMPORT_PROCESSING_LIMITS,
       WORKER_SEMANTIC_PARSER_PROVIDER,

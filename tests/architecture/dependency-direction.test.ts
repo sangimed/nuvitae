@@ -44,6 +44,10 @@ const manualResumeMutationPaths = [
   "apps/api/src/manual-resume/create-manual-resume-draft.service.ts",
   "apps/api/src/manual-resume/update-manual-resume-draft.service.ts",
 ].map((path) => join(repositoryRoot, path));
+const semanticWorkerPath = join(
+  repositoryRoot,
+  "apps/worker/src/import-resume/semantic-import.processor.ts",
+);
 
 function productionSourceFiles(root: string): string[] {
   const files: string[] = [];
@@ -223,6 +227,17 @@ describe("architecture dependency direction", () => {
   it("keeps manual resume transaction details behind its feature-owned repository", () => {
     const violations = manualResumeMutationPaths
       .flatMap(sourceImports)
+      .filter(
+        ({ specifier }) =>
+          specifier === "@nuvitae/persistence" || specifier === "typeorm",
+      )
+      .map(display);
+
+    expect(violations).toEqual([]);
+  });
+
+  it("keeps semantic worker transaction details behind the import workflow repository", () => {
+    const violations = sourceImports(semanticWorkerPath)
       .filter(
         ({ specifier }) =>
           specifier === "@nuvitae/persistence" || specifier === "typeorm",
