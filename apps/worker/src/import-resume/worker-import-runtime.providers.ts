@@ -11,8 +11,6 @@ import {
 import {
   ImportLimitService,
   RepositoryBackedImportLimitStore,
-  CodexDirectProviderAdapter,
-  type CodexModelIdentifier,
   emitImportTiming,
   type ProviderSessionStore,
   type ResumeSemanticParserProvider,
@@ -23,6 +21,10 @@ import {
   type ImportEventEmitter,
   type ImportWorkflowRepository,
 } from "@nuvitae/import-application";
+import {
+  CodexDirectProviderAdapter,
+  type CodexModelIdentifier,
+} from "@nuvitae/import-application/codex";
 import type {
   ImportResumeRepository,
   PersistenceTransactionRunner,

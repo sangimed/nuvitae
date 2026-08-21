@@ -2,7 +2,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {
   parseCodexSessionMaterial,
   type CodexSessionMaterial,
-} from "@nuvitae/import-application";
+} from "@nuvitae/import-application/codex";
 import {
   ProviderConnectionError,
   type ProviderAdapterBrowserLoginHandoff,

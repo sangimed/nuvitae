@@ -2,7 +2,7 @@ import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Test } from "@nestjs/testing";
-import { CodexDirectProviderAdapter } from "@nuvitae/import-application";
+import { CodexDirectProviderAdapter } from "@nuvitae/import-application/codex";
 import { TypeOrmImportResumeRepository } from "@nuvitae/persistence";
 import { DataSource } from "typeorm";
 import { describe, expect, it, vi } from "vitest";

@@ -14,6 +14,9 @@
       "@nuvitae/import-application": [
         "packages/import-application/src/index.ts"
       ],
+      "@nuvitae/import-application/codex": [
+        "packages/import-application/src/providers/codex.ts"
+      ],
       "@nuvitae/import-application/testing": [
         "packages/import-application/src/providers/testing/index.ts"
       ],

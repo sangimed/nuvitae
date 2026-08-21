@@ -14,7 +14,6 @@ import type {
 } from "@nuvitae/contracts";
 import { resumeSemanticParserContractVersion } from "@nuvitae/contracts";
 import {
-  CodexDirectProviderAdapter,
   createPrivacySafeSemanticProviderError,
   validateSemanticResponse,
   type ResumeSemanticParserCapabilities,
@@ -22,6 +21,7 @@ import {
   type ResumeSemanticParserProviderResult,
   type SemanticProviderErrorCode,
 } from "@nuvitae/import-application";
+import { CodexDirectProviderAdapter } from "@nuvitae/import-application/codex";
 import {
   createDeterministicSemanticParserProvider,
   deterministicFixtureProfiles,

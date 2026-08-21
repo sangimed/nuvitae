@@ -23,6 +23,12 @@ export default defineConfig({
           import.meta.url,
         ),
       ),
+      "@nuvitae/import-application/codex": fileURLToPath(
+        new URL(
+          "./packages/import-application/src/providers/codex.ts",
+          import.meta.url,
+        ),
+      ),
       "@nuvitae/import-application": fileURLToPath(
         new URL("./packages/import-application/src/index.ts", import.meta.url),
       ),

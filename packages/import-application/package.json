@@ -10,6 +10,10 @@
       "types": "./src/index.ts",
       "default": "./dist/index.js"
     },
+    "./codex": {
+      "types": "./src/providers/codex.ts",
+      "default": "./dist/providers/codex.js"
+    },
     "./testing": {
       "types": "./src/providers/testing/index.ts",
       "default": "./dist/providers/testing/index.js"
