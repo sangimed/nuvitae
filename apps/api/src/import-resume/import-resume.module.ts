@@ -10,7 +10,7 @@ import { StartImportController } from "./start-import.controller.js";
 import { StartImportExceptionFilter } from "./start-import-exception.filter.js";
 import { StartImportMultipartInterceptor } from "./start-import-multipart.interceptor.js";
 import { StartImportService } from "./start-import.service.js";
-import { VerifiedPrincipalGuard } from "./verified-principal.guard.js";
+import { VerifiedPrincipalGuard } from "../auth/verified-principal.guard.js";
 import { ImportStatusController } from "./import-status.controller.js";
 import { ImportStatusService } from "./import-status.service.js";
 import { IMPORT_STATUS_REQUEST_ID_GENERATOR } from "./start-import.tokens.js";
@@ -19,9 +19,11 @@ import {
   ConfirmController,
   ConfirmedStructuredResumeController,
 } from "./confirm.controller.js";
-import { ReadImportDraftService } from "../services/import-resume/read-draft.js";
-import { UpdateImportReviewService } from "../services/import-resume/update-review.js";
-import { ConfirmStructuredResumeService } from "../services/import-resume/confirm-structured-resume.js";
+import {
+  ConfirmStructuredResumeService,
+  ReadImportDraftService,
+  UpdateImportReviewService,
+} from "./import-resume.application.js";
 import { ImportTimingController } from "./import-timing.controller.js";
 
 export interface ImportResumeModuleOptions {

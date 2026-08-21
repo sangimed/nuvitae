@@ -26,7 +26,7 @@ import { StartImportService } from "./start-import.service.js";
 import {
   getGuardedAuthenticatedContext,
   VerifiedPrincipalGuard,
-} from "./verified-principal.guard.js";
+} from "../auth/verified-principal.guard.js";
 
 @ApiTags("resume import")
 @Controller("import-resume")

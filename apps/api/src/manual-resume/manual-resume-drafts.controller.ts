@@ -20,7 +20,7 @@ import { z } from "zod";
 import {
   getGuardedAuthenticatedContext,
   VerifiedPrincipalGuard,
-} from "../import-resume/verified-principal.guard.js";
+} from "../auth/verified-principal.guard.js";
 import { CreateManualResumeDraftService } from "./create-manual-resume-draft.service.js";
 import { GetManualResumeDraftService } from "./get-manual-resume-draft.service.js";
 import { ManualResumeExceptionFilter } from "./manual-resume-exception.filter.js";

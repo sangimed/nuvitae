@@ -24,12 +24,14 @@ import {
   reviewErrorResponseSchema,
   reviewMutationResponseSchema,
 } from "@nuvitae/contracts";
-import { ReadImportDraftService } from "../services/import-resume/read-draft.js";
-import { UpdateImportReviewService } from "../services/import-resume/update-review.js";
+import {
+  ReadImportDraftService,
+  UpdateImportReviewService,
+} from "./import-resume.application.js";
 import {
   getGuardedAuthenticatedContext,
   VerifiedPrincipalGuard,
-} from "./verified-principal.guard.js";
+} from "../auth/verified-principal.guard.js";
 
 @ApiTags("resume import")
 @Controller("import-resume")

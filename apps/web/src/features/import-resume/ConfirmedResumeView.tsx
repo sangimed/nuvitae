@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ConfirmedStructuredResumeReadResponse } from "@nuvitae/contracts";
-import { readConfirmedStructuredResume } from "../../services/import-resume/confirmation-client";
+import { readConfirmedStructuredResume } from "./client";
 import {
   StructuredFieldProvenance,
   StructuredResumeProvenance,

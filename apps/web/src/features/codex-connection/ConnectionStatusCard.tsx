@@ -9,7 +9,7 @@ import {
   type BeginCodexConnectionOutcome,
   type DisconnectCodexConnectionOutcome,
   type ReadCodexConnectionStatusOutcome,
-} from "../../services/import-resume/codex-connection-client";
+} from "./client";
 import { DisconnectDialog } from "./DisconnectDialog";
 
 type VisibleStatus =

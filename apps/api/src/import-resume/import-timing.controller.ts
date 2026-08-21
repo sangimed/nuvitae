@@ -27,7 +27,7 @@ import type { StartImportClock } from "./start-import.ports.js";
 import {
   getGuardedAuthenticatedContext,
   VerifiedPrincipalGuard,
-} from "./verified-principal.guard.js";
+} from "../auth/verified-principal.guard.js";
 
 const clientTimingSchema = z
   .object({

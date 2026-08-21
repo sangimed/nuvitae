@@ -56,6 +56,12 @@ const communityAuthServicePath = join(
   repositoryRoot,
   "apps/api/src/community-auth/community-auth.service.ts",
 );
+const apiSourceRoot = join(repositoryRoot, "apps/api/src");
+const webFeatureRoot = join(repositoryRoot, "apps/web/src/features");
+const semanticProviderRoot = join(
+  repositoryRoot,
+  "packages/import-application/src/providers",
+);
 
 function productionSourceFiles(root: string): string[] {
   const files: string[] = [];
@@ -278,6 +284,76 @@ describe("architecture dependency direction", () => {
   it("keeps community authentication policy behind its feature-owned repository", () => {
     const violations = sourceImports(communityAuthServicePath)
       .filter(({ specifier }) => specifier.startsWith("@nuvitae/persistence"))
+      .map(display);
+
+    expect(violations).toEqual([]);
+  });
+
+  it("uses the shared identity/access guard rather than the historical import bridge", () => {
+    const violations = productionSourceFiles(apiSourceRoot)
+      .flatMap(sourceImports)
+      .filter(({ specifier }) =>
+        specifier.endsWith("import-resume/verified-principal.guard.js"),
+      )
+      .map(display);
+
+    expect(violations).toEqual([]);
+  });
+
+  it("keeps Nest import-resume consumers behind the feature-owned application facade", () => {
+    const violations = productionSourceFiles(
+      join(repositoryRoot, "apps/api/src/import-resume"),
+    )
+      .filter(
+        (sourcePath) => !sourcePath.endsWith("/import-resume.application.ts"),
+      )
+      .flatMap(sourceImports)
+      .filter(
+        ({ specifier }) =>
+          specifier.includes("../services/import-resume/read-draft") ||
+          specifier.includes("../services/import-resume/update-review") ||
+          specifier.includes(
+            "../services/import-resume/confirm-structured-resume",
+          ),
+      )
+      .map(display);
+
+    expect(violations).toEqual([]);
+  });
+
+  it("keeps web feature code behind feature-owned browser-client facades", () => {
+    const violations = productionSourceFiles(webFeatureRoot)
+      .filter((sourcePath) => !sourcePath.endsWith("/client.ts"))
+      .flatMap(sourceImports)
+      .filter(
+        ({ specifier }) =>
+          specifier.includes("services/import-resume/") ||
+          specifier.includes("services/manual-resume/"),
+      )
+      .map(display);
+
+    expect(violations).toEqual([]);
+  });
+
+  it("reserves semantic v1 for compatibility and prevents new provider writes", () => {
+    const violations = productionSourceFiles(semanticProviderRoot)
+      .filter((sourcePath) =>
+        readFileSync(sourcePath, "utf8").includes("semantic-extraction.v1"),
+      )
+      .map((sourcePath) => relative(repositoryRoot, sourcePath));
+
+    expect(violations).toEqual([]);
+  });
+
+  it("does not reintroduce the deprecated TypeORM-named limit-store surface", () => {
+    const violations = ["api", "worker"]
+      .flatMap((app) =>
+        productionSourceFiles(join(repositoryRoot, "apps", app, "src")),
+      )
+      .flatMap(sourceImports)
+      .filter(({ specifier }) =>
+        specifier.includes("typeorm-import-limit-store"),
+      )
       .map(display);
 
     expect(violations).toEqual([]);

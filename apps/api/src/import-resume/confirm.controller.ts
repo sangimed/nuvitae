@@ -27,11 +27,11 @@ import {
   discardImportResponseSchema,
   importResumeResponseSchemaVersion,
 } from "@nuvitae/contracts";
-import { ConfirmStructuredResumeService } from "../services/import-resume/confirm-structured-resume.js";
+import { ConfirmStructuredResumeService } from "./import-resume.application.js";
 import {
   getGuardedAuthenticatedContext,
   VerifiedPrincipalGuard,
-} from "./verified-principal.guard.js";
+} from "../auth/verified-principal.guard.js";
 
 @ApiTags("resume import")
 @Controller("import-resume")

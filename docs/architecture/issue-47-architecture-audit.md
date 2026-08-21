@@ -628,18 +628,18 @@ Do **not** close #47 when creating these.
 
 Each issue should link this audit, state “no behavior change,” list protected contracts, and cap its scope to one dependency edge or workflow.
 
-## M. Open architectural decisions requiring maintainer input
+## M. Architectural decisions and remaining maintainer input
 
 1. **Capability language:** Is a confirmed/manual “structured resume” one `resume` capability, with import as a creation workflow, or should imported resume remain owned by import through confirmation?
 2. **Application package:** Should `@nuvitae/import-application` remain a cross-host workspace package, or can the shared workflow live in a more explicitly named `resume-import` package? Recommendation: retain it initially; naming is lower value than dependency correction.
 3. **Persistence ports:** Should ports live in the shared workflow package or in domain? Recommendation: workflow/application owns ports; domain should not know repositories unless a domain service genuinely requires them.
 4. **Nest dynamic module:** Which provider differences must callers supply at runtime? If only config/auth modes differ, prefer adapter modules plus static import feature composition.
 5. **Codex adapter location:** Worker-local or its own package? Recommendation: worker-local until a second production consumer proves package value.
-6. **Semantic v1 data:** Is v1 still present in persisted records/jobs or only tests? A data/migration inventory is required before any retirement.
+6. **Semantic v1 data — decided:** ADR 0006 makes V2 the only new write contract and retains V1 as read-only compatibility. A data/migration inventory remains mandatory before retirement.
 7. **Benchmark code:** Which issue-25 model-selection and fixture transcript code is production-supported versus research/test-only?
 8. **Event catalog stability:** Are import event names consumed externally as an operational contract? If yes, version/narrow them before splitting files.
 9. **Web reuse:** Should resume editor be shared by manual and imported resumes now, or do their workflows intentionally differ? Do not unify until UX/domain behavior is agreed.
-10. **Package API compatibility:** Is this private monorepo allowed coordinated breaking subpath changes, or should compatibility barrels remain for a deprecation window?
+10. **Package API compatibility — decided:** ADR 0007 retains compatibility barrels and historical bridges for one deprecation cycle while architecture tests prohibit new production use. Removal requires a focused, explicitly approved change.
 
 ## N. Things explicitly NOT worth refactoring
 

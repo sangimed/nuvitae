@@ -27,7 +27,7 @@ import { ProviderConnectionError } from "../services/import-resume/provider-conn
 import {
   getGuardedAuthenticatedContext,
   VerifiedPrincipalGuard,
-} from "./verified-principal.guard.js";
+} from "../auth/verified-principal.guard.js";
 
 @ApiTags("provider connections")
 @Controller()
