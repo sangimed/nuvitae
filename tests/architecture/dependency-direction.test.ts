@@ -28,6 +28,10 @@ const importReadPathFiles = [
   "apps/api/src/import-resume/import-timing.controller.ts",
   "apps/api/src/services/import-resume/read-draft.ts",
 ].map((path) => join(repositoryRoot, path));
+const importReviewMutationPath = join(
+  repositoryRoot,
+  "apps/api/src/services/import-resume/update-review.ts",
+);
 
 function productionSourceFiles(root: string): string[] {
   const files: string[] = [];
@@ -162,6 +166,17 @@ describe("architecture dependency direction", () => {
   it("keeps import status, timing, and review reads behind the application-owned reader port", () => {
     const violations = importReadPathFiles
       .flatMap(sourceImports)
+      .filter(
+        ({ specifier }) =>
+          specifier === "@nuvitae/persistence" || specifier === "typeorm",
+      )
+      .map(display);
+
+    expect(violations).toEqual([]);
+  });
+
+  it("keeps review mutation transaction details behind its application-owned repository", () => {
+    const violations = sourceImports(importReviewMutationPath)
       .filter(
         ({ specifier }) =>
           specifier === "@nuvitae/persistence" || specifier === "typeorm",

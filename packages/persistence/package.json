@@ -17,6 +17,7 @@
   "dependencies": {
     "@nuvitae/contracts": "workspace:*",
     "@nuvitae/domain": "workspace:*",
+    "@nuvitae/import-application": "workspace:*",
     "@nestjs/typeorm": "11.0.3",
     "pg": "8.22.0",
     "reflect-metadata": "0.2.2",

@@ -34,4 +34,41 @@ describe("TypeOrmImportWorkflowRepository", () => {
     expect(transactionalFind).toHaveBeenCalledTimes(1);
     expect(rootFind).not.toHaveBeenCalled();
   });
+
+  it("requires review locks to run through a transaction-scoped repository", async () => {
+    const repository = new TypeOrmImportWorkflowRepository({
+      manager: {},
+    } as DataSource);
+
+    expect(() =>
+      repository.findReviewDraftByImportAndOwnerForUpdate(
+        "import-id",
+        "owner-id",
+      ),
+    ).toThrow("import_review_operation_requires_transaction");
+  });
+
+  it("binds review locking to the manager supplied by the transaction", async () => {
+    const getOne = vi.fn(async () => null);
+    const andWhere = vi.fn(() => ({ getOne }));
+    const where = vi.fn(() => ({ andWhere }));
+    const setLock = vi.fn(() => ({ where }));
+    const createQueryBuilder = vi.fn(() => ({ setLock }));
+    const manager = { createQueryBuilder } as unknown as EntityManager;
+    const dataSource = {
+      manager: {},
+      transaction: vi.fn(
+        async <T>(work: (value: EntityManager) => Promise<T>) => work(manager),
+      ),
+    } as unknown as DataSource;
+    const repository = new TypeOrmImportWorkflowRepository(dataSource);
+
+    const draft = await repository.transaction((scoped) =>
+      scoped.findReviewDraftByImportAndOwnerForUpdate("import-id", "owner-id"),
+    );
+
+    expect(draft).toBeNull();
+    expect(createQueryBuilder).toHaveBeenCalledOnce();
+    expect(setLock).toHaveBeenCalledWith("pessimistic_write");
+  });
 });

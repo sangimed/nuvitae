@@ -278,6 +278,9 @@ importers:
       '@nuvitae/domain':
         specifier: workspace:*
         version: link:../domain
+      '@nuvitae/import-application':
+        specifier: workspace:*
+        version: link:../import-application
       pg:
         specifier: 8.22.0
         version: 8.22.0

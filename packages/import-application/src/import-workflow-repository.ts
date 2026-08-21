@@ -2,6 +2,7 @@ import type {
   DerivedExtractionArtifact,
   ImportDraft,
   ImportedDocument,
+  UserCorrection,
 } from "@nuvitae/domain";
 
 export interface ImportWorkflowAggregate {
@@ -28,4 +29,30 @@ export interface ImportWorkflowRepository extends ImportWorkflowReader {
   ): Promise<T>;
   saveImportLifecycle(document: ImportedDocument): Promise<ImportedDocument>;
   saveDraft(draft: ImportDraft): Promise<ImportDraft>;
+}
+
+export interface ImportReviewMutationRepository {
+  transaction<T>(
+    work: (repository: ImportReviewMutationRepository) => Promise<T>,
+  ): Promise<T>;
+  findReviewDraftByImportAndOwnerForUpdate(
+    importId: string,
+    userId: string,
+  ): Promise<ImportDraft | null>;
+  findCorrectionByOwnerAndOperation(
+    operationId: string,
+    userId: string,
+  ): Promise<UserCorrection | null>;
+  saveReviewMutation(input: {
+    readonly draft: ImportDraft;
+    readonly correction: UserCorrection;
+    readonly previousReviewRevision: number;
+  }): Promise<ImportDraft>;
+}
+
+export class ReviewCorrectionOperationIdConflictError extends Error {
+  constructor() {
+    super("review_correction_operation_id_conflict");
+    this.name = "ReviewCorrectionOperationIdConflictError";
+  }
 }

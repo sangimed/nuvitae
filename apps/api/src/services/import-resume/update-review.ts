@@ -13,14 +13,9 @@ import {
 } from "@nuvitae/domain";
 import {
   ReviewCorrectionOperationIdConflictError,
-  type ImportResumeRepository,
-  type PersistenceTransactionRunner,
-} from "@nuvitae/persistence";
-import type { EntityManager } from "typeorm";
-import {
-  API_IMPORT_RESUME_REPOSITORY,
-  API_PERSISTENCE_TRANSACTION_RUNNER,
-} from "../../persistence/api-persistence.module.js";
+  type ImportReviewMutationRepository,
+} from "@nuvitae/import-application";
+import { API_IMPORT_REVIEW_REPOSITORY } from "../../persistence/api-persistence.module.js";
 import type { ImportEventEmitter } from "../../observability/import-events.js";
 import type {
   StartImportClock,
@@ -53,10 +48,8 @@ export type UpdateReviewResult =
 @Injectable()
 export class UpdateImportReviewService {
   constructor(
-    @Inject(API_IMPORT_RESUME_REPOSITORY)
-    private readonly repository: ImportResumeRepository,
-    @Inject(API_PERSISTENCE_TRANSACTION_RUNNER)
-    private readonly transactions: PersistenceTransactionRunner,
+    @Inject(API_IMPORT_REVIEW_REPOSITORY)
+    private readonly repository: ImportReviewMutationRepository,
     @Inject(START_IMPORT_CLOCK)
     private readonly clock: StartImportClock,
     @Inject(START_IMPORT_ID_GENERATOR)
@@ -87,13 +80,13 @@ export class UpdateImportReviewService {
     }
 
     try {
-      return await this.transactions.transaction((manager) =>
+      return await this.repository.transaction((repository) =>
         this.updateInTransaction({
           ownerUserId: input.ownerUserId,
           importId: input.importId,
           requestId,
           request: parsed.data,
-          manager,
+          repository,
         }),
       );
     } catch (error) {
@@ -120,13 +113,12 @@ export class UpdateImportReviewService {
     readonly importId: string;
     readonly requestId: string;
     readonly request: ReviewMutationRequest;
-    readonly manager: EntityManager;
+    readonly repository: ImportReviewMutationRepository;
   }): Promise<UpdateReviewResult> {
     const draft =
-      await this.repository.findReviewDraftByImportAndOwnerForUpdate(
+      await input.repository.findReviewDraftByImportAndOwnerForUpdate(
         input.importId,
         input.ownerUserId,
-        input.manager,
       );
     if (draft === null) {
       this.logger.emit("import.resource_not_found", {
@@ -155,10 +147,9 @@ export class UpdateImportReviewService {
       };
     }
 
-    const existing = await this.repository.findCorrectionByOwnerAndOperation(
+    const existing = await input.repository.findCorrectionByOwnerAndOperation(
       input.request.operationId,
       input.ownerUserId,
-      input.manager,
     );
     if (existing !== null) {
       if (existing.importDraftId !== draft.id) {
@@ -197,14 +188,11 @@ export class UpdateImportReviewService {
       };
     }
 
-    const saved = await this.repository.saveReviewMutation(
-      {
-        draft: domain.draft,
-        correction: domain.correction,
-        previousReviewRevision: draft.reviewRevision,
-      },
-      input.manager,
-    );
+    const saved = await input.repository.saveReviewMutation({
+      draft: domain.draft,
+      correction: domain.correction,
+      previousReviewRevision: draft.reviewRevision,
+    });
     this.emitReviewCorrected(
       input.importId,
       saved.id,

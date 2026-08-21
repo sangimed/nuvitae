@@ -2,6 +2,7 @@ import { Module, type Provider } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import {
   TypeOrmImportResumeRepository,
+  TypeOrmImportWorkflowRepository,
   createTypeOrmModuleOptions,
   readPersistenceConfigFromEnv,
   type ImportResumeRepository,
@@ -15,6 +16,9 @@ export const API_IMPORT_RESUME_REPOSITORY = Symbol(
 );
 export const API_PERSISTENCE_TRANSACTION_RUNNER = Symbol(
   "API_PERSISTENCE_TRANSACTION_RUNNER",
+);
+export const API_IMPORT_REVIEW_REPOSITORY = Symbol(
+  "API_IMPORT_REVIEW_REPOSITORY",
 );
 export const API_MANUAL_RESUME_DRAFT_REPOSITORY = Symbol(
   "API_MANUAL_RESUME_DRAFT_REPOSITORY",
@@ -37,6 +41,12 @@ export function createApiTypeOrmModuleOptions(
 
 export const apiPersistenceRepositoryProviders: Provider[] = [
   {
+    provide: API_IMPORT_REVIEW_REPOSITORY,
+    useFactory: (dataSource: DataSource) =>
+      new TypeOrmImportWorkflowRepository(dataSource),
+    inject: [DataSource],
+  },
+  {
     provide: API_IMPORT_RESUME_REPOSITORY,
     useFactory: (dataSource: DataSource): ImportResumeRepository =>
       new TypeOrmImportResumeRepository(dataSource),
@@ -53,9 +63,9 @@ export const apiPersistenceRepositoryProviders: Provider[] = [
 ];
 
 /**
- * Future API use cases inject these tokens instead of TypeORM entities.
- * Both tokens resolve to one repository backed by Nest's managed DataSource.
- * Transactional use cases pass the supplied EntityManager to repository calls.
+ * API use cases inject capability tokens instead of TypeORM entities. New
+ * import workflows receive transaction-scoped repositories; legacy manual
+ * resume use cases still use the transaction runner during their migration.
  */
 @Module({
   imports: [
@@ -66,6 +76,7 @@ export const apiPersistenceRepositoryProviders: Provider[] = [
   providers: apiPersistenceRepositoryProviders,
   exports: [
     API_IMPORT_RESUME_REPOSITORY,
+    API_IMPORT_REVIEW_REPOSITORY,
     API_PERSISTENCE_TRANSACTION_RUNNER,
     API_MANUAL_RESUME_DRAFT_REPOSITORY,
   ],
