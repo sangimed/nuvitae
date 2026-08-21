@@ -3,7 +3,7 @@ import { attachVerifiedPrincipal } from "../auth/user-context.js";
 import { ProviderConnectionError } from "../services/import-resume/provider-connections.js";
 import { CodexConnectionInitiationService } from "./codex-connection-initiation.service.js";
 import { ProviderConnectionController } from "./provider-connection.controller.js";
-import { VerifiedPrincipalGuard } from "./verified-principal.guard.js";
+import { VerifiedPrincipalGuard } from "../auth/verified-principal.guard.js";
 
 const ownerUserId = "10000000-0000-4000-8000-000000000001";
 

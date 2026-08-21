@@ -357,5 +357,24 @@ describe("architecture dependency direction", () => {
       .map(display);
 
     expect(violations).toEqual([]);
+    expect(
+      existsSync(
+        join(
+          repositoryRoot,
+          "packages/import-application/src/typeorm-import-limit-store.ts",
+        ),
+      ),
+    ).toBe(false);
+  });
+
+  it("does not reintroduce the obsolete import-owned authentication guard", () => {
+    expect(
+      existsSync(
+        join(
+          repositoryRoot,
+          "apps/api/src/import-resume/verified-principal.guard.ts",
+        ),
+      ),
+    ).toBe(false);
   });
 });

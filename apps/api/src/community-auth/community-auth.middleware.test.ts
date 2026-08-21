@@ -3,7 +3,7 @@ import { extractUserContext } from "../auth/user-context.js";
 import {
   getGuardedAuthenticatedContext,
   VerifiedPrincipalGuard,
-} from "../import-resume/verified-principal.guard.js";
+} from "../auth/verified-principal.guard.js";
 import { CommunityAuthMiddleware } from "./community-auth.middleware.js";
 
 const ownerUserId = "10000000-0000-4000-8000-000000000001";

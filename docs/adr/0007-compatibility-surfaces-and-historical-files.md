@@ -15,9 +15,10 @@ change would combine dependency correction with source-compatibility breakage.
 1. Explicit production surfaces (`@nuvitae/persistence/ports`,
    `@nuvitae/persistence/typeorm`, `@nuvitae/import-application/codex`, and
    feature-local facades) are canonical for new code.
-2. Root barrels and historical bridge files remain for **one documented
-   deprecation cycle**. Production architecture tests prevent new imports from
-   depending on deprecated catch-all or TypeORM-named surfaces.
+2. Published root barrels remain for **one documented deprecation cycle**.
+   Unpublished compatibility bridges with no remaining consumers are removed
+   immediately. Production architecture tests prevent new imports from depending
+   on deprecated catch-all or TypeORM-named surfaces.
 3. Physical relocation is not required to establish ownership. Nest and web
    consumers import through feature-owned facades now; historical implementation
    paths can remain behind them until deletion is explicitly approved.
@@ -30,5 +31,6 @@ change would combine dependency correction with source-compatibility breakage.
 
 - The architecture boundary is enforceable immediately without a breaking
   repository-wide move.
-- Compatibility files have a clear purpose and are not invitations for new use.
+- Remaining compatibility files have verified consumers and are not invitations
+  for new use; unused internal bridges are removed.
 - A later removal PR can be small, measurable, and reversible.

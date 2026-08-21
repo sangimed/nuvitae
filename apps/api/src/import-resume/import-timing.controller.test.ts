@@ -4,7 +4,7 @@ import {
 } from "../auth/user-context.js";
 import { describe, expect, it, vi } from "vitest";
 import { ImportTimingController } from "./import-timing.controller.js";
-import { VerifiedPrincipalGuard } from "./verified-principal.guard.js";
+import { VerifiedPrincipalGuard } from "../auth/verified-principal.guard.js";
 
 const ownerUserId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const importId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";

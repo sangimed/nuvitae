@@ -20,7 +20,7 @@ import {
 } from "../../../apps/api/src/manual-resume/manual-resume.tokens.js";
 import { UpdateManualResumeDraftService } from "../../../apps/api/src/manual-resume/update-manual-resume-draft.service.js";
 import type { ManualResumeDraftRepository } from "../../../apps/api/src/manual-resume/manual-resume.repository.js";
-import { VerifiedPrincipalGuard } from "../../../apps/api/src/import-resume/verified-principal.guard.js";
+import { VerifiedPrincipalGuard } from "../../../apps/api/src/auth/verified-principal.guard.js";
 import {
   API_IMPORT_RESUME_REPOSITORY,
   API_MANUAL_RESUME_DRAFT_REPOSITORY,
