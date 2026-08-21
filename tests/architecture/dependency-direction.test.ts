@@ -36,6 +36,10 @@ const importConfirmationPath = join(
   repositoryRoot,
   "apps/api/src/services/import-resume/confirm-structured-resume.ts",
 );
+const startImportPath = join(
+  repositoryRoot,
+  "apps/api/src/import-resume/start-import.service.ts",
+);
 
 function productionSourceFiles(root: string): string[] {
   const files: string[] = [];
@@ -192,6 +196,17 @@ describe("architecture dependency direction", () => {
 
   it("keeps confirmation and discard transaction details behind their application-owned repository", () => {
     const violations = sourceImports(importConfirmationPath)
+      .filter(
+        ({ specifier }) =>
+          specifier === "@nuvitae/persistence" || specifier === "typeorm",
+      )
+      .map(display);
+
+    expect(violations).toEqual([]);
+  });
+
+  it("keeps import creation transaction details behind its application-owned repository", () => {
+    const violations = sourceImports(startImportPath)
       .filter(
         ({ specifier }) =>
           specifier === "@nuvitae/persistence" || specifier === "typeorm",

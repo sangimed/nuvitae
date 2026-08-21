@@ -1,9 +1,8 @@
 import type { ImportedDocument } from "@nuvitae/domain";
 import type {
-  ImportAggregate,
-  ImportResumeRepository,
-  PersistenceTransactionRunner,
-} from "@nuvitae/persistence";
+  ImportWorkflowAggregate,
+  ImportWorkflowRepository,
+} from "@nuvitae/import-application";
 import { describe, expect, it, vi } from "vitest";
 import { documentedImportProcessingDefaults } from "../config/import-processing-limits.js";
 import type {
@@ -59,7 +58,7 @@ describe("StartImportService", () => {
       expect(harness.transactionRunner.transaction).toHaveBeenCalledOnce();
       expect(harness.repository.createImportAggregate).toHaveBeenCalledOnce();
       const aggregate = harness.repository.createImportAggregate.mock
-        .calls[0]?.[0] as ImportAggregate;
+        .calls[0]?.[0] as ImportWorkflowAggregate;
       expect(aggregate.artifacts).toEqual([]);
       expect(aggregate.document).toMatchObject({
         id: importId,
@@ -401,9 +400,12 @@ function createHarness(
     rollbackReservation: vi.fn(async () => undefined),
   };
   const createdDocuments: ImportedDocument[] = [];
+  const transaction = vi.fn();
   const repository = {
     createImportAggregate: vi.fn(
-      async (aggregate: ImportAggregate): Promise<ImportAggregate> => {
+      async (
+        aggregate: ImportWorkflowAggregate,
+      ): Promise<ImportWorkflowAggregate> => {
         if (options.persistenceFailure !== undefined) {
           throw new Error(options.persistenceFailure);
         }
@@ -411,25 +413,25 @@ function createHarness(
         return aggregate;
       },
     ),
-    findImportByOwner: vi.fn(async (): Promise<ImportAggregate | null> => {
-      const document = createdDocuments.at(-1);
-      return document === undefined ? null : { document, artifacts: [] };
-    }),
+    findImportByOwner: vi.fn(
+      async (): Promise<ImportWorkflowAggregate | null> => {
+        const document = createdDocuments.at(-1);
+        return document === undefined ? null : { document, artifacts: [] };
+      },
+    ),
     saveImportLifecycle: vi.fn(
       async (document: ImportedDocument): Promise<ImportedDocument> => document,
     ),
-  } as unknown as ImportResumeRepository & {
+    transaction,
+  } as unknown as ImportWorkflowRepository & {
     createImportAggregate: ReturnType<typeof vi.fn>;
     findImportByOwner: ReturnType<typeof vi.fn>;
     saveImportLifecycle: ReturnType<typeof vi.fn>;
   };
-  const transactionRunner: PersistenceTransactionRunner & {
-    transaction: ReturnType<typeof vi.fn>;
-  } = {
-    transaction: vi.fn(async (work) => {
-      return work({} as never);
-    }),
-  };
+  transaction.mockImplementation(
+    async (work: (repository: ImportWorkflowRepository) => Promise<unknown>) =>
+      work(repository),
+  );
   const logRecords: unknown[] = [];
   const logger: StartImportPrivacyLogger & {
     emit: ReturnType<typeof vi.fn>;
@@ -441,7 +443,6 @@ function createHarness(
   };
   const service = new StartImportService(
     repository,
-    transactionRunner,
     storage,
     limits,
     documentedImportProcessingDefaults,
@@ -454,7 +455,7 @@ function createHarness(
   return {
     service,
     repository,
-    transactionRunner,
+    transactionRunner: repository,
     storage,
     limits,
     logger,

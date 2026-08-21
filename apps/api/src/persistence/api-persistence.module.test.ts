@@ -10,6 +10,7 @@ import {
   API_IMPORT_RESUME_REPOSITORY,
   API_IMPORT_CONFIRMATION_REPOSITORY,
   API_IMPORT_REVIEW_REPOSITORY,
+  API_START_IMPORT_REPOSITORY,
   API_PERSISTENCE_TRANSACTION_RUNNER,
   apiPersistenceRepositoryProviders,
   createApiTypeOrmModuleOptions,
@@ -81,10 +82,12 @@ describe("ApiPersistenceModule", () => {
     const confirmationRepository = testingModule.get(
       API_IMPORT_CONFIRMATION_REPOSITORY,
     );
+    const startRepository = testingModule.get(API_START_IMPORT_REPOSITORY);
 
     expect(repository).toBeInstanceOf(TypeOrmImportResumeRepository);
     expect(reviewRepository).toBeInstanceOf(TypeOrmImportWorkflowRepository);
     expect(confirmationRepository).toBe(reviewRepository);
+    expect(startRepository).toBe(reviewRepository);
     expect(transactionRunner).toBe(repository);
     await transactionRunner.transaction(async (value) => value);
     expect(managedDataSource.transaction).toHaveBeenCalledOnce();

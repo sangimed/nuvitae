@@ -15,6 +15,11 @@ interface TransactionScopedImportWorkflowRepository {
     importId: string,
     userId: string,
   ): ReturnType<TypeOrmImportResumeRepository["findImportByOwner"]>;
+  createImportAggregate(
+    aggregate: Parameters<
+      TypeOrmImportResumeRepository["createImportAggregate"]
+    >[0],
+  ): ReturnType<TypeOrmImportResumeRepository["createImportAggregate"]>;
   saveImportLifecycle(document: ImportedDocument): Promise<ImportedDocument>;
   findDraftByImportAndOwner(
     importId: string,
@@ -104,6 +109,17 @@ export class TypeOrmImportWorkflowRepository implements TransactionScopedImportW
     return this.imports.findImportByOwner(
       importId,
       userId,
+      this.transactionManager,
+    );
+  }
+
+  createImportAggregate(
+    aggregate: Parameters<
+      TypeOrmImportResumeRepository["createImportAggregate"]
+    >[0],
+  ) {
+    return this.imports.createImportAggregate(
+      aggregate,
       this.transactionManager,
     );
   }

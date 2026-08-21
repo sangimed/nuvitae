@@ -29,6 +29,9 @@ export interface ImportWorkflowRepository extends ImportWorkflowReader {
   transaction<T>(
     work: (repository: ImportWorkflowRepository) => Promise<T>,
   ): Promise<T>;
+  createImportAggregate(
+    aggregate: ImportWorkflowAggregate,
+  ): Promise<ImportWorkflowAggregate>;
   saveImportLifecycle(document: ImportedDocument): Promise<ImportedDocument>;
   saveDraft(draft: ImportDraft): Promise<ImportDraft>;
 }

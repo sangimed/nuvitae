@@ -23,6 +23,9 @@ export const API_IMPORT_REVIEW_REPOSITORY = Symbol(
 export const API_IMPORT_CONFIRMATION_REPOSITORY = Symbol(
   "API_IMPORT_CONFIRMATION_REPOSITORY",
 );
+export const API_START_IMPORT_REPOSITORY = Symbol(
+  "API_START_IMPORT_REPOSITORY",
+);
 export const API_MANUAL_RESUME_DRAFT_REPOSITORY = Symbol(
   "API_MANUAL_RESUME_DRAFT_REPOSITORY",
 );
@@ -43,6 +46,10 @@ export function createApiTypeOrmModuleOptions(
 }
 
 export const apiPersistenceRepositoryProviders: Provider[] = [
+  {
+    provide: API_START_IMPORT_REPOSITORY,
+    useExisting: API_IMPORT_REVIEW_REPOSITORY,
+  },
   {
     provide: API_IMPORT_CONFIRMATION_REPOSITORY,
     useExisting: API_IMPORT_REVIEW_REPOSITORY,
@@ -85,6 +92,7 @@ export const apiPersistenceRepositoryProviders: Provider[] = [
     API_IMPORT_RESUME_REPOSITORY,
     API_IMPORT_REVIEW_REPOSITORY,
     API_IMPORT_CONFIRMATION_REPOSITORY,
+    API_START_IMPORT_REPOSITORY,
     API_PERSISTENCE_TRANSACTION_RUNNER,
     API_MANUAL_RESUME_DRAFT_REPOSITORY,
   ],

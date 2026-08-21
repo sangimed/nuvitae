@@ -11,16 +11,10 @@ import {
   type ImportedDocument,
   type SupportedDocumentFormat,
 } from "@nuvitae/domain";
-import {
-  type ImportResumeRepository,
-  type PersistenceTransactionRunner,
-} from "@nuvitae/persistence";
+import type { ImportWorkflowRepository } from "@nuvitae/import-application";
 import { generatePrivateImportStorageKey } from "@nuvitae/storage";
 import type { ImportProcessingLimits } from "../config/import-processing-limits.js";
-import {
-  API_IMPORT_RESUME_REPOSITORY,
-  API_PERSISTENCE_TRANSACTION_RUNNER,
-} from "../persistence/api-persistence.module.js";
+import { API_START_IMPORT_REPOSITORY } from "../persistence/api-persistence.module.js";
 import {
   StartImportHttpError,
   type StartImportPublicErrorCode,
@@ -58,10 +52,8 @@ const docxContentType =
 @Injectable()
 export class StartImportService {
   constructor(
-    @Inject(API_IMPORT_RESUME_REPOSITORY)
-    private readonly repository: ImportResumeRepository,
-    @Inject(API_PERSISTENCE_TRANSACTION_RUNNER)
-    private readonly transactionRunner: PersistenceTransactionRunner,
+    @Inject(API_START_IMPORT_REPOSITORY)
+    private readonly repository: ImportWorkflowRepository,
     @Inject(START_IMPORT_PRIVATE_STORAGE)
     private readonly storage: StartImportPrivateStorage,
     @Inject(START_IMPORT_LIMIT_SERVICE)
@@ -187,11 +179,8 @@ export class StartImportService {
     }
 
     try {
-      await this.transactionRunner.transaction(async (manager) => {
-        await this.repository.createImportAggregate(
-          { document, artifacts: [] },
-          manager,
-        );
+      await this.repository.transaction(async (repository) => {
+        await repository.createImportAggregate({ document, artifacts: [] });
       });
     } catch {
       let compensationFailed = false;
@@ -284,20 +273,19 @@ export class StartImportService {
           durationMs: enqueuedAt.getTime() - persistedAt.getTime(),
           uploadReceivedAt: createdAt,
         });
-        await this.transactionRunner.transaction(async (manager) => {
-          const current = await this.repository.findImportByOwner(
+        await this.repository.transaction(async (repository) => {
+          const current = await repository.findImportByOwner(
             importId,
             input.ownerUserId,
-            manager,
           );
           if (
             current !== null &&
             current.document.processingStatus === "not_started"
           ) {
-            await this.repository.saveImportLifecycle(
-              { ...current.document, processingStatus: "queued" },
-              manager,
-            );
+            await repository.saveImportLifecycle({
+              ...current.document,
+              processingStatus: "queued",
+            });
           }
         });
       } catch {
@@ -368,17 +356,16 @@ export class StartImportService {
     ownerUserId: string,
   ): Promise<void> {
     try {
-      await this.transactionRunner.transaction(async (manager) => {
-        const current = await this.repository.findImportByOwner(
+      await this.repository.transaction(async (repository) => {
+        const current = await repository.findImportByOwner(
           importId,
           ownerUserId,
-          manager,
         );
         if (current !== null) {
-          await this.repository.saveImportLifecycle(
-            { ...current.document, processingStatus: "failed" },
-            manager,
-          );
+          await repository.saveImportLifecycle({
+            ...current.document,
+            processingStatus: "failed",
+          });
         }
       });
     } catch {
