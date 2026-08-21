@@ -2,7 +2,7 @@ export type { ImportProcessingLimits } from "./import-processing-limits.js";
 export * from "./import-capacity.js";
 export * from "./import-limits.js";
 export * from "./import-workflow-repository.js";
-export * from "./typeorm-import-limit-store.js";
+export * from "./repository-backed-import-limit-store.js";
 export * from "./observability/import-events.js";
 export * from "./process-extraction.js";
 export * from "./semantic-parser/provider-errors.js";

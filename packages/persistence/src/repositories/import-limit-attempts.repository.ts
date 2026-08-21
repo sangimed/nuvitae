@@ -1,5 +1,3 @@
-import type { EntityManager } from "typeorm";
-
 export interface ImportLimitAttemptRow {
   readonly id: string;
   readonly ownerUserId: string;
@@ -13,36 +11,28 @@ export interface ImportLimitAttemptRow {
 }
 
 export interface ImportLimitAttemptsRepository {
-  transaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T>;
+  transaction<T>(
+    work: (repository: ImportLimitAttemptsRepository) => Promise<T>,
+  ): Promise<T>;
 
   findAttemptsInWindow(
     ownerUserId: string,
     windowStart: Date,
-    manager: EntityManager,
   ): Promise<ImportLimitAttemptRow[]>;
 
-  countByState(
-    ownerUserId: string,
-    state: string,
-    manager: EntityManager,
-  ): Promise<number>;
+  countByState(ownerUserId: string, state: string): Promise<number>;
 
   findAttemptById(
     ownerUserId: string,
     attemptId: string,
-    manager: EntityManager,
   ): Promise<ImportLimitAttemptRow | null>;
 
   findAttemptByImport(
     ownerUserId: string,
     importId: string,
-    manager: EntityManager,
   ): Promise<ImportLimitAttemptRow | null>;
 
-  insertAttempt(
-    row: ImportLimitAttemptRow,
-    manager: EntityManager,
-  ): Promise<void>;
+  insertAttempt(row: ImportLimitAttemptRow): Promise<void>;
 
   updateAttempt(
     attemptId: string,
@@ -53,7 +43,6 @@ export interface ImportLimitAttemptsRepository {
         "state" | "importId" | "queuedAt" | "activeAt" | "releasedAt"
       >
     >,
-    manager: EntityManager,
   ): Promise<void>;
 
   releaseByImport(
@@ -61,14 +50,9 @@ export interface ImportLimitAttemptsRepository {
     importId: string,
     state: "queued" | "active",
     releasedAt: Date,
-    manager: EntityManager,
   ): Promise<void>;
 
-  deleteAttempt(
-    ownerUserId: string,
-    attemptId: string,
-    manager: EntityManager,
-  ): Promise<void>;
+  deleteAttempt(ownerUserId: string, attemptId: string): Promise<void>;
 
-  acquireLock(ownerUserId: string, manager: EntityManager): Promise<void>;
+  acquireLock(ownerUserId: string): Promise<void>;
 }

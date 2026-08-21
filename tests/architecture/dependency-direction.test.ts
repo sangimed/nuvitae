@@ -10,9 +10,7 @@ interface ImportReference {
   readonly specifier: string;
 }
 
-const importApplicationDebt = new Set([
-  "packages/import-application/src/typeorm-import-limit-store.ts -> @nuvitae/persistence",
-]);
+const importApplicationDebt = new Set<string>();
 
 const forbiddenImportApplicationDependencies = new Set([
   "@nuvitae/persistence",

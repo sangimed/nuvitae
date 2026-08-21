@@ -10,7 +10,7 @@
 export {
   ImportLimitService,
   ImportLimitStateUnavailableError,
-  TypeOrmImportLimitStore,
+  RepositoryBackedImportLimitStore,
   decideCapacityLimit,
   decideProcessingStartLimit,
   decideUploadAttemptLimit,

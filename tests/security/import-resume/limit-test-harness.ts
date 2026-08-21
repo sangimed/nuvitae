@@ -6,7 +6,7 @@ import {
 } from "@nuvitae/persistence";
 import {
   ImportLimitService,
-  TypeOrmImportLimitStore,
+  RepositoryBackedImportLimitStore,
   type ImportProcessingLimits,
   type ImportReservationResult,
 } from "@nuvitae/import-application";
@@ -80,7 +80,7 @@ export async function createLimitTestContext(
 
   const repository = new TypeOrmImportLimitAttemptsRepository(dataSource);
   const limits = { ...defaultLimits, ...overrides };
-  const store = new TypeOrmImportLimitStore(repository);
+  const store = new RepositoryBackedImportLimitStore(repository);
   const service = new ImportLimitService(store, limits);
   const clock = createControllableClock();
 

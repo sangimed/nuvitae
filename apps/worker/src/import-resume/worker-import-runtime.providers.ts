@@ -10,7 +10,7 @@ import {
 } from "@nuvitae/extraction";
 import {
   ImportLimitService,
-  TypeOrmImportLimitStore,
+  RepositoryBackedImportLimitStore,
   CodexDirectProviderAdapter,
   type CodexModelIdentifier,
   emitImportTiming,
@@ -187,7 +187,7 @@ export const workerImportRuntimeProviders: Provider[] = [
       limits: ImportProcessingLimits,
     ): ImportProcessingCapacityPort => {
       const service = new ImportLimitService(
-        new TypeOrmImportLimitStore(
+        new RepositoryBackedImportLimitStore(
           new TypeOrmImportLimitAttemptsRepository(dataSource),
         ),
         limits,

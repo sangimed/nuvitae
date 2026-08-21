@@ -14,7 +14,7 @@ import {
 } from "@nuvitae/storage";
 import {
   ImportLimitService,
-  TypeOrmImportLimitStore,
+  RepositoryBackedImportLimitStore,
 } from "../services/import-resume/import-limits.js";
 import {
   ProviderConnectionService,
@@ -123,7 +123,7 @@ const productRuntimeProviders: Provider[] = [
       limits: ReturnType<typeof parseImportProcessingLimitsEnv>,
     ) =>
       new ImportLimitService(
-        new TypeOrmImportLimitStore(
+        new RepositoryBackedImportLimitStore(
           new TypeOrmImportLimitAttemptsRepository(dataSource),
         ),
         limits,
