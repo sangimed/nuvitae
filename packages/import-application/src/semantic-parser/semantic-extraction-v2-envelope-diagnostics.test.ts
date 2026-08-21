@@ -154,8 +154,7 @@ describe("semantic-extraction.v2 envelope diagnostics", () => {
       });
       expect(result).not.toHaveProperty("unrecognizedKey");
       expect(result).not.toHaveProperty("unrecognizedContactKey");
-      if (key !== "headline")
-        expect(JSON.stringify(result)).not.toContain(key);
+      if (key !== "headline") expect(JSON.stringify(result)).not.toContain(key);
     },
   );
 

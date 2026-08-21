@@ -1,6 +1,6 @@
 import { buildPdf } from "../../../packages/extraction/src/testing/test-document-builders.js";
 import { describe, expect, it } from "vitest";
-import { assessPdfSelectableText } from "../../../apps/api/src/services/import-resume/validate-document.js";
+import { assessPdfSelectableText } from "@nuvitae/import-application";
 import {
   addDocument,
   createValidationHarness,

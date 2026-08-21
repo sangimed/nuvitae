@@ -11,7 +11,7 @@ import {
   TypeOrmImportWorkflowRepository,
   type DataSource,
 } from "@nuvitae/persistence";
-import { ConfirmStructuredResumeService } from "../../../apps/api/src/services/import-resume/confirm-structured-resume.js";
+import { ConfirmStructuredResumeService } from "../../../apps/api/src/import-resume/use-cases/confirm-structured-resume.js";
 import type { IsolatedPersistenceTestDatabase } from "../persistence/test-database.js";
 import { createIsolatedPersistenceTestDatabase } from "../persistence/test-database.js";
 import { ids, importDraft, importedDocument } from "../persistence/fixtures.js";

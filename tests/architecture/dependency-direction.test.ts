@@ -24,21 +24,21 @@ const forbiddenImportApplicationDependencies = new Set([
 ]);
 
 const importReadPathFiles = [
-  "apps/api/src/import-resume/import-status.service.ts",
-  "apps/api/src/import-resume/import-timing.controller.ts",
-  "apps/api/src/services/import-resume/read-draft.ts",
+  "apps/api/src/import-resume/use-cases/read-status.ts",
+  "apps/api/src/import-resume/transport/http/import-timing.controller.ts",
+  "apps/api/src/import-resume/use-cases/read-draft.ts",
 ].map((path) => join(repositoryRoot, path));
 const importReviewMutationPath = join(
   repositoryRoot,
-  "apps/api/src/services/import-resume/update-review.ts",
+  "apps/api/src/import-resume/use-cases/update-review.ts",
 );
 const importConfirmationPath = join(
   repositoryRoot,
-  "apps/api/src/services/import-resume/confirm-structured-resume.ts",
+  "apps/api/src/import-resume/use-cases/confirm-structured-resume.ts",
 );
 const startImportPath = join(
   repositoryRoot,
-  "apps/api/src/import-resume/start-import.service.ts",
+  "apps/api/src/import-resume/use-cases/start-import.ts",
 );
 const manualResumeMutationPaths = [
   "apps/api/src/manual-resume/create-manual-resume-draft.service.ts",
@@ -304,17 +304,13 @@ describe("architecture dependency direction", () => {
     const violations = productionSourceFiles(
       join(repositoryRoot, "apps/api/src/import-resume"),
     )
-      .filter(
-        (sourcePath) => !sourcePath.endsWith("/import-resume.application.ts"),
-      )
+      .filter((sourcePath) => !sourcePath.endsWith("/use-cases/index.ts"))
       .flatMap(sourceImports)
       .filter(
         ({ specifier }) =>
-          specifier.includes("../services/import-resume/read-draft") ||
-          specifier.includes("../services/import-resume/update-review") ||
-          specifier.includes(
-            "../services/import-resume/confirm-structured-resume",
-          ),
+          specifier.includes("../../use-cases/read-draft") ||
+          specifier.includes("../../use-cases/update-review") ||
+          specifier.includes("../../use-cases/confirm-structured-resume"),
       )
       .map(display);
 

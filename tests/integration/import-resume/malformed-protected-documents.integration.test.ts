@@ -32,7 +32,9 @@ describe("malformed and protected document validation", () => {
       accepted: true,
       renderedPageCount: 1,
     });
-    expect(harness.logs.at(-1)).toMatchObject({
+    expect(
+      harness.logs.find((log) => log.event === "validation.completed"),
+    ).toMatchObject({
       event: "validation.completed",
       metadata: {
         errorCategory: "accepted",
@@ -58,7 +60,9 @@ describe("malformed and protected document validation", () => {
       accepted: false,
       failure: { code: "unsafe_content" },
     });
-    expect(harness.logs.at(-1)).toMatchObject({
+    expect(
+      harness.logs.find((log) => log.event === "validation.completed"),
+    ).toMatchObject({
       event: "validation.completed",
       metadata: {
         errorCategory: "unsafe_content",

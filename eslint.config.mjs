@@ -14,6 +14,7 @@ export default [
       "node_modules/**",
       "pnpm-lock.yaml",
       "apps/web/next-env.d.ts",
+      "spikes/**",
     ],
   },
   js.configs.recommended,

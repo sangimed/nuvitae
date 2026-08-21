@@ -21,7 +21,7 @@ import {
   type ImportWorkflowRepository,
   ValidateDocumentService,
   type ValidateDocumentPrivacyLogger,
-} from "../../../apps/api/src/services/import-resume/validate-document.js";
+} from "@nuvitae/import-application";
 import {
   failed,
   succeeded,

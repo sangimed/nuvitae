@@ -1209,7 +1209,7 @@ describe("prompt-injection security: deterministic outcomes", () => {
 describe("prompt-injection security: usable-candidate and persistence gates", () => {
   const request = requestFor(["Jane Example"]);
 
-  it("keeps the persistence gate closed for invented, evidence-free, and inferred-only candidates", () => {
+  it("keeps the persistence gate closed for invented and evidence-free candidates while routing grounded inferences to review", () => {
     const invented = response({
       sections: {
         ...response().sections,
@@ -1271,8 +1271,15 @@ describe("prompt-injection security: usable-candidate and persistence gates", ()
       ids: draftIds,
       now,
     });
-    expect(draft.category).toBe("no_supported_field");
-    expect(draft.draft).toBeUndefined();
+    expect(draft.category).toBe("complete");
+    expect(draft.draft).toMatchObject({
+      status: "review_required",
+      fields: [
+        {
+          inferenceStatus: "inferred_needs_review",
+        },
+      ],
+    });
   });
 
   it("persists only validated explicit grounded candidates with sanitized warnings", () => {

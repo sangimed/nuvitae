@@ -34,6 +34,11 @@ const persistenceEnvironmentKeys = [
   "NUVITAE_PRIVATE_STORAGE_ROOT",
   "NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET",
   "NUVITAE_PRIVATE_STORAGE_MAX_SIGNED_REFERENCE_TTL_SECONDS",
+  "NUVITAE_PROVIDER_SESSION_ROOT",
+  "NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET",
+  "NUVITAE_PROVIDER_SESSION_MAX_BYTES",
+  "NUVITAE_COMMUNITY_ACCESS_SECRET",
+  "NUVITAE_COMMUNITY_COOKIE_SECURE",
 ] as const;
 
 describe("final API and worker persistence runtime integration", () => {
@@ -59,6 +64,16 @@ describe("final API and worker persistence runtime integration", () => {
       "runtime-persistence-test-local-secret-32";
     process.env.NUVITAE_PRIVATE_STORAGE_MAX_SIGNED_REFERENCE_TTL_SECONDS =
       "300";
+    process.env.NUVITAE_PROVIDER_SESSION_ROOT = join(
+      privateStorageRoot,
+      "provider-sessions",
+    );
+    process.env.NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET =
+      "runtime-provider-session-test-local-secret-32";
+    process.env.NUVITAE_PROVIDER_SESSION_MAX_BYTES = "65536";
+    process.env.NUVITAE_COMMUNITY_ACCESS_SECRET =
+      "runtime-community-access-test-local-secret-32";
+    process.env.NUVITAE_COMMUNITY_COOKIE_SECURE = "false";
   });
 
   afterAll(async () => {
@@ -184,7 +199,11 @@ describe("final API and worker persistence runtime integration", () => {
       await repository.transaction(
         async (scoped: {
           findImportByOwner(importId: string, userId: string): Promise<unknown>;
-        }) => scoped.findImportByOwner("missing-import", "missing-owner"),
+        }) =>
+          scoped.findImportByOwner(
+            "00000000-0000-4000-8000-000000000000",
+            "00000000-0000-4000-8000-000000000001",
+          ),
       );
 
       await managedDataSource.transaction(async (manager) => {

@@ -1,4 +1,13 @@
-import { Check, Column, Entity, Index, PrimaryColumn, Unique } from "typeorm";
+import {
+  Check,
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryColumn,
+  Unique,
+} from "typeorm";
 
 /**
  * The one-owner invariant belongs to Community authentication infrastructure,
@@ -33,6 +42,16 @@ export class CommunityAuthSessionEntity {
 
   @Column("uuid", { name: "owner_user_id" })
   ownerUserId!: string;
+
+  @ManyToOne(() => CommunityInstanceOwnerEntity, {
+    onDelete: "RESTRICT",
+  })
+  @JoinColumn({
+    name: "owner_user_id",
+    referencedColumnName: "ownerUserId",
+    foreignKeyConstraintName: "fk_community_auth_sessions_owner",
+  })
+  owner!: CommunityInstanceOwnerEntity;
 
   @Column("timestamptz", { name: "created_at" })
   createdAt!: Date;

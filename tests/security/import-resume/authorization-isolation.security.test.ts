@@ -57,6 +57,7 @@ import { documentedImportProcessingDefaults } from "../../../apps/api/src/config
 import { ImportResumeModule } from "../../../apps/api/src/import-resume/import-resume.module.js";
 import {
   IMPORT_STATUS_REQUEST_ID_GENERATOR,
+  IMPORT_STATUS_QUEUE_READER,
   START_IMPORT_CLOCK,
   START_IMPORT_ID_GENERATOR,
   START_IMPORT_LIMIT_SERVICE,
@@ -65,9 +66,11 @@ import {
   START_IMPORT_PROCESSING_LIMITS,
   START_IMPORT_QUEUE_PUBLISHER,
   START_IMPORT_REQUEST_ID_GENERATOR,
-} from "../../../apps/api/src/import-resume/start-import.tokens.js";
+} from "../../../apps/api/src/import-resume/ports/tokens.js";
 import {
+  API_IMPORT_CONFIRMATION_REPOSITORY,
   API_IMPORT_RESUME_REPOSITORY,
+  API_IMPORT_REVIEW_REPOSITORY,
   API_START_IMPORT_REPOSITORY,
 } from "../../../apps/api/src/persistence/api-persistence.module.js";
 import { createImportEventEmitter } from "../../../apps/api/src/observability/import-events.js";
@@ -202,6 +205,9 @@ describe("authorization isolation across the resume-import lifecycle", () => {
       signingSecret: storageSecret,
       maxSignedReferenceTtlSeconds: 60,
     });
+    const workflowRepository = new TypeOrmImportWorkflowRepository(
+      database.dataSource,
+    );
     const providers: Provider[] = [
       {
         provide: API_IMPORT_RESUME_REPOSITORY,
@@ -209,7 +215,15 @@ describe("authorization isolation across the resume-import lifecycle", () => {
       },
       {
         provide: API_START_IMPORT_REPOSITORY,
-        useValue: new TypeOrmImportWorkflowRepository(database.dataSource),
+        useValue: workflowRepository,
+      },
+      {
+        provide: API_IMPORT_REVIEW_REPOSITORY,
+        useValue: workflowRepository,
+      },
+      {
+        provide: API_IMPORT_CONFIRMATION_REPOSITORY,
+        useValue: workflowRepository,
       },
       { provide: START_IMPORT_PRIVATE_STORAGE, useValue: storage },
       {
@@ -254,6 +268,10 @@ describe("authorization isolation across the resume-import lifecycle", () => {
         }),
       },
       { provide: START_IMPORT_QUEUE_PUBLISHER, useValue: queue },
+      {
+        provide: IMPORT_STATUS_QUEUE_READER,
+        useValue: { getJob: vi.fn(async () => undefined) },
+      },
     ];
     const moduleRef = await Test.createTestingModule({
       imports: [ImportResumeModule.register({ providers })],

@@ -67,7 +67,10 @@ const providerConnectionProviders: Provider[] = [
       new TypeOrmAIProviderRuntimeConnectionsRepository(dataSource),
     inject: [DataSource],
   },
-  { provide: API_PROVIDER_CONNECTION_ADAPTER, useExisting: CodexOAuthLoginBoundary },
+  {
+    provide: API_PROVIDER_CONNECTION_ADAPTER,
+    useExisting: CodexOAuthLoginBoundary,
+  },
   {
     provide: API_PROVIDER_SESSION_STORE,
     useFactory: async (config: ProductRuntimeConfig) =>
