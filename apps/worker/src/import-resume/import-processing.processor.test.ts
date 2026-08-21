@@ -77,14 +77,22 @@ function job(name: string, data: unknown) {
   } as never;
 }
 
-function setup(overrides: { doc?: ImportedDocument; accepted?: boolean } = {}) {
+function setup(
+  overrides: {
+    doc?: ImportedDocument | null;
+    accepted?: boolean;
+    existingDraft?: boolean;
+  } = {},
+) {
   const repository = {
     findImportByOwner: vi.fn(async () =>
       overrides.doc === null
         ? null
         : { document: overrides.doc ?? document(), artifacts: [] },
     ),
-    findDraftByImportAndOwner: vi.fn(async () => null),
+    findDraftByImportAndOwner: vi.fn(async () =>
+      overrides.existingDraft === true ? { id: "existing-draft" } : null,
+    ),
     saveImportLifecycle: vi.fn(async (value: ImportedDocument) => value),
   };
   const transactionRunner = {
@@ -130,7 +138,7 @@ describe("ImportProcessingProcessor", () => {
     expect(validation.validate).not.toHaveBeenCalled();
   });
 
-  it("publishes extraction once after accepted validation", async () => {
+  it("uses the same deduplicating extraction job id on validation redelivery", async () => {
     const { processor, queue } = setup();
     const value = job(
       IMPORT_RESUME_JOB_NAMES.validation,
@@ -139,10 +147,12 @@ describe("ImportProcessingProcessor", () => {
     await processor.process(value);
     await processor.process(value);
     expect(queue.add).toHaveBeenCalledTimes(2);
-    expect(queue.add.mock.calls[0]?.[2]).toMatchObject({
-      jobId: `import-${importId}-extraction-v1`,
-      attempts: 1,
-    });
+    for (const call of queue.add.mock.calls) {
+      expect(call[2]).toMatchObject({
+        jobId: `import-${importId}-extraction-v1`,
+        attempts: 1,
+      });
+    }
   });
 
   it("does not publish extraction for a rejected document", async () => {
@@ -150,6 +160,33 @@ describe("ImportProcessingProcessor", () => {
     await processor.process(
       job(IMPORT_RESUME_JOB_NAMES.validation, payload("document_validation")),
     );
+    expect(queue.add).not.toHaveBeenCalled();
+  });
+
+  it("rethrows queue publication failures so BullMQ can retry validation", async () => {
+    const { processor, queue } = setup();
+    queue.add.mockRejectedValueOnce(new Error("queue_unavailable"));
+
+    await expect(
+      processor.process(
+        job(IMPORT_RESUME_JOB_NAMES.validation, payload("document_validation")),
+      ),
+    ).rejects.toThrow("queue_unavailable");
+  });
+
+  it("does not repeat validation after its durable state is terminal", async () => {
+    const { processor, validation, queue } = setup({
+      doc: document({
+        validationStatus: "rejected",
+        processingStatus: "failed",
+      }),
+    });
+
+    await processor.process(
+      job(IMPORT_RESUME_JOB_NAMES.validation, payload("document_validation")),
+    );
+
+    expect(validation.validate).not.toHaveBeenCalled();
     expect(queue.add).not.toHaveBeenCalled();
   });
 
@@ -174,6 +211,25 @@ describe("ImportProcessingProcessor", () => {
     expect(JSON.stringify(value.updateProgress.mock.calls)).not.toContain(
       "resume.pdf",
     );
+  });
+
+  it("does not repeat extraction after a review draft is durable", async () => {
+    const { processor, extraction } = setup({
+      doc: document({
+        validationStatus: "accepted",
+        processingStatus: "ready_for_review",
+      }),
+      existingDraft: true,
+    });
+
+    await processor.process(
+      job(
+        IMPORT_RESUME_JOB_NAMES.extraction,
+        payload("deterministic_extraction"),
+      ),
+    );
+
+    expect(extraction.process).not.toHaveBeenCalled();
   });
 
   it("emits closed limit events and retries when processing start is denied", async () => {
@@ -238,5 +294,21 @@ describe("ImportProcessingProcessor", () => {
       expect.objectContaining({ processingStatus: "timeout_partial" }),
       expect.anything(),
     );
+  });
+
+  it("leaves a durable draft unchanged when the timeout job loses the race", async () => {
+    const { processor, repository } = setup({
+      doc: document({ processingStatus: "processing" }),
+      existingDraft: true,
+    });
+
+    await processor.process(
+      job(
+        IMPORT_RESUME_JOB_NAMES.foregroundTimeout,
+        payload("foreground_timeout"),
+      ),
+    );
+
+    expect(repository.saveImportLifecycle).not.toHaveBeenCalled();
   });
 });
