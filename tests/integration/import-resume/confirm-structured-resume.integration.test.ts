@@ -8,6 +8,7 @@ import {
   StructuredResumeItemEntity,
   StructuredResumeTextEntity,
   TypeOrmImportResumeRepository,
+  TypeOrmImportWorkflowRepository,
   type DataSource,
 } from "@nuvitae/persistence";
 import { ConfirmStructuredResumeService } from "../../../apps/api/src/services/import-resume/confirm-structured-resume.js";
@@ -29,8 +30,7 @@ describe("confirm structured resume PostgreSQL integration", () => {
     database = await createIsolatedPersistenceTestDatabase("us3_confirm");
     repository = new TypeOrmImportResumeRepository(database.dataSource);
     service = new ConfirmStructuredResumeService(
-      repository,
-      repository,
+      new TypeOrmImportWorkflowRepository(database.dataSource),
       { now: () => now },
       {
         nextId: () =>

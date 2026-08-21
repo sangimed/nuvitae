@@ -1,7 +1,9 @@
 import type {
+  DeletionJob,
   DerivedExtractionArtifact,
   ImportDraft,
   ImportedDocument,
+  StructuredResume,
   UserCorrection,
 } from "@nuvitae/domain";
 
@@ -55,4 +57,44 @@ export class ReviewCorrectionOperationIdConflictError extends Error {
     super("review_correction_operation_id_conflict");
     this.name = "ReviewCorrectionOperationIdConflictError";
   }
+}
+
+export interface ImportConfirmationRepository {
+  transaction<T>(
+    work: (repository: ImportConfirmationRepository) => Promise<T>,
+  ): Promise<T>;
+  findImportByOwner(
+    importId: string,
+    userId: string,
+  ): Promise<ImportWorkflowAggregate | null>;
+  findConfirmationDraftByImportAndOwnerForUpdate(
+    importId: string,
+    userId: string,
+  ): Promise<ImportDraft | null>;
+  findStructuredResumeBySourceDraftAndOwner(
+    draftId: string,
+    userId: string,
+  ): Promise<StructuredResume | null>;
+  findStructuredResumeByOwner(
+    resumeId: string,
+    userId: string,
+  ): Promise<StructuredResume | null>;
+  findCorrectionsByDraftAndOwner(
+    draftId: string,
+    userId: string,
+  ): Promise<readonly UserCorrection[]>;
+  confirmDraftAndCreateStructuredResume(input: {
+    readonly draft: ImportDraft;
+    readonly resume: StructuredResume;
+    readonly confirmedAt: Date;
+  }): Promise<StructuredResume>;
+  findDiscardDeletionJobByImportAndOwner(
+    importId: string,
+    userId: string,
+  ): Promise<DeletionJob | null>;
+  discardDraftAndScheduleDeletion(input: {
+    readonly draft: ImportDraft;
+    readonly job: DeletionJob;
+    readonly discardedAt: Date;
+  }): Promise<DeletionJob>;
 }

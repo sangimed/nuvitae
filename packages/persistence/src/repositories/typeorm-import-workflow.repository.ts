@@ -1,6 +1,7 @@
 import type { ImportDraft, ImportedDocument } from "@nuvitae/domain";
 import {
   ReviewCorrectionOperationIdConflictError,
+  type ImportConfirmationRepository,
   type ImportReviewMutationRepository,
 } from "@nuvitae/import-application";
 import type { DataSource, EntityManager } from "typeorm";
@@ -35,9 +36,51 @@ interface TransactionScopedImportWorkflowRepository {
   saveReviewMutation(
     input: Parameters<ImportReviewMutationRepository["saveReviewMutation"]>[0],
   ): ReturnType<TypeOrmImportResumeRepository["saveReviewMutation"]>;
+  findConfirmationDraftByImportAndOwnerForUpdate(
+    importId: string,
+    userId: string,
+  ): ReturnType<
+    TypeOrmImportResumeRepository["findConfirmationDraftByImportAndOwnerForUpdate"]
+  >;
+  findStructuredResumeBySourceDraftAndOwner(
+    draftId: string,
+    userId: string,
+  ): ReturnType<
+    TypeOrmImportResumeRepository["findStructuredResumeBySourceDraftAndOwner"]
+  >;
+  findStructuredResumeByOwner(
+    resumeId: string,
+    userId: string,
+  ): ReturnType<TypeOrmImportResumeRepository["findStructuredResumeByOwner"]>;
+  findCorrectionsByDraftAndOwner(
+    draftId: string,
+    userId: string,
+  ): ReturnType<
+    TypeOrmImportResumeRepository["findCorrectionsByDraftAndOwner"]
+  >;
+  confirmDraftAndCreateStructuredResume(
+    input: Parameters<
+      ImportConfirmationRepository["confirmDraftAndCreateStructuredResume"]
+    >[0],
+  ): ReturnType<
+    TypeOrmImportResumeRepository["confirmDraftAndCreateStructuredResume"]
+  >;
+  findDiscardDeletionJobByImportAndOwner(
+    importId: string,
+    userId: string,
+  ): ReturnType<
+    TypeOrmImportResumeRepository["findDiscardDeletionJobByImportAndOwner"]
+  >;
+  discardDraftAndScheduleDeletion(
+    input: Parameters<
+      ImportConfirmationRepository["discardDraftAndScheduleDeletion"]
+    >[0],
+  ): ReturnType<
+    TypeOrmImportResumeRepository["discardDraftAndScheduleDeletion"]
+  >;
 }
 
-/** TypeORM adapter for the application-owned validation/extraction port. */
+/** TypeORM adapter for application-owned import workflow persistence ports. */
 export class TypeOrmImportWorkflowRepository implements TransactionScopedImportWorkflowRepository {
   private readonly imports: TypeOrmImportResumeRepository;
 
@@ -114,6 +157,71 @@ export class TypeOrmImportWorkflowRepository implements TransactionScopedImportW
       }
       throw error;
     }
+  }
+
+  findConfirmationDraftByImportAndOwnerForUpdate(
+    importId: string,
+    userId: string,
+  ) {
+    return this.imports.findConfirmationDraftByImportAndOwnerForUpdate(
+      importId,
+      userId,
+      this.requiredTransactionManager(),
+    );
+  }
+
+  findStructuredResumeBySourceDraftAndOwner(draftId: string, userId: string) {
+    return this.imports.findStructuredResumeBySourceDraftAndOwner(
+      draftId,
+      userId,
+      this.transactionManager,
+    );
+  }
+
+  findStructuredResumeByOwner(resumeId: string, userId: string) {
+    return this.imports.findStructuredResumeByOwner(
+      resumeId,
+      userId,
+      this.transactionManager,
+    );
+  }
+
+  findCorrectionsByDraftAndOwner(draftId: string, userId: string) {
+    return this.imports.findCorrectionsByDraftAndOwner(
+      draftId,
+      userId,
+      this.transactionManager,
+    );
+  }
+
+  confirmDraftAndCreateStructuredResume(
+    input: Parameters<
+      ImportConfirmationRepository["confirmDraftAndCreateStructuredResume"]
+    >[0],
+  ) {
+    return this.imports.confirmDraftAndCreateStructuredResume(
+      input,
+      this.requiredTransactionManager(),
+    );
+  }
+
+  findDiscardDeletionJobByImportAndOwner(importId: string, userId: string) {
+    return this.imports.findDiscardDeletionJobByImportAndOwner(
+      importId,
+      userId,
+      this.transactionManager,
+    );
+  }
+
+  discardDraftAndScheduleDeletion(
+    input: Parameters<
+      ImportConfirmationRepository["discardDraftAndScheduleDeletion"]
+    >[0],
+  ) {
+    return this.imports.discardDraftAndScheduleDeletion(
+      input,
+      this.requiredTransactionManager(),
+    );
   }
 
   private requiredTransactionManager(): EntityManager {

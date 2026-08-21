@@ -32,6 +32,10 @@ const importReviewMutationPath = join(
   repositoryRoot,
   "apps/api/src/services/import-resume/update-review.ts",
 );
+const importConfirmationPath = join(
+  repositoryRoot,
+  "apps/api/src/services/import-resume/confirm-structured-resume.ts",
+);
 
 function productionSourceFiles(root: string): string[] {
   const files: string[] = [];
@@ -177,6 +181,17 @@ describe("architecture dependency direction", () => {
 
   it("keeps review mutation transaction details behind its application-owned repository", () => {
     const violations = sourceImports(importReviewMutationPath)
+      .filter(
+        ({ specifier }) =>
+          specifier === "@nuvitae/persistence" || specifier === "typeorm",
+      )
+      .map(display);
+
+    expect(violations).toEqual([]);
+  });
+
+  it("keeps confirmation and discard transaction details behind their application-owned repository", () => {
+    const violations = sourceImports(importConfirmationPath)
       .filter(
         ({ specifier }) =>
           specifier === "@nuvitae/persistence" || specifier === "typeorm",

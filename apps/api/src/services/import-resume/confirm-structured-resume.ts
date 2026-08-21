@@ -18,16 +18,9 @@ import {
   type SourceLocation,
   type StructuredResume,
 } from "@nuvitae/domain";
-import type {
-  ImportResumeRepository,
-  PersistenceTransactionRunner,
-} from "@nuvitae/persistence";
-import type { EntityManager } from "typeorm";
+import type { ImportConfirmationRepository } from "@nuvitae/import-application";
 import type { ImportEventEmitter } from "../../observability/import-events.js";
-import {
-  API_IMPORT_RESUME_REPOSITORY,
-  API_PERSISTENCE_TRANSACTION_RUNNER,
-} from "../../persistence/api-persistence.module.js";
+import { API_IMPORT_CONFIRMATION_REPOSITORY } from "../../persistence/api-persistence.module.js";
 import type {
   StartImportClock,
   StartImportIdGenerator,
@@ -68,10 +61,8 @@ export type ConfirmationServiceResult<T> =
 @Injectable()
 export class ConfirmStructuredResumeService {
   constructor(
-    @Inject(API_IMPORT_RESUME_REPOSITORY)
-    private readonly repository: ImportResumeRepository,
-    @Inject(API_PERSISTENCE_TRANSACTION_RUNNER)
-    private readonly transactions: PersistenceTransactionRunner,
+    @Inject(API_IMPORT_CONFIRMATION_REPOSITORY)
+    private readonly repository: ImportConfirmationRepository,
     @Inject(START_IMPORT_CLOCK)
     private readonly clock: StartImportClock,
     @Inject(START_IMPORT_ID_GENERATOR)
@@ -95,13 +86,13 @@ export class ConfirmStructuredResumeService {
       this.emitConfirmationResult(result, input.importId);
       return result;
     }
-    const result = await this.transactions.transaction((manager) =>
+    const result = await this.repository.transaction((repository) =>
       this.confirmInTransaction({
         ownerUserId: input.ownerUserId,
         importId: input.importId,
         requestId,
         expectedReviewRevision: parsed.data.expectedReviewRevision,
-        manager,
+        repository,
       }),
     );
     this.emitConfirmationResult(result, input.importId);
@@ -121,14 +112,14 @@ export class ConfirmStructuredResumeService {
       this.emitDiscardResult(result, input.importId);
       return result;
     }
-    const result = await this.transactions.transaction((manager) =>
+    const result = await this.repository.transaction((repository) =>
       this.discardInTransaction({
         ownerUserId: input.ownerUserId,
         importId: input.importId,
         requestId,
         expectedReviewRevision: parsed.data.expectedReviewRevision,
         operationId: parsed.data.operationId,
-        manager,
+        repository,
       }),
     );
     this.emitDiscardResult(result, input.importId);
@@ -178,26 +169,23 @@ export class ConfirmStructuredResumeService {
     readonly importId: string;
     readonly requestId: string;
     readonly expectedReviewRevision: number;
-    readonly manager: EntityManager;
+    readonly repository: ImportConfirmationRepository;
   }): Promise<ConfirmationServiceResult<ConfirmStructuredResumeResponse>> {
-    const aggregate = await this.repository.findImportByOwner(
+    const aggregate = await input.repository.findImportByOwner(
       input.importId,
       input.ownerUserId,
-      input.manager,
     );
     if (aggregate === null) return notFound(input.requestId);
     const draft =
-      await this.repository.findConfirmationDraftByImportAndOwnerForUpdate(
+      await input.repository.findConfirmationDraftByImportAndOwnerForUpdate(
         input.importId,
         input.ownerUserId,
-        input.manager,
       );
     if (draft === null) return notFound(input.requestId);
     const existing =
-      await this.repository.findStructuredResumeBySourceDraftAndOwner(
+      await input.repository.findStructuredResumeBySourceDraftAndOwner(
         draft.id,
         input.ownerUserId,
-        input.manager,
       );
     if (existing !== null) {
       return {
@@ -239,10 +227,9 @@ export class ConfirmStructuredResumeService {
         eligibility.error.code,
       );
     }
-    const corrections = await this.repository.findCorrectionsByDraftAndOwner(
+    const corrections = await input.repository.findCorrectionsByDraftAndOwner(
       draft.id,
       input.ownerUserId,
-      input.manager,
     );
     const mapped = mapReviewedImportDraftToStructuredResume({
       draft,
@@ -280,10 +267,12 @@ export class ConfirmStructuredResumeService {
       };
     }
     try {
-      const saved = await this.repository.confirmDraftAndCreateStructuredResume(
-        { draft, resume: mapped.resume, confirmedAt: now },
-        input.manager,
-      );
+      const saved =
+        await input.repository.confirmDraftAndCreateStructuredResume({
+          draft,
+          resume: mapped.resume,
+          confirmedAt: now,
+        });
       return {
         ok: true,
         response: confirmationResponse(
@@ -297,10 +286,9 @@ export class ConfirmStructuredResumeService {
       };
     } catch {
       const raced =
-        await this.repository.findStructuredResumeBySourceDraftAndOwner(
+        await input.repository.findStructuredResumeBySourceDraftAndOwner(
           draft.id,
           input.ownerUserId,
-          input.manager,
         );
       if (raced !== null) {
         return {
@@ -334,20 +322,18 @@ export class ConfirmStructuredResumeService {
     readonly requestId: string;
     readonly expectedReviewRevision: number;
     readonly operationId: string;
-    readonly manager: EntityManager;
+    readonly repository: ImportConfirmationRepository;
   }): Promise<ConfirmationServiceResult<DiscardImportResponse>> {
     const draft =
-      await this.repository.findConfirmationDraftByImportAndOwnerForUpdate(
+      await input.repository.findConfirmationDraftByImportAndOwnerForUpdate(
         input.importId,
         input.ownerUserId,
-        input.manager,
       );
     if (draft === null) return notFound(input.requestId);
     const existingJob =
-      await this.repository.findDiscardDeletionJobByImportAndOwner(
+      await input.repository.findDiscardDeletionJobByImportAndOwner(
         input.importId,
         input.ownerUserId,
-        input.manager,
       );
     if (
       draft.status === "discarded" &&
@@ -416,10 +402,11 @@ export class ConfirmStructuredResumeService {
       scheduledAt: now,
       verificationStatus: "not_started",
     };
-    const saved = await this.repository.discardDraftAndScheduleDeletion(
-      { draft, job, discardedAt: now },
-      input.manager,
-    );
+    const saved = await input.repository.discardDraftAndScheduleDeletion({
+      draft,
+      job,
+      discardedAt: now,
+    });
     return {
       ok: true,
       response: discardResponse(

@@ -6,6 +6,7 @@ import {
   ImportDraftEntity,
   ImportedDocumentEntity,
   TypeOrmImportResumeRepository,
+  TypeOrmImportWorkflowRepository,
   type DataSource,
 } from "@nuvitae/persistence";
 import { ConfirmStructuredResumeService } from "../../../apps/api/src/services/import-resume/confirm-structured-resume.js";
@@ -28,8 +29,7 @@ describe("resume or discard draft PostgreSQL integration", () => {
     database = await createIsolatedPersistenceTestDatabase("us3_draft");
     repository = new TypeOrmImportResumeRepository(database.dataSource);
     confirmService = new ConfirmStructuredResumeService(
-      repository,
-      repository,
+      new TypeOrmImportWorkflowRepository(database.dataSource),
       { now: () => now },
       {
         nextId: () =>
