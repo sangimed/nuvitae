@@ -5,7 +5,7 @@ import {
   beginCodexConnection,
   disconnectCodexConnection,
   readCodexConnectionStatus,
-} from "../../services/import-resume/codex-connection-client";
+} from "./client";
 
 export function CodexConnectionScreen(props: {
   readonly onInitiateConnection?: typeof beginCodexConnection;

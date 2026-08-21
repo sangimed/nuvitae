@@ -2,19 +2,26 @@ import { Module, type Provider } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import {
   TypeOrmImportResumeRepository,
+  TypeOrmImportWorkflowRepository,
   createTypeOrmModuleOptions,
   readPersistenceConfigFromEnv,
-  type ImportResumeRepository,
-  type ManualResumeDraftRepository,
-  type PersistenceTransactionRunner,
-} from "@nuvitae/persistence";
-import { DataSource, type EntityManager } from "typeorm";
+} from "@nuvitae/persistence/typeorm";
+import type { ImportResumeRepository } from "@nuvitae/persistence/ports";
+import { DataSource } from "typeorm";
+import { TypeOrmManualResumeDraftRepository } from "./typeorm-manual-resume-draft.repository.js";
+import type { ManualResumeDraftRepository } from "../manual-resume/manual-resume.repository.js";
 
 export const API_IMPORT_RESUME_REPOSITORY = Symbol(
   "API_IMPORT_RESUME_REPOSITORY",
 );
-export const API_PERSISTENCE_TRANSACTION_RUNNER = Symbol(
-  "API_PERSISTENCE_TRANSACTION_RUNNER",
+export const API_IMPORT_REVIEW_REPOSITORY = Symbol(
+  "API_IMPORT_REVIEW_REPOSITORY",
+);
+export const API_IMPORT_CONFIRMATION_REPOSITORY = Symbol(
+  "API_IMPORT_CONFIRMATION_REPOSITORY",
+);
+export const API_START_IMPORT_REPOSITORY = Symbol(
+  "API_START_IMPORT_REPOSITORY",
 );
 export const API_MANUAL_RESUME_DRAFT_REPOSITORY = Symbol(
   "API_MANUAL_RESUME_DRAFT_REPOSITORY",
@@ -37,25 +44,37 @@ export function createApiTypeOrmModuleOptions(
 
 export const apiPersistenceRepositoryProviders: Provider[] = [
   {
+    provide: API_START_IMPORT_REPOSITORY,
+    useExisting: API_IMPORT_REVIEW_REPOSITORY,
+  },
+  {
+    provide: API_IMPORT_CONFIRMATION_REPOSITORY,
+    useExisting: API_IMPORT_REVIEW_REPOSITORY,
+  },
+  {
+    provide: API_IMPORT_REVIEW_REPOSITORY,
+    useFactory: (dataSource: DataSource) =>
+      new TypeOrmImportWorkflowRepository(dataSource),
+    inject: [DataSource],
+  },
+  {
     provide: API_IMPORT_RESUME_REPOSITORY,
     useFactory: (dataSource: DataSource): ImportResumeRepository =>
       new TypeOrmImportResumeRepository(dataSource),
     inject: [DataSource],
   },
   {
-    provide: API_PERSISTENCE_TRANSACTION_RUNNER,
-    useExisting: API_IMPORT_RESUME_REPOSITORY,
-  },
-  {
     provide: API_MANUAL_RESUME_DRAFT_REPOSITORY,
-    useExisting: API_IMPORT_RESUME_REPOSITORY,
+    useFactory: (dataSource: DataSource) =>
+      new TypeOrmManualResumeDraftRepository(dataSource),
+    inject: [DataSource],
   },
 ];
 
 /**
- * Future API use cases inject these tokens instead of TypeORM entities.
- * Both tokens resolve to one repository backed by Nest's managed DataSource.
- * Transactional use cases pass the supplied EntityManager to repository calls.
+ * API use cases inject capability tokens instead of TypeORM entities. New
+ * workflows receive transaction-scoped repositories while TypeORM details
+ * remain in this composition boundary and its adapters.
  */
 @Module({
   imports: [
@@ -66,13 +85,12 @@ export const apiPersistenceRepositoryProviders: Provider[] = [
   providers: apiPersistenceRepositoryProviders,
   exports: [
     API_IMPORT_RESUME_REPOSITORY,
-    API_PERSISTENCE_TRANSACTION_RUNNER,
+    API_IMPORT_REVIEW_REPOSITORY,
+    API_IMPORT_CONFIRMATION_REPOSITORY,
+    API_START_IMPORT_REPOSITORY,
     API_MANUAL_RESUME_DRAFT_REPOSITORY,
   ],
 })
 export class ApiPersistenceModule {}
 
-// Compile-time documentation of the callback accepted by the transaction token.
-export type ApiPersistenceOperation<T> = (manager: EntityManager) => Promise<T>;
-export type ApiPersistenceRunner = PersistenceTransactionRunner;
 export type ApiManualResumeDraftRepository = ManualResumeDraftRepository;

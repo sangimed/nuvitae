@@ -8,21 +8,33 @@ import {
 import type { AIProviderRuntimeConnectionsRepository } from "./ai-provider-runtime-connections.repository.js";
 
 export class TypeOrmAIProviderRuntimeConnectionsRepository implements AIProviderRuntimeConnectionsRepository {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly transactionManager?: EntityManager,
+  ) {}
 
-  transaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
-    return this.dataSource.transaction(work);
+  transaction<T>(
+    work: (repository: AIProviderRuntimeConnectionsRepository) => Promise<T>,
+  ): Promise<T> {
+    if (this.transactionManager !== undefined) return work(this);
+    return this.dataSource.transaction((manager) =>
+      work(
+        new TypeOrmAIProviderRuntimeConnectionsRepository(
+          this.dataSource,
+          manager,
+        ),
+      ),
+    );
   }
 
-  private manager(manager?: EntityManager): EntityManager {
-    return manager ?? this.dataSource.manager;
+  private manager(): EntityManager {
+    return this.transactionManager ?? this.dataSource.manager;
   }
 
   async createConnection(
     connection: AIProviderRuntimeConnection,
-    manager?: EntityManager,
   ): Promise<AIProviderRuntimeConnection> {
-    const scoped = this.manager(manager);
+    const scoped = this.manager();
     await scoped.insert(
       AIProviderRuntimeConnectionEntity,
       aiProviderRuntimeConnectionEntity(connection),
@@ -30,7 +42,6 @@ export class TypeOrmAIProviderRuntimeConnectionsRepository implements AIProvider
     return this.findConnectionByOwner(
       connection.id,
       connection.ownerUserId,
-      scoped,
     ).then((saved) => {
       if (saved === null) {
         return Promise.reject(
@@ -44,9 +55,8 @@ export class TypeOrmAIProviderRuntimeConnectionsRepository implements AIProvider
   async findConnectionByOwner(
     connectionId: string,
     userId: string,
-    manager?: EntityManager,
   ): Promise<AIProviderRuntimeConnection | null> {
-    const entity = await this.manager(manager).findOneBy(
+    const entity = await this.manager().findOneBy(
       AIProviderRuntimeConnectionEntity,
       { id: connectionId, ownerUserId: userId },
     );
@@ -56,9 +66,8 @@ export class TypeOrmAIProviderRuntimeConnectionsRepository implements AIProvider
   async findConnectionByProviderAndOwner(
     providerKind: string,
     userId: string,
-    manager?: EntityManager,
   ): Promise<AIProviderRuntimeConnection | null> {
-    const entity = await this.manager(manager).findOneBy(
+    const entity = await this.manager().findOneBy(
       AIProviderRuntimeConnectionEntity,
       { providerKind, ownerUserId: userId },
     );
@@ -67,9 +76,8 @@ export class TypeOrmAIProviderRuntimeConnectionsRepository implements AIProvider
 
   async listConnectionsByOwner(
     userId: string,
-    manager?: EntityManager,
   ): Promise<readonly AIProviderRuntimeConnection[]> {
-    const entities = await this.manager(manager).findBy(
+    const entities = await this.manager().findBy(
       AIProviderRuntimeConnectionEntity,
       { ownerUserId: userId },
     );
@@ -82,9 +90,8 @@ export class TypeOrmAIProviderRuntimeConnectionsRepository implements AIProvider
 
   async saveConnection(
     connection: AIProviderRuntimeConnection,
-    manager?: EntityManager,
   ): Promise<AIProviderRuntimeConnection> {
-    const scoped = this.manager(manager);
+    const scoped = this.manager();
     await scoped.save(
       AIProviderRuntimeConnectionEntity,
       aiProviderRuntimeConnectionEntity(connection),
@@ -92,7 +99,6 @@ export class TypeOrmAIProviderRuntimeConnectionsRepository implements AIProvider
     return this.findConnectionByOwner(
       connection.id,
       connection.ownerUserId,
-      scoped,
     ).then((saved) => {
       if (saved === null) {
         return Promise.reject(

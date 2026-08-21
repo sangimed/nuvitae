@@ -2,15 +2,12 @@ import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Test } from "@nestjs/testing";
-import { CodexDirectProviderAdapter } from "@nuvitae/import-application";
-import { TypeOrmImportResumeRepository } from "@nuvitae/persistence";
+import { CodexDirectProviderAdapter } from "@nuvitae/import-application/codex";
+import { TypeOrmImportWorkflowRepository } from "@nuvitae/persistence";
 import { DataSource } from "typeorm";
 import { describe, expect, it, vi } from "vitest";
 import {
-  WORKER_IMPORT_RESUME_REPOSITORY,
-  WORKER_PERSISTENCE_EXECUTION,
-  WORKER_PERSISTENCE_TRANSACTION_RUNNER,
-  WorkerPersistenceExecution,
+  WORKER_IMPORT_WORKFLOW_REPOSITORY,
   createWorkerTypeOrmModuleOptions,
   workerPersistenceRepositoryProviders,
 } from "./persistence/worker-persistence.module";
@@ -62,7 +59,7 @@ describe("worker persistence providers", () => {
     expect(options.migrationsRun).toBe(false);
   });
 
-  it("uses one Nest-managed DataSource for repositories and transactions", async () => {
+  it("composes the transaction-scoped workflow repository from Nest's DataSource", async () => {
     const manager = {};
     const managedDataSource = {
       manager,
@@ -77,17 +74,10 @@ describe("worker persistence providers", () => {
       ],
     }).compile();
 
-    const repository = testingModule.get(WORKER_IMPORT_RESUME_REPOSITORY);
-    const transactionRunner = testingModule.get(
-      WORKER_PERSISTENCE_TRANSACTION_RUNNER,
-    );
-    const execution = testingModule.get<WorkerPersistenceExecution>(
-      WORKER_PERSISTENCE_EXECUTION,
-    );
+    const repository = testingModule.get(WORKER_IMPORT_WORKFLOW_REPOSITORY);
 
-    expect(repository).toBeInstanceOf(TypeOrmImportResumeRepository);
-    expect(transactionRunner).toBe(repository);
-    await execution.execute(async (value) => value);
+    expect(repository).toBeInstanceOf(TypeOrmImportWorkflowRepository);
+    await repository.transaction(async (value: unknown) => value);
     expect(managedDataSource.transaction).toHaveBeenCalledOnce();
   });
 });

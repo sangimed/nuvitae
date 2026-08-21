@@ -20,9 +20,9 @@ import { CreateResumeEntry } from "./CreateResumeEntry";
 import { labelForStep } from "./ProcessingStep";
 import { ProcessingStep } from "./ProcessingStep";
 import { UploadStep } from "./UploadStep";
-import { pollImportStatus } from "../../services/import-resume/import-status-client";
-import { startImportUpload } from "../../services/import-resume/start-import-client";
-import { recordImportTiming } from "../../services/import-resume/import-timing-client";
+import { pollImportStatus } from "./client";
+import { startImportUpload } from "./client";
+import { recordImportTiming } from "./client";
 
 const initialProcessingStatus = (
   importId: string,

@@ -1,13 +1,13 @@
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { EntityManager } from "typeorm";
 import { afterEach, describe, expect, it } from "vitest";
 import type {
   AIProviderRuntimeConnection,
   ProviderRuntimeCapabilities,
 } from "@nuvitae/domain";
 import {
+  type AIProviderRuntimeConnectionsRepository,
   ProviderConnectionError,
   ProviderConnectionService,
   type ProviderAdapterConnectedResult,
@@ -122,14 +122,14 @@ class FakeSessionStore implements ProviderSessionStore {
   }
 }
 
-class FakeRepository {
+class FakeRepository implements AIProviderRuntimeConnectionsRepository {
   rows = new Map<string, AIProviderRuntimeConnection>();
   failSave = false;
 
   async transaction<T>(
-    work: (manager: EntityManager) => Promise<T>,
+    work: (repository: AIProviderRuntimeConnectionsRepository) => Promise<T>,
   ): Promise<T> {
-    return work({} as EntityManager);
+    return work(this);
   }
 
   async createConnection(

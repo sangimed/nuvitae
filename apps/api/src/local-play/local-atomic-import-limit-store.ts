@@ -6,7 +6,7 @@ import {
   type ImportLimitReservation,
   type ImportLimitStoreCommand,
   type ImportLimitStoreResult,
-} from "../services/import-resume/import-limits.js";
+} from "@nuvitae/import-application";
 
 type ReservationIdGenerator = () => string;
 

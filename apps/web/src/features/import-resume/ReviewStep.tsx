@@ -11,7 +11,7 @@ import {
   createReviewOperationId,
   readReviewDraft,
   sendReviewMutation,
-} from "../../services/import-resume/review-client";
+} from "./client";
 import { ConfirmationStep } from "./ConfirmationStep";
 import { needsExplicitConfirmation } from "./actionable-review-items";
 import { ErrorSummary } from "./ErrorSummary";
@@ -24,7 +24,7 @@ import {
 import { ReviewWarning } from "./ReviewWarning";
 import { formatReviewDate, formatReviewDateRange } from "./review-date";
 import { reviewFieldLabel, reviewSectionLabel } from "./review-labels";
-import { recordImportTiming } from "../../services/import-resume/import-timing-client";
+import { recordImportTiming } from "./client";
 
 export function ReviewStep(props: { readonly importId: string }) {
   const [draft, setDraft] = useState<ReviewDraftReadResponse | undefined>();

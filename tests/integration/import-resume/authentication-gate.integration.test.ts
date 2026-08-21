@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { StartImportMultipartInterceptor } from "../../../apps/api/src/import-resume/start-import-multipart.interceptor.js";
+import { StartImportMultipartInterceptor } from "../../../apps/api/src/import-resume/transport/http/start-import-multipart.interceptor.js";
 import {
   createHttpHarness,
   postFile,

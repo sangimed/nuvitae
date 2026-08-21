@@ -49,13 +49,9 @@ import {
   deterministicFixtureProfiles,
   type DeterministicFixtureProfile,
 } from "@nuvitae/import-application/testing";
-import type {
-  AIProviderRuntimeConnectionsRepository,
-  ManualResumeDraftRepository,
-  PersistenceTransactionRunner,
-} from "@nuvitae/persistence";
-import type { EntityManager } from "typeorm";
+import type { AIProviderRuntimeConnectionsRepository } from "@nuvitae/import-application";
 import { CreateManualResumeDraftService } from "../../../apps/api/src/manual-resume/create-manual-resume-draft.service.js";
+import type { ManualResumeDraftRepository } from "../../../apps/api/src/manual-resume/manual-resume.repository.js";
 
 /**
  * T167 - provider recovery integration tests.
@@ -647,12 +643,8 @@ describe("manual-entry recovery", () => {
 
   it("routes recovery to the existing manual-entry contract and service", async () => {
     const repository = new FakeManualDraftRepository();
-    const transactionRunner: PersistenceTransactionRunner = {
-      transaction: async (work) => work(undefined as unknown as EntityManager),
-    };
     const service = new CreateManualResumeDraftService(
       repository,
-      transactionRunner,
       { now: () => new Date("2026-08-01T09:30:00.000Z") },
       { nextId: () => "30000000-0000-4000-8000-000000000001" },
       { nextRequestId: () => "40000000-0000-4000-8000-000000000001" },
@@ -974,9 +966,9 @@ class FakeConnectionsRepository implements AIProviderRuntimeConnectionsRepositor
   readonly rows = new Map<string, AIProviderRuntimeConnection>();
 
   async transaction<T>(
-    work: (manager: EntityManager) => Promise<T>,
+    work: (repository: AIProviderRuntimeConnectionsRepository) => Promise<T>,
   ): Promise<T> {
-    return work({} as EntityManager);
+    return work(this);
   }
 
   async createConnection(
@@ -1125,6 +1117,12 @@ class FakeManualDraftRepository implements ManualResumeDraftRepository {
     string,
     ManualStructuredResumeDraft
   >();
+
+  transaction<T>(
+    work: (repository: ManualResumeDraftRepository) => Promise<T>,
+  ): Promise<T> {
+    return work(this);
+  }
 
   async createManualDraft(input: {
     readonly draft: ManualStructuredResumeDraft;

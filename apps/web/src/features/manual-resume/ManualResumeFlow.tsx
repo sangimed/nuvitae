@@ -12,7 +12,7 @@ import {
   readManualDraft,
   saveManualDraft,
   type ManualDraftClientOutcome,
-} from "../../services/manual-resume/manual-draft-client";
+} from "./client";
 import { createBrowserUuid } from "../../services/browser-ids";
 
 type SaveState = "saved" | "unsaved" | "saving" | "stale-conflict" | "failed";

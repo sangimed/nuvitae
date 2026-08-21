@@ -7,12 +7,12 @@ import {
   confirmStructuredResume,
   createConfirmationOperationId,
   createConfirmationRequest,
-} from "../../services/import-resume/confirmation-client";
+} from "./client";
 import {
   createDiscardOperationId,
   createDiscardRequest,
   discardImportDraft,
-} from "../../services/import-resume/draft-lifecycle-client";
+} from "./client";
 import { actionableReviewItems } from "./actionable-review-items";
 import { ErrorSummary } from "./ErrorSummary";
 import { focusErrorSummary } from "./focus-management";

@@ -4,7 +4,7 @@ import {
   DeterministicSemanticParserProvider,
   deterministicSemanticProviderKind,
 } from "@nuvitae/import-application/testing";
-import { CodexDirectProviderAdapter } from "@nuvitae/import-application";
+import { CodexDirectProviderAdapter } from "@nuvitae/import-application/codex";
 import {
   WORKER_SEMANTIC_PARSER_PROVIDER,
   createProductionSemanticParserProvider,

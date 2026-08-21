@@ -4,7 +4,7 @@ import {
   TypeOrmImportResumeRepository,
   type DataSource,
 } from "@nuvitae/persistence";
-import { ReadImportDraftService } from "../../../apps/api/src/services/import-resume/read-draft.js";
+import { ReadImportDraftService } from "../../../apps/api/src/import-resume/use-cases/read-draft.js";
 import type { IsolatedPersistenceTestDatabase } from "../persistence/test-database.js";
 import { createIsolatedPersistenceTestDatabase } from "../persistence/test-database.js";
 import { ids, importDraft, importedDocument } from "../persistence/fixtures.js";

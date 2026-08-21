@@ -10,9 +10,7 @@ import {
 } from "@nuvitae/extraction";
 import {
   ImportLimitService,
-  TypeOrmImportLimitStore,
-  CodexDirectProviderAdapter,
-  type CodexModelIdentifier,
+  RepositoryBackedImportLimitStore,
   emitImportTiming,
   type ProviderSessionStore,
   type ResumeSemanticParserProvider,
@@ -21,16 +19,17 @@ import {
   type ImportProcessingCapacityPort,
   type ImportProcessingLimits,
   type ImportEventEmitter,
+  type ImportWorkflowRepository,
 } from "@nuvitae/import-application";
-import type {
-  AIProviderRuntimeConnectionsRepository,
-  ImportResumeRepository,
-  PersistenceTransactionRunner,
-} from "@nuvitae/persistence";
+import {
+  CodexDirectProviderAdapter,
+  type CodexModelIdentifier,
+} from "@nuvitae/import-application/codex";
+import type { AIProviderRuntimeConnectionsRepository } from "@nuvitae/import-application";
 import {
   TypeOrmAIProviderRuntimeConnectionsRepository,
   TypeOrmImportLimitAttemptsRepository,
-} from "@nuvitae/persistence";
+} from "@nuvitae/persistence/typeorm";
 import { DataSource } from "typeorm";
 import {
   LocalPrivateImportStorage,
@@ -45,10 +44,7 @@ import {
 } from "./import-processing.processor.js";
 import { SemanticImportProcessor } from "./semantic-import.processor.js";
 import { parseWorkerImportProcessingLimits } from "./import-processing-limits.js";
-import {
-  WORKER_IMPORT_RESUME_REPOSITORY,
-  WORKER_PERSISTENCE_TRANSACTION_RUNNER,
-} from "../persistence/worker-persistence.module.js";
+import { WORKER_IMPORT_WORKFLOW_REPOSITORY } from "../persistence/worker-persistence.module.js";
 import {
   readWorkerPrivateRuntimeConfig,
   type WorkerPrivateRuntimeConfig,
@@ -185,7 +181,7 @@ export const workerImportRuntimeProviders: Provider[] = [
       limits: ImportProcessingLimits,
     ): ImportProcessingCapacityPort => {
       const service = new ImportLimitService(
-        new TypeOrmImportLimitStore(
+        new RepositoryBackedImportLimitStore(
           new TypeOrmImportLimitAttemptsRepository(dataSource),
         ),
         limits,
@@ -218,8 +214,7 @@ export const workerImportRuntimeProviders: Provider[] = [
   {
     provide: WORKER_IMPORT_VALIDATION_USE_CASE,
     useFactory: (
-      repository: ImportResumeRepository,
-      transactionRunner: PersistenceTransactionRunner,
+      repository: ImportWorkflowRepository,
       sourceReader: ExtractionSourceReader,
       limits: ImportProcessingLimits,
       capacity: ImportProcessingCapacityPort,
@@ -251,7 +246,6 @@ export const workerImportRuntimeProviders: Provider[] = [
       );
       return new ValidateDocumentService({
         repository,
-        transactionRunner,
         sourceReader,
         pdfPageCounter: pdf,
         pdfTextExtractor: pdf,
@@ -266,8 +260,7 @@ export const workerImportRuntimeProviders: Provider[] = [
       });
     },
     inject: [
-      WORKER_IMPORT_RESUME_REPOSITORY,
-      WORKER_PERSISTENCE_TRANSACTION_RUNNER,
+      WORKER_IMPORT_WORKFLOW_REPOSITORY,
       WORKER_PRIVATE_SOURCE_READER,
       WORKER_IMPORT_PROCESSING_LIMITS,
       WORKER_IMPORT_CAPACITY_PORT,
@@ -301,8 +294,7 @@ export const workerImportRuntimeProviders: Provider[] = [
   {
     provide: WORKER_IMPORT_EXTRACTION_USE_CASE,
     useFactory: (
-      repository: ImportResumeRepository,
-      transactionRunner: PersistenceTransactionRunner,
+      repository: ImportWorkflowRepository,
       sourceReader: ExtractionSourceReader,
       limits: ImportProcessingLimits,
       provider: ResumeSemanticParserProvider | undefined,
@@ -318,7 +310,6 @@ export const workerImportRuntimeProviders: Provider[] = [
       );
       return new SemanticImportProcessor({
         repository,
-        transactionRunner,
         sourceReader,
         pdfTextExtractor: pdf,
         docxTextExtractor: docx,
@@ -329,8 +320,7 @@ export const workerImportRuntimeProviders: Provider[] = [
       });
     },
     inject: [
-      WORKER_IMPORT_RESUME_REPOSITORY,
-      WORKER_PERSISTENCE_TRANSACTION_RUNNER,
+      WORKER_IMPORT_WORKFLOW_REPOSITORY,
       WORKER_PRIVATE_SOURCE_READER,
       WORKER_IMPORT_PROCESSING_LIMITS,
       WORKER_SEMANTIC_PARSER_PROVIDER,

@@ -27,26 +27,36 @@ function uuidToAdvisoryLock(ownerUserId: string): [number, number] {
 }
 
 export class TypeOrmImportLimitAttemptsRepository implements ImportLimitAttemptsRepository {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly transactionManager?: EntityManager,
+  ) {}
 
-  transaction<T>(work: (manager: EntityManager) => Promise<T>): Promise<T> {
-    return this.dataSource.transaction(work);
+  transaction<T>(
+    work: (repository: ImportLimitAttemptsRepository) => Promise<T>,
+  ): Promise<T> {
+    if (this.transactionManager !== undefined) return work(this);
+    return this.dataSource.transaction((manager) =>
+      work(new TypeOrmImportLimitAttemptsRepository(this.dataSource, manager)),
+    );
   }
 
-  async acquireLock(
-    ownerUserId: string,
-    manager: EntityManager,
-  ): Promise<void> {
+  private manager(): EntityManager {
+    return this.transactionManager ?? this.dataSource.manager;
+  }
+
+  async acquireLock(ownerUserId: string): Promise<void> {
     const [key1, key2] = uuidToAdvisoryLock(ownerUserId);
-    await manager.query(`SELECT pg_advisory_xact_lock(${key1}, ${key2})`);
+    await this.manager().query(
+      `SELECT pg_advisory_xact_lock(${key1}, ${key2})`,
+    );
   }
 
   async findAttemptsInWindow(
     ownerUserId: string,
     windowStart: Date,
-    manager: EntityManager,
   ): Promise<ImportLimitAttemptRow[]> {
-    const entities = await manager.find(ImportLimitAttemptEntity, {
+    const entities = await this.manager().find(ImportLimitAttemptEntity, {
       where: { ownerUserId },
       order: { attemptedAt: "ASC" },
     });
@@ -57,12 +67,8 @@ export class TypeOrmImportLimitAttemptsRepository implements ImportLimitAttempts
       .map(entityToRow);
   }
 
-  async countByState(
-    ownerUserId: string,
-    state: string,
-    manager: EntityManager,
-  ): Promise<number> {
-    return manager.count(ImportLimitAttemptEntity, {
+  async countByState(ownerUserId: string, state: string): Promise<number> {
+    return this.manager().count(ImportLimitAttemptEntity, {
       where: { ownerUserId, state },
     });
   }
@@ -70,9 +76,8 @@ export class TypeOrmImportLimitAttemptsRepository implements ImportLimitAttempts
   async findAttemptById(
     ownerUserId: string,
     attemptId: string,
-    manager: EntityManager,
   ): Promise<ImportLimitAttemptRow | null> {
-    const entity = await manager.findOne(ImportLimitAttemptEntity, {
+    const entity = await this.manager().findOne(ImportLimitAttemptEntity, {
       where: { id: attemptId, ownerUserId },
     });
     return entity === null ? null : entityToRow(entity);
@@ -81,18 +86,15 @@ export class TypeOrmImportLimitAttemptsRepository implements ImportLimitAttempts
   async findAttemptByImport(
     ownerUserId: string,
     importId: string,
-    manager: EntityManager,
   ): Promise<ImportLimitAttemptRow | null> {
-    const entity = await manager.findOne(ImportLimitAttemptEntity, {
+    const entity = await this.manager().findOne(ImportLimitAttemptEntity, {
       where: { importId, ownerUserId },
     });
     return entity === null ? null : entityToRow(entity);
   }
 
-  async insertAttempt(
-    row: ImportLimitAttemptRow,
-    manager: EntityManager,
-  ): Promise<void> {
+  async insertAttempt(row: ImportLimitAttemptRow): Promise<void> {
+    const manager = this.manager();
     const entity = manager.create(ImportLimitAttemptEntity, {
       id: row.id,
       ownerUserId: row.ownerUserId,
@@ -116,9 +118,8 @@ export class TypeOrmImportLimitAttemptsRepository implements ImportLimitAttempts
         "state" | "importId" | "queuedAt" | "activeAt" | "releasedAt"
       >
     >,
-    manager: EntityManager,
   ): Promise<void> {
-    await manager.update(
+    await this.manager().update(
       ImportLimitAttemptEntity,
       { id: attemptId, ownerUserId },
       updates,
@@ -130,21 +131,16 @@ export class TypeOrmImportLimitAttemptsRepository implements ImportLimitAttempts
     importId: string,
     state: "queued" | "active",
     releasedAt: Date,
-    manager: EntityManager,
   ): Promise<void> {
-    await manager.update(
+    await this.manager().update(
       ImportLimitAttemptEntity,
       { ownerUserId, importId, state },
       { state: "released", releasedAt },
     );
   }
 
-  async deleteAttempt(
-    ownerUserId: string,
-    attemptId: string,
-    manager: EntityManager,
-  ): Promise<void> {
-    await manager.delete(ImportLimitAttemptEntity, {
+  async deleteAttempt(ownerUserId: string, attemptId: string): Promise<void> {
+    await this.manager().delete(ImportLimitAttemptEntity, {
       id: attemptId,
       ownerUserId,
     });

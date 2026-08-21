@@ -38,19 +38,15 @@ import {
   type ImportEventEmitter,
   type ImportEventMetadataFor,
   type ImportProcessingCapacityPort,
+  type ImportWorkflowRepository,
   type LimitedDeterministicFallbackOutcome,
   type LimitedDeterministicFallbackProviderTrigger,
   type ResumeSemanticParserProvider,
 } from "@nuvitae/import-application";
-import type {
-  ImportResumeRepository,
-  PersistenceTransactionRunner,
-} from "@nuvitae/persistence";
 import { buildSemanticParseRequest } from "./build-semantic-parse-request.js";
 
 export interface SemanticImportProcessorPorts {
-  readonly repository: ImportResumeRepository;
-  readonly transactionRunner: PersistenceTransactionRunner;
+  readonly repository: ImportWorkflowRepository;
   readonly sourceReader: ExtractionSourceReader;
   readonly pdfTextExtractor: PdfSelectableTextExtractor;
   readonly docxTextExtractor: DocxDeterministicTextExtractor;
@@ -448,27 +444,25 @@ export class SemanticImportProcessor {
           await this.transition(document, "semantic_validation_failed");
           return;
         }
-        await this.ports.transactionRunner.transaction(async (manager) => {
-          const current = await this.ports.repository.findImportByOwner(
+        await this.ports.repository.transaction(async (repository) => {
+          const current = await repository.findImportByOwner(
             document.id,
             document.ownerUserId,
-            manager,
           );
           if (
             !current ||
             current.document.processingStatus === "ready_for_review" ||
-            (await this.ports.repository.findDraftByImportAndOwner(
+            (await repository.findDraftByImportAndOwner(
               document.id,
               document.ownerUserId,
-              manager,
             ))
           )
             return;
-          await this.ports.repository.saveDraft(draftResult.draft!, manager);
-          await this.ports.repository.saveImportLifecycle(
-            { ...current.document, processingStatus: "ready_for_review" },
-            manager,
-          );
+          await repository.saveDraft(draftResult.draft!);
+          await repository.saveImportLifecycle({
+            ...current.document,
+            processingStatus: "ready_for_review",
+          });
           this.logger.emit("review.draft_created", {
             importId: document.id,
             draftId: draftResult.draft!.id,
@@ -564,11 +558,10 @@ export class SemanticImportProcessor {
         await this.transition(document, "semantic_validation_failed");
         return;
       }
-      await this.ports.transactionRunner.transaction(async (manager) => {
-        const current = await this.ports.repository.findImportByOwner(
+      await this.ports.repository.transaction(async (repository) => {
+        const current = await repository.findImportByOwner(
           document.id,
           document.ownerUserId,
-          manager,
         );
         if (
           !current ||
@@ -576,18 +569,17 @@ export class SemanticImportProcessor {
         )
           return;
         if (
-          await this.ports.repository.findDraftByImportAndOwner(
+          await repository.findDraftByImportAndOwner(
             document.id,
             document.ownerUserId,
-            manager,
           )
         )
           return;
-        await this.ports.repository.saveDraft(draftResult.draft!, manager);
-        await this.ports.repository.saveImportLifecycle(
-          { ...current.document, processingStatus: "ready_for_review" },
-          manager,
-        );
+        await repository.saveDraft(draftResult.draft!);
+        await repository.saveImportLifecycle({
+          ...current.document,
+          processingStatus: "ready_for_review",
+        });
         this.logger.emit("review.draft_created", {
           importId: document.id,
           draftId: draftResult.draft!.id,
@@ -717,27 +709,25 @@ export class SemanticImportProcessor {
       return;
     }
 
-    await this.ports.transactionRunner.transaction(async (manager) => {
-      const current = await this.ports.repository.findImportByOwner(
+    await this.ports.repository.transaction(async (repository) => {
+      const current = await repository.findImportByOwner(
         document.id,
         document.ownerUserId,
-        manager,
       );
       if (
         !current ||
         current.document.processingStatus === "ready_for_review" ||
-        (await this.ports.repository.findDraftByImportAndOwner(
+        (await repository.findDraftByImportAndOwner(
           document.id,
           document.ownerUserId,
-          manager,
         )) !== null
       )
         return;
-      await this.ports.repository.saveDraft(draftResult.draft!, manager);
-      await this.ports.repository.saveImportLifecycle(
-        { ...current.document, processingStatus: "ready_for_review" },
-        manager,
-      );
+      await repository.saveDraft(draftResult.draft!);
+      await repository.saveImportLifecycle({
+        ...current.document,
+        processingStatus: "ready_for_review",
+      });
       this.logger.emit("review.draft_created", {
         importId: document.id,
         draftId: draftResult.draft!.id,
@@ -872,17 +862,16 @@ export class SemanticImportProcessor {
     document: ImportedDocument,
     processingStatus: ImportedDocument["processingStatus"],
   ): Promise<void> {
-    await this.ports.transactionRunner.transaction(async (manager) => {
-      const current = await this.ports.repository.findImportByOwner(
+    await this.ports.repository.transaction(async (repository) => {
+      const current = await repository.findImportByOwner(
         document.id,
         document.ownerUserId,
-        manager,
       );
       if (current && current.document.processingStatus !== "ready_for_review")
-        await this.ports.repository.saveImportLifecycle(
-          { ...current.document, processingStatus },
-          manager,
-        );
+        await repository.saveImportLifecycle({
+          ...current.document,
+          processingStatus,
+        });
     });
     if (!consumesProcessingCapacity(processingStatus)) {
       await this.releaseCapacity(document.id, document.ownerUserId);

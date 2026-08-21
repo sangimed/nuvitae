@@ -1,0 +1,103 @@
+import type {
+  DeletionJob,
+  DerivedExtractionArtifact,
+  ImportDraft,
+  ImportedDocument,
+  StructuredResume,
+  UserCorrection,
+} from "@nuvitae/domain";
+
+export interface ImportWorkflowAggregate {
+  readonly document: ImportedDocument;
+  readonly artifacts: readonly DerivedExtractionArtifact[];
+}
+
+/** Persistence port owned by document validation and extraction workflows. */
+export interface ImportWorkflowReader {
+  findImportByOwner(
+    importId: string,
+    userId: string,
+  ): Promise<ImportWorkflowAggregate | null>;
+  findDraftByImportAndOwner(
+    importId: string,
+    userId: string,
+  ): Promise<ImportDraft | null>;
+}
+
+/** Persistence port owned by document validation and extraction workflows. */
+export interface ImportWorkflowRepository extends ImportWorkflowReader {
+  transaction<T>(
+    work: (repository: ImportWorkflowRepository) => Promise<T>,
+  ): Promise<T>;
+  createImportAggregate(
+    aggregate: ImportWorkflowAggregate,
+  ): Promise<ImportWorkflowAggregate>;
+  saveImportLifecycle(document: ImportedDocument): Promise<ImportedDocument>;
+  saveDraft(draft: ImportDraft): Promise<ImportDraft>;
+}
+
+export interface ImportReviewMutationRepository {
+  transaction<T>(
+    work: (repository: ImportReviewMutationRepository) => Promise<T>,
+  ): Promise<T>;
+  findReviewDraftByImportAndOwnerForUpdate(
+    importId: string,
+    userId: string,
+  ): Promise<ImportDraft | null>;
+  findCorrectionByOwnerAndOperation(
+    operationId: string,
+    userId: string,
+  ): Promise<UserCorrection | null>;
+  saveReviewMutation(input: {
+    readonly draft: ImportDraft;
+    readonly correction: UserCorrection;
+    readonly previousReviewRevision: number;
+  }): Promise<ImportDraft>;
+}
+
+export class ReviewCorrectionOperationIdConflictError extends Error {
+  constructor() {
+    super("review_correction_operation_id_conflict");
+    this.name = "ReviewCorrectionOperationIdConflictError";
+  }
+}
+
+export interface ImportConfirmationRepository {
+  transaction<T>(
+    work: (repository: ImportConfirmationRepository) => Promise<T>,
+  ): Promise<T>;
+  findImportByOwner(
+    importId: string,
+    userId: string,
+  ): Promise<ImportWorkflowAggregate | null>;
+  findConfirmationDraftByImportAndOwnerForUpdate(
+    importId: string,
+    userId: string,
+  ): Promise<ImportDraft | null>;
+  findStructuredResumeBySourceDraftAndOwner(
+    draftId: string,
+    userId: string,
+  ): Promise<StructuredResume | null>;
+  findStructuredResumeByOwner(
+    resumeId: string,
+    userId: string,
+  ): Promise<StructuredResume | null>;
+  findCorrectionsByDraftAndOwner(
+    draftId: string,
+    userId: string,
+  ): Promise<readonly UserCorrection[]>;
+  confirmDraftAndCreateStructuredResume(input: {
+    readonly draft: ImportDraft;
+    readonly resume: StructuredResume;
+    readonly confirmedAt: Date;
+  }): Promise<StructuredResume>;
+  findDiscardDeletionJobByImportAndOwner(
+    importId: string,
+    userId: string,
+  ): Promise<DeletionJob | null>;
+  discardDraftAndScheduleDeletion(input: {
+    readonly draft: ImportDraft;
+    readonly job: DeletionJob;
+    readonly discardedAt: Date;
+  }): Promise<DeletionJob>;
+}

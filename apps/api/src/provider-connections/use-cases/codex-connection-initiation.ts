@@ -1,0 +1,50 @@
+import { Inject, Injectable } from "@nestjs/common";
+import type { CodexConnectionInitiationResponse } from "@nuvitae/contracts";
+import {
+  ProviderConnectionService,
+  type ProviderOAuthCallback,
+} from "@nuvitae/import-application";
+import { CodexOAuthLoginBoundary } from "../adapters/codex/codex-oauth-login-boundary.js";
+import { API_PROVIDER_CONNECTION_SERVICE } from "../ports/tokens.js";
+
+@Injectable()
+export class CodexConnectionInitiationService {
+  constructor(
+    @Inject(API_PROVIDER_CONNECTION_SERVICE)
+    private readonly providerConnections: ProviderConnectionService,
+    private readonly oauthBoundary: CodexOAuthLoginBoundary,
+  ) {}
+
+  async begin(ownerUserId: string): Promise<CodexConnectionInitiationResponse> {
+    const result = await this.providerConnections.beginBrowserLogin(
+      ownerUserId,
+      {
+        displayName: "Codex",
+      },
+    );
+    return {
+      version: "2026-08-08",
+      status: "login_pending",
+      loginReference: result.browserHandoff.loginReference,
+      authorizationUrl: result.browserHandoff.authorizationUrl,
+    };
+  }
+
+  async completeCallback(callback: ProviderOAuthCallback) {
+    const { ownerUserId, connectionId } =
+      this.oauthBoundary.resolvePendingLogin(callback.state);
+    return this.providerConnections.completeLogin(
+      ownerUserId,
+      connectionId,
+      callback,
+    );
+  }
+
+  async status(ownerUserId: string) {
+    return this.providerConnections.statusForProvider(ownerUserId, "codex");
+  }
+
+  async disconnect(ownerUserId: string) {
+    return this.providerConnections.disconnectForProvider(ownerUserId, "codex");
+  }
+}

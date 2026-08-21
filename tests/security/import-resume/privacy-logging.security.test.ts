@@ -33,6 +33,7 @@ import {
 } from "@nuvitae/import-application";
 import {
   TypeOrmImportResumeRepository,
+  TypeOrmImportWorkflowRepository,
   type DataSource,
 } from "@nuvitae/persistence";
 import { attachVerifiedPrincipal } from "../../../apps/api/src/auth/user-context.js";
@@ -40,6 +41,7 @@ import { documentedImportProcessingDefaults } from "../../../apps/api/src/config
 import { ImportResumeModule } from "../../../apps/api/src/import-resume/import-resume.module.js";
 import {
   IMPORT_STATUS_REQUEST_ID_GENERATOR,
+  IMPORT_STATUS_QUEUE_READER,
   START_IMPORT_CLOCK,
   START_IMPORT_ID_GENERATOR,
   START_IMPORT_LIMIT_SERVICE,
@@ -48,10 +50,12 @@ import {
   START_IMPORT_PROCESSING_LIMITS,
   START_IMPORT_QUEUE_PUBLISHER,
   START_IMPORT_REQUEST_ID_GENERATOR,
-} from "../../../apps/api/src/import-resume/start-import.tokens.js";
+} from "../../../apps/api/src/import-resume/ports/tokens.js";
 import {
+  API_IMPORT_CONFIRMATION_REPOSITORY,
   API_IMPORT_RESUME_REPOSITORY,
-  API_PERSISTENCE_TRANSACTION_RUNNER,
+  API_IMPORT_REVIEW_REPOSITORY,
+  API_START_IMPORT_REPOSITORY,
 } from "../../../apps/api/src/persistence/api-persistence.module.js";
 import {
   importEventSchemas,
@@ -173,6 +177,7 @@ function serialized(...values: readonly unknown[]): string {
 describe("privacy-safe import logging (T068)", () => {
   let database: IsolatedPersistenceTestDatabase;
   let repository: TypeOrmImportResumeRepository;
+  let workflowRepository: TypeOrmImportWorkflowRepository;
   let app: INestApplication;
   let baseUrl: string;
   let logs: ImportEventRecord[];
@@ -228,9 +233,23 @@ describe("privacy-safe import logging (T068)", () => {
         return { deleted: true };
       }),
     };
+    workflowRepository = new TypeOrmImportWorkflowRepository(
+      database.dataSource,
+    );
     const providers: Provider[] = [
       { provide: API_IMPORT_RESUME_REPOSITORY, useValue: repository },
-      { provide: API_PERSISTENCE_TRANSACTION_RUNNER, useValue: repository },
+      {
+        provide: API_START_IMPORT_REPOSITORY,
+        useValue: workflowRepository,
+      },
+      {
+        provide: API_IMPORT_REVIEW_REPOSITORY,
+        useValue: workflowRepository,
+      },
+      {
+        provide: API_IMPORT_CONFIRMATION_REPOSITORY,
+        useValue: workflowRepository,
+      },
       { provide: START_IMPORT_PRIVATE_STORAGE, useValue: storage },
       {
         provide: START_IMPORT_LIMIT_SERVICE,
@@ -287,6 +306,10 @@ describe("privacy-safe import logging (T068)", () => {
         }),
       },
       { provide: START_IMPORT_QUEUE_PUBLISHER, useValue: queue },
+      {
+        provide: IMPORT_STATUS_QUEUE_READER,
+        useValue: { getJob: vi.fn(async () => undefined) },
+      },
     ];
     const moduleRef = await Test.createTestingModule({
       imports: [ImportResumeModule.register({ providers })],
@@ -428,7 +451,7 @@ describe("privacy-safe import logging (T068)", () => {
       const persistenceFailure = new Error(
         `database failed ${sentinels.dbCredential}`,
       );
-      vi.spyOn(repository, "createImportAggregate").mockRejectedValueOnce(
+      vi.spyOn(workflowRepository, "transaction").mockRejectedValueOnce(
         persistenceFailure,
       );
       storageFailures.delete = true;
@@ -1305,12 +1328,11 @@ function semanticHarness(
     findDraftByImportAndOwner: vi.fn(async () => null),
     saveImportLifecycle: vi.fn(async (value: ImportedDocument) => value),
     saveDraft: vi.fn(async (value: unknown) => value),
+    transaction: vi.fn(),
   };
-  const transactionRunner = {
-    transaction: vi.fn(async (work: (manager: object) => Promise<unknown>) =>
-      work({}),
-    ),
-  };
+  repository.transaction.mockImplementation(
+    async (work: (repository: unknown) => Promise<unknown>) => work(repository),
+  );
   const textExtractor = {
     extractSelectableText: vi.fn(async () => ({
       ok: true as const,
@@ -1342,7 +1364,6 @@ function semanticHarness(
   };
   const processor = new SemanticImportProcessor({
     repository: repository as never,
-    transactionRunner: transactionRunner as never,
     sourceReader: {} as never,
     pdfTextExtractor: textExtractor as never,
     docxTextExtractor: {} as never,
@@ -1542,6 +1563,10 @@ function extractionHarness(options: { cancelled?: boolean } = {}): {
   });
   const document = documentForWorker(ownerA, docA);
   const repository = {
+    transaction: vi.fn(
+      async (work: (repository: unknown) => Promise<unknown>) =>
+        work(repository),
+    ),
     findImportByOwner: vi.fn(async () => ({
       document,
       artifacts: [],
@@ -1549,11 +1574,6 @@ function extractionHarness(options: { cancelled?: boolean } = {}): {
     findDraftByImportAndOwner: vi.fn(async () => null),
     saveImportLifecycle: vi.fn(async (value: ImportedDocument) => value),
     saveDraft: vi.fn(async (value: unknown) => value),
-  };
-  const transactionRunner = {
-    transaction: vi.fn(async (work: (manager: object) => Promise<unknown>) =>
-      work({}),
-    ),
   };
   const pdfTextExtractor = {
     extractSelectableText: vi.fn(async () =>
@@ -1605,7 +1625,6 @@ function extractionHarness(options: { cancelled?: boolean } = {}): {
   };
   const service = new ProcessExtractionService({
     repository: repository as never,
-    transactionRunner: transactionRunner as never,
     sourceReader: {} as never,
     pdfTextExtractor: pdfTextExtractor as never,
     docxTextExtractor: {} as never,
@@ -1635,15 +1654,17 @@ function workerFailureHarness(): {
     validationStatus: "not_started" as const,
   };
   const repository = {
+    transaction: vi.fn(
+      async (work: (repository: unknown) => Promise<unknown>) =>
+        work(repository),
+    ),
     findImportByOwner: vi.fn(async () => ({
       document,
       artifacts: [],
     })),
-  };
-  const transactionRunner = {
-    transaction: vi.fn(async (work: (manager: object) => Promise<unknown>) =>
-      work({}),
-    ),
+    findDraftByImportAndOwner: vi.fn(async () => null),
+    saveImportLifecycle: vi.fn(async (value: ImportedDocument) => value),
+    saveDraft: vi.fn(async (value: unknown) => value),
   };
   const validation = {
     validate: vi.fn(async () => {
@@ -1654,7 +1675,6 @@ function workerFailureHarness(): {
   const queue = { add: vi.fn(async () => undefined) };
   const processor = new ImportProcessingProcessor(
     repository as never,
-    transactionRunner as never,
     validation,
     extraction,
     queue as never,

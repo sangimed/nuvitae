@@ -91,10 +91,15 @@ describe("project-local TypeORM migration workflow", () => {
     expect(reverted.stdout).toContain(
       "[X] 4 SemanticImportProcessingStates1722427200000",
     );
-    expect(reverted.stdout).toContain("[ ] ImportLimitAttempts1785801600000");
+    expect(reverted.stdout).toContain("[ ] CommunityInstanceAuth1785888000000");
     await command("db:migration:revert");
     const revertedTwice = await command("db:migration:show");
     expect(revertedTwice.stdout).toContain(
+      "[ ] ImportLimitAttempts1785801600000",
+    );
+    await command("db:migration:revert");
+    const revertedThrice = await command("db:migration:show");
+    expect(revertedThrice.stdout).toContain(
       "[ ] ProviderRuntimeConnections1722600000000",
     );
     const revertedRuntimeConnectionTables = await database.dataSource.query<

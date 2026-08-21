@@ -2,15 +2,20 @@ import { Test } from "@nestjs/testing";
 import {
   PersistenceConfigError,
   TypeOrmImportResumeRepository,
+  TypeOrmImportWorkflowRepository,
 } from "@nuvitae/persistence";
 import { DataSource } from "typeorm";
 import { describe, expect, it, vi } from "vitest";
 import {
   API_IMPORT_RESUME_REPOSITORY,
-  API_PERSISTENCE_TRANSACTION_RUNNER,
+  API_IMPORT_CONFIRMATION_REPOSITORY,
+  API_IMPORT_REVIEW_REPOSITORY,
+  API_MANUAL_RESUME_DRAFT_REPOSITORY,
+  API_START_IMPORT_REPOSITORY,
   apiPersistenceRepositoryProviders,
   createApiTypeOrmModuleOptions,
 } from "./api-persistence.module";
+import { TypeOrmManualResumeDraftRepository } from "./typeorm-manual-resume-draft.repository.js";
 
 const validProductionEnv: NodeJS.ProcessEnv = {
   NODE_ENV: "production",
@@ -55,7 +60,7 @@ describe("ApiPersistenceModule", () => {
     }
   });
 
-  it("aliases repository and transaction tokens to one Nest-managed DataSource", async () => {
+  it("composes legacy and workflow repositories from one Nest-managed DataSource", async () => {
     const manager = {};
     const managedDataSource = {
       manager,
@@ -71,13 +76,19 @@ describe("ApiPersistenceModule", () => {
     }).compile();
 
     const repository = testingModule.get(API_IMPORT_RESUME_REPOSITORY);
-    const transactionRunner = testingModule.get(
-      API_PERSISTENCE_TRANSACTION_RUNNER,
+    const reviewRepository = testingModule.get(API_IMPORT_REVIEW_REPOSITORY);
+    const confirmationRepository = testingModule.get(
+      API_IMPORT_CONFIRMATION_REPOSITORY,
+    );
+    const startRepository = testingModule.get(API_START_IMPORT_REPOSITORY);
+    const manualRepository = testingModule.get(
+      API_MANUAL_RESUME_DRAFT_REPOSITORY,
     );
 
     expect(repository).toBeInstanceOf(TypeOrmImportResumeRepository);
-    expect(transactionRunner).toBe(repository);
-    await transactionRunner.transaction(async (value) => value);
-    expect(managedDataSource.transaction).toHaveBeenCalledOnce();
+    expect(reviewRepository).toBeInstanceOf(TypeOrmImportWorkflowRepository);
+    expect(confirmationRepository).toBe(reviewRepository);
+    expect(startRepository).toBe(reviewRepository);
+    expect(manualRepository).toBeInstanceOf(TypeOrmManualResumeDraftRepository);
   });
 });

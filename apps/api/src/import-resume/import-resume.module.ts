@@ -3,31 +3,31 @@ import {
   Module,
   type ModuleMetadata,
   type Provider,
-  type Type,
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
-import { StartImportController } from "./start-import.controller.js";
-import { StartImportExceptionFilter } from "./start-import-exception.filter.js";
-import { StartImportMultipartInterceptor } from "./start-import-multipart.interceptor.js";
-import { StartImportService } from "./start-import.service.js";
-import { VerifiedPrincipalGuard } from "./verified-principal.guard.js";
-import { ImportStatusController } from "./import-status.controller.js";
-import { ImportStatusService } from "./import-status.service.js";
-import { IMPORT_STATUS_REQUEST_ID_GENERATOR } from "./start-import.tokens.js";
-import { ReviewController } from "./review.controller.js";
+import { VerifiedPrincipalGuard } from "../auth/verified-principal.guard.js";
+import { IMPORT_STATUS_REQUEST_ID_GENERATOR } from "./ports/tokens.js";
+import { StartImportExceptionFilter } from "./transport/http/start-import-exception.filter.js";
+import { StartImportMultipartInterceptor } from "./transport/http/start-import-multipart.interceptor.js";
+import { StartImportController } from "./transport/http/start-import.controller.js";
+import { ImportStatusController } from "./transport/http/import-status.controller.js";
+import { ReviewController } from "./transport/http/review.controller.js";
 import {
   ConfirmController,
   ConfirmedStructuredResumeController,
-} from "./confirm.controller.js";
-import { ReadImportDraftService } from "../services/import-resume/read-draft.js";
-import { UpdateImportReviewService } from "../services/import-resume/update-review.js";
-import { ConfirmStructuredResumeService } from "../services/import-resume/confirm-structured-resume.js";
-import { ImportTimingController } from "./import-timing.controller.js";
+} from "./transport/http/confirm.controller.js";
+import { ImportTimingController } from "./transport/http/import-timing.controller.js";
+import {
+  ConfirmStructuredResumeService,
+  ImportStatusService,
+  ReadImportDraftService,
+  StartImportService,
+  UpdateImportReviewService,
+} from "./use-cases/index.js";
 
 export interface ImportResumeModuleOptions {
   readonly imports?: ModuleMetadata["imports"];
   readonly providers: readonly Provider[];
-  readonly controllers?: readonly Type<unknown>[];
 }
 
 /**
@@ -48,7 +48,6 @@ export class ImportResumeModule {
         ConfirmController,
         ConfirmedStructuredResumeController,
         ImportTimingController,
-        ...(options.controllers === undefined ? [] : [...options.controllers]),
       ],
       providers: [
         StartImportService,

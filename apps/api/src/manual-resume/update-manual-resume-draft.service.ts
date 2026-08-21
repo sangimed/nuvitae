@@ -6,14 +6,7 @@ import {
   updateManualDraftContent,
 } from "@nuvitae/domain";
 import type { StructuredResumeContent } from "@nuvitae/domain";
-import type {
-  ManualResumeDraftRepository,
-  PersistenceTransactionRunner,
-} from "@nuvitae/persistence";
-import {
-  API_MANUAL_RESUME_DRAFT_REPOSITORY,
-  API_PERSISTENCE_TRANSACTION_RUNNER,
-} from "../persistence/api-persistence.module.js";
+import { API_MANUAL_RESUME_DRAFT_REPOSITORY } from "../persistence/api-persistence.module.js";
 import { ManualResumeHttpError } from "./manual-resume.errors.js";
 import type {
   ManualResumeClock,
@@ -24,14 +17,13 @@ import {
   MANUAL_RESUME_REQUEST_ID_GENERATOR,
 } from "./manual-resume.tokens.js";
 import { manualDraftResponse } from "./manual-resume.response.js";
+import type { ManualResumeDraftRepository } from "./manual-resume.repository.js";
 
 @Injectable()
 export class UpdateManualResumeDraftService {
   constructor(
     @Inject(API_MANUAL_RESUME_DRAFT_REPOSITORY)
     private readonly repository: ManualResumeDraftRepository,
-    @Inject(API_PERSISTENCE_TRANSACTION_RUNNER)
-    private readonly transactionRunner: PersistenceTransactionRunner,
     @Inject(MANUAL_RESUME_CLOCK)
     private readonly clock: ManualResumeClock,
     @Inject(MANUAL_RESUME_REQUEST_ID_GENERATOR)
@@ -44,13 +36,12 @@ export class UpdateManualResumeDraftService {
     readonly expectedUpdatedAt: string;
     readonly content: StructuredResumeContent;
   }) {
-    const draft = await this.transactionRunner.transaction(async (manager) => {
+    const draft = await this.repository.transaction(async (repository) => {
       const current = requireOwnedResource(
         input.context,
-        await this.repository.findManualDraftByOwner(
+        await repository.findManualDraftByOwner(
           input.draftId,
           input.context.userId,
-          manager,
         ),
       );
       if (current.updatedAt.toISOString() !== input.expectedUpdatedAt) {
@@ -61,9 +52,8 @@ export class UpdateManualResumeDraftService {
         );
       }
       try {
-        return await this.repository.saveManualDraft(
+        return await repository.saveManualDraft(
           updateManualDraftContent(current, input.content, this.clock.now()),
-          manager,
         );
       } catch (error) {
         if (error instanceof ManualDraftValidationError) {

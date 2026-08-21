@@ -2,13 +2,12 @@ import "reflect-metadata";
 import type { INestApplication, Provider } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import type {
-  ImportAggregate,
-  ImportResumeRepository,
-  PersistenceTransactionRunner,
-} from "@nuvitae/persistence";
+  ImportWorkflowAggregate,
+  ImportWorkflowRepository,
+} from "@nuvitae/import-application";
 import { vi } from "vitest";
 import { attachVerifiedPrincipal } from "../../../apps/api/src/auth/user-context.js";
-import type { DeniedImportLimitOutcome } from "../../../apps/api/src/services/import-resume/import-limits.js";
+import type { DeniedImportLimitOutcome } from "@nuvitae/import-application";
 import { documentedImportProcessingDefaults } from "../../../apps/api/src/config/import-processing-limits.js";
 import { ImportResumeModule } from "../../../apps/api/src/import-resume/import-resume.module.js";
 import {
@@ -20,11 +19,14 @@ import {
   START_IMPORT_PROCESSING_LIMITS,
   START_IMPORT_REQUEST_ID_GENERATOR,
   START_IMPORT_QUEUE_PUBLISHER,
-} from "../../../apps/api/src/import-resume/start-import.tokens.js";
+} from "../../../apps/api/src/import-resume/ports/tokens.js";
 import {
+  API_IMPORT_CONFIRMATION_REPOSITORY,
   API_IMPORT_RESUME_REPOSITORY,
-  API_PERSISTENCE_TRANSACTION_RUNNER,
+  API_IMPORT_REVIEW_REPOSITORY,
+  API_START_IMPORT_REPOSITORY,
 } from "../../../apps/api/src/persistence/api-persistence.module.js";
+import { IMPORT_STATUS_QUEUE_READER } from "../../../apps/api/src/import-resume/ports/tokens.js";
 
 export const verifiedUserId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 export const syntheticImportId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -76,7 +78,7 @@ export async function createHttpHarness(options: HarnessOptions = {}): Promise<{
   const storageObjects = new Map<string, Uint8Array>();
   const logs: unknown[] = [];
   const repository = {
-    createImportAggregate: vi.fn(async (aggregate: ImportAggregate) => {
+    createImportAggregate: vi.fn(async (aggregate: ImportWorkflowAggregate) => {
       if (options.persistenceFailure !== undefined) {
         throw new Error(options.persistenceFailure);
       }
@@ -85,11 +87,12 @@ export async function createHttpHarness(options: HarnessOptions = {}): Promise<{
     findImportByOwner: vi.fn(async () => null),
     saveImportLifecycle: vi.fn(async (document: unknown) => document),
   };
-  const transactionRunner = {
-    transaction: vi.fn(async (work: (manager: never) => Promise<unknown>) =>
-      work({} as never),
-    ),
-  };
+  const transaction = vi.fn();
+  Object.assign(repository, { transaction });
+  transaction.mockImplementation(
+    async (work: (repository: ImportWorkflowRepository) => Promise<unknown>) =>
+      work(repository as unknown as ImportWorkflowRepository),
+  );
   const storage = {
     writeObject: vi.fn(async (key: string, content: Uint8Array) => {
       if (options.storageFailure !== undefined) {
@@ -143,11 +146,19 @@ export async function createHttpHarness(options: HarnessOptions = {}): Promise<{
   const providers: Provider[] = [
     {
       provide: API_IMPORT_RESUME_REPOSITORY,
-      useValue: repository as unknown as ImportResumeRepository,
+      useValue: repository as unknown as ImportWorkflowRepository,
     },
     {
-      provide: API_PERSISTENCE_TRANSACTION_RUNNER,
-      useValue: transactionRunner as unknown as PersistenceTransactionRunner,
+      provide: API_IMPORT_REVIEW_REPOSITORY,
+      useValue: repository as unknown as ImportWorkflowRepository,
+    },
+    {
+      provide: API_IMPORT_CONFIRMATION_REPOSITORY,
+      useValue: repository as unknown as ImportWorkflowRepository,
+    },
+    {
+      provide: API_START_IMPORT_REPOSITORY,
+      useValue: repository as unknown as ImportWorkflowRepository,
     },
     { provide: START_IMPORT_PRIVATE_STORAGE, useValue: storage },
     { provide: START_IMPORT_LIMIT_SERVICE, useValue: limits },
@@ -182,6 +193,10 @@ export async function createHttpHarness(options: HarnessOptions = {}): Promise<{
       },
     },
     { provide: START_IMPORT_QUEUE_PUBLISHER, useValue: queuePublisher },
+    {
+      provide: IMPORT_STATUS_QUEUE_READER,
+      useValue: { getJob: vi.fn(async () => undefined) },
+    },
   ];
   const moduleRef = await Test.createTestingModule({
     imports: [ImportResumeModule.register({ providers })],
@@ -209,7 +224,7 @@ export async function createHttpHarness(options: HarnessOptions = {}): Promise<{
     baseUrl: `http://127.0.0.1:${address.port}`,
     storageObjects,
     repository,
-    transactionRunner,
+    transactionRunner: { transaction },
     storage,
     limits,
     logs,

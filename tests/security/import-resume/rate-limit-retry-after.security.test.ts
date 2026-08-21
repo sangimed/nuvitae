@@ -3,7 +3,7 @@ import {
   createHttpHarness,
   postFile,
 } from "../../integration/import-resume/start-import-test-harness.js";
-import type { DeniedImportLimitOutcome } from "../../../apps/api/src/services/import-resume/import-limits.js";
+import type { DeniedImportLimitOutcome } from "@nuvitae/import-application";
 
 interface LimitResponseBody {
   statusCode: number;

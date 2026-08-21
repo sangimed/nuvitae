@@ -96,12 +96,11 @@ function setup(
     findDraftByImportAndOwner: vi.fn(async () => null),
     saveImportLifecycle: vi.fn(async (value: ImportedDocument) => value),
     saveDraft: vi.fn(async (value: unknown) => value),
+    transaction: vi.fn(),
   };
-  const transactionRunner = {
-    transaction: vi.fn(async (work: (manager: object) => Promise<unknown>) =>
-      work({}),
-    ),
-  };
+  repository.transaction.mockImplementation(
+    async (work: (repository: unknown) => Promise<unknown>) => work(repository),
+  );
   const textExtractor = {
     extractSelectableText: vi.fn(async () => ({
       ok: true as const,
@@ -131,7 +130,6 @@ function setup(
   };
   const processor = new SemanticImportProcessor({
     repository: repository as never,
-    transactionRunner: transactionRunner as never,
     sourceReader: {} as never,
     pdfTextExtractor: textExtractor as never,
     docxTextExtractor: {} as never,
@@ -139,7 +137,13 @@ function setup(
     clock: { now: () => now },
     logger: logger as never,
   });
-  return { processor, repository, transactionRunner, textExtractor, logger };
+  return {
+    processor,
+    repository,
+    transactionRunner: { transaction: repository.transaction },
+    textExtractor,
+    logger,
+  };
 }
 
 const provider = {
@@ -212,7 +216,6 @@ describe("SemanticImportProcessor", () => {
     expect(repository.saveDraft).not.toHaveBeenCalled();
     expect(repository.saveImportLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({ processingStatus: "provider_unavailable" }),
-      expect.anything(),
     );
   });
 
@@ -223,7 +226,6 @@ describe("SemanticImportProcessor", () => {
     expect(repository.saveDraft).toHaveBeenCalledTimes(1);
     expect(repository.saveImportLifecycle).toHaveBeenLastCalledWith(
       expect.objectContaining({ processingStatus: "ready_for_review" }),
-      expect.anything(),
     );
     expect(JSON.stringify(repository.saveDraft.mock.calls)).not.toContain(
       "schemaVersion",
@@ -385,7 +387,6 @@ describe("SemanticImportProcessor", () => {
       });
       expect(repository.saveImportLifecycle).toHaveBeenLastCalledWith(
         expect.objectContaining({ processingStatus: "ready_for_review" }),
-        expect.anything(),
       );
     },
   );
@@ -400,7 +401,6 @@ describe("SemanticImportProcessor", () => {
     expect(repository.saveDraft).toHaveBeenCalledTimes(1);
     expect(repository.saveImportLifecycle).toHaveBeenLastCalledWith(
       expect.objectContaining({ processingStatus: "ready_for_review" }),
-      expect.anything(),
     );
   });
 
@@ -446,7 +446,6 @@ describe("SemanticImportProcessor", () => {
     expect(repository.saveDraft).not.toHaveBeenCalled();
     expect(repository.saveImportLifecycle).toHaveBeenLastCalledWith(
       expect.objectContaining({ processingStatus: "provider_unavailable" }),
-      expect.anything(),
     );
   });
 
@@ -492,7 +491,6 @@ describe("SemanticImportProcessor", () => {
       internalHarness.repository.saveImportLifecycle,
     ).toHaveBeenLastCalledWith(
       expect.objectContaining({ processingStatus: "failed" }),
-      expect.anything(),
     );
   });
 
@@ -528,7 +526,6 @@ describe("SemanticImportProcessor", () => {
     expect(repository.saveDraft).not.toHaveBeenCalled();
     expect(repository.saveImportLifecycle).toHaveBeenLastCalledWith(
       expect.objectContaining({ processingStatus: "cancelled" }),
-      expect.anything(),
     );
   });
 
@@ -616,7 +613,12 @@ describe("SemanticImportProcessor", () => {
         current = value;
         return value;
       }),
+      transaction: vi.fn(),
     };
+    repository.transaction.mockImplementation(
+      async (work: (repository: unknown) => Promise<unknown>) =>
+        work(repository),
+    );
     const unavailableProvider = {
       ...provider,
       parse: vi.fn(async () => ({
@@ -632,7 +634,6 @@ describe("SemanticImportProcessor", () => {
     } satisfies ResumeSemanticParserProvider;
     const harness = setup(unavailableProvider, ["Email: jane@example.com"]);
     const processor = new SemanticImportProcessor({
-      transactionRunner: harness.transactionRunner,
       sourceReader: {} as never,
       pdfTextExtractor: harness.textExtractor as never,
       docxTextExtractor: {} as never,
@@ -682,7 +683,6 @@ describe("SemanticImportProcessor", () => {
       expect.objectContaining({
         processingStatus: "semantic_validation_failed",
       }),
-      expect.anything(),
     );
   });
 });

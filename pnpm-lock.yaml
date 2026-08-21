@@ -266,13 +266,6 @@ importers:
       '@nuvitae/extraction':
         specifier: workspace:*
         version: link:../extraction
-      '@nuvitae/persistence':
-        specifier: workspace:*
-        version: link:../persistence
-    devDependencies:
-      typeorm:
-        specifier: 0.3.28
-        version: 0.3.28(ioredis@5.11.1(supports-color@8.1.1))(pg@8.22.0)(supports-color@8.1.1)
 
   packages/persistence:
     dependencies:
@@ -285,6 +278,9 @@ importers:
       '@nuvitae/domain':
         specifier: workspace:*
         version: link:../domain
+      '@nuvitae/import-application':
+        specifier: workspace:*
+        version: link:../import-application
       pg:
         specifier: 8.22.0
         version: 8.22.0

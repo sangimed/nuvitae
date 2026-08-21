@@ -6,11 +6,7 @@ import {
   type ManualDraftResponse,
 } from "@nuvitae/contracts";
 import type { ManualStructuredResumeDraft } from "@nuvitae/domain";
-import type {
-  ImportResumeRepository,
-  ManualResumeDraftRepository,
-  PersistenceTransactionRunner,
-} from "@nuvitae/persistence";
+import type { ImportResumeRepository } from "@nuvitae/persistence";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { attachVerifiedPrincipal } from "../../../apps/api/src/auth/user-context.js";
 import { CreateManualResumeDraftService } from "../../../apps/api/src/manual-resume/create-manual-resume-draft.service.js";
@@ -23,11 +19,11 @@ import {
   MANUAL_RESUME_REQUEST_ID_GENERATOR,
 } from "../../../apps/api/src/manual-resume/manual-resume.tokens.js";
 import { UpdateManualResumeDraftService } from "../../../apps/api/src/manual-resume/update-manual-resume-draft.service.js";
-import { VerifiedPrincipalGuard } from "../../../apps/api/src/import-resume/verified-principal.guard.js";
+import type { ManualResumeDraftRepository } from "../../../apps/api/src/manual-resume/manual-resume.repository.js";
+import { VerifiedPrincipalGuard } from "../../../apps/api/src/auth/verified-principal.guard.js";
 import {
   API_IMPORT_RESUME_REPOSITORY,
   API_MANUAL_RESUME_DRAFT_REPOSITORY,
-  API_PERSISTENCE_TRANSACTION_RUNNER,
 } from "../../../apps/api/src/persistence/api-persistence.module.js";
 
 const ownerUserId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -157,7 +153,9 @@ async function createManualHarness(options: {
     scheduleDeletionJob: vi.fn(),
     findDeletionJobByOwner: vi.fn(),
   } satisfies Partial<ImportResumeRepository>;
+  const transaction = vi.fn();
   const manualRepository: ManualResumeDraftRepository = {
+    transaction,
     createManualDraft: vi.fn(async ({ creationKey, draft }) => {
       draftsByKey.set(creationKey, draft);
       return draft;
@@ -175,6 +173,11 @@ async function createManualHarness(options: {
     }),
     saveManualDraft: vi.fn(async (draft) => draft),
   };
+  transaction.mockImplementation(
+    async (
+      work: (repository: ManualResumeDraftRepository) => Promise<unknown>,
+    ) => work(manualRepository),
+  );
   const queuePublisher = { addBulk: vi.fn() };
   const moduleRef = await Test.createTestingModule({
     controllers: [ManualResumeDraftsController],
@@ -191,13 +194,6 @@ async function createManualHarness(options: {
       {
         provide: API_MANUAL_RESUME_DRAFT_REPOSITORY,
         useValue: manualRepository,
-      },
-      {
-        provide: API_PERSISTENCE_TRANSACTION_RUNNER,
-        useValue: {
-          transaction: async <T>(work: (manager: never) => Promise<T>) =>
-            work({} as never),
-        } as unknown as PersistenceTransactionRunner,
       },
       {
         provide: MANUAL_RESUME_CLOCK,
