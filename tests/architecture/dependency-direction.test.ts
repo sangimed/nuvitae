@@ -52,6 +52,10 @@ const workerPersistencePath = join(
   repositoryRoot,
   "apps/worker/src/persistence/worker-persistence.module.ts",
 );
+const communityAuthServicePath = join(
+  repositoryRoot,
+  "apps/api/src/community-auth/community-auth.service.ts",
+);
 
 function productionSourceFiles(root: string): string[] {
   const files: string[] = [];
@@ -266,6 +270,14 @@ describe("architecture dependency direction", () => {
       )
       .flatMap(sourceImports)
       .filter(({ specifier }) => specifier === "@nuvitae/persistence")
+      .map(display);
+
+    expect(violations).toEqual([]);
+  });
+
+  it("keeps community authentication policy behind its feature-owned repository", () => {
+    const violations = sourceImports(communityAuthServicePath)
+      .filter(({ specifier }) => specifier.startsWith("@nuvitae/persistence"))
       .map(display);
 
     expect(violations).toEqual([]);
