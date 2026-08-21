@@ -43,6 +43,7 @@ import {
   DeletionJobEntity,
   TypeOrmAIProviderRuntimeConnectionsRepository,
   TypeOrmImportResumeRepository,
+  TypeOrmImportWorkflowRepository,
   TypeOrmSemanticParserRepository,
   UserCorrectionEntity,
   type DataSource,
@@ -970,8 +971,7 @@ describe("authorization isolation across the resume-import lifecycle", () => {
       const extraction = { process: vi.fn(async () => undefined) };
       const queue = { add: vi.fn(async () => undefined) };
       const processor = new ImportProcessingProcessor(
-        repository,
-        repository,
+        new TypeOrmImportWorkflowRepository(database.dataSource),
         validation,
         extraction,
         queue as never,

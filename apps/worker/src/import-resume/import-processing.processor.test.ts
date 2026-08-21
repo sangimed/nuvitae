@@ -85,6 +85,10 @@ function setup(
   } = {},
 ) {
   const repository = {
+    transaction: vi.fn(
+      async (work: (repository: unknown) => Promise<unknown>) =>
+        work(repository),
+    ),
     findImportByOwner: vi.fn(async () =>
       overrides.doc === null
         ? null
@@ -95,11 +99,6 @@ function setup(
     ),
     saveImportLifecycle: vi.fn(async (value: ImportedDocument) => value),
   };
-  const transactionRunner = {
-    transaction: vi.fn(async (work: (manager: object) => Promise<unknown>) =>
-      work({}),
-    ),
-  };
   const validation = {
     validate: vi.fn(async () => ({ accepted: overrides.accepted ?? true })),
   };
@@ -107,7 +106,6 @@ function setup(
   const queue = { add: vi.fn(async () => undefined) };
   const processor = new ImportProcessingProcessor(
     repository as never,
-    transactionRunner as never,
     validation,
     extraction,
     queue as never,
@@ -115,7 +113,6 @@ function setup(
   return {
     processor,
     repository,
-    transactionRunner,
     validation,
     extraction,
     queue,
@@ -239,17 +236,16 @@ describe("ImportProcessingProcessor", () => {
       releaseCapacity: vi.fn(async () => undefined),
     };
     const repository = {
+      transaction: vi.fn(
+        async (work: (repository: unknown) => Promise<unknown>) =>
+          work(repository),
+      ),
       findImportByOwner: vi.fn(async () => ({
         document: document({ validationStatus: "accepted" }),
         artifacts: [],
       })),
       findDraftByImportAndOwner: vi.fn(async () => null),
       saveImportLifecycle: vi.fn(async (value: ImportedDocument) => value),
-    };
-    const transactionRunner = {
-      transaction: vi.fn(async (work: (manager: object) => Promise<unknown>) =>
-        work({}),
-      ),
     };
     const extraction = {
       process: vi.fn(async () => {
@@ -258,7 +254,6 @@ describe("ImportProcessingProcessor", () => {
     };
     const processor = new ImportProcessingProcessor(
       repository as never,
-      transactionRunner as never,
       { validate: vi.fn() } as never,
       extraction as never,
       { add: vi.fn() } as never,
@@ -292,7 +287,6 @@ describe("ImportProcessingProcessor", () => {
     );
     expect(repository.saveImportLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({ processingStatus: "timeout_partial" }),
-      expect.anything(),
     );
   });
 

@@ -1633,15 +1633,17 @@ function workerFailureHarness(): {
     validationStatus: "not_started" as const,
   };
   const repository = {
+    transaction: vi.fn(
+      async (work: (repository: unknown) => Promise<unknown>) =>
+        work(repository),
+    ),
     findImportByOwner: vi.fn(async () => ({
       document,
       artifacts: [],
     })),
-  };
-  const transactionRunner = {
-    transaction: vi.fn(async (work: (manager: object) => Promise<unknown>) =>
-      work({}),
-    ),
+    findDraftByImportAndOwner: vi.fn(async () => null),
+    saveImportLifecycle: vi.fn(async (value: ImportedDocument) => value),
+    saveDraft: vi.fn(async (value: unknown) => value),
   };
   const validation = {
     validate: vi.fn(async () => {
@@ -1652,7 +1654,6 @@ function workerFailureHarness(): {
   const queue = { add: vi.fn(async () => undefined) };
   const processor = new ImportProcessingProcessor(
     repository as never,
-    transactionRunner as never,
     validation,
     extraction,
     queue as never,
