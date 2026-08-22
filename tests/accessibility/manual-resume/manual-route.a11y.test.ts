@@ -36,17 +36,14 @@ test.describe("manual resume route accessibility", () => {
       page.getByRole("heading", { name: "Manual resume draft", level: 1 }),
     ).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
-    await expect(page.getByText("Your resume draft is saved.")).toBeVisible();
+    await expect(page.getByText("Saved", { exact: true })).toBeVisible();
     await expect(page.locator(".save-status")).toHaveAttribute(
       "aria-live",
       "polite",
     );
 
     for (const name of [
-      "Personal information",
-      "Contact information",
-      "Headline",
-      "Summary",
+      "Basics",
       "Work experience",
       "Education",
       "Skills",
@@ -55,12 +52,24 @@ test.describe("manual resume route accessibility", () => {
       "Certifications",
       "Professional links",
     ]) {
-      await expect(page.getByRole("heading", { name })).toBeVisible();
+      await expect(
+        page.getByRole("button", { name, exact: true }),
+      ).toBeVisible();
     }
+
+    await expect(page.getByRole("heading", { name: "Basics" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Personal information" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Contact information" }),
+    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Summary" })).toHaveCount(0);
 
     await expect(
       page.getByRole("textbox", { name: "Professional headline" }),
     ).toBeVisible();
+    await page.getByRole("button", { name: "Summary", exact: true }).click();
     await expect(
       page.getByRole("textbox", { name: "Professional summary" }),
     ).toBeVisible();
@@ -75,6 +84,12 @@ test.describe("manual resume route accessibility", () => {
   }) => {
     await stubManualDraftApi(page);
     await page.goto("/resumes/new/manual");
+    const skillsSection = page.getByRole("button", {
+      name: "Skills",
+      exact: true,
+    });
+    await skillsSection.focus();
+    await page.keyboard.press("Enter");
     await expect(page.getByRole("heading", { name: "Skills" })).toBeVisible();
 
     const addSkills = page.getByRole("button", { name: "Add skills" });
@@ -96,6 +111,131 @@ test.describe("manual resume route accessibility", () => {
 
     await expect(addSkills).toBeFocused();
     await expectFocusedElementHasVisibleFocus(page);
+  });
+
+  test("keeps desktop editing and the canonical live preview visible together", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await stubManualDraftApi(page);
+    await page.goto("/resumes/new/manual");
+
+    const editPane = page.getByRole("tabpanel", { name: "Edit" });
+    const previewPane = page.getByRole("tabpanel", {
+      name: "Preview",
+      exact: true,
+    });
+    await expect(editPane).toBeVisible();
+    await expect(previewPane).toBeVisible();
+    const editBox = await editPane.boundingBox();
+    const previewBox = await previewPane.boundingBox();
+    expect(editBox).not.toBeNull();
+    expect(previewBox).not.toBeNull();
+    if (editBox === null || previewBox === null) return;
+    expect(previewBox.x).toBeGreaterThan(editBox.x + editBox.width);
+    expect(previewBox.x + previewBox.width).toBeLessThanOrEqual(1440);
+
+    const headline = page.getByRole("textbox", {
+      name: "Professional headline",
+    });
+    await headline.fill("Responsive systems engineer");
+    await expect(previewPane).toContainText("Responsive systems engineer");
+
+    await page.getByRole("button", { name: "Summary", exact: true }).click();
+    await expect(headline).toHaveCount(0);
+    await page.getByRole("button", { name: "Basics", exact: true }).click();
+    await expect(headline).toHaveValue("Responsive systems engineer");
+  });
+
+  test("preserves unsaved content when switching mobile Edit and Preview modes", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await stubManualDraftApi(page);
+    await page.goto("/resumes/new/manual");
+
+    const editPane = page.getByRole("tabpanel", { name: "Edit" });
+    const previewPane = page.getByRole("tabpanel", {
+      name: "Preview",
+      exact: true,
+    });
+    await expect(editPane).toBeVisible();
+    await expect(previewPane).toBeHidden();
+
+    await page
+      .getByRole("textbox", { name: "Professional headline" })
+      .fill("Mobile context keeper");
+    await page.getByRole("tab", { name: "Preview" }).click();
+    await expect(editPane).toBeHidden();
+    await expect(previewPane).toBeVisible();
+    await expect(previewPane).toContainText("Mobile context keeper");
+
+    await page.getByRole("tab", { name: "Edit" }).click();
+    await expect(
+      page.getByRole("textbox", { name: "Professional headline" }),
+    ).toHaveValue("Mobile context keeper");
+    await expect(page.locator(".save-status")).toContainText("Unsaved changes");
+  });
+
+  test("uses intentional Edit and Preview modes at tablet width", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 820, height: 1024 });
+    await stubManualDraftApi(page);
+    await page.goto("/resumes/new/manual");
+
+    const modeTabs = page.getByRole("tablist", { name: "Editor view" });
+    const editPane = page.getByRole("tabpanel", { name: "Edit" });
+    const previewPane = page.getByRole("tabpanel", {
+      name: "Preview",
+      exact: true,
+    });
+    await expect(modeTabs).toBeVisible();
+    await expect(editPane).toBeVisible();
+    await expect(previewPane).toBeHidden();
+    await page.getByRole("tab", { name: "Edit" }).focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("tab", { name: "Preview" })).toBeFocused();
+    await expect(previewPane).toBeVisible();
+    await expect(editPane).toBeHidden();
+    await expect(
+      page.getByRole("button", { name: "Save draft" }),
+    ).toBeVisible();
+  });
+
+  test("reorders sections from the keyboard and persists the order on save", async ({
+    page,
+  }) => {
+    let savedSectionOrder: readonly string[] | undefined;
+    await stubManualDraftApi(page, {
+      onPatch: async (route) => {
+        const body = route.request().postDataJSON() as {
+          readonly content: { readonly sectionOrder?: readonly string[] };
+        };
+        savedSectionOrder = body.content.sectionOrder;
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(successfulDraftResponse(savedUpdatedAt)),
+        });
+      },
+    });
+    await page.goto("/resumes/new/manual");
+
+    const moveSummaryUp = page.getByRole("button", {
+      name: "Move Summary up",
+    });
+    await moveSummaryUp.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".import-status-live-region")).toContainText(
+      "Summary moved to position 1.",
+    );
+    await expect(page.locator(".section-navigation-button").first()).toHaveText(
+      "Summary",
+    );
+
+    await page.getByRole("button", { name: "Save draft" }).click();
+    await expect.poll(() => savedSectionOrder?.[0]).toBe("summary");
   });
 
   test("associates validation errors with fields and focuses the error summary", async ({
@@ -120,9 +260,7 @@ test.describe("manual resume route accessibility", () => {
       "headline-error",
     );
     await expect(page.locator("#headline-error")).toBeVisible();
-    await expect(page.locator(".save-status")).toContainText(
-      "Your changes could not be saved.",
-    );
+    await expect(page.locator(".save-status")).toContainText("Error — retry");
   });
 
   test("announces saving, saved, failed, and stale-conflict states", async ({
@@ -157,28 +295,25 @@ test.describe("manual resume route accessibility", () => {
       .getByRole("textbox", { name: "Professional headline" })
       .fill("Synthetic headline");
     await page.getByRole("button", { name: "Save draft" }).click();
-    await expect(page.locator(".save-status")).toContainText(
-      "Saving your resume draft.",
-    );
-    await expect(page.locator(".save-status")).toContainText(
-      "Your resume draft is saved.",
-    );
+    await expect(page.locator(".save-status")).toContainText("Saving…");
+    await expect(page.locator(".save-status")).toContainText("Saved");
 
     await page
       .getByRole("textbox", { name: "Professional headline" })
       .fill("Synthetic failed headline");
     await page.getByRole("button", { name: "Save draft" }).click();
-    await expect(page.locator(".save-status")).toContainText(
-      "Your changes could not be saved.",
-    );
+    await expect(page.locator(".save-status")).toContainText("Error — retry");
 
     await page
       .getByRole("textbox", { name: "Professional headline" })
       .fill("Synthetic stale headline");
     await page.getByRole("button", { name: "Save draft" }).click();
     await expect(page.locator(".save-status")).toContainText(
-      "This draft changed elsewhere. Reload before saving again.",
+      "Error — reload required",
     );
+    await expect(
+      page.getByRole("button", { name: "Reload draft" }),
+    ).toBeVisible();
   });
 
   test("prevents duplicate save submission while a save is in progress", async ({
@@ -198,9 +333,7 @@ test.describe("manual resume route accessibility", () => {
 
     const save = page.getByRole("button", { name: "Save draft" });
     await save.dblclick();
-    await expect(page.locator(".save-status")).toContainText(
-      "Your resume draft is saved.",
-    );
+    await expect(page.locator(".save-status")).toContainText("Saved");
     expect(patchCount).toBe(1);
   });
 
@@ -236,9 +369,7 @@ test.describe("manual resume route accessibility", () => {
     await page
       .getByRole("textbox", { name: "Professional headline" })
       .fill("Synthetic unsaved headline");
-    await expect(page.locator(".save-status")).toContainText(
-      "You have unsaved changes.",
-    );
+    await expect(page.locator(".save-status")).toContainText("Unsaved changes");
 
     const dialogPromise = page.waitForEvent("dialog");
     await page.close({ runBeforeUnload: true });

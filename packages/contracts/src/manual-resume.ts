@@ -9,6 +9,25 @@ const manualConfidenceStatusSchema = z.literal("not_applicable");
 const manualInferenceStatusSchema = z.literal("not_inferred");
 const manualReviewStatusSchema = z.literal("edited");
 
+export const resumeEditorSectionIds = [
+  "basics",
+  "summary",
+  "workExperiences",
+  "education",
+  "projects",
+  "skills",
+  "certifications",
+  "languages",
+  "professionalLinks",
+] as const;
+
+export const resumeEditorSectionOrderSchema = z
+  .array(z.enum(resumeEditorSectionIds))
+  .length(resumeEditorSectionIds.length)
+  .refine((order) => new Set(order).size === resumeEditorSectionIds.length, {
+    message: "Resume sections must appear exactly once.",
+  });
+
 export const manualDraftCreationKeySchema = z
   .string()
   .min(16)
@@ -124,6 +143,7 @@ const certificationSchema = z
 
 export const structuredResumeContentSchema = z
   .object({
+    sectionOrder: resumeEditorSectionOrderSchema.optional(),
     personal: z.array(manualSourcedTextSchema).max(12),
     contact: z.array(manualSourcedTextSchema).max(12),
     headline: manualSourcedTextSchema.optional(),

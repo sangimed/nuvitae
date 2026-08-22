@@ -51,6 +51,17 @@ export type ManualDraftValidationResult =
 
 export function createBlankManualStructuredResumeContent(): StructuredResumeContent {
   return {
+    sectionOrder: [
+      "basics",
+      "summary",
+      "workExperiences",
+      "education",
+      "projects",
+      "skills",
+      "certifications",
+      "languages",
+      "professionalLinks",
+    ],
     personal: [],
     contact: [],
     workExperiences: [],
@@ -103,6 +114,9 @@ export function normalizeManualContent(
   const summary = optionalText(content.summary);
 
   return {
+    ...(content.sectionOrder === undefined
+      ? {}
+      : { sectionOrder: [...content.sectionOrder] }),
     personal: content.personal.map(text).filter(keepText),
     contact: content.contact.map(text).filter(keepText),
     ...(headline === undefined ? {} : { headline }),

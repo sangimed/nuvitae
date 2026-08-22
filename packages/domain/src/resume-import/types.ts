@@ -404,6 +404,17 @@ export interface SourcedText {
 }
 
 export interface StructuredResumeContent {
+  readonly sectionOrder?: readonly (
+    | "basics"
+    | "summary"
+    | "workExperiences"
+    | "education"
+    | "projects"
+    | "skills"
+    | "certifications"
+    | "languages"
+    | "professionalLinks"
+  )[];
   readonly personal: readonly SourcedText[];
   readonly contact: readonly SourcedText[];
   readonly headline?: SourcedText;

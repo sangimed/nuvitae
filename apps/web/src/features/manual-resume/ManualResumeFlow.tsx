@@ -6,7 +6,7 @@ import {
   type ManualDraftResponse,
 } from "@nuvitae/contracts";
 import type { StructuredResumeContentContract } from "@nuvitae/contracts";
-import { StructuredResumeSections } from "../resume-editor/StructuredResumeSections";
+import { ResponsiveVisualResumeEditor } from "../resume-editor/ResponsiveVisualResumeEditor";
 import {
   createManualDraft,
   readManualDraft,
@@ -69,15 +69,15 @@ export function ManualResumeFlow() {
   const statusCopy = useMemo(() => {
     switch (saveState) {
       case "unsaved":
-        return "You have unsaved changes.";
+        return "Unsaved changes";
       case "saving":
-        return "Saving your resume draft.";
+        return "Saving…";
       case "saved":
-        return "Your resume draft is saved.";
+        return "Saved";
       case "stale-conflict":
-        return "This draft changed elsewhere. Reload before saving again.";
+        return "Error — reload required";
       case "failed":
-        return "Your changes could not be saved.";
+        return "Error — retry";
     }
   }, [saveState]);
 
@@ -241,9 +241,19 @@ export function ManualResumeFlow() {
             className="primary-action"
             type="button"
             disabled={saving || saveState === "saved"}
-            onClick={save}
+            onClick={() => {
+              if (saveState === "stale-conflict") {
+                window.location.reload();
+                return;
+              }
+              void save();
+            }}
           >
-            Save draft
+            {saveState === "stale-conflict"
+              ? "Reload draft"
+              : saveState === "failed"
+                ? "Retry save"
+                : "Save draft"}
           </button>
         </div>
       </div>
@@ -258,9 +268,8 @@ export function ManualResumeFlow() {
         </div>
       ) : null}
 
-      <StructuredResumeSections
+      <ResponsiveVisualResumeEditor
         value={content}
-        mode="manual"
         disabled={saving}
         onChange={(next) => {
           setContent(next);

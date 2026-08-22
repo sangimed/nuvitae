@@ -143,6 +143,30 @@ describe("professional resume renderer", () => {
     expect(markup).not.toContain("Unnamed");
   });
 
+  it("uses the editor's persisted section order", () => {
+    const model = createResumeRenderingModel({
+      ...blankResume(),
+      sectionOrder: [
+        "basics",
+        "skills",
+        "summary",
+        "workExperiences",
+        "education",
+        "projects",
+        "certifications",
+        "languages",
+        "professionalLinks",
+      ],
+      summary: value("Summary content"),
+      skills: [{ id: "skill", name: value("Accessibility") }],
+    });
+
+    expect(model.sections.map((section) => section.kind)).toEqual([
+      "skills",
+      "summary",
+    ]);
+  });
+
   it("renders a fully empty resume safely without invented resume data", () => {
     const markup = renderToStaticMarkup(
       <ProfessionalResume model={createResumeRenderingModel(blankResume())} />,

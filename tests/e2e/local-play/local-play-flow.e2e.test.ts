@@ -94,6 +94,9 @@ async function completeManualFlow(page: Page, runId: string): Promise<void> {
   await page
     .getByRole("textbox", { name: "Professional headline" })
     .fill(headline);
+  await page
+    .getByRole("button", { name: "Work experience", exact: true })
+    .click();
   await page.getByRole("button", { name: "Add work experience" }).click();
   await page
     .getByRole("textbox", { name: "Employer", exact: true })
@@ -111,11 +114,12 @@ async function completeManualFlow(page: Page, runId: string): Promise<void> {
   await page
     .getByRole("textbox", { name: "Responsibility 1" })
     .fill("Validated the local playable stack.");
+  await page.getByRole("button", { name: "Skills", exact: true }).click();
   await page.getByRole("button", { name: "Add skills" }).click();
   await page.getByRole("textbox", { name: "Name", exact: true }).fill(skill);
 
   await page.getByRole("button", { name: "Save draft" }).click();
-  await expect(page.getByText("Your resume draft is saved.")).toBeVisible();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
   await page.reload();
   await expect(
     page.getByRole("textbox", { name: "Personal detail" }),
@@ -123,9 +127,13 @@ async function completeManualFlow(page: Page, runId: string): Promise<void> {
   await expect(
     page.getByRole("textbox", { name: "Professional headline" }),
   ).toHaveValue(headline);
+  await page
+    .getByRole("button", { name: "Work experience", exact: true })
+    .click();
   await expect(
     page.getByRole("textbox", { name: "Employer", exact: true }),
   ).toHaveValue(employer);
+  await page.getByRole("button", { name: "Skills", exact: true }).click();
   await expect(
     page.getByRole("textbox", { name: "Name", exact: true }),
   ).toHaveValue(skill);

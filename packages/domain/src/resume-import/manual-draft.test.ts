@@ -17,6 +17,17 @@ describe("manual structured resume draft domain operations", () => {
     expect(draft.source).toBe("manual_entry");
     expect(draft.status).toBe("editing");
     expect(draft.content).toEqual({
+      sectionOrder: [
+        "basics",
+        "summary",
+        "workExperiences",
+        "education",
+        "projects",
+        "skills",
+        "certifications",
+        "languages",
+        "professionalLinks",
+      ],
       personal: [],
       contact: [],
       workExperiences: [],
@@ -71,6 +82,33 @@ describe("manual structured resume draft domain operations", () => {
     expect(updated.content.skills[0]?.name).not.toHaveProperty(
       "sourceLocation",
     );
+  });
+
+  it("preserves the user-selected section order when saving", () => {
+    const draft = createBlankManualStructuredResumeDraft({
+      id: "draft-1",
+      ownerUserId: "user-1",
+      createdAt: new Date("2026-07-29T09:30:00.000Z"),
+    });
+    const sectionOrder = [
+      "basics",
+      "skills",
+      "summary",
+      "workExperiences",
+      "education",
+      "projects",
+      "certifications",
+      "languages",
+      "professionalLinks",
+    ] as const;
+
+    const updated = updateManualDraftContent(
+      draft,
+      { ...draft.content, sectionOrder },
+      new Date("2026-07-29T09:35:00.000Z"),
+    );
+
+    expect(updated.content.sectionOrder).toEqual(sectionOrder);
   });
 
   it("rejects unsafe item counts", () => {

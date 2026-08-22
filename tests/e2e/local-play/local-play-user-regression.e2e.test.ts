@@ -43,7 +43,7 @@ test("fresh manual draft persists through browser save and reload", async ({
 
   await fillManualDraft(page, { fullName, headline, employer, skill });
   await page.getByRole("button", { name: "Save draft" }).click();
-  await expect(page.getByText("Your resume draft is saved.")).toBeVisible();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
 
   await page.reload();
   await expect(
@@ -52,9 +52,13 @@ test("fresh manual draft persists through browser save and reload", async ({
   await expect(
     page.getByRole("textbox", { name: "Professional headline" }),
   ).toHaveValue(headline);
+  await page
+    .getByRole("button", { name: "Work experience", exact: true })
+    .click();
   await expect(
     page.getByRole("textbox", { name: "Employer", exact: true }),
   ).toHaveValue(employer);
+  await page.getByRole("button", { name: "Skills", exact: true }).click();
   await expect(
     page.getByRole("textbox", { name: "Name", exact: true }),
   ).toHaveValue(skill);
@@ -103,7 +107,7 @@ test("stale manual draft shows not found and recovers with a new draft", async (
     skill: "Recovery Testing",
   });
   await page.getByRole("button", { name: "Save draft" }).click();
-  await expect(page.getByText("Your resume draft is saved.")).toBeVisible();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
   await page.reload();
   await expect(
     page.getByRole("textbox", { name: "Personal detail" }),
@@ -222,6 +226,9 @@ async function fillManualDraft(
   await page
     .getByRole("textbox", { name: "Professional headline" })
     .fill(input.headline);
+  await page
+    .getByRole("button", { name: "Work experience", exact: true })
+    .click();
   await page.getByRole("button", { name: "Add work experience" }).click();
   await page
     .getByRole("textbox", { name: "Employer", exact: true })
@@ -239,6 +246,7 @@ async function fillManualDraft(
   await page
     .getByRole("textbox", { name: "Responsibility 1" })
     .fill("Validated local browser persistence.");
+  await page.getByRole("button", { name: "Skills", exact: true }).click();
   await page.getByRole("button", { name: "Add skills" }).click();
   await page
     .getByRole("textbox", { name: "Name", exact: true })
