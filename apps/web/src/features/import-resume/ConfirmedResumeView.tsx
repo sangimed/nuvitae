@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 import type { ConfirmedStructuredResumeReadResponse } from "@nuvitae/contracts";
-import { readConfirmedStructuredResume } from "./client";
 import {
-  StructuredFieldProvenance,
-  StructuredResumeProvenance,
-} from "./StructuredResumeProvenance";
+  createResumeRenderingModel,
+  ProfessionalResume,
+} from "../resume-renderer";
+import { readConfirmedStructuredResume } from "./client";
+import { StructuredResumeProvenance } from "./StructuredResumeProvenance";
 
 export function ConfirmedResumeView(props: { readonly resumeId: string }) {
   const [resume, setResume] = useState<
@@ -52,52 +53,7 @@ export function ConfirmedResumeView(props: { readonly resumeId: string }) {
       <h1 id="resume-title">Your resume is ready</h1>
       <p>{resume.userMessage}</p>
       <StructuredResumeProvenance resume={resume} />
-      <ResumeSection title="Personal" values={resume.content.personal} />
-      <ResumeSection title="Contact" values={resume.content.contact} />
-      {resume.content.headline === undefined ? null : (
-        <ResumeSection title="Headline" values={[resume.content.headline]} />
-      )}
-      {resume.content.summary === undefined ? null : (
-        <ResumeSection
-          title="Professional summary"
-          values={[resume.content.summary]}
-        />
-      )}
-      <ResumeSection
-        title="Skills"
-        values={resume.content.skills.map((item) => item.name)}
-      />
-      <ResumeSection
-        title="Languages"
-        values={resume.content.languages.map((item) => item.name)}
-      />
-      <ResumeSection
-        title="Professional links"
-        values={resume.content.professionalLinks.map((item) => item.url)}
-      />
-    </section>
-  );
-}
-
-function ResumeSection(props: {
-  readonly title: string;
-  readonly values: readonly ConfirmedStructuredResumeReadResponse["content"]["personal"][number][];
-}) {
-  return (
-    <section
-      className="review-section"
-      aria-labelledby={`${props.title}-heading`}
-    >
-      <h2 id={`${props.title}-heading`}>{props.title}</h2>
-      {props.values.length === 0 ? <p>No confirmed content.</p> : null}
-      {props.values.map((value, index) => (
-        <article className="review-field" key={`${props.title}-${index}`}>
-          <p>{value.value}</p>
-          <p>
-            <StructuredFieldProvenance provenance={value.provenance} />
-          </p>
-        </article>
-      ))}
+      <ProfessionalResume model={createResumeRenderingModel(resume.content)} />
     </section>
   );
 }
