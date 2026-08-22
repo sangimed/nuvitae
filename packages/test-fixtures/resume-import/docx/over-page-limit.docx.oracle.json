@@ -1,0 +1,44 @@
+{
+  "fixtureId": "docx-over-page-limit",
+  "seed": 3705,
+  "format": "docx",
+  "language": "english",
+  "layout": "reordered_sections",
+  "profile": "complete",
+  "complexity": "adversarial",
+  "mutation": "over_page_limit",
+  "rendererVersion": "nuvitae-resume-fixtures-v1",
+  "sha256": "782ac2c78a1f2a3f0986214a324db14aefd37e75d0ee39abf3050d15768531d2",
+  "oracle": {
+    "fixtureId": "docx-over-page-limit",
+    "semantic": {
+      "contact": {
+        "name": "Camille Exemple",
+        "email": "camille.exemple@example.test",
+        "phone": "+33 6 00 00 00 37",
+        "location": "Lyon, France",
+        "links": ["https://portfolio.example.test/camille"]
+      },
+      "headline": "Senior Product Engineer",
+      "summary": "Product engineer building accessible, reliable software for distributed teams.",
+      "employers": ["Northstar Example Labs", "Blue Oak Example Studio"],
+      "roles": ["Senior Product Engineer", "Software Engineer"],
+      "dates": ["March 2021 – Present", "2017-09 – 2021-02"],
+      "bullets": [
+        "Led a cross-functional team of six and reduced release lead time by 32%.",
+        "Built deterministic data pipelines with TypeScript, SQL, and Python."
+      ],
+      "education": [
+        "MSc Computer Science — Example Technical University — 2017"
+      ],
+      "skills": ["TypeScript", "SQL", "Python", "Accessibility", "Kubernetes"],
+      "languages": ["French (native)", "English (fluent)"],
+      "certifications": ["Example Cloud Professional — 2024"],
+      "projects": ["Open Atlas — offline-first planning toolkit"]
+    },
+    "expectedWarnings": [],
+    "expectedEligibility": "ineligible",
+    "expectedFailureCategory": "over_page_limit",
+    "provenance": { "sourceLocationRequired": false }
+  }
+}

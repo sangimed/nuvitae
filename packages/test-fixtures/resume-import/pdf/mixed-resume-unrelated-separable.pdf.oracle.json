@@ -1,0 +1,42 @@
+{
+  "fixtureId": "pdf-mixed-resume-unrelated-separable",
+  "seed": 3712,
+  "format": "pdf",
+  "language": "english",
+  "layout": "three_column_sidebar",
+  "profile": "mixed_separable",
+  "complexity": "intermediate",
+  "mutation": "none",
+  "rendererVersion": "nuvitae-resume-fixtures-v1",
+  "sha256": "7e3df1543f745578f855d9361b01da85f376755be80cd4c6e0fd5b6f38157156",
+  "oracle": {
+    "fixtureId": "pdf-mixed-resume-unrelated-separable",
+    "semantic": {
+      "contact": {
+        "name": "Jordan Example",
+        "email": "jordan@example.test",
+        "links": []
+      },
+      "headline": "Senior Product Engineer",
+      "summary": "Product engineer building accessible, reliable software for distributed teams.",
+      "employers": ["River Example Data"],
+      "roles": ["Data Engineer"],
+      "dates": ["2022 – Present"],
+      "bullets": ["Built governed analytics pipelines."],
+      "education": [
+        "MSc Computer Science — Example Technical University — 2017"
+      ],
+      "skills": ["TypeScript", "SQL", "Python", "Accessibility", "Kubernetes"],
+      "languages": ["French (native)", "English (fluent)"],
+      "certifications": ["Example Cloud Professional — 2024"],
+      "projects": ["Open Atlas — offline-first planning toolkit"]
+    },
+    "expectedWarnings": ["mixed_content", "partial"],
+    "expectedEligibility": "eligible",
+    "provenance": {
+      "sourceLocationRequired": true,
+      "pdfPageLocation": true,
+      "pdfBoundingBox": true
+    }
+  }
+}

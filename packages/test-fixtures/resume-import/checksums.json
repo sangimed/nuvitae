@@ -1,0 +1,20 @@
+{
+  "rendererVersion": "nuvitae-resume-fixtures-v1",
+  "fixtures": {
+    "pdf-english-complete": "b59edb1592d8c53f1ce572d10e148276d488d38fad52987b33d2b3aff1f85e4e",
+    "docx-french-complete": "488a1a83df067ba5844953512198afb912e033bc26211279155a6431b36c009b",
+    "pdf-bilingual-partial": "f22ca75917e539d8c60369faa5868dbdea3dfe7c742f873cf0f2e1b8309e408d",
+    "docx-unsupported-language-contact": "a100ea83edf914def8242ea5cca5cb9b143c971884c74fd31a8927d4226a59a1",
+    "pdf-oversized": "353ce7d87f31f53b12b5f6453baaf3ca44f7d08adeb1167df01fa0b1b42e6790",
+    "docx-over-page-limit": "782ac2c78a1f2a3f0986214a324db14aefd37e75d0ee39abf3050d15768531d2",
+    "pdf-malformed": "892f8f4c32f8a5e8eb721cad37974e0f95f707826a3e37839a3695be07fb0f9b",
+    "docx-corrupted": "43561f9bd03000d35911e04c62f6c384a690a122ab6a37da131c1cbf528756ed",
+    "pdf-password-protected": "d6be590c7e03d5bfa007286c3ff763b758ba6d01c7882aaea520a8abf1a760d7",
+    "pdf-image-only-scanned": "24bf356618172332f14a5128ab81e0dd031719ace30a8c6fb7367f1cc0d27cea",
+    "pdf-mixed-text-image": "19bb893292867b679a9d2b1be8ad883094024fe5e7285292a9c1b12d2f4018bd",
+    "docx-hostile": "2050701d0326cfbd38ea86125f681e18e4859abcd98505e7d12ff5e1cc63e819",
+    "pdf-mixed-resume-unrelated-separable": "7e3df1543f745578f855d9361b01da85f376755be80cd4c6e0fd5b6f38157156",
+    "docx-mixed-resume-unrelated-ambiguous": "3adf639aa4099c4f82a1df6403b0254a433e549390aa9ee846ff665b861834e3",
+    "pdf-no-supported-field": "1b1f26e72a748107098d94bd6832b451f827f9e973d37d6ccedefc52b842d120"
+  }
+}

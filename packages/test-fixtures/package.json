@@ -7,10 +7,17 @@
   "types": "src/index.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "generate:resume-import": "pnpm build && node dist/resume-import/generator/generate.js",
+    "verify:resume-import": "pnpm build && node dist/resume-import/generator/generate.js --check",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
     "@nuvitae/contracts": "workspace:*",
-    "@nuvitae/import-application": "workspace:*"
+    "@nuvitae/import-application": "workspace:*",
+    "@types/pdfkit": "0.17.3",
+    "@types/yazl": "2.4.5",
+    "pdfkit": "0.17.2",
+    "prettier": "3.9.6",
+    "yazl": "3.3.1"
   }
 }

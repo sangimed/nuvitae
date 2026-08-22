@@ -1,0 +1,31 @@
+{
+  "fixtureId": "pdf-no-supported-field",
+  "seed": 3714,
+  "format": "pdf",
+  "language": "english",
+  "layout": "dense_one_column",
+  "profile": "no_supported_field",
+  "complexity": "adversarial",
+  "mutation": "none",
+  "rendererVersion": "nuvitae-resume-fixtures-v1",
+  "sha256": "1b1f26e72a748107098d94bd6832b451f827f9e973d37d6ccedefc52b842d120",
+  "oracle": {
+    "fixtureId": "pdf-no-supported-field",
+    "semantic": {
+      "contact": { "links": [] },
+      "employers": [],
+      "roles": [],
+      "dates": [],
+      "bullets": [],
+      "education": [],
+      "skills": [],
+      "languages": [],
+      "certifications": [],
+      "projects": []
+    },
+    "expectedWarnings": ["unsupported"],
+    "expectedEligibility": "eligible",
+    "expectedFailureCategory": "no_supported_field",
+    "provenance": { "sourceLocationRequired": false }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "fixtureId": "docx-unsupported-language-contact",
+  "seed": 3703,
+  "format": "docx",
+  "language": "unsupported",
+  "layout": "header_footer",
+  "profile": "unsupported_language",
+  "complexity": "adversarial",
+  "mutation": "none",
+  "rendererVersion": "nuvitae-resume-fixtures-v1",
+  "sha256": "a100ea83edf914def8242ea5cca5cb9b143c971884c74fd31a8927d4226a59a1",
+  "oracle": {
+    "fixtureId": "docx-unsupported-language-contact",
+    "semantic": {
+      "contact": {
+        "name": "Alex Ejemplo",
+        "email": "alex.ejemplo@example.test",
+        "phone": "+34 600 000 037",
+        "location": "Madrid, España",
+        "links": []
+      },
+      "headline": "Ingeniero de software",
+      "employers": ["Organización Ejemplo"],
+      "roles": ["Ingeniero de software"],
+      "dates": ["2020 – presente"],
+      "bullets": [
+        "Desarrollado proyecto fiable para equipo con responsabilidades distribuidas."
+      ],
+      "education": [],
+      "skills": ["TypeScript", "SQL"],
+      "languages": ["Español (nativo)"],
+      "certifications": [],
+      "projects": []
+    },
+    "expectedWarnings": ["unsupported"],
+    "expectedEligibility": "ineligible",
+    "expectedFailureCategory": "unsupported_language",
+    "provenance": {
+      "sourceLocationRequired": true,
+      "docxPackagePartLocation": true,
+      "docxParagraphRunLocation": true
+    }
+  }
+}

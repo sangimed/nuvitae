@@ -1,0 +1,20 @@
+{
+  "fixtureId": "pdf-malformed",
+  "seed": 3706,
+  "format": "pdf",
+  "language": "unknown",
+  "layout": "ats_one_column",
+  "profile": "complete",
+  "complexity": "adversarial",
+  "mutation": "malformed",
+  "rendererVersion": "nuvitae-resume-fixtures-v1",
+  "sha256": "892f8f4c32f8a5e8eb721cad37974e0f95f707826a3e37839a3695be07fb0f9b",
+  "oracle": {
+    "fixtureId": "pdf-malformed",
+    "semantic": null,
+    "expectedWarnings": [],
+    "expectedEligibility": "ineligible",
+    "expectedFailureCategory": "malformed_document",
+    "provenance": { "sourceLocationRequired": false }
+  }
+}
