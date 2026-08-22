@@ -1,0 +1,31 @@
+{
+  "fixtureId": "docx-mixed-resume-unrelated-ambiguous",
+  "seed": 3713,
+  "format": "docx",
+  "language": "english",
+  "layout": "docx_table",
+  "profile": "mixed_ambiguous",
+  "complexity": "adversarial",
+  "mutation": "none",
+  "rendererVersion": "nuvitae-resume-fixtures-v1",
+  "sha256": "3adf639aa4099c4f82a1df6403b0254a433e549390aa9ee846ff665b861834e3",
+  "oracle": {
+    "fixtureId": "docx-mixed-resume-unrelated-ambiguous",
+    "semantic": {
+      "contact": { "links": [] },
+      "employers": ["Candidate One Example", "Candidate Two Example"],
+      "roles": ["Designer", "Engineer"],
+      "dates": ["2020 – Present", "2021 – Present"],
+      "bullets": [],
+      "education": [],
+      "skills": ["Research", "TypeScript"],
+      "languages": ["English"],
+      "certifications": [],
+      "projects": []
+    },
+    "expectedWarnings": ["mixed_content"],
+    "expectedEligibility": "ineligible",
+    "expectedFailureCategory": "ambiguous_mixed_content",
+    "provenance": { "sourceLocationRequired": false }
+  }
+}

@@ -16,6 +16,7 @@
     "test:integration:persistence": "vitest run --config vitest.persistence.config.ts",
     "build": "pnpm -r build",
     "dev": "turbo dev --parallel",
+    "fixtures:resume-import": "pnpm --filter @nuvitae/test-fixtures generate:resume-import --",
     "db:migration:generate": "pnpm --filter @nuvitae/persistence db:migration:generate",
     "db:migration:create": "pnpm --filter @nuvitae/persistence db:migration:create",
     "db:migration:run": "pnpm --filter @nuvitae/persistence db:migration:run",

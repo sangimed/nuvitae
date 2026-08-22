@@ -1,0 +1,20 @@
+{
+  "fixtureId": "pdf-oversized",
+  "seed": 3704,
+  "format": "pdf",
+  "language": "english",
+  "layout": "dense_one_column",
+  "profile": "complete",
+  "complexity": "adversarial",
+  "mutation": "oversized",
+  "rendererVersion": "nuvitae-resume-fixtures-v1",
+  "sha256": "353ce7d87f31f53b12b5f6453baaf3ca44f7d08adeb1167df01fa0b1b42e6790",
+  "oracle": {
+    "fixtureId": "pdf-oversized",
+    "semantic": null,
+    "expectedWarnings": [],
+    "expectedEligibility": "ineligible",
+    "expectedFailureCategory": "oversized_file",
+    "provenance": { "sourceLocationRequired": false }
+  }
+}

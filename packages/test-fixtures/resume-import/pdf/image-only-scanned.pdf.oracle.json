@@ -1,0 +1,20 @@
+{
+  "fixtureId": "pdf-image-only-scanned",
+  "seed": 3709,
+  "format": "pdf",
+  "language": "unknown",
+  "layout": "ats_one_column",
+  "profile": "complete",
+  "complexity": "adversarial",
+  "mutation": "image_only",
+  "rendererVersion": "nuvitae-resume-fixtures-v1",
+  "sha256": "24bf356618172332f14a5128ab81e0dd031719ace30a8c6fb7367f1cc0d27cea",
+  "oracle": {
+    "fixtureId": "pdf-image-only-scanned",
+    "semantic": null,
+    "expectedWarnings": [],
+    "expectedEligibility": "ineligible",
+    "expectedFailureCategory": "image_only_or_scanned",
+    "provenance": { "sourceLocationRequired": false }
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "fixtureId": "docx-corrupted",
+  "seed": 3707,
+  "format": "docx",
+  "language": "unknown",
+  "layout": "ats_one_column",
+  "profile": "complete",
+  "complexity": "adversarial",
+  "mutation": "corrupted",
+  "rendererVersion": "nuvitae-resume-fixtures-v1",
+  "sha256": "43561f9bd03000d35911e04c62f6c384a690a122ab6a37da131c1cbf528756ed",
+  "oracle": {
+    "fixtureId": "docx-corrupted",
+    "semantic": null,
+    "expectedWarnings": [],
+    "expectedEligibility": "ineligible",
+    "expectedFailureCategory": "corrupted_document",
+    "provenance": { "sourceLocationRequired": false }
+  }
+}

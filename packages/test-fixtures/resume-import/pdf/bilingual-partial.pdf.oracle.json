@@ -1,0 +1,42 @@
+{
+  "fixtureId": "pdf-bilingual-partial",
+  "seed": 3702,
+  "format": "pdf",
+  "language": "bilingual_french_english",
+  "layout": "three_column_sidebar",
+  "profile": "partial",
+  "complexity": "intermediate",
+  "mutation": "none",
+  "rendererVersion": "nuvitae-resume-fixtures-v1",
+  "sha256": "f22ca75917e539d8c60369faa5868dbdea3dfe7c742f873cf0f2e1b8309e408d",
+  "oracle": {
+    "fixtureId": "pdf-bilingual-partial",
+    "semantic": {
+      "contact": {
+        "name": "Morgan Example",
+        "email": "morgan@example.test",
+        "links": []
+      },
+      "headline": "Ingénieur support / Support Engineer",
+      "employers": ["Cedar Example Systems"],
+      "roles": ["Support Engineer"],
+      "dates": ["2019 – 2023"],
+      "bullets": [
+        "Documentation de solutions reproductibles / Documented repeatable solutions."
+      ],
+      "education": [],
+      "skills": ["Linux", "Networking", "SQL"],
+      "languages": ["Français (courant) / French (fluent)", "English (native)"],
+      "certifications": [],
+      "projects": [],
+      "summary": "Expérience avec une équipe pour un projet bilingue / Bilingual team project experience."
+    },
+    "expectedWarnings": ["partial", "missing", "low_confidence"],
+    "expectedEligibility": "eligible",
+    "provenance": {
+      "sourceLocationRequired": true,
+      "pdfPageLocation": true,
+      "pdfBoundingBox": true
+    }
+  }
+}

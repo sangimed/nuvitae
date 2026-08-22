@@ -301,6 +301,21 @@ importers:
       '@nuvitae/import-application':
         specifier: workspace:*
         version: link:../import-application
+      '@types/pdfkit':
+        specifier: 0.17.3
+        version: 0.17.3
+      '@types/yazl':
+        specifier: 2.4.5
+        version: 2.4.5
+      pdfkit:
+        specifier: 0.17.2
+        version: 0.17.2
+      prettier:
+        specifier: 3.9.6
+        version: 3.9.6
+      yazl:
+        specifier: 3.3.1
+        version: 3.3.1
 
 packages:
 

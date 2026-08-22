@@ -41,6 +41,7 @@ Thumbs.db
 
 # Private local benchmark fixtures; keep separate from versioned synthetic fixtures.
 /local/fixtures/import-resume/
+/packages/test-fixtures/resume-import/stress/
 
 .turbo/
 

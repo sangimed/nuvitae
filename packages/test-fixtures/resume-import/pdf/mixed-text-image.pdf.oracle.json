@@ -1,0 +1,41 @@
+{
+  "fixtureId": "pdf-mixed-text-image",
+  "seed": 3710,
+  "format": "pdf",
+  "language": "english",
+  "layout": "two_column",
+  "profile": "partial",
+  "complexity": "intermediate",
+  "mutation": "mixed_text_image",
+  "rendererVersion": "nuvitae-resume-fixtures-v1",
+  "sha256": "19bb893292867b679a9d2b1be8ad883094024fe5e7285292a9c1b12d2f4018bd",
+  "oracle": {
+    "fixtureId": "pdf-mixed-text-image",
+    "semantic": {
+      "contact": {
+        "name": "Morgan Example",
+        "email": "morgan@example.test",
+        "links": []
+      },
+      "headline": "Support Engineer",
+      "employers": ["Cedar Example Systems"],
+      "roles": ["Support Engineer"],
+      "dates": ["2019 – 2023"],
+      "bullets": [
+        "Documented repeatable solutions for customer support cases."
+      ],
+      "education": [],
+      "skills": ["Linux", "Networking", "SQL"],
+      "languages": ["English (native)"],
+      "certifications": [],
+      "projects": []
+    },
+    "expectedWarnings": ["partial", "missing"],
+    "expectedEligibility": "eligible",
+    "provenance": {
+      "sourceLocationRequired": true,
+      "pdfPageLocation": true,
+      "pdfBoundingBox": true
+    }
+  }
+}

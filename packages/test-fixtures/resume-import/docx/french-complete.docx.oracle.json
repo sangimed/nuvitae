@@ -1,0 +1,47 @@
+{
+  "fixtureId": "docx-french-complete",
+  "seed": 3701,
+  "format": "docx",
+  "language": "french",
+  "layout": "docx_table",
+  "profile": "complete",
+  "complexity": "intermediate",
+  "mutation": "none",
+  "rendererVersion": "nuvitae-resume-fixtures-v1",
+  "sha256": "488a1a83df067ba5844953512198afb912e033bc26211279155a6431b36c009b",
+  "oracle": {
+    "fixtureId": "docx-french-complete",
+    "semantic": {
+      "contact": {
+        "name": "Camille Exemple",
+        "email": "camille.exemple@example.test",
+        "phone": "+33 6 00 00 00 37",
+        "location": "Lyon, France",
+        "links": ["https://portfolio.example.test/camille"]
+      },
+      "headline": "Ingénieure produit senior",
+      "summary": "Ingénieure produit spécialisée dans les logiciels accessibles et fiables.",
+      "employers": ["Northstar Example Labs", "Blue Oak Example Studio"],
+      "roles": ["Ingénieure produit senior", "Ingénieure logiciel"],
+      "dates": ["mars 2021 – aujourd’hui", "septembre 2017 – février 2021"],
+      "bullets": [
+        "Direction d’une équipe pluridisciplinaire de six personnes.",
+        "Création de pipelines de données déterministes en TypeScript, SQL et Python."
+      ],
+      "education": [
+        "Master informatique — Université Technique Exemple — 2017"
+      ],
+      "skills": ["TypeScript", "SQL", "Python", "Accessibility", "Kubernetes"],
+      "languages": ["Français (langue maternelle)", "Anglais (courant)"],
+      "certifications": ["Example Cloud Professional — 2024"],
+      "projects": ["Atlas Ouvert — outil de planification hors ligne"]
+    },
+    "expectedWarnings": [],
+    "expectedEligibility": "eligible",
+    "provenance": {
+      "sourceLocationRequired": true,
+      "docxPackagePartLocation": true,
+      "docxParagraphRunLocation": true
+    }
+  }
+}
