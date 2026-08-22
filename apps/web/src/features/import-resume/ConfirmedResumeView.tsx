@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ConfirmedStructuredResumeReadResponse } from "@nuvitae/contracts";
 import {
@@ -53,6 +54,14 @@ export function ConfirmedResumeView(props: { readonly resumeId: string }) {
       <h1 id="resume-title">Your resume is ready</h1>
       <p>{resume.userMessage}</p>
       <StructuredResumeProvenance resume={resume} />
+      <div className="resume-actions">
+        <Link
+          className="primary-action"
+          href={`/resumes/${props.resumeId}/export`}
+        >
+          Export PDF
+        </Link>
+      </div>
       <ProfessionalResume model={createResumeRenderingModel(resume.content)} />
     </section>
   );
