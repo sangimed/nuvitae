@@ -11,6 +11,19 @@ interface RenderableLink {
 
 /** The canonical resume fields used by the first template, independent of React or PDF. */
 export interface CanonicalResumeForRendering {
+  readonly sectionOrder?:
+    | readonly (
+        | "basics"
+        | "summary"
+        | "workExperiences"
+        | "education"
+        | "projects"
+        | "skills"
+        | "certifications"
+        | "languages"
+        | "professionalLinks"
+      )[]
+    | undefined;
   readonly personal: readonly RenderableText[];
   readonly contact: readonly RenderableText[];
   readonly headline?: RenderableText | undefined;
@@ -226,33 +239,65 @@ export function createResumeRenderingModel(
     }))
     .filter((item) => item.name !== "");
 
-  const sections: ResumeRenderingSection[] = [];
+  const sectionsByEditorSection = new Map<
+    NonNullable<CanonicalResumeForRendering["sectionOrder"]>[number],
+    ResumeRenderingSection
+  >();
   if (summary !== undefined)
-    sections.push({
+    sectionsByEditorSection.set("summary", {
       kind: "summary",
       title: "Professional Summary",
       text: summary,
     });
   if (experience.length > 0)
-    sections.push({
+    sectionsByEditorSection.set("workExperiences", {
       kind: "experience",
       title: "Experience",
       items: experience,
     });
   if (education.length > 0)
-    sections.push({ kind: "education", title: "Education", items: education });
+    sectionsByEditorSection.set("education", {
+      kind: "education",
+      title: "Education",
+      items: education,
+    });
   if (projects.length > 0)
-    sections.push({ kind: "projects", title: "Projects", items: projects });
+    sectionsByEditorSection.set("projects", {
+      kind: "projects",
+      title: "Projects",
+      items: projects,
+    });
   if (skills.length > 0)
-    sections.push({ kind: "skills", title: "Skills", items: skills });
+    sectionsByEditorSection.set("skills", {
+      kind: "skills",
+      title: "Skills",
+      items: skills,
+    });
   if (certifications.length > 0)
-    sections.push({
+    sectionsByEditorSection.set("certifications", {
       kind: "certifications",
       title: "Certifications",
       items: certifications,
     });
   if (languages.length > 0)
-    sections.push({ kind: "languages", title: "Languages", items: languages });
+    sectionsByEditorSection.set("languages", {
+      kind: "languages",
+      title: "Languages",
+      items: languages,
+    });
+
+  const sectionOrder = resume.sectionOrder ?? [
+    "summary",
+    "workExperiences",
+    "education",
+    "projects",
+    "skills",
+    "certifications",
+    "languages",
+  ];
+  const sections = sectionOrder
+    .map((section) => sectionsByEditorSection.get(section))
+    .filter(isPresent);
 
   return {
     template: "professional",

@@ -443,7 +443,7 @@ input:disabled {
 }
 
 .manual-panel {
-  width: min(100%, 72rem);
+  width: min(100%, 100rem);
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
@@ -459,6 +459,15 @@ input:disabled {
   gap: 1rem;
 }
 
+.manual-header {
+  position: sticky;
+  top: 4.9rem;
+  z-index: 4;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.97);
+  padding-block: 0.5rem 0.75rem;
+}
+
 .save-cluster {
   flex-wrap: wrap;
 }
@@ -471,7 +480,137 @@ input:disabled {
 .resume-editor {
   display: grid;
   gap: 1.25rem;
+}
+
+.visual-editor {
   margin-top: 1.5rem;
+}
+
+.editor-mode-tabs {
+  display: none;
+}
+
+.visual-editor-layout {
+  display: grid;
+  grid-template-columns: minmax(30rem, 1fr) minmax(28rem, 0.9fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.resume-edit-pane {
+  display: grid;
+  grid-template-columns: 15.5rem minmax(0, 1fr);
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.section-navigation,
+.focused-section-editor,
+.resume-preview-pane {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.section-navigation {
+  position: sticky;
+  top: 11rem;
+  padding: 1rem;
+}
+
+.section-navigation h2,
+.preview-heading h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.section-navigation ol {
+  display: grid;
+  gap: 0.4rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.section-navigation li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.section-navigation-button,
+.section-reorder-actions button,
+.editor-mode-tabs button {
+  min-height: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--foreground);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.section-navigation-button {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  text-align: start;
+}
+
+.section-navigation-button[aria-current="step"] {
+  border-color: var(--accent);
+  background: var(--color-brand-subtle);
+  color: var(--color-brand-strong);
+}
+
+.section-reorder-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 2.5rem);
+  gap: 0.2rem;
+}
+
+.section-reorder-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.focused-section-editor {
+  padding: 1.25rem;
+}
+
+.editor-section-group > h2 {
+  margin-top: 0;
+}
+
+.resume-preview-pane {
+  position: sticky;
+  top: 11rem;
+  overflow: hidden;
+  background: var(--color-surface-subtle);
+}
+
+.preview-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-end;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  padding: 1rem;
+}
+
+.preview-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.preview-document {
+  max-height: calc(100vh - 15rem);
+  overflow: auto;
+  padding: 1.25rem;
 }
 
 .editor-section,
@@ -1096,6 +1235,47 @@ legend {
     grid-template-columns: 1fr;
     gap: 0.65rem;
   }
+
+  .manual-header {
+    top: 7.7rem;
+  }
+
+  .editor-mode-tabs {
+    position: sticky;
+    top: 14rem;
+    z-index: 3;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--panel);
+    padding: 0.5rem;
+  }
+
+  .editor-mode-tabs button[aria-selected="true"] {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: white;
+  }
+
+  .visual-editor-layout {
+    display: block;
+    margin-top: 1rem;
+  }
+
+  .resume-preview-pane {
+    position: static;
+  }
+
+  .preview-document {
+    max-height: none;
+  }
+
+  .visual-editor[data-mobile-mode="edit"] .resume-preview-pane,
+  .visual-editor[data-mobile-mode="preview"] .resume-edit-pane {
+    display: none;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1129,8 +1309,30 @@ legend {
   }
 
   .manual-header {
+    position: static;
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .editor-mode-tabs {
+    position: static;
+  }
+
+  .resume-edit-pane {
+    display: block;
+  }
+
+  .section-navigation {
+    position: static;
+    margin-bottom: 1rem;
+  }
+
+  .section-navigation ol {
+    grid-template-columns: 1fr;
+  }
+
+  .preview-document {
+    padding: 0.75rem;
   }
 
   .review-shell,

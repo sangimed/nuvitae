@@ -1,6 +1,9 @@
 "use client";
 
-import type { StructuredResumeContentContract } from "@nuvitae/contracts";
+import type {
+  StructuredResumeContentContract,
+  resumeEditorSectionIds,
+} from "@nuvitae/contracts";
 import { createBrowserUuid } from "../../services/browser-ids";
 import { formatResumeDate } from "./date";
 
@@ -14,6 +17,7 @@ type Language = Content["languages"][number];
 type Project = Content["projects"][number];
 type Certification = Content["certifications"][number];
 type Link = Content["professionalLinks"][number];
+export type ResumeEditorSectionId = (typeof resumeEditorSectionIds)[number];
 
 export interface StructuredResumeSectionsProps {
   readonly value: Content;
@@ -22,110 +26,139 @@ export interface StructuredResumeSectionsProps {
   readonly validationErrors?: Readonly<Record<string, string>> | undefined;
   readonly disabled?: boolean;
   readonly readOnly?: boolean;
+  readonly activeSection?: ResumeEditorSectionId | undefined;
 }
 
 export function StructuredResumeSections(props: StructuredResumeSectionsProps) {
   const disabled = props.disabled === true || props.readOnly === true;
   const set = (next: Partial<Content>) =>
     props.onChange({ ...props.value, ...next });
+  const shows = (section: ResumeEditorSectionId) =>
+    props.activeSection === undefined || props.activeSection === section;
 
   return (
     <div className="resume-editor" data-mode={props.mode}>
-      <TextListSection
-        title="Personal information"
-        field="personal"
-        values={props.value.personal}
-        label="Personal detail"
-        disabled={disabled}
-        errors={props.validationErrors}
-        onChange={(personal) => set({ personal })}
-      />
-      <TextListSection
-        title="Contact information"
-        field="contact"
-        values={props.value.contact}
-        label="Contact detail"
-        disabled={disabled}
-        errors={props.validationErrors}
-        onChange={(contact) => set({ contact })}
-      />
+      {shows("basics") ? (
+        <section
+          className="editor-section-group"
+          aria-labelledby="basics-title"
+        >
+          <h2 id="basics-title">Basics</h2>
+          <TextListSection
+            title="Personal information"
+            field="personal"
+            values={props.value.personal}
+            label="Personal detail"
+            disabled={disabled}
+            errors={props.validationErrors}
+            onChange={(personal) => set({ personal })}
+          />
+          <TextListSection
+            title="Contact information"
+            field="contact"
+            values={props.value.contact}
+            label="Contact detail"
+            disabled={disabled}
+            errors={props.validationErrors}
+            onChange={(contact) => set({ contact })}
+          />
+          <section
+            className="editor-section"
+            aria-labelledby="headline-section"
+          >
+            <h3 id="headline-section">Headline</h3>
+            <TextField
+              id="headline"
+              label="Professional headline"
+              value={props.value.headline?.value ?? ""}
+              disabled={disabled}
+              error={props.validationErrors?.headline}
+              onChange={(value) =>
+                set({
+                  headline: value.trim() === "" ? undefined : manualText(value),
+                })
+              }
+            />
+          </section>
+        </section>
+      ) : null}
 
-      <section className="editor-section" aria-labelledby="headline-section">
-        <h2 id="headline-section">Headline</h2>
-        <TextField
-          id="headline"
-          label="Professional headline"
-          value={props.value.headline?.value ?? ""}
+      {shows("summary") ? (
+        <section className="editor-section" aria-labelledby="summary-section">
+          <h2 id="summary-section">Summary</h2>
+          <TextArea
+            id="summary"
+            label="Professional summary"
+            value={props.value.summary?.value ?? ""}
+            disabled={disabled}
+            error={props.validationErrors?.summary}
+            onChange={(value) =>
+              set({
+                summary: value.trim() === "" ? undefined : manualText(value),
+              })
+            }
+          />
+        </section>
+      ) : null}
+
+      {shows("workExperiences") ? (
+        <WorkSection
+          values={props.value.workExperiences}
           disabled={disabled}
-          error={props.validationErrors?.headline}
-          onChange={(value) =>
-            set({
-              headline: value.trim() === "" ? undefined : manualText(value),
-            })
-          }
+          errors={props.validationErrors}
+          onChange={(workExperiences) => set({ workExperiences })}
         />
-      </section>
-
-      <section className="editor-section" aria-labelledby="summary-section">
-        <h2 id="summary-section">Summary</h2>
-        <TextArea
-          id="summary"
-          label="Professional summary"
-          value={props.value.summary?.value ?? ""}
+      ) : null}
+      {shows("education") ? (
+        <EducationSection
+          values={props.value.education}
           disabled={disabled}
-          error={props.validationErrors?.summary}
-          onChange={(value) =>
-            set({
-              summary: value.trim() === "" ? undefined : manualText(value),
-            })
-          }
+          errors={props.validationErrors}
+          onChange={(education) => set({ education })}
         />
-      </section>
-
-      <WorkSection
-        values={props.value.workExperiences}
-        disabled={disabled}
-        errors={props.validationErrors}
-        onChange={(workExperiences) => set({ workExperiences })}
-      />
-      <EducationSection
-        values={props.value.education}
-        disabled={disabled}
-        errors={props.validationErrors}
-        onChange={(education) => set({ education })}
-      />
-      <SkillSection
-        values={props.value.skills}
-        disabled={disabled}
-        errors={props.validationErrors}
-        onChange={(skills) => set({ skills })}
-      />
-      <LanguageSection
-        values={props.value.languages}
-        disabled={disabled}
-        errors={props.validationErrors}
-        onChange={(languages) => set({ languages })}
-      />
-      <ProjectSection
-        values={props.value.projects}
-        disabled={disabled}
-        errors={props.validationErrors}
-        onChange={(projects) => set({ projects })}
-      />
-      <CertificationSection
-        values={props.value.certifications}
-        disabled={disabled}
-        errors={props.validationErrors}
-        onChange={(certifications) => set({ certifications })}
-      />
-      <LinkSection
-        title="Professional links"
-        field="professionalLinks"
-        values={props.value.professionalLinks}
-        disabled={disabled}
-        errors={props.validationErrors}
-        onChange={(professionalLinks) => set({ professionalLinks })}
-      />
+      ) : null}
+      {shows("skills") ? (
+        <SkillSection
+          values={props.value.skills}
+          disabled={disabled}
+          errors={props.validationErrors}
+          onChange={(skills) => set({ skills })}
+        />
+      ) : null}
+      {shows("languages") ? (
+        <LanguageSection
+          values={props.value.languages}
+          disabled={disabled}
+          errors={props.validationErrors}
+          onChange={(languages) => set({ languages })}
+        />
+      ) : null}
+      {shows("projects") ? (
+        <ProjectSection
+          values={props.value.projects}
+          disabled={disabled}
+          errors={props.validationErrors}
+          onChange={(projects) => set({ projects })}
+        />
+      ) : null}
+      {shows("certifications") ? (
+        <CertificationSection
+          values={props.value.certifications}
+          disabled={disabled}
+          errors={props.validationErrors}
+          onChange={(certifications) => set({ certifications })}
+        />
+      ) : null}
+      {shows("professionalLinks") ? (
+        <LinkSection
+          title="Professional links"
+          field="professionalLinks"
+          values={props.value.professionalLinks}
+          disabled={disabled}
+          errors={props.validationErrors}
+          onChange={(professionalLinks) => set({ professionalLinks })}
+        />
+      ) : null}
     </div>
   );
 }
