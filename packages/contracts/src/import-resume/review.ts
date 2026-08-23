@@ -184,6 +184,109 @@ const safeOriginalProvenanceSchema = z.discriminatedUnion("kind", [
     .strict(),
 ]);
 
+const effectiveSourcedTextSchema = z
+  .object({
+    value: z.string().max(4_000),
+    sourceStatus: z.enum([
+      "explicit_source",
+      "user_added",
+      "user_edited",
+      "source_deleted_minimal_provenance",
+    ]),
+    confidenceStatus: z.enum(["high", "medium", "low", "not_applicable"]),
+    inferenceStatus: z.enum(["not_inferred", "confirmed_inference"]),
+    provenance: safeProvenanceSchema,
+  })
+  .strict();
+
+const effectiveProfessionalLinkSchema = z
+  .object({
+    id: uuidSchema,
+    label: z.string().max(120).optional(),
+    url: effectiveSourcedTextSchema,
+  })
+  .strict();
+
+/** Canonical, provenance-safe content currently eligible for confirmation. */
+export const effectiveResumeContentSchema = z
+  .object({
+    personal: z.array(effectiveSourcedTextSchema),
+    contact: z.array(effectiveSourcedTextSchema),
+    headline: effectiveSourcedTextSchema.optional(),
+    summary: effectiveSourcedTextSchema.optional(),
+    workExperiences: z.array(
+      z
+        .object({
+          id: uuidSchema,
+          employerName: z.string().max(300),
+          employerLocation: z.string().max(200).optional(),
+          roles: z.array(
+            z
+              .object({
+                id: uuidSchema,
+                title: z.string().max(200),
+                location: z.string().max(200).optional(),
+                startDate: resumeDateSchema.optional(),
+                endDate: resumeDateSchema.optional(),
+                isOngoing: z.boolean(),
+                responsibilities: z.array(effectiveSourcedTextSchema),
+                achievements: z.array(effectiveSourcedTextSchema),
+              })
+              .strict(),
+          ),
+        })
+        .strict(),
+    ),
+    education: z.array(
+      z
+        .object({
+          id: uuidSchema,
+          institution: effectiveSourcedTextSchema,
+          credential: effectiveSourcedTextSchema.optional(),
+          fieldOfStudy: effectiveSourcedTextSchema.optional(),
+          location: effectiveSourcedTextSchema.optional(),
+          startDate: resumeDateSchema.optional(),
+          endDate: resumeDateSchema.optional(),
+        })
+        .strict(),
+    ),
+    skills: z.array(
+      z.object({ id: uuidSchema, name: effectiveSourcedTextSchema }).strict(),
+    ),
+    languages: z.array(
+      z
+        .object({
+          id: uuidSchema,
+          name: effectiveSourcedTextSchema,
+          proficiency: effectiveSourcedTextSchema.optional(),
+        })
+        .strict(),
+    ),
+    projects: z.array(
+      z
+        .object({
+          id: uuidSchema,
+          name: effectiveSourcedTextSchema,
+          description: effectiveSourcedTextSchema.optional(),
+          links: z.array(effectiveProfessionalLinkSchema),
+        })
+        .strict(),
+    ),
+    certifications: z.array(
+      z
+        .object({
+          id: uuidSchema,
+          name: effectiveSourcedTextSchema,
+          issuer: effectiveSourcedTextSchema.optional(),
+          issuedAt: resumeDateSchema.optional(),
+          expiresAt: resumeDateSchema.optional(),
+        })
+        .strict(),
+    ),
+    professionalLinks: z.array(effectiveProfessionalLinkSchema),
+  })
+  .strict();
+
 export const reviewFieldSchema = z
   .object({
     fieldId: uuidSchema,
@@ -275,6 +378,7 @@ export const reviewDraftReadResponseSchema = responseBaseSchema
     retentionExpiresAt: isoDateSchema,
     lastReviewedAt: isoDateSchema.optional(),
     sections: z.array(groupedReviewSectionSchema),
+    effectiveResume: effectiveResumeContentSchema.optional(),
     activeFieldCount: z.number().int().nonnegative(),
     unresolvedWarningCount: z.number().int().nonnegative(),
     readyToConfirm: z.boolean(),

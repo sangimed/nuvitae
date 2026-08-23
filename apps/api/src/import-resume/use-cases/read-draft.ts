@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Inject, Injectable, Optional } from "@nestjs/common";
 import {
   extractedValueSchema,
@@ -12,6 +13,7 @@ import {
   allowedFieldActions,
   allowedWarningActions,
   findUnresolvedRequiredWarnings,
+  mapEffectiveImportDraftContent,
   type ExtractedField,
   type ImportDraft,
   type ImportWarning,
@@ -29,6 +31,7 @@ import {
   START_IMPORT_PRIVACY_LOGGER,
 } from "../ports/tokens.js";
 import type { StartImportClock } from "../ports/start-import.js";
+import { toPublicStructuredResumeContent } from "./structured-resume-response.js";
 
 const sections = [
   "personal",
@@ -162,6 +165,10 @@ export function buildReviewDraftResponse(input: {
   const activeFieldCount = input.draft.fields.filter(
     (field) => field.reviewStatus !== "excluded",
   ).length;
+  const effective = mapEffectiveImportDraftContent({
+    draft: input.draft,
+    childIds: previewChildIds(input.draft),
+  });
   return reviewDraftReadResponseSchema.parse({
     version: importResumeResponseSchemaVersion,
     requestId: input.requestId,
@@ -177,6 +184,11 @@ export function buildReviewDraftResponse(input: {
     sections: sections.map((section) =>
       buildSection(section, input.draft.fields, input.draft.warnings),
     ),
+    ...(effective.ok
+      ? {
+          effectiveResume: toPublicStructuredResumeContent(effective.content),
+        }
+      : {}),
     activeFieldCount,
     unresolvedWarningCount,
     readyToConfirm: input.draft.status === "ready_to_confirm",
@@ -185,6 +197,29 @@ export function buildReviewDraftResponse(input: {
         ? "Review requirements are complete. Final resume creation is a separate next step."
         : "Review the imported information and address the items that need attention.",
   });
+}
+
+function previewChildIds(draft: ImportDraft) {
+  const counters = new Map<string, number>();
+  const next = (kind: string) => {
+    const counter = counters.get(kind) ?? 0;
+    counters.set(kind, counter + 1);
+    return deterministicUuid(
+      `${draft.id}:${draft.reviewRevision}:${kind}:${counter}`,
+    );
+  };
+  return {
+    textItemId: () => next("text"),
+    workExperienceId: () => next("experience"),
+    workRoleId: () => next("role"),
+    sectionItemId: () => next("section"),
+    linkId: () => next("link"),
+  };
+}
+
+function deterministicUuid(seed: string): string {
+  const hex = createHash("sha256").update(seed).digest("hex").slice(0, 32);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20)}`;
 }
 
 function buildSection(

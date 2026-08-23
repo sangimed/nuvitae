@@ -50,7 +50,11 @@ test.describe("import review accessibility", () => {
       }),
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "Summary", exact: true }),
+      page.getByRole("heading", {
+        name: "Professional summary",
+        exact: true,
+        level: 2,
+      }),
     ).toBeVisible();
     await expect(
       page.getByText("Found in your resume — your confirmation is needed"),
@@ -58,6 +62,14 @@ test.describe("import review accessibility", () => {
     await expect(
       page.getByText("Confirmation needed before this information is used."),
     ).toBeVisible();
+    const preview = page.getByRole("tabpanel", {
+      name: "Preview",
+      exact: true,
+    });
+    await expect(
+      page.getByRole("tabpanel", { name: "Review", exact: true }),
+    ).toBeVisible();
+    await expect(preview).toBeVisible();
 
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(
@@ -71,6 +83,11 @@ test.describe("import review accessibility", () => {
       ),
     ).toBe(true);
 
+    await page.getByRole("tab", { name: "Preview", exact: true }).click();
+    await expect(preview).toBeVisible();
+    await expect(preview.getByText("Synthetic summary")).toHaveCount(0);
+    await page.getByRole("tab", { name: "Review", exact: true }).click();
+
     await page.keyboard.press("Tab");
     await expectFocusedElementHasVisibleFocus(page);
     await page
@@ -78,6 +95,9 @@ test.describe("import review accessibility", () => {
       .press("Enter");
     await expect(page.getByText("Your review change was saved.")).toBeVisible();
     await expect(page.getByText("Accepted for your resume.")).toBeVisible();
+    await page.getByRole("tab", { name: "Preview", exact: true }).click();
+    await expect(preview.getByText("Synthetic summary")).toBeVisible();
+    await page.getByRole("tab", { name: "Review", exact: true }).click();
 
     await page.getByRole("button", { name: "Edit field" }).press("Enter");
     await expect(page.getByLabel("Edit value")).toBeVisible();
@@ -98,7 +118,7 @@ test.describe("import review accessibility", () => {
       .press("Enter");
 
     await expect(
-      page.getByRole("button", { name: "Create structured resume" }),
+      page.getByRole("button", { name: "Create my resume" }),
     ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Confirmation is blocked" }),
@@ -129,6 +149,7 @@ function reviewResponse(reviewRevision: number, readyToConfirm: boolean) {
     draftStatus: readyToConfirm ? "ready_to_confirm" : "review_required",
     reviewRevision,
     retentionExpiresAt: "2026-08-05T09:30:00.000Z",
+    effectiveResume: effectiveResume(readyToConfirm),
     sections: sectionNames.map((section) => ({
       section,
       label: section === "summary" ? "Summary" : section,
@@ -186,6 +207,31 @@ function reviewResponse(reviewRevision: number, readyToConfirm: boolean) {
     unresolvedWarningCount: readyToConfirm ? 0 : 1,
     readyToConfirm,
     userMessage: "Review the imported information.",
+  };
+}
+
+function effectiveResume(includeSummary: boolean) {
+  return {
+    personal: [],
+    contact: [],
+    ...(includeSummary
+      ? {
+          summary: {
+            value: "Synthetic summary",
+            sourceStatus: "explicit_source",
+            confidenceStatus: "high",
+            inferenceStatus: "confirmed_inference",
+            provenance: { kind: "pdf", pageNumber: 2 },
+          },
+        }
+      : {}),
+    workExperiences: [],
+    education: [],
+    skills: [],
+    languages: [],
+    projects: [],
+    certifications: [],
+    professionalLinks: [],
   };
 }
 

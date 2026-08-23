@@ -130,6 +130,38 @@ describe("T221 simplified review", () => {
     expect(summary?.textContent).not.toContain(
       "Confirmation needed before this information is used.",
     );
+    expect(
+      container.querySelector("[aria-label='Imported resume preview']")
+        ?.textContent,
+    ).toContain("Synthetic summary about accessible product delivery.");
+  });
+
+  it("renders only the effective review state through the canonical preview", async () => {
+    await render();
+
+    const preview = container.querySelector(
+      "[aria-label='Imported resume preview']",
+    );
+    expect(preview?.textContent).toContain("Synthetic person");
+    expect(preview?.textContent).toContain("Example employer");
+    expect(preview?.textContent).not.toContain(
+      "Synthetic summary about accessible product delivery.",
+    );
+    expect(
+      preview?.querySelector("[data-resume-template='professional']"),
+    ).not.toBeNull();
+  });
+
+  it("keeps review controls available when canonical preview mapping fails", async () => {
+    const unavailable = { ...syntheticDraft(), effectiveResume: undefined };
+    await render(unavailable);
+
+    const preview = container.querySelector(
+      "[aria-label='Imported resume preview']",
+    );
+    expect(preview?.textContent).toContain("Preview unavailable");
+    expect(preview?.textContent).toContain("Retry preview");
+    expect(container.textContent).toContain("Confirm this information");
   });
 
   it("keeps inline editing recoverable with a labelled edit field and cancel action", async () => {
@@ -202,6 +234,7 @@ function syntheticDraft(): ReviewDraftReadResponse {
     unresolvedWarningCount: 3,
     readyToConfirm: false,
     userMessage: "Review the information that needs your attention.",
+    effectiveResume: effectiveResume(),
     sections: sections.map((section) => ({
       section,
       label: section === "work_experience" ? "Work experience" : section,
@@ -328,6 +361,16 @@ function withSummaryState(
 ): ReviewDraftReadResponse {
   return {
     ...draft,
+    effectiveResume:
+      fieldState === "confirmed"
+        ? {
+            ...effectiveResume(),
+            summary: sourcedText(
+              "Synthetic summary about accessible product delivery.",
+              "confirmed_inference",
+            ),
+          }
+        : effectiveResume(),
     reviewRevision: warningState === "confirmed" ? 6 : 5,
     unresolvedWarningCount: warningState === "confirmed" ? 2 : 3,
     sections: draft.sections.map((section) => ({
@@ -350,5 +393,46 @@ function withSummaryState(
           : warning,
       ),
     })),
+  };
+}
+
+function effectiveResume() {
+  return {
+    personal: [sourcedText("Synthetic person")],
+    contact: [],
+    workExperiences: [
+      {
+        id: "66666666-6666-4666-8666-666666666666",
+        employerName: "Example employer",
+        roles: [
+          {
+            id: "77777777-7777-4777-8777-777777777777",
+            title: "Example role",
+            isOngoing: false,
+            responsibilities: [],
+            achievements: [],
+          },
+        ],
+      },
+    ],
+    education: [],
+    skills: [],
+    languages: [],
+    projects: [],
+    certifications: [],
+    professionalLinks: [],
+  } as const;
+}
+
+function sourcedText(
+  value: string,
+  inferenceStatus: "not_inferred" | "confirmed_inference" = "not_inferred",
+) {
+  return {
+    value,
+    sourceStatus: "explicit_source" as const,
+    confidenceStatus: "high" as const,
+    inferenceStatus,
+    provenance: { kind: "pdf" as const, pageNumber: 1 },
   };
 }
