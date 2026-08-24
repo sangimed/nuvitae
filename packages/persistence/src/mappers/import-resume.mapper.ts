@@ -359,6 +359,18 @@ function mapItems(items: readonly StructuredResumeItemEntity[]) {
                   item.inferenceStatus,
                 ),
           ),
+          ...optional(
+            "location",
+            item.locationValue === null || item.locationValue === undefined
+              ? null
+              : mapSourcedText(
+                  item.locationValue,
+                  item.sourceStatus,
+                  item.sourceLocation,
+                  item.confidenceStatus,
+                  item.inferenceStatus,
+                ),
+          ),
           ...optional("startDate", item.startDate),
           ...optional("endDate", item.endDate),
           reviewStatus,
@@ -499,6 +511,7 @@ export function mapStructuredResume(
   const summary = bySection("summary")[0];
   const sectionItems = mapItems(rows.items);
   const content: StructuredResumeContent = {
+    ...optional("sectionOrder", rows.resume.sectionOrder),
     personal: bySection("personal"),
     contact: bySection("contact"),
     ...optional("headline", headline),

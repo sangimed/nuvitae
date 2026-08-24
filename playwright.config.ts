@@ -5,6 +5,7 @@ export default defineConfig({
   testMatch: [
     "accessibility/**/*.a11y.test.ts",
     "browser/resume-export/**/*.spec.ts",
+    "browser/resume-workspace/**/*.spec.ts",
   ],
   timeout: 30_000,
   expect: { timeout: 5_000 },

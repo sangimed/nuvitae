@@ -6,11 +6,13 @@ import { ManualResumeModule } from "./manual-resume/manual-resume.module";
 import { isLocalPlayModeEnv } from "./local-play/local-play.config";
 import { LocalPlayRuntimeModule } from "./local-play/local-play-runtime.module";
 import { CommunityRuntimeModule } from "./runtime/community-runtime.module";
+import { ResumeWorkspaceModule } from "./resume-workspace/resume-workspace.module";
 
 @Module({
   imports: [
     ApiPersistenceModule,
     ManualResumeModule,
+    ResumeWorkspaceModule,
     ...(isLocalPlayModeEnv()
       ? [LocalPlayRuntimeModule]
       : [CommunityRuntimeModule]),

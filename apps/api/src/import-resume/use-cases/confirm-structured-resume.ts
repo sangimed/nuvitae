@@ -605,7 +605,7 @@ function confirmationEligibilityError(
   };
 }
 
-function toConfirmedContent(resume: StructuredResume) {
+export function toConfirmedContent(resume: StructuredResume) {
   const text = (value: SourcedText) => ({
     value: value.value,
     sourceStatus:
@@ -620,6 +620,9 @@ function toConfirmedContent(resume: StructuredResume) {
     provenance: safeProvenance(value),
   });
   return {
+    ...(resume.content.sectionOrder === undefined
+      ? {}
+      : { sectionOrder: [...resume.content.sectionOrder] }),
     personal: resume.content.personal.map(text),
     contact: resume.content.contact.map(text),
     ...(resume.content.headline === undefined
@@ -661,6 +664,7 @@ function toConfirmedContent(resume: StructuredResume) {
     skills: resume.content.skills.map((item) => ({
       id: item.id,
       name: text(item.name),
+      ...(item.category === undefined ? {} : { category: item.category }),
     })),
     languages: resume.content.languages.map((item) => ({
       id: item.id,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import {
   updateManualDraftRequestSchema,
   type ManualDraftResponse,
@@ -17,7 +18,7 @@ import { createBrowserUuid } from "../../services/browser-ids";
 
 type SaveState = "saved" | "unsaved" | "saving" | "stale-conflict" | "failed";
 
-export function ManualResumeFlow() {
+export function ManualResumeFlow(props: { readonly draftId?: string }) {
   const [draft, setDraft] = useState<
     ManualDraftResponse["draft"] | undefined
   >();
@@ -39,16 +40,13 @@ export function ManualResumeFlow() {
   const [validationErrors, setValidationErrors] = useState<
     Readonly<Record<string, string>>
   >({});
-  const initialized = useRef(false);
   const errorSummaryRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
     const controller = new AbortController();
     void initialize(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [props.draftId]);
 
   useEffect(() => {
     if (saveState !== "unsaved") return;
@@ -83,7 +81,7 @@ export function ManualResumeFlow() {
 
   async function initialize(signal: AbortSignal) {
     const url = new URL(window.location.href);
-    const existingDraftId = url.searchParams.get("draftId");
+    const existingDraftId = props.draftId ?? url.searchParams.get("draftId");
     const outcome =
       existingDraftId === null
         ? await createManualDraft({
@@ -107,10 +105,11 @@ export function ManualResumeFlow() {
       );
       return;
     }
-    const url = new URL(window.location.href);
-    url.searchParams.delete("creationKey");
-    url.searchParams.set("draftId", outcome.response.draft.draftId);
-    window.history.replaceState(null, "", url);
+    window.history.replaceState(
+      null,
+      "",
+      `/resumes/drafts/${outcome.response.draft.draftId}`,
+    );
     setDraft(outcome.response.draft);
     setContent(outcome.response.draft.content);
     setSaveState("saved");
@@ -234,6 +233,9 @@ export function ManualResumeFlow() {
           <h1 id="manual-title">Manual resume draft</h1>
         </div>
         <div className="save-cluster">
+          <Link className="secondary-action" href="/resumes">
+            My resumes
+          </Link>
           <p className="save-status" aria-live="polite">
             {statusCopy}
           </p>

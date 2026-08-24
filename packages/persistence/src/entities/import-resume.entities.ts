@@ -548,6 +548,9 @@ export class StructuredResumeEntity {
   @Column("varchar", { name: "confirmation_status", length: 16 })
   confirmationStatus!: string;
 
+  @Column("jsonb", { name: "section_order", nullable: true })
+  sectionOrder!: StructuredResumeContent["sectionOrder"] | null;
+
   @Column("timestamptz", { name: "created_at" })
   createdAt!: Date;
 
@@ -827,6 +830,9 @@ export class StructuredResumeItemEntity {
 
   @Column("text", { name: "tertiary_value", nullable: true })
   tertiaryValue!: string | null;
+
+  @Column("text", { name: "location_value", nullable: true })
+  locationValue!: string | null;
 
   @Column("text", { nullable: true })
   url!: string | null;

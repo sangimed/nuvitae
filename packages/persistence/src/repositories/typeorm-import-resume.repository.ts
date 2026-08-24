@@ -420,6 +420,7 @@ export class TypeOrmImportResumeRepository
       Object.assign(new StructuredResumeEntity(), {
         ...resume,
         sourceImportDraftId: resume.sourceImportDraftId ?? null,
+        sectionOrder: resume.content.sectionOrder ?? null,
         deletedAt: resume.deletedAt ?? null,
       }),
     );
@@ -567,6 +568,7 @@ export class TypeOrmImportResumeRepository
       primaryValue: value.value,
       secondaryValue: null,
       tertiaryValue: null,
+      locationValue: null,
       url: null,
       startDate: null,
       endDate: null,
@@ -590,6 +592,7 @@ export class TypeOrmImportResumeRepository
           {
             secondaryValue: item.credential?.value ?? null,
             tertiaryValue: item.fieldOfStudy?.value ?? null,
+            locationValue: item.location?.value ?? null,
             startDate: item.startDate ?? null,
             endDate: item.endDate ?? null,
           },
@@ -721,6 +724,93 @@ export class TypeOrmImportResumeRepository
     });
   }
 
+  async findStructuredResumeByOwnerForUpdate(
+    resumeId: string,
+    userId: string,
+    manager: EntityManager,
+  ): Promise<StructuredResume | null> {
+    const root = await manager
+      .createQueryBuilder(StructuredResumeEntity, "resume")
+      .setLock("pessimistic_write")
+      .where("resume.id = :resumeId", { resumeId })
+      .andWhere("resume.ownerUserId = :userId", { userId })
+      .andWhere("resume.deletedAt IS NULL")
+      .getOne();
+    if (root === null) return null;
+    return this.findStructuredResumeByOwner(resumeId, userId, manager);
+  }
+
+  async listStructuredResumesByOwner(
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<readonly StructuredResume[]> {
+    const scoped = this.manager(manager);
+    const roots = await scoped.find(StructuredResumeEntity, {
+      where: { ownerUserId: userId },
+      order: { updatedAt: "DESC" },
+    });
+    const resumes = await Promise.all(
+      roots
+        .filter((root) => root.deletedAt === null)
+        .map((root) =>
+          this.findStructuredResumeByOwner(root.id, userId, scoped),
+        ),
+    );
+    return resumes.filter(
+      (resume): resume is StructuredResume => resume !== null,
+    );
+  }
+
+  async replaceStructuredResume(
+    resume: StructuredResume,
+    previousUpdatedAt: Date,
+    manager: EntityManager,
+  ): Promise<StructuredResume> {
+    const result = await manager.update(
+      StructuredResumeEntity,
+      {
+        id: resume.id,
+        ownerUserId: resume.ownerUserId,
+        updatedAt: previousUpdatedAt,
+      },
+      {
+        updatedAt: resume.updatedAt,
+        sectionOrder: resume.content.sectionOrder ?? null,
+      },
+    );
+    if (result.affected !== 1) {
+      return Promise.reject(new Error("stale_structured_resume"));
+    }
+    await manager.delete(StructuredResumeTextEntity, {
+      structuredResumeId: resume.id,
+      ownerUserId: resume.ownerUserId,
+    });
+    await manager.delete(StructuredResumeItemEntity, {
+      structuredResumeId: resume.id,
+      ownerUserId: resume.ownerUserId,
+    });
+    await manager.delete(WorkRoleDetailEntity, {
+      structuredResumeId: resume.id,
+    });
+    await manager.delete(WorkExperienceRoleEntity, {
+      structuredResumeId: resume.id,
+    });
+    await manager.delete(WorkExperienceEntity, {
+      structuredResumeId: resume.id,
+      ownerUserId: resume.ownerUserId,
+    });
+    await this.saveStructuredContent(resume, manager);
+    const saved = await this.findStructuredResumeByOwner(
+      resume.id,
+      resume.ownerUserId,
+      manager,
+    );
+    if (saved === null) {
+      return Promise.reject(new Error("structured_resume_not_found"));
+    }
+    return saved;
+  }
+
   async scheduleDeletionJob(
     job: Parameters<ImportResumeRepository["scheduleDeletionJob"]>[0],
     manager?: EntityManager,
@@ -828,6 +918,21 @@ export class TypeOrmImportResumeRepository
       { creationKey, ownerUserId: userId },
     );
     return entity === null ? null : mapManualStructuredResumeDraft(entity);
+  }
+
+  async listManualDraftsByOwner(
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<readonly ManualStructuredResumeDraft[]> {
+    const entities = await this.manager(manager).find(
+      ManualStructuredResumeDraftEntity,
+      { where: { ownerUserId: userId }, order: { updatedAt: "DESC" } },
+    );
+    return entities
+      .filter(
+        (entity) => entity.deletedAt === null && entity.status === "editing",
+      )
+      .map(mapManualStructuredResumeDraft);
   }
 
   async saveManualDraft(

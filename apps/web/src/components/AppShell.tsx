@@ -8,6 +8,13 @@ import { CommunityOwnerAccess } from "../features/community-auth/CommunityOwnerA
 const navigation = [
   { href: "/", label: "Home", matches: (path: string) => path === "/" },
   {
+    href: "/resumes",
+    label: "My resumes",
+    matches: (path: string) =>
+      path === "/resumes" ||
+      (path.startsWith("/resumes/") && path !== "/resumes/new/manual"),
+  },
+  {
     href: "/import-resume",
     label: "Import resume",
     matches: (path: string) => path.startsWith("/import-resume"),

@@ -2,6 +2,10 @@ import { z } from "zod";
 import { extractedValueSchema, safeProvenanceSchema } from "./review.js";
 import { importResumeResponseSchemaVersion } from "./responses.js";
 import { resumeDateSchema } from "./resume-date.js";
+import {
+  resumeEditorSectionOrderSchema,
+  structuredResumeContentSchema,
+} from "../manual-resume.js";
 
 const uuidSchema = z.string().uuid();
 const isoDateSchema = z.string().datetime();
@@ -131,6 +135,7 @@ const confirmedProfessionalLinkSchema = z
 
 export const confirmedResumeContentSchema = z
   .object({
+    sectionOrder: resumeEditorSectionOrderSchema.optional(),
     personal: z.array(confirmedSourcedTextSchema),
     contact: z.array(confirmedSourcedTextSchema),
     headline: confirmedSourcedTextSchema.optional(),
@@ -172,7 +177,13 @@ export const confirmedResumeContentSchema = z
         .strict(),
     ),
     skills: z.array(
-      z.object({ id: uuidSchema, name: confirmedSourcedTextSchema }).strict(),
+      z
+        .object({
+          id: uuidSchema,
+          name: confirmedSourcedTextSchema,
+          category: z.string().max(120).optional(),
+        })
+        .strict(),
     ),
     languages: z.array(
       z
@@ -208,6 +219,13 @@ export const confirmedResumeContentSchema = z
   })
   .strict();
 
+export const updateConfirmedStructuredResumeRequestSchema = z
+  .object({
+    expectedUpdatedAt: isoDateSchema,
+    content: structuredResumeContentSchema,
+  })
+  .strict();
+
 export const confirmedStructuredResumeReadResponseSchema = responseBaseSchema
   .extend({
     status: z.literal("confirmed_structured_resume"),
@@ -236,6 +254,9 @@ export type DiscardImportRequest = z.infer<typeof discardImportRequestSchema>;
 export type DiscardImportResponse = z.infer<typeof discardImportResponseSchema>;
 export type ConfirmedStructuredResumeReadResponse = z.infer<
   typeof confirmedStructuredResumeReadResponseSchema
+>;
+export type UpdateConfirmedStructuredResumeRequest = z.infer<
+  typeof updateConfirmedStructuredResumeRequestSchema
 >;
 
 void extractedValueSchema;

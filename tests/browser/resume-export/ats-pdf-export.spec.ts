@@ -18,7 +18,7 @@ test("canonical resume export produces selectable text in material reading order
 
   await page.goto(`/resumes/${resumeId}`);
   await expect(
-    page.getByRole("heading", { name: "Your resume is ready" }),
+    page.getByRole("heading", { name: "Edit your resume" }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Export PDF" }).click();
   await expect(page).toHaveURL(`/resumes/${resumeId}/export`);
