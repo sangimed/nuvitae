@@ -4,7 +4,7 @@ import {
   type CodexModelIdentifier,
 } from "./codex-model-selection.js";
 const CODEX_ENDPOINT = "https://chatgpt.com/backend-api/codex/responses";
-const CODEX_ORIGINATOR = "openclaw";
+const CODEX_ORIGINATOR = "nuvitae";
 const CODEX_USER_AGENT = "nuvitae-codex-direct-provider/1";
 const MAX_REQUEST_BYTES = 65_536;
 const MAX_BUFFERED_RESPONSE_BYTES = 1_048_576;

@@ -17,6 +17,7 @@ import {
 
 const authorizationEndpoint = "https://auth.openai.com/oauth/authorize";
 const clientId = "app_EMoamEEZ73f0CkXaXp7hrann";
+const originator = "nuvitae";
 const defaultCallbackPort = "1455";
 // The official/qualified Codex browser contract owns this exact loopback
 // callback path. The application exposes an alias for its provider-neutral
@@ -329,7 +330,7 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
     url.searchParams.set("state", state);
     url.searchParams.set("id_token_add_organizations", "true");
     url.searchParams.set("codex_cli_simplified_flow", "true");
-    url.searchParams.set("originator", "openclaw");
+    url.searchParams.set("originator", originator);
     return url.toString();
   }
 

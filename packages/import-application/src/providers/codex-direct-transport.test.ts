@@ -145,6 +145,13 @@ describe("CodexDirectTransport", () => {
     expect(
       (request.headers as Record<string, string>)["ChatGPT-Account-ID"],
     ).toBe("account-id");
+    expect((request.headers as Record<string, string>).originator).toBe(
+      "nuvitae",
+    );
+    expect((request.headers as Record<string, string>)["User-Agent"]).toBe(
+      "nuvitae-codex-direct-provider/1",
+    );
+    expect(JSON.stringify(request.headers)).not.toContain("openclaw");
   });
 
   it("A. accepts data-only SSE with response.completed", async () => {
