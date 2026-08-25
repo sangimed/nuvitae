@@ -1,7 +1,9 @@
 import { z } from "zod";
-import { extractedValueSchema, safeProvenanceSchema } from "./review.js";
+import {
+  effectiveResumeContentSchema,
+  extractedValueSchema,
+} from "./review.js";
 import { importResumeResponseSchemaVersion } from "./responses.js";
-import { resumeDateSchema } from "./resume-date.js";
 
 const uuidSchema = z.string().uuid();
 const isoDateSchema = z.string().datetime();
@@ -106,107 +108,7 @@ export const confirmedResumeSourceAvailabilitySchema = z.enum([
   "source_availability_unknown",
 ]);
 
-const confirmedSourcedTextSchema = z
-  .object({
-    value: z.string().max(4_000),
-    sourceStatus: z.enum([
-      "explicit_source",
-      "user_added",
-      "user_edited",
-      "source_deleted_minimal_provenance",
-    ]),
-    confidenceStatus: z.enum(["high", "medium", "low", "not_applicable"]),
-    inferenceStatus: z.enum(["not_inferred", "confirmed_inference"]),
-    provenance: safeProvenanceSchema,
-  })
-  .strict();
-
-const confirmedProfessionalLinkSchema = z
-  .object({
-    id: uuidSchema,
-    label: z.string().max(120).optional(),
-    url: confirmedSourcedTextSchema,
-  })
-  .strict();
-
-export const confirmedResumeContentSchema = z
-  .object({
-    personal: z.array(confirmedSourcedTextSchema),
-    contact: z.array(confirmedSourcedTextSchema),
-    headline: confirmedSourcedTextSchema.optional(),
-    summary: confirmedSourcedTextSchema.optional(),
-    workExperiences: z.array(
-      z
-        .object({
-          id: uuidSchema,
-          employerName: z.string().max(300),
-          employerLocation: z.string().max(200).optional(),
-          roles: z.array(
-            z
-              .object({
-                id: uuidSchema,
-                title: z.string().max(200),
-                location: z.string().max(200).optional(),
-                startDate: resumeDateSchema.optional(),
-                endDate: resumeDateSchema.optional(),
-                isOngoing: z.boolean(),
-                responsibilities: z.array(confirmedSourcedTextSchema),
-                achievements: z.array(confirmedSourcedTextSchema),
-              })
-              .strict(),
-          ),
-        })
-        .strict(),
-    ),
-    education: z.array(
-      z
-        .object({
-          id: uuidSchema,
-          institution: confirmedSourcedTextSchema,
-          credential: confirmedSourcedTextSchema.optional(),
-          fieldOfStudy: confirmedSourcedTextSchema.optional(),
-          location: confirmedSourcedTextSchema.optional(),
-          startDate: resumeDateSchema.optional(),
-          endDate: resumeDateSchema.optional(),
-        })
-        .strict(),
-    ),
-    skills: z.array(
-      z.object({ id: uuidSchema, name: confirmedSourcedTextSchema }).strict(),
-    ),
-    languages: z.array(
-      z
-        .object({
-          id: uuidSchema,
-          name: confirmedSourcedTextSchema,
-          proficiency: confirmedSourcedTextSchema.optional(),
-        })
-        .strict(),
-    ),
-    projects: z.array(
-      z
-        .object({
-          id: uuidSchema,
-          name: confirmedSourcedTextSchema,
-          description: confirmedSourcedTextSchema.optional(),
-          links: z.array(confirmedProfessionalLinkSchema),
-        })
-        .strict(),
-    ),
-    certifications: z.array(
-      z
-        .object({
-          id: uuidSchema,
-          name: confirmedSourcedTextSchema,
-          issuer: confirmedSourcedTextSchema.optional(),
-          issuedAt: resumeDateSchema.optional(),
-          expiresAt: resumeDateSchema.optional(),
-        })
-        .strict(),
-    ),
-    professionalLinks: z.array(confirmedProfessionalLinkSchema),
-  })
-  .strict();
+export const confirmedResumeContentSchema = effectiveResumeContentSchema;
 
 export const confirmedStructuredResumeReadResponseSchema = responseBaseSchema
   .extend({

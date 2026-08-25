@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type {
   ReviewDraftReadResponse,
   ReviewField,
@@ -25,11 +25,16 @@ import { ReviewWarning } from "./ReviewWarning";
 import { formatReviewDate, formatReviewDateRange } from "./review-date";
 import { reviewFieldLabel, reviewSectionLabel } from "./review-labels";
 import { recordImportTiming } from "./client";
+import {
+  createResumeRenderingModel,
+  ProfessionalResume,
+} from "../resume-renderer";
 
 export function ReviewStep(props: { readonly importId: string }) {
   const [draft, setDraft] = useState<ReviewDraftReadResponse | undefined>();
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
+  const [mobileMode, setMobileMode] = useState<"edit" | "preview">("edit");
   const [finalized, setFinalized] = useState<
     | {
         readonly kind: "confirmed";
@@ -92,6 +97,16 @@ export function ReviewStep(props: { readonly importId: string }) {
   async function refreshDraft() {
     const refreshed = await readReviewDraft({ importId: props.importId });
     if (refreshed.ok) setDraft(refreshed.response);
+  }
+
+  function switchModeFromKeyboard(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const nextMode = event.key === "ArrowLeft" ? "edit" : "preview";
+    setMobileMode(nextMode);
+    requestAnimationFrame(() => {
+      document.getElementById(`review-${nextMode}-mode-tab`)?.focus();
+    });
   }
 
   async function persistMutation(
@@ -249,84 +264,169 @@ export function ReviewStep(props: { readonly importId: string }) {
         />
       )}
 
-      <ReviewSummary draft={draft} />
-
-      <ConfirmationStep
-        importId={props.importId}
-        draft={draft}
-        disabled={pending || finalized !== undefined}
-        onConfirmed={(resumeUrl, userMessage) => {
-          setFinalized({ kind: "confirmed", resumeUrl, message: userMessage });
-          setPending(false);
-          window.history.replaceState(null, "", resumeUrl);
-        }}
-        onDiscarded={(userMessage) => {
-          setFinalized({ kind: "discarded", message: userMessage });
-          setPending(false);
-        }}
-        onStaleReview={refreshDraft}
-      />
-
-      {draft.sections.map((section) => (
-        <section
-          className="review-section"
-          key={section.section}
-          aria-labelledby={`${section.section}-review-heading`}
+      <div
+        className="review-mode-tabs"
+        role="tablist"
+        aria-label="Import review view"
+      >
+        <button
+          id="review-edit-mode-tab"
+          type="button"
+          role="tab"
+          aria-selected={mobileMode === "edit"}
+          aria-controls="review-edit-pane"
+          tabIndex={mobileMode === "edit" ? 0 : -1}
+          onClick={() => setMobileMode("edit")}
+          onKeyDown={switchModeFromKeyboard}
         >
-          <h2 id={`${section.section}-review-heading`}>
-            {reviewSectionLabel(section.section, section.label)}
-          </h2>
-          {section.fields.length === 0 ? (
-            <p>No imported information is active in this section.</p>
-          ) : null}
-          <SectionFields
-            fields={section.fields}
-            section={section.section}
-            pending={pending || finalized !== undefined}
-            onAction={mutate}
-            onConfirmReviewRequired={confirmReviewRequiredField}
+          Review
+        </button>
+        <button
+          id="review-preview-mode-tab"
+          type="button"
+          role="tab"
+          aria-selected={mobileMode === "preview"}
+          aria-controls="review-preview-pane"
+          tabIndex={mobileMode === "preview" ? 0 : -1}
+          onClick={() => setMobileMode("preview")}
+          onKeyDown={switchModeFromKeyboard}
+        >
+          Preview
+        </button>
+      </div>
+
+      <div className="review-visual-layout" data-mobile-mode={mobileMode}>
+        <div
+          id="review-edit-pane"
+          className="review-edit-pane"
+          role="tabpanel"
+          aria-labelledby="review-edit-mode-tab"
+        >
+          <ReviewSummary draft={draft} />
+
+          <ConfirmationStep
+            importId={props.importId}
+            draft={draft}
+            disabled={pending || finalized !== undefined}
+            onConfirmed={(resumeUrl, userMessage) => {
+              setFinalized({
+                kind: "confirmed",
+                resumeUrl,
+                message: userMessage,
+              });
+              setPending(false);
+              window.history.replaceState(null, "", resumeUrl);
+            }}
+            onDiscarded={(userMessage) => {
+              setFinalized({ kind: "discarded", message: userMessage });
+              setPending(false);
+            }}
+            onStaleReview={refreshDraft}
           />
-          {section.warnings.map((warning) => (
-            <ReviewWarning
-              key={warning.warningId}
-              warning={warning}
-              pending={pending || finalized !== undefined}
-              onResolve={(resolution) =>
-                mutate({
-                  type: "resolve_warning",
-                  warningId: warning.warningId,
-                  resolution,
-                })
-              }
-            />
+
+          {draft.sections.map((section) => (
+            <section
+              className="review-section"
+              key={section.section}
+              aria-labelledby={`${section.section}-review-heading`}
+            >
+              <h2 id={`${section.section}-review-heading`}>
+                {reviewSectionLabel(section.section, section.label)}
+              </h2>
+              {section.fields.length === 0 ? (
+                <p>No imported information is active in this section.</p>
+              ) : null}
+              <SectionFields
+                fields={section.fields}
+                section={section.section}
+                pending={pending || finalized !== undefined}
+                onAction={mutate}
+                onConfirmReviewRequired={confirmReviewRequiredField}
+              />
+              {section.warnings.map((warning) => (
+                <ReviewWarning
+                  key={warning.warningId}
+                  warning={warning}
+                  pending={pending || finalized !== undefined}
+                  onResolve={(resolution) =>
+                    mutate({
+                      type: "resolve_warning",
+                      warningId: warning.warningId,
+                      resolution,
+                    })
+                  }
+                />
+              ))}
+              <div className="action-row">
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() =>
+                    mutate({
+                      type: "add_field",
+                      section: section.section,
+                      fieldPath: `${section.section}.manual`,
+                      value: { kind: "text", value: "Added information" },
+                    })
+                  }
+                >
+                  Add information
+                </button>
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() =>
+                    mutate({
+                      type: "exclude_section",
+                      section: section.section,
+                    })
+                  }
+                >
+                  Exclude section
+                </button>
+              </div>
+            </section>
           ))}
-          <div className="action-row">
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() =>
-                mutate({
-                  type: "add_field",
-                  section: section.section,
-                  fieldPath: `${section.section}.manual`,
-                  value: { kind: "text", value: "Added information" },
-                })
-              }
-            >
-              Add information
-            </button>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() =>
-                mutate({ type: "exclude_section", section: section.section })
-              }
-            >
-              Exclude section
-            </button>
+        </div>
+
+        <aside
+          id="review-preview-pane"
+          className="resume-preview-pane review-preview-pane"
+          role="tabpanel"
+          aria-labelledby="review-preview-mode-tab"
+          aria-label="Imported resume preview"
+          data-preview-surface="professional-resume"
+          aria-busy={pending}
+        >
+          <div className="preview-heading">
+            <div>
+              <p className="eyebrow">Effective resume</p>
+              <h2>Resume preview</h2>
+            </div>
+            <p>
+              {pending ? "Updating…" : "Updates after each saved decision."}
+            </p>
           </div>
-        </section>
-      ))}
+          <div className="preview-document">
+            {draft.effectiveResume === undefined ? (
+              <div className="preview-error" role="status">
+                <h3>Preview unavailable</h3>
+                <p>
+                  Your review is safe. Retry the preview without losing your
+                  decisions.
+                </p>
+                <button type="button" disabled={pending} onClick={refreshDraft}>
+                  Retry preview
+                </button>
+              </div>
+            ) : (
+              <ProfessionalResume
+                model={createResumeRenderingModel(draft.effectiveResume)}
+              />
+            )}
+          </div>
+        </aside>
+      </div>
     </section>
   );
 }

@@ -52,6 +52,18 @@ export type StructuredResumeMappingResult =
       readonly blockers: readonly StructuredResumeMappingBlocker[];
     };
 
+export type EffectiveResumeContentMappingResult =
+  | { readonly ok: true; readonly content: StructuredResumeContent }
+  | {
+      readonly ok: false;
+      readonly blockers: readonly StructuredResumeMappingBlocker[];
+    };
+
+export interface MapEffectiveImportDraftContentInput {
+  readonly draft: ImportDraft;
+  readonly childIds: StructuredResumeChildIdFactory;
+}
+
 export interface MapReviewedImportDraftInput {
   readonly draft: ImportDraft;
   readonly corrections: readonly UserCorrection[];
@@ -103,6 +115,38 @@ export function mapReviewedImportDraftToStructuredResume(
       });
     }
   }
+
+  const effective = mapEffectiveImportDraftContent(input);
+  if (!effective.ok) {
+    return { ok: false, blockers: [...blockers, ...effective.blockers] };
+  }
+  if (blockers.length > 0) return { ok: false, blockers };
+
+  return {
+    ok: true,
+    resume: {
+      id: input.structuredResumeId,
+      ownerUserId: input.draft.ownerUserId,
+      sourceImportDraftId: input.draft.id,
+      provenanceLabel: "imported_from_initial_resume",
+      confirmationStatus: "confirmed",
+      content: effective.content,
+      createdAt: input.confirmedAt,
+      updatedAt: input.confirmedAt,
+    },
+  };
+}
+
+/**
+ * Derives the resume content currently eligible to survive confirmation.
+ * Review lifecycle blockers remain confirmation concerns; excluded fields and
+ * unconfirmed inference are always omitted by the shared inclusion rule.
+ */
+export function mapEffectiveImportDraftContent(
+  input: MapEffectiveImportDraftContentInput,
+): EffectiveResumeContentMappingResult {
+  const blockers: StructuredResumeMappingBlocker[] = [];
+  const activeIncluded = input.draft.fields.filter(isIncludedField);
 
   const content = emptyContent();
   const singular: Record<"headline" | "summary", SourcedText[]> = {
@@ -167,19 +211,7 @@ export function mapReviewedImportDraftToStructuredResume(
     certifications: finishCertifications(grouped.certifications),
   };
 
-  return {
-    ok: true,
-    resume: {
-      id: input.structuredResumeId,
-      ownerUserId: input.draft.ownerUserId,
-      sourceImportDraftId: input.draft.id,
-      provenanceLabel: "imported_from_initial_resume",
-      confirmationStatus: "confirmed",
-      content: finished,
-      createdAt: input.confirmedAt,
-      updatedAt: input.confirmedAt,
-    },
-  };
+  return { ok: true, content: finished };
 }
 
 export function reduceStructuredResumeSourceProvenance(

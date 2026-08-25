@@ -97,5 +97,35 @@ describe("grounded Semantic V2 review provenance", () => {
       warningIds: ["30000000-0000-4000-8000-000000000001"],
     });
     expect(JSON.stringify(summary?.provenance)).not.toContain("quote");
+    expect(response.effectiveResume?.summary).toBeUndefined();
+    expect(JSON.stringify(response.effectiveResume)).not.toContain(value);
+  });
+
+  it("projects a confirmed correction into the effective canonical content", () => {
+    const current = draft();
+    const response = buildReviewDraftResponse({
+      requestId: "40000000-0000-4000-8000-000000000002",
+      importId: current.importedDocumentId,
+      draft: {
+        ...current,
+        reviewRevision: 2,
+        fields: current.fields.map((field) => ({
+          ...field,
+          value: { kind: "text" as const, value: "Corrected grounded summary" },
+          sourceStatus: "user_edited" as const,
+          inferenceStatus: "not_inferred" as const,
+          reviewStatus: "edited" as const,
+        })),
+      },
+    });
+
+    expect(response.effectiveResume?.summary).toMatchObject({
+      value: "Corrected grounded summary",
+      sourceStatus: "user_edited",
+      inferenceStatus: "not_inferred",
+    });
+    expect(response.effectiveResume?.summary?.provenance.kind).toBe(
+      "user_edited",
+    );
   });
 });
