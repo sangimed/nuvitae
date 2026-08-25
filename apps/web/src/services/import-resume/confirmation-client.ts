@@ -5,6 +5,8 @@ import {
   type ConfirmStructuredResumeRequest,
   type ConfirmStructuredResumeResponse,
   type ConfirmedStructuredResumeReadResponse,
+  updateConfirmedStructuredResumeRequestSchema,
+  type StructuredResumeContentContract,
 } from "@nuvitae/contracts";
 import { createBrowserUuid } from "../browser-ids";
 import { apiPath } from "../api-config";
@@ -17,6 +19,7 @@ export type ConfirmationClientErrorCategory =
   | "no_user_confirmed_field"
   | "reviewed_content_not_mappable"
   | "stale_review"
+  | "stale_update"
   | "expired"
   | "concurrent_confirmation"
   | "temporarily_unavailable"
@@ -98,6 +101,54 @@ export async function readConfirmedStructuredResume(input: {
         ...(input.signal === undefined ? {} : { signal: input.signal }),
       },
     );
+    if (!response.ok) return mapResponseError(response.status);
+    const parsed = confirmedStructuredResumeReadResponseSchema.safeParse(
+      await response.json(),
+    );
+    if (!parsed.success) return malformed();
+    return { ok: true, response: parsed.data };
+  } catch (error) {
+    return mapThrown(error);
+  }
+}
+
+export async function saveConfirmedStructuredResume(input: {
+  readonly resumeId: string;
+  readonly expectedUpdatedAt: string;
+  readonly content: StructuredResumeContentContract;
+  readonly signal?: AbortSignal;
+  readonly fetchImpl?: typeof fetch;
+}): Promise<ConfirmationClientOutcome<ConfirmedStructuredResumeReadResponse>> {
+  const request = updateConfirmedStructuredResumeRequestSchema.safeParse({
+    expectedUpdatedAt: input.expectedUpdatedAt,
+    content: input.content,
+  });
+  if (!request.success) {
+    return {
+      ok: false,
+      category: "unexpected_failure",
+      message: "Fix the highlighted fields before saving.",
+    };
+  }
+  const fetcher = input.fetchImpl ?? fetch;
+  try {
+    const response = await fetcher(
+      apiPath(`/structured-resumes/${input.resumeId}`),
+      {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(request.data),
+        ...(input.signal === undefined ? {} : { signal: input.signal }),
+      },
+    );
+    if (response.status === 409) {
+      return {
+        ok: false,
+        category: "stale_update",
+        message: "This resume changed in another tab. Reload before saving.",
+      };
+    }
     if (!response.ok) return mapResponseError(response.status);
     const parsed = confirmedStructuredResumeReadResponseSchema.safeParse(
       await response.json(),

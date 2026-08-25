@@ -10,6 +10,7 @@ import type { ImportResumeRepository } from "@nuvitae/persistence/ports";
 import { DataSource } from "typeorm";
 import { TypeOrmManualResumeDraftRepository } from "./typeorm-manual-resume-draft.repository.js";
 import type { ManualResumeDraftRepository } from "../manual-resume/manual-resume.repository.js";
+import { TypeOrmResumeWorkspaceRepository } from "./typeorm-resume-workspace.repository.js";
 
 export const API_IMPORT_RESUME_REPOSITORY = Symbol(
   "API_IMPORT_RESUME_REPOSITORY",
@@ -25,6 +26,9 @@ export const API_START_IMPORT_REPOSITORY = Symbol(
 );
 export const API_MANUAL_RESUME_DRAFT_REPOSITORY = Symbol(
   "API_MANUAL_RESUME_DRAFT_REPOSITORY",
+);
+export const API_RESUME_WORKSPACE_REPOSITORY = Symbol(
+  "API_RESUME_WORKSPACE_REPOSITORY",
 );
 
 /**
@@ -69,6 +73,12 @@ export const apiPersistenceRepositoryProviders: Provider[] = [
       new TypeOrmManualResumeDraftRepository(dataSource),
     inject: [DataSource],
   },
+  {
+    provide: API_RESUME_WORKSPACE_REPOSITORY,
+    useFactory: (dataSource: DataSource) =>
+      new TypeOrmResumeWorkspaceRepository(dataSource),
+    inject: [DataSource],
+  },
 ];
 
 /**
@@ -89,6 +99,7 @@ export const apiPersistenceRepositoryProviders: Provider[] = [
     API_IMPORT_CONFIRMATION_REPOSITORY,
     API_START_IMPORT_REPOSITORY,
     API_MANUAL_RESUME_DRAFT_REPOSITORY,
+    API_RESUME_WORKSPACE_REPOSITORY,
   ],
 })
 export class ApiPersistenceModule {}

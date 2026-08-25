@@ -12,6 +12,7 @@ import { ProviderRuntimeConnections1722600000000 } from "./migrations/1722600000
 import { ImportLimitAttempts1785801600000 } from "./migrations/1785801600000-ImportLimitAttempts.js";
 import { communityAuthPersistenceEntities } from "./entities/community-auth.entities.js";
 import { CommunityInstanceAuth1785888000000 } from "./migrations/1785888000000-CommunityInstanceAuth.js";
+import { StructuredResumeSectionOrder1785974400000 } from "./migrations/1785974400000-StructuredResumeSectionOrder.js";
 
 export interface PersistenceConfig {
   readonly host: string;
@@ -158,6 +159,7 @@ export function createTypeOrmOptions(
       ProviderRuntimeConnections1722600000000,
       ImportLimitAttempts1785801600000,
       CommunityInstanceAuth1785888000000,
+      StructuredResumeSectionOrder1785974400000,
     ],
     migrationsTableName: "typeorm_migrations",
     migrationsRun: false,

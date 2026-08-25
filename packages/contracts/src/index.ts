@@ -17,3 +17,4 @@ export * from "./import-resume/semantic-extraction.js";
 export * from "./import-resume/semantic-extraction-v2.js";
 export * from "./import-resume/resume-date.js";
 export * from "./manual-resume.js";
+export * from "./resume-workspace.js";

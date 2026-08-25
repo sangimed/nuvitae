@@ -22,6 +22,9 @@ export function toPublicStructuredResumeContent(
     provenance: safeProvenance(value),
   });
   return {
+    ...(content.sectionOrder === undefined
+      ? {}
+      : { sectionOrder: [...content.sectionOrder] }),
     personal: content.personal.map(text),
     contact: content.contact.map(text),
     ...(content.headline === undefined
@@ -63,6 +66,7 @@ export function toPublicStructuredResumeContent(
     skills: content.skills.map((item) => ({
       id: item.id,
       name: text(item.name),
+      ...(item.category === undefined ? {} : { category: item.category }),
     })),
     languages: content.languages.map((item) => ({
       id: item.id,
