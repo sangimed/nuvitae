@@ -32,6 +32,7 @@ import {
   START_IMPORT_ID_GENERATOR,
   START_IMPORT_PRIVACY_LOGGER,
 } from "../ports/tokens.js";
+import { toPublicStructuredResumeContent } from "./structured-resume-response.js";
 
 export type ConfirmationServiceResult<T> =
   | { readonly ok: true; readonly response: T }
@@ -154,7 +155,7 @@ export class ConfirmStructuredResumeService {
         structuredResumeId: resume.id,
         confirmationStatus: "confirmed",
         provenanceLabel: "imported_from_initial_resume",
-        content: toConfirmedContent(resume),
+        content: toPublicStructuredResumeContent(resume.content),
         createdAt: resume.createdAt.toISOString(),
         updatedAt: resume.updatedAt.toISOString(),
         sourceAvailability: "source_availability_unknown",

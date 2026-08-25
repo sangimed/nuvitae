@@ -69,6 +69,24 @@ describe("import review draft contract", () => {
         section("certifications"),
         section("professional_links"),
       ],
+      effectiveResume: {
+        personal: [],
+        contact: [],
+        summary: {
+          value: "Synthetic summary",
+          sourceStatus: "explicit_source",
+          confidenceStatus: "high",
+          inferenceStatus: "not_inferred",
+          provenance: { kind: "pdf", pageNumber: 2 },
+        },
+        workExperiences: [],
+        education: [],
+        skills: [],
+        languages: [],
+        projects: [],
+        certifications: [],
+        professionalLinks: [],
+      },
       activeFieldCount: 1,
       unresolvedWarningCount: 1,
       readyToConfirm: false,
@@ -87,6 +105,7 @@ describe("import review draft contract", () => {
       "certifications",
       "professional_links",
     ]);
+    expect(response.effectiveResume?.summary?.value).toBe("Synthetic summary");
     const serialized = JSON.stringify(response);
     expect(serialized).not.toContain("ownerUserId");
     expect(serialized).not.toContain("storageKey");

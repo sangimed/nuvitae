@@ -43,6 +43,7 @@ describe("CodexOAuthLoginBoundary (T213)", () => {
     expect(JSON.stringify(result)).not.toContain("access_token");
     expect(JSON.stringify(result)).not.toContain("refresh_token");
     expect(JSON.stringify(result)).not.toContain("code_verifier");
+    expect(result.browserHandoff!.authorizationUrl).not.toContain("openclaw");
   });
 
   it("matches the qualified live OAuth request contract structurally", async () => {
@@ -105,7 +106,7 @@ describe("CodexOAuthLoginBoundary (T213)", () => {
         authorizationExtras: {
           idTokenAddOrganizations: "true",
           codexCliSimplifiedFlow: "true",
-          originator: "openclaw",
+          originator: "nuvitae",
         },
       });
     } finally {

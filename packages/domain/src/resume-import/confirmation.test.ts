@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ExtractedField, ImportDraft, ImportWarning } from "./types.js";
 import {
+  mapEffectiveImportDraftContent,
   mapReviewedImportDraftToStructuredResume,
   reduceStructuredResumeSourceProvenance,
 } from "./structured-resume-mapper.js";
@@ -8,6 +9,53 @@ import {
 const now = new Date("2026-07-29T09:00:00.000Z");
 
 describe("structured resume confirmation mapper", () => {
+  it("derives preview content from the same accepted, rejected, and corrected fields", () => {
+    const result = mapEffectiveImportDraftContent({
+      draft: draft({
+        status: "review_required",
+        fields: [
+          field({
+            id: id(3),
+            section: "personal",
+            fieldPath: "personal.name",
+            value: { kind: "text", value: "Accepted person" },
+          }),
+          field({
+            id: id(4),
+            section: "contact",
+            fieldPath: "contact.email",
+            value: { kind: "text", value: "rejected@example.invalid" },
+            reviewStatus: "excluded",
+          }),
+          field({
+            id: id(5),
+            section: "summary",
+            fieldPath: "summary",
+            value: { kind: "text", value: "Corrected summary" },
+            sourceStatus: "user_edited",
+            reviewStatus: "edited",
+          }),
+          field({
+            id: id(6),
+            section: "headline",
+            fieldPath: "headline",
+            value: { kind: "text", value: "Unconfirmed inference" },
+            sourceStatus: "inferred",
+            inferenceStatus: "inferred_needs_review",
+          }),
+        ],
+      }),
+      childIds: ids(),
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.content.personal[0]?.value).toBe("Accepted person");
+    expect(result.content.contact).toEqual([]);
+    expect(result.content.summary?.value).toBe("Corrected summary");
+    expect(result.content.headline).toBeUndefined();
+  });
+
   it("requires ready_to_confirm and blocks unresolved warnings", () => {
     const result = mapReviewedImportDraftToStructuredResume({
       draft: draft({ status: "review_required", warnings: [warning()] }),
