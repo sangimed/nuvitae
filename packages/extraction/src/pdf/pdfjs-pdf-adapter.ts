@@ -20,6 +20,9 @@ import {
 } from "../extraction-failures.js";
 import { inspectPdfStructuralSafety } from "./pdf-safety.js";
 
+const maximumHttpAnnotationsPerPage = 100;
+const maximumHttpAnnotationLength = 2_048;
+
 /**
  * PDF item indexes and global reading order are zero-based. Page numbers are
  * one-based. Items retain the order returned by PDF.js.
@@ -117,6 +120,43 @@ export class PdfJsPdfAdapter
                     }),
                   }),
                 );
+                readingOrder += 1;
+              }
+
+              const annotations = await page.getAnnotations({
+                intent: "display",
+              });
+              throwIfAborted(request.abortSignal);
+              const httpAnnotations = annotations
+                .map((annotation) => httpAnnotation(annotation))
+                .filter(
+                  (annotation): annotation is HttpAnnotation =>
+                    annotation !== null,
+                );
+              if (httpAnnotations.length > maximumHttpAnnotationsPerPage) {
+                throw new ExtractionOperationError("resource_limit");
+              }
+              const existingText = new Set(items.map((item) => item.text));
+              for (const annotation of httpAnnotations) {
+                if (existingText.has(annotation.url)) continue;
+                const itemIndex = items.length;
+                items.push(
+                  Object.freeze({
+                    text: annotation.url,
+                    provenance: Object.freeze({
+                      kind: "pdf_text_item" as const,
+                      pageNumber,
+                      itemIndex,
+                      readingOrder,
+                      boundingBox: Object.freeze({
+                        ...annotation.boundingBox,
+                        unit: "pdf_point" as const,
+                      }),
+                      hasEol: true,
+                    }),
+                  }),
+                );
+                existingText.add(annotation.url);
                 readingOrder += 1;
               }
 
@@ -260,7 +300,51 @@ function normalizePdfText(value: string): string {
   return value.replaceAll("\u00a0", " ").replace(/\r\n?/g, "\n");
 }
 
-function finiteNumber(value: number | undefined): number {
+interface HttpAnnotation {
+  readonly url: string;
+  readonly boundingBox: {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+  };
+}
+
+function httpAnnotation(annotation: unknown): HttpAnnotation | null {
+  if (typeof annotation !== "object" || annotation === null) return null;
+  const candidate = annotation as {
+    readonly url?: unknown;
+    readonly rect?: unknown;
+  };
+  if (typeof candidate.url !== "string") return null;
+  if (candidate.url.length > maximumHttpAnnotationLength) return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(candidate.url);
+  } catch {
+    return null;
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
+  const rect =
+    Array.isArray(candidate.rect) && candidate.rect.length === 4
+      ? candidate.rect.map((value) => finiteNumber(value))
+      : [0, 0, 0, 0];
+  const x1 = rect[0] ?? 0;
+  const y1 = rect[1] ?? 0;
+  const x2 = rect[2] ?? x1;
+  const y2 = rect[3] ?? y1;
+  return Object.freeze({
+    url: parsed.href,
+    boundingBox: Object.freeze({
+      x: Math.min(x1, x2),
+      y: Math.min(y1, y2),
+      width: Math.abs(x2 - x1),
+      height: Math.abs(y2 - y1),
+    }),
+  });
+}
+
+function finiteNumber(value: unknown): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 

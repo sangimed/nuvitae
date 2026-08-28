@@ -112,7 +112,7 @@ describe("CodexDirectTransport", () => {
       headerTimeoutMs: 30_000,
       firstOutputTimeoutMs: 60_000,
       activeStreamInactivityTimeoutMs: 15_000,
-      totalGenerationTimeoutMs: 90_000,
+      totalGenerationTimeoutMs: 150_000,
     });
   });
 
@@ -1179,7 +1179,7 @@ describe("CodexDirectTransport", () => {
           onTiming: (event) => timing.push(event),
         },
       );
-      await vi.advanceTimersByTimeAsync(90_000);
+      await vi.advanceTimersByTimeAsync(150_000);
       await expect(resultPromise).resolves.toEqual({
         ok: false,
         category: "timeout",

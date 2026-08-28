@@ -131,13 +131,14 @@ describe("buildSemanticParseRequest", () => {
     ).toEqual(["space", undefined, undefined]);
   });
 
-  it("records conservative same-line PDF continuations but rejects wraps and columns", () => {
+  it("records source-proven same-line and wrapped PDF continuations but rejects columns", () => {
     const pdf = (
       text: string,
       order: number,
       x: number,
       y: number,
       width: number,
+      hasEol = false,
     ): ResumeSourceFragment => ({
       text,
       order,
@@ -148,19 +149,53 @@ describe("buildSemanticParseRequest", () => {
         itemIndex: order,
         readingOrder: order,
         boundingBox: { x, y, width, height: 10, unit: "pdf_point" },
-        hasEol: false,
+        hasEol,
       },
     });
     const request = buildSemanticParseRequest(document, [
-      pdf("Senior Backend", 0, 10, 700, 70),
+      pdf("Senior Backend", 0, 10, 700, 70, false),
       pdf("Engineer", 1, 82, 700, 40),
-      pdf("Wrapped", 2, 10, 686, 45),
-      pdf("Other column", 3, 300, 686, 60),
+      pdf("Wrapped first line", 2, 10, 686, 90, true),
+      pdf("wrapped continuation", 3, 10, 674, 85),
+      pdf("Other column", 4, 300, 674, 60),
     ]);
 
     expect(
       request.sourceFragments.map((fragment) => fragment.continuationToNext),
-    ).toEqual(["space", undefined, undefined, undefined]);
+    ).toEqual(["space", undefined, "space", undefined, undefined]);
+  });
+
+  it("records a bounded vertical continuation between adjacent PDF list bullets", () => {
+    const pdf = (
+      text: string,
+      order: number,
+      x: number,
+      y: number,
+      width: number,
+      height: number,
+      hasEol: boolean,
+    ): ResumeSourceFragment => ({
+      text,
+      order,
+      format: "pdf",
+      location: {
+        kind: "pdf_text_item",
+        pageNumber: 1,
+        itemIndex: order,
+        readingOrder: order,
+        boundingBox: { x, y, width, height, unit: "pdf_point" },
+        hasEol,
+      },
+    });
+    const request = buildSemanticParseRequest(document, [
+      pdf("First project detail", 0, 39, 650, 120, 11, false),
+      pdf("•", 1, 39, 636, 0, 1, false),
+      pdf("Second project detail", 2, 39, 636, 130, 11, false),
+    ]);
+
+    expect(
+      request.sourceFragments.map((fragment) => fragment.continuationToNext),
+    ).toEqual(["space", "none", undefined]);
   });
 
   it("keeps a same-line PDF continuation across only ignorable empty PDF.js items", () => {

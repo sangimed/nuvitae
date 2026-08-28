@@ -532,13 +532,24 @@ function emitV2FieldDiagnostic(
 const semanticInstructions = `${semanticParserInstructions} Use minified JSON serialization.`;
 
 function buildSemanticInput(request: ResumeSemanticParseRequest): string {
+  const fragmentId = (order: number) => `fragment-${order + 1}`;
   return JSON.stringify({
     contract: "nuvitae.semantic-extraction.v2",
     document: {
       format: request.documentFormat,
       language: request.languageContext.detectedLanguage,
+      completenessAudit: {
+        bulletStartFragmentIds: request.sourceFragments
+          .filter((fragment) =>
+            /^[•●▪◦·‣⁃*-]$/u.test(fragment.text.normalize("NFKC").trim()),
+          )
+          .map((fragment) => fragmentId(fragment.order)),
+        longFormCandidateFragmentIds: request.sourceFragments
+          .filter((fragment) => fragment.text.length >= 60)
+          .map((fragment) => fragmentId(fragment.order)),
+      },
       fragments: request.sourceFragments.map((fragment) => ({
-        fragmentId: `fragment-${fragment.order + 1}`,
+        fragmentId: fragmentId(fragment.order),
         order: fragment.order,
         text: fragment.text,
         ...(fragment.continuationToNext === undefined ||

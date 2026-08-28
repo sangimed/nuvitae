@@ -3,6 +3,39 @@ import { describe, expect, it } from "vitest";
 import { semanticParserInstructions } from "./semantic-parser-instructions.js";
 
 describe("Semantic V2 parser instructions", () => {
+  it("requires an exhaustive document-wide inventory before compact output", () => {
+    const completenessBlock = semanticParserInstructions.indexOf(
+      "DOCUMENT-WIDE COMPLETENESS PRIORITY",
+    );
+    const genericOmissionGuidance = semanticParserInstructions.indexOf(
+      "GENERIC COMPACT OMISSION",
+    );
+
+    expect(completenessBlock).toBeGreaterThanOrEqual(0);
+    expect(genericOmissionGuidance).toBeGreaterThan(completenessBlock);
+    expect(semanticParserInstructions).toContain(
+      "every distinct responsibility and achievement bullet",
+    );
+    expect(semanticParserInstructions).toContain(
+      "inspect every listed bullet start and long-form candidate",
+    );
+    expect(semanticParserInstructions).toContain(
+      "A standalone bullet-marker fragment connected to following text by continuationToNext starts one source bullet.",
+    );
+    expect(semanticParserInstructions).toContain(
+      "preserve every bullet fact in its description in source order",
+    );
+    expect(semanticParserInstructions).toContain(
+      "Never sample, collapse, paraphrase, or select only representative bullets.",
+    );
+    expect(semanticParserInstructions).toContain(
+      "A profile paragraph between the contact/headline area and the next named section is a summary even when it has no Summary heading",
+    );
+    expect(semanticParserInstructions).toContain(
+      "Compact JSON means omitting only absent keys and whitespace; it never means omitting facts",
+    );
+  });
+
   it("prioritizes complete, grounded Education before compact omission guidance", () => {
     const educationBlock = semanticParserInstructions.indexOf(
       "EDUCATION COMPLETENESS PRIORITY",
@@ -115,7 +148,7 @@ describe("Semantic V2 parser instructions", () => {
       "EDUCATION COMPLETENESS PRIORITY",
     );
     const genericOmission = semanticParserInstructions.indexOf(
-      "For generic compact output, omit empty collection properties",
+      "GENERIC COMPACT OMISSION",
     );
 
     expect(educationPriority).toBeGreaterThanOrEqual(0);

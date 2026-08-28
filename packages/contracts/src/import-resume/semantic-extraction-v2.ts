@@ -9,7 +9,8 @@ export const nuvitaeSemanticExtractionV2ResponseVersion =
   "nuvitae.semantic-extraction.v2" as const;
 
 export const maxSemanticExtractionV2ResponseJsonBytes = 256_000;
-export const maxSemanticExtractionV2SourceRefs = 8;
+/** Allows complete multi-line summaries and project descriptions from dense PDFs. */
+export const maxSemanticExtractionV2SourceRefs = 32;
 export const maxSemanticExtractionV2QuoteLength = 2_000;
 /** Matches the existing review/draft text ceiling for long-form source text. */
 export const maxSemanticExtractionV2ValueLength = 4_000;

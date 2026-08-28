@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { importResumeResponseSchemaVersion } from "./responses.js";
 import { resumeDateSchema } from "./resume-date.js";
+import { maxSemanticExtractionV2SourceRefs } from "./semantic-extraction-v2.js";
 
 const uuidSchema = z.string().uuid();
 const isoDateSchema = z.string().datetime();
@@ -130,7 +131,7 @@ export const safeProvenanceSchema = z.discriminatedUnion("kind", [
             .strict(),
         )
         .min(1)
-        .max(8),
+        .max(maxSemanticExtractionV2SourceRefs),
     })
     .strict(),
 ]);
@@ -179,7 +180,7 @@ const safeOriginalProvenanceSchema = z.discriminatedUnion("kind", [
             .strict(),
         )
         .min(1)
-        .max(8),
+        .max(maxSemanticExtractionV2SourceRefs),
     })
     .strict(),
 ]);

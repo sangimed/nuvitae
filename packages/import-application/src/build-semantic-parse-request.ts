@@ -4,7 +4,10 @@ import {
   type ResumeSemanticParseRequest,
 } from "@nuvitae/contracts";
 import type { ImportedDocument } from "@nuvitae/domain";
-import type { ResumeSourceFragment } from "@nuvitae/extraction";
+import type {
+  PdfTextItemProvenance,
+  ResumeSourceFragment,
+} from "@nuvitae/extraction";
 
 /** Builds the provider-neutral request from normalized extraction fragments. */
 export function buildSemanticParseRequest(
@@ -104,12 +107,19 @@ function continuationBetween(
     left.location.kind !== "pdf_text_item" ||
     right.location.kind !== "pdf_text_item" ||
     left.location.pageNumber !== right.location.pageNumber ||
-    left.location.hasEol !== false ||
-    !isIgnorablePdfGap(physicalSequence)
+    !isContiguousPdfPhysicalSequence(physicalSequence)
   )
     return undefined;
   const leftBox = left.location.boundingBox;
   const rightBox = right.location.boundingBox;
+  if (isSourceProvenWrappedPdfLine(left.location, right.location))
+    return "space";
+  if (
+    isSourceProvenPdfListContinuation(left.location, right.location, right.text)
+  )
+    return "space";
+  if (!isIgnorablePdfGap(physicalSequence)) return undefined;
+  if (left.location.hasEol !== false) return undefined;
   const height = Math.min(leftBox.height, rightBox.height);
   if (!Number.isFinite(height) || height <= 0) return undefined;
   if (Math.abs(leftBox.y - rightBox.y) > height * 0.2) return undefined;
@@ -120,6 +130,42 @@ function continuationBetween(
   if (/\s$/u.test(left.text) || /^\s/u.test(right.text))
     return continuationFromExtractedText(left.text, right.text);
   return gap > contactTolerance ? "space" : "none";
+}
+
+function isSourceProvenWrappedPdfLine(
+  left: PdfTextItemProvenance,
+  right: PdfTextItemProvenance,
+): boolean {
+  if (left.hasEol !== true) return false;
+  const leftBox = left.boundingBox;
+  const rightBox = right.boundingBox;
+  const averageHeight = (leftBox.height + rightBox.height) / 2;
+  if (!Number.isFinite(averageHeight) || averageHeight <= 0) return false;
+  const heightDifference = Math.abs(leftBox.height - rightBox.height);
+  const baselineDrop = leftBox.y - rightBox.y;
+  return (
+    heightDifference <= averageHeight * 0.2 &&
+    Math.abs(leftBox.x - rightBox.x) <= averageHeight * 0.3 &&
+    baselineDrop >= averageHeight * 0.75 &&
+    baselineDrop <= averageHeight * 1.6
+  );
+}
+
+function isSourceProvenPdfListContinuation(
+  left: PdfTextItemProvenance,
+  right: PdfTextItemProvenance,
+  rightText: string,
+): boolean {
+  if (!/^[•●▪◦·‣⁃*-]$/u.test(normalizeFragmentText(rightText))) return false;
+  const leftBox = left.boundingBox;
+  const rightBox = right.boundingBox;
+  if (!Number.isFinite(leftBox.height) || leftBox.height <= 0) return false;
+  const baselineDrop = leftBox.y - rightBox.y;
+  return (
+    Math.abs(leftBox.x - rightBox.x) <= leftBox.height &&
+    baselineDrop >= leftBox.height * 0.5 &&
+    baselineDrop <= leftBox.height * 2.5
+  );
 }
 
 function hasContiguousReadingOrder(
@@ -158,15 +204,24 @@ function isContiguousDocxRunSequence(
 function isIgnorablePdfGap(
   fragments: readonly ResumeSourceFragment[],
 ): boolean {
+  if (!isContiguousPdfPhysicalSequence(fragments)) return false;
+  return fragments.every((fragment, index) => {
+    if (fragment.location.kind !== "pdf_text_item") return false;
+    return index === fragments.length - 1 || fragment.location.hasEol === false;
+  });
+}
+
+function isContiguousPdfPhysicalSequence(
+  fragments: readonly ResumeSourceFragment[],
+): boolean {
   return fragments.every((fragment, index) => {
     if (fragment.location.kind !== "pdf_text_item") return false;
     const previous = fragments[index - 1];
     if (previous === undefined) return true;
-    if (previous.location.kind !== "pdf_text_item") return false;
     return (
+      previous.location.kind === "pdf_text_item" &&
       previous.location.pageNumber === fragment.location.pageNumber &&
-      previous.location.itemIndex + 1 === fragment.location.itemIndex &&
-      (index === fragments.length - 1 || fragment.location.hasEol === false)
+      previous.location.itemIndex + 1 === fragment.location.itemIndex
     );
   });
 }

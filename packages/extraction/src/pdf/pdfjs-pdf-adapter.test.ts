@@ -177,7 +177,7 @@ describe("PdfJsPdfAdapter", () => {
     });
   });
 
-  it("accepts ordinary URI annotations without exposing or dereferencing URLs", async () => {
+  it("extracts ordinary HTTP URI annotations without dereferencing them", async () => {
     const bytes = buildStructuralPdf({ cases: ["uri", "uri", "uri"] });
     const adapter = new PdfJsPdfAdapter(readerFor({ source: bytes }), {
       maximumFileSizeBytes: 1_000_000,
@@ -195,9 +195,12 @@ describe("PdfJsPdfAdapter", () => {
         ok: true,
         value: { renderedPageCount: 1 },
       });
-      await expect(
-        adapter.extractSelectableText(request("source")),
-      ).resolves.toMatchObject({ ok: true });
+      const result = await adapter.extractSelectableText(request("source"));
+      expect(result).toMatchObject({ ok: true });
+      if (!result.ok) throw new Error("expected successful extraction");
+      expect(result.value[0]?.items.map((item) => item.text)).toContain(
+        "https://professional.example.test/profile",
+      );
     } finally {
       globalThis.fetch = originalFetch;
     }

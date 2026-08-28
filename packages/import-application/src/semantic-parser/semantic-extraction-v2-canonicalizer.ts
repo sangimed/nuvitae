@@ -714,13 +714,45 @@ function groundAtom(
     rejected.push({ path, code: "malformed_source_ref" });
     return undefined;
   }
-  const parsed = semanticExtractionV2AtomSchema.safeParse(raw);
+  // Provider-owned metadata is not part of Nuvitae's atom contract. Project
+  // only the two allowed members, then apply the unchanged strict shape and
+  // grounding checks below. Malformed values or references still fail closed.
+  const parsed = semanticExtractionV2AtomSchema.safeParse({
+    value: raw.value,
+    sourceRefs: raw.sourceRefs,
+  });
   if (!parsed.success) {
     rejected.push({ path, code: "malformed_atom" });
     return undefined;
   }
+  let references = parsed.data.sourceRefs;
   const longForm = isLongFormFieldPath(path);
-  const references = parsed.data.sourceRefs;
+  if (!longForm && references.length > 1) {
+    const independentlyGrounding = references.filter((candidate) => {
+      const resolution = registry.resolve(candidate);
+      if (!resolution.ok) return false;
+      const offset = findValueOffset(
+        resolution,
+        parsed.data.value,
+        valueKindForPath(path),
+      );
+      return (
+        offset !== undefined &&
+        findValueOffset(
+          resolution,
+          parsed.data.value,
+          valueKindForPath(path),
+          offset + 1,
+        ) === undefined
+      );
+    });
+    // A provider may over-cite contextual fragments. When exactly one cited
+    // fragment proves the complete scalar, retain that proof and discard only
+    // the unrelated citations. Split scalars still use the strict continuation
+    // path below.
+    if (independentlyGrounding.length === 1)
+      references = independentlyGrounding;
+  }
   const reference = references[0];
   if (reference === undefined) {
     rejected.push({ path, code: "missing_source_refs" });

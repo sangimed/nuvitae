@@ -114,6 +114,27 @@ describe("grounded split-scalar evidence", () => {
     expect(values(result)).toContain("Senior Backend Engineer");
   });
 
+  it("keeps the unique complete proof when a provider over-cites contextual fragments", () => {
+    const fragments = Array.from({ length: 9 }, (_, order) => ({
+      order,
+      line: order + 1,
+      text: order === 4 ? "Senior Backend Engineer" : `Context ${order + 1}`,
+    }));
+    const result = canonical({
+      fragments,
+      sectionOverrides: {
+        headline: atom(
+          "Senior Backend Engineer",
+          fragments.map((fragment, index) => ref(index + 1, fragment.text)),
+        ),
+      },
+    });
+
+    expect(values(result)).toContain("Senior Backend Engineer");
+    expect(result.rejected).toEqual([]);
+    expect(result.candidates[0]?.evidence).toHaveLength(1);
+  });
+
   it("C: keeps a shortened grounded prefix provenance-valid at the deterministic boundary", () => {
     const result = canonical({
       fragments: [{ order: 0, line: 1, text: "Senior Platform Engineer" }],

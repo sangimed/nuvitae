@@ -150,6 +150,34 @@ describe("semantic-extraction.v2 canonicalization", () => {
     expect(email?.normalizedValue).toBe("alex.martin@example.test");
   });
 
+  it("ignores provider-owned atom metadata before strict grounding", () => {
+    const value = response();
+    const result = canonical({
+      ...value,
+      sections: {
+        ...value.sections,
+        headline: {
+          ...atom(2, "Backend Engineer"),
+          candidateId: "provider-owned-id",
+          semanticCompleteness: "complete",
+        },
+      },
+    });
+
+    expect(result.candidates).toContainEqual(
+      expect.objectContaining({
+        fieldPath: "headline",
+        value: "Backend Engineer",
+        sourceStatus: "explicit_source",
+      }),
+    );
+    expect(result.rejected).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: ["sections", "headline"] }),
+      ]),
+    );
+  });
+
   it("expands compact deterministic absence markers without changing semantics", () => {
     const full = canonical();
     const compact = structuredClone(response()) as {

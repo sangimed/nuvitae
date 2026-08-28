@@ -465,6 +465,10 @@ describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
     const input = JSON.parse(invocation?.inputText ?? "{}") as {
       readonly contract?: string;
       readonly document?: {
+        readonly completenessAudit?: {
+          readonly bulletStartFragmentIds?: readonly string[];
+          readonly longFormCandidateFragmentIds?: readonly string[];
+        };
         readonly fragments?: readonly Record<string, unknown>[];
       };
     };
@@ -472,6 +476,10 @@ describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
     expect(input.document?.fragments).toEqual([
       { fragmentId: "fragment-1", order: 0, text: "Ada" },
     ]);
+    expect(input.document?.completenessAudit).toEqual({
+      bulletStartFragmentIds: [],
+      longFormCandidateFragmentIds: [],
+    });
     expect(JSON.stringify(input)).not.toContain("fragmentHash");
     expect(JSON.stringify(input)).not.toContain("candidateId");
   });

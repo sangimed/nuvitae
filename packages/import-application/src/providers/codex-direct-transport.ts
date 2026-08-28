@@ -21,7 +21,7 @@ export const CODEX_DIRECT_TRANSPORT_DEADLINES = {
   headerTimeoutMs: 30_000,
   firstOutputTimeoutMs: 60_000,
   activeStreamInactivityTimeoutMs: 15_000,
-  totalGenerationTimeoutMs: 90_000,
+  totalGenerationTimeoutMs: 150_000,
 } as const;
 
 export interface CodexDirectTransportRequest {
