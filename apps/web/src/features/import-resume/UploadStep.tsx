@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type DragEvent,
   type FormEvent,
 } from "react";
 import { ProviderDisclosure } from "./ProviderDisclosure";
@@ -32,6 +33,7 @@ export function UploadStep(props: {
   const errorId = useId();
   const summaryRef = useRef<HTMLDivElement>(null);
   const [localError, setLocalError] = useState<string | undefined>();
+  const [isDragging, setIsDragging] = useState(false);
   const previousErrorRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
@@ -43,7 +45,10 @@ export function UploadStep(props: {
   }, [localError, props.serverError]);
 
   function updateFile(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.currentTarget.files?.[0];
+    selectFile(event.currentTarget.files?.[0]);
+  }
+
+  function selectFile(file: File | undefined) {
     const error = validateLocalFile(file);
     if (error !== undefined) {
       props.onFileSelected(undefined);
@@ -52,6 +57,13 @@ export function UploadStep(props: {
     }
     setLocalError(undefined);
     props.onFileSelected(file);
+  }
+
+  function dropFile(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    setIsDragging(false);
+    if (props.busy) return;
+    selectFile(event.dataTransfer.files[0]);
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -115,20 +127,35 @@ export function UploadStep(props: {
                 ]
           }
         />
-        <label className="file-label" htmlFor={inputId}>
-          Resume file
+        <label
+          className="upload-dropzone"
+          data-dragging={isDragging || undefined}
+          htmlFor={inputId}
+          onDragEnter={(event) => {
+            event.preventDefault();
+            if (!props.busy) setIsDragging(true);
+          }}
+          onDragOver={(event) => event.preventDefault()}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={dropFile}
+        >
+          <span className="upload-dropzone-title">Drop your resume here</span>
+          <span className="upload-dropzone-hint">
+            or choose a PDF or DOCX file from your device
+          </span>
+          <input
+            className="upload-file-input"
+            id={inputId}
+            type="file"
+            accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            aria-describedby={
+              error === undefined ? guidanceId : `${guidanceId} ${errorId}`
+            }
+            aria-invalid={error === undefined ? undefined : "true"}
+            onChange={updateFile}
+            disabled={props.busy}
+          />
         </label>
-        <input
-          id={inputId}
-          type="file"
-          accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          aria-describedby={
-            error === undefined ? guidanceId : `${guidanceId} ${errorId}`
-          }
-          aria-invalid={error === undefined ? undefined : "true"}
-          onChange={updateFile}
-          disabled={props.busy}
-        />
         <p className="selected-file" aria-live="polite">
           {props.selectedFile === undefined
             ? "No file selected."

@@ -56,7 +56,7 @@ describe("CommunityOwnerAccess", () => {
     await act(async () => {
       root?.render(<CommunityOwnerAccess />);
     });
-    expect(container.textContent).toContain("Owner access secret");
+    expect(container.textContent).toContain("Access code");
 
     const input = container.querySelector<HTMLInputElement>(
       "#community-access-secret",
@@ -81,7 +81,7 @@ describe("CommunityOwnerAccess", () => {
     });
 
     expect(input!.value).toBe("");
-    expect(container.textContent).toContain("Owner access is active.");
+    expect(container.textContent).toContain("Signed in.");
     expect(container.textContent).not.toContain("Signing in…");
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/community-auth/session",
@@ -128,6 +128,6 @@ describe("CommunityOwnerAccess", () => {
         method: "DELETE",
       }),
     );
-    expect(container.textContent).toContain("Owner access secret");
+    expect(container.textContent).toContain("Access code");
   });
 });

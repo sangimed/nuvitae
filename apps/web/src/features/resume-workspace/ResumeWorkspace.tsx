@@ -1,8 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { ResumeWorkspaceListResponse } from "@nuvitae/contracts";
+import {
+  Button,
+  ButtonLink,
+  Panel,
+  StatusState,
+} from "../../components/community";
 import { listResumes } from "./client";
 
 export function ResumeWorkspace() {
@@ -11,66 +17,74 @@ export function ResumeWorkspace() {
   >();
   const [error, setError] = useState<string | undefined>();
 
+  const loadResumes = useCallback((signal?: AbortSignal) => {
+    void listResumes({ ...(signal === undefined ? {} : { signal }) }).then(
+      (outcome) => {
+        if (outcome.ok) {
+          setResponse(outcome.response);
+          setError(undefined);
+        } else if (!outcome.cancelled) setError(outcome.message);
+      },
+    );
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
-    void listResumes({ signal: controller.signal }).then((outcome) => {
-      if (outcome.ok) {
-        setResponse(outcome.response);
-        setError(undefined);
-      } else if (!outcome.cancelled) setError(outcome.message);
-    });
+    loadResumes(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [loadResumes]);
 
   if (error !== undefined) {
     return (
-      <section
-        className="panel resume-workspace"
-        aria-labelledby="resumes-title"
-      >
+      <Panel className="resume-workspace" aria-labelledby="resumes-title">
         <p className="eyebrow">Workspace</p>
         <h1 id="resumes-title">My resumes</h1>
-        <p className="message message-error" role="alert">
+        <StatusState
+          tone="error"
+          title="Your resumes could not be loaded"
+          action={<Button onClick={() => loadResumes()}>Try again</Button>}
+        >
           {error}
-        </p>
-      </section>
+        </StatusState>
+      </Panel>
     );
   }
   if (response === undefined) {
     return (
-      <section className="panel resume-workspace" aria-busy="true">
+      <Panel className="resume-workspace" aria-busy="true">
         <h1>My resumes</h1>
-        <p role="status">Loading your resumes.</p>
-      </section>
+        <StatusState tone="loading" title="Loading your resumes">
+          This will only take a moment.
+        </StatusState>
+      </Panel>
     );
   }
   return (
-    <section className="panel resume-workspace" aria-labelledby="resumes-title">
+    <Panel className="resume-workspace" aria-labelledby="resumes-title">
       <div className="workspace-heading">
         <div>
           <p className="eyebrow">Workspace</p>
           <h1 id="resumes-title">My resumes</h1>
           <p>Open a saved resume and continue where you left off.</p>
         </div>
-        <Link className="primary-action" href="/import-resume">
-          Create a resume
-        </Link>
+        <ButtonLink href="/import-resume">Create a resume</ButtonLink>
       </div>
       {response.resumes.length === 0 ? (
-        <div className="workspace-empty">
-          <h2>Create your first resume</h2>
-          <p>
-            Import an existing resume or start with a blank structured draft.
-          </p>
-          <div className="choice-grid">
-            <Link className="primary-action" href="/import-resume">
-              Import an existing resume
-            </Link>
-            <Link className="secondary-action" href="/resumes/new/manual">
-              Create a resume manually
-            </Link>
-          </div>
-        </div>
+        <StatusState
+          tone="empty"
+          title="Create your first resume"
+          action={
+            <div className="workspace-empty-actions">
+              <ButtonLink href="/import-resume">Import a resume</ButtonLink>
+              <ButtonLink href="/resumes/new/manual" variant="secondary">
+                Start from scratch
+              </ButtonLink>
+            </div>
+          }
+        >
+          Import an existing resume to get started quickly, or enter your
+          details yourself.
+        </StatusState>
       ) : (
         <ul className="resume-list">
           {response.resumes.map((resume) => (
@@ -97,6 +111,6 @@ export function ResumeWorkspace() {
           ))}
         </ul>
       )}
-    </section>
+    </Panel>
   );
 }

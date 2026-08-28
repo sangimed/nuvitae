@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { ButtonLink, Panel, ProgressSteps } from "../components/community";
 
 export const dynamic = "force-dynamic";
 
@@ -6,12 +6,13 @@ export default function Home() {
   const localPlayMode = process.env.NUVITAE_LOCAL_PLAY_MODE === "true";
 
   return (
-    <main className="shell">
-      <section className="panel home-panel" aria-labelledby="page-title">
-        <p className="eyebrow">Home</p>
-        <h1 id="page-title">Create your resume</h1>
-        <p>
-          Start from an existing resume or create a structured draft manually.
+    <main className="onboarding-shell">
+      <section className="onboarding-intro" aria-labelledby="page-title">
+        <p className="eyebrow">Your next opportunity starts here</p>
+        <h1 id="page-title">Build a resume you feel good sending.</h1>
+        <p className="onboarding-lede">
+          Bring an existing resume or start fresh. You stay in control of every
+          detail before you export.
         </p>
         {localPlayMode ? (
           <div className="local-banner" role="status">
@@ -20,27 +21,53 @@ export default function Home() {
           </div>
         ) : null}
         {!localPlayMode ? (
-          <p>
-            Owner access is required. Your installation generated the owner
-            access secret; retrieve it with{" "}
-            <code>sh scripts/community-owner-secret.sh</code>, then sign in from
-            the application header.
+          <p className="onboarding-sign-in-note">
+            Sign in from the header to save and return to your resumes.
           </p>
         ) : null}
-        <div className="choice-grid">
-          <Link className="primary-action" href="/import-resume">
-            Import an existing resume
-          </Link>
-          <Link className="secondary-action" href="/resumes/new/manual">
-            Create a resume manually
-          </Link>
-        </div>
-        {!localPlayMode ? (
+      </section>
+
+      <section className="onboarding-choices" aria-label="Choose how to start">
+        <Panel className="onboarding-choice onboarding-choice-featured">
+          <p className="onboarding-choice-kicker">Recommended</p>
+          <h2>Import your existing resume</h2>
           <p>
-            After signing in, create a resume manually or import one. Codex can
-            be connected from the import flow.
+            Upload a resume and use it as your starting point. Review what was
+            found, make changes, then choose how it looks.
           </p>
-        ) : null}
+          <ButtonLink href="/import-resume">Import a resume</ButtonLink>
+        </Panel>
+        <Panel className="onboarding-choice">
+          <p className="onboarding-choice-kicker">Start fresh</p>
+          <h2>Create a resume from scratch</h2>
+          <p>
+            Add your experience one section at a time with a guided editor and a
+            live preview.
+          </p>
+          <ButtonLink href="/resumes/new/manual" variant="secondary">
+            Create a resume
+          </ButtonLink>
+        </Panel>
+      </section>
+
+      <section
+        className="onboarding-next"
+        aria-labelledby="onboarding-next-title"
+      >
+        <h2 id="onboarding-next-title">
+          A clear path from first draft to finished resume
+        </h2>
+        <ProgressSteps
+          steps={[
+            { label: "Add your details", status: "current" },
+            { label: "Review and refine", status: "upcoming" },
+            { label: "Preview and export", status: "upcoming" },
+          ]}
+        />
+        <p>
+          Your resume is kept private to your workspace. You decide when it is
+          ready to download.
+        </p>
       </section>
     </main>
   );

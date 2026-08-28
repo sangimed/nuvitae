@@ -52,11 +52,11 @@ export function CommunityOwnerAccess() {
     setState("signed-out");
   }
 
-  if (state === "checking") return <p role="status">Checking owner access…</p>;
+  if (state === "checking") return <p role="status">Checking sign-in…</p>;
   if (state === "signed-in") {
     return (
       <div className="owner-access-status" role="status">
-        Owner access is active.{" "}
+        Signed in.{" "}
         <button type="button" onClick={signOut}>
           Sign out
         </button>
@@ -65,7 +65,7 @@ export function CommunityOwnerAccess() {
   }
   return (
     <form onSubmit={signIn} className="owner-access-form">
-      <label htmlFor="community-access-secret">Owner access secret</label>
+      <label htmlFor="community-access-secret">Access code</label>
       <input
         autoComplete="current-password"
         id="community-access-secret"

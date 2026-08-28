@@ -59,7 +59,7 @@ describe("AppShell", () => {
       </AppShell>,
     );
 
-    expect(rendered).toContain("Checking owner access…");
+    expect(rendered).toContain("Checking sign-in…");
     expect(rendered).not.toContain("Local Play");
   });
 });

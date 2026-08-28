@@ -115,6 +115,23 @@ describe("UploadStep error summary (T063)", () => {
     expect(onFileSelected).toHaveBeenCalledWith(expect.any(File));
   });
 
+  it("accepts a supported file dropped onto the upload area", () => {
+    renderUpload();
+    const dropzone =
+      container.querySelector<HTMLLabelElement>(".upload-dropzone")!;
+    const file = new File(["synthetic content"], "resume.docx", {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+    const event = new Event("drop", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "dataTransfer", {
+      value: { files: [file] },
+    });
+
+    act(() => dropzone.dispatchEvent(event));
+
+    expect(onFileSelected).toHaveBeenCalledWith(file);
+  });
+
   it("keeps the upload control keyboard operable", () => {
     renderUpload();
     const submit = Array.from(container.querySelectorAll("button")).find(
