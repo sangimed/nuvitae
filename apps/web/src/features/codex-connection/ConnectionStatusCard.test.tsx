@@ -61,7 +61,8 @@ describe("ConnectionStatusCard (T214)", () => {
       }).response,
     );
     expect(container.textContent).toContain("Connecting Codex");
-    expect(container.querySelector("button")).toBeNull();
+    expect(container.textContent).toContain("Cancel connection");
+    expect(container.textContent).not.toContain("Connect Codex");
     expect(container.textContent).not.toContain("Codex is ready");
   });
 
