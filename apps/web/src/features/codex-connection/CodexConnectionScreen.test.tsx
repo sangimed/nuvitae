@@ -121,4 +121,51 @@ describe("CodexConnectionScreen (T213)", () => {
     expect(container.textContent).toContain("Try again later");
     expect(container.textContent).not.toContain("Codex is ready");
   });
+
+  it("lets the user cancel a pending connection and retry immediately", async () => {
+    const cancel = vi.fn(async () => ({
+      ok: true as const,
+      response: {
+        version: "2026-08-08" as const,
+        providerKind: "codex",
+        connectionStatus: "login_cancelled" as const,
+        authenticationStatus: "unauthenticated" as const,
+        availabilityStatus: "unknown" as const,
+        ready: false,
+        safeMessage: null,
+      },
+    }));
+    root = createRoot(container);
+    await act(async () =>
+      root?.render(
+        <CodexConnectionScreen
+          onReadStatus={async () => ({
+            ok: true,
+            response: {
+              version: "2026-08-08",
+              providerKind: "codex",
+              connectionStatus: "login_pending",
+              authenticationStatus: "pending",
+              availabilityStatus: "unknown",
+              ready: false,
+              safeMessage: null,
+            },
+          })}
+          onCancelConnection={cancel}
+        />,
+      ),
+    );
+    const cancelButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Cancel connection",
+    );
+
+    await act(async () => cancelButton?.click());
+
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(container.textContent).toContain(
+      "Codex connection cancelled. You can try again.",
+    );
+    expect(container.textContent).toContain("Reconnect Codex");
+    expect(container.textContent).not.toContain("Connecting Codex");
+  });
 });

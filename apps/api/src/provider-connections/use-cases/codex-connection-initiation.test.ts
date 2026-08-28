@@ -4,6 +4,24 @@ import { CodexConnectionInitiationService } from "./codex-connection-initiation.
 import type { CodexOAuthLoginBoundary } from "../adapters/codex/codex-oauth-login-boundary.js";
 
 describe("CodexConnectionInitiationService (T258)", () => {
+  it("cancels the authenticated owner's pending Codex handoff", async () => {
+    const cancelLoginForProvider = vi.fn(async () => ({
+      connectionStatus: "login_cancelled",
+    }));
+    const service = new CodexConnectionInitiationService(
+      { cancelLoginForProvider } as unknown as ProviderConnectionService,
+      {} as CodexOAuthLoginBoundary,
+    );
+
+    await expect(
+      service.cancel("10000000-0000-4000-8000-000000000001"),
+    ).resolves.toEqual({ connectionStatus: "login_cancelled" });
+    expect(cancelLoginForProvider).toHaveBeenCalledWith(
+      "10000000-0000-4000-8000-000000000001",
+      "codex",
+    );
+  });
+
   it("completes a cross-site callback using only the server-resolved state owner", async () => {
     const completeLogin = vi.fn(async () => ({ ready: true }));
     const resolvePendingLogin = vi.fn(() => ({

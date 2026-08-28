@@ -597,6 +597,20 @@ export class ProviderConnectionService {
     return toStatusView(await this.saveSafely(connection, next), null);
   }
 
+  /** Owner-scoped lookup for an authenticated pending-login cancellation. */
+  async cancelLoginForProvider(
+    ownerUserId: string,
+    providerKind = this.ports.adapter.providerKind,
+  ): Promise<ProviderConnectionStatusView | null> {
+    const connection =
+      await this.ports.repository.findConnectionByProviderAndOwner(
+        providerKind,
+        ownerUserId,
+      );
+    if (connection === null || connection.deletedAt !== null) return null;
+    return this.cancelLogin(ownerUserId, connection.id);
+  }
+
   async reconnect(
     ownerUserId: string,
     connectionId: string,

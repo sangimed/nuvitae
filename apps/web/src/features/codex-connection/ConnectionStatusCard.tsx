@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import type { ProviderConnectionStatusResponse } from "@nuvitae/contracts";
 import {
   beginCodexConnection,
+  cancelCodexConnection,
   disconnectCodexConnection,
   readCodexConnectionStatus,
   type BeginCodexConnectionOutcome,
+  type CancelCodexConnectionOutcome,
   type DisconnectCodexConnectionOutcome,
   type ReadCodexConnectionStatusOutcome,
 } from "./client";
@@ -23,6 +25,7 @@ type VisibleStatus =
 export function ConnectionStatusCard(props: {
   readonly onInitiateConnection?: typeof beginCodexConnection;
   readonly onReadStatus?: typeof readCodexConnectionStatus;
+  readonly onCancelConnection?: typeof cancelCodexConnection;
   readonly onDisconnect?: typeof disconnectCodexConnection;
   readonly onNavigate?: (authorizationUrl: string) => void;
 }) {
@@ -34,6 +37,7 @@ export function ConnectionStatusCard(props: {
   const connectionAttempted = useRef(false);
   const readStatus = props.onReadStatus ?? readCodexConnectionStatus;
   const initiate = props.onInitiateConnection ?? beginCodexConnection;
+  const cancel = props.onCancelConnection ?? cancelCodexConnection;
   const disconnect = props.onDisconnect ?? disconnectCodexConnection;
 
   useEffect(() => {
@@ -114,6 +118,23 @@ export function ConnectionStatusCard(props: {
     setBusy(false);
   }
 
+  async function cancelConnection() {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    setStatusMessage(undefined);
+    const outcome = await cancel();
+    if (outcome.ok) {
+      connectionAttempted.current = false;
+      setStatus(outcome.response);
+      setStatusMessage("Codex connection cancelled. You can try again.");
+    } else {
+      setStatusMessage(outcome.message);
+    }
+    inFlight.current = false;
+    setBusy(false);
+  }
+
   return (
     <section
       className="guidance-panel"
@@ -134,6 +155,17 @@ export function ConnectionStatusCard(props: {
           aria-busy={busy}
         >
           {busy ? "Opening secure connection…" : connectAction}
+        </button>
+      ) : null}
+      {visibleStatus === "connecting" ? (
+        <button
+          type="button"
+          className="secondary-action"
+          onClick={() => void cancelConnection()}
+          disabled={busy}
+          aria-busy={busy}
+        >
+          {busy ? "Cancelling…" : "Cancel connection"}
         </button>
       ) : null}
       {visibleStatus === "ready" ? (
@@ -222,4 +254,5 @@ function renderStatusMessage(
 }
 
 export type { BeginCodexConnectionOutcome, ReadCodexConnectionStatusOutcome };
+export type { CancelCodexConnectionOutcome };
 export type { DisconnectCodexConnectionOutcome };

@@ -44,6 +44,13 @@ export class CodexConnectionInitiationService {
     return this.providerConnections.statusForProvider(ownerUserId, "codex");
   }
 
+  async cancel(ownerUserId: string) {
+    return this.providerConnections.cancelLoginForProvider(
+      ownerUserId,
+      "codex",
+    );
+  }
+
   async disconnect(ownerUserId: string) {
     return this.providerConnections.disconnectForProvider(ownerUserId, "codex");
   }

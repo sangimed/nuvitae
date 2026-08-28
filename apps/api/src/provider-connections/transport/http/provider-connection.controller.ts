@@ -67,6 +67,26 @@ export class ProviderConnectionController {
     return toPublicStatusResponse(status);
   }
 
+  @Post("import-resume/provider-connections/codex/oauth/cancel")
+  @UseGuards(VerifiedPrincipalGuard)
+  @ApiOperation({ summary: "Cancel a pending Codex browser connection" })
+  @ApiOkResponse({ description: "The pending connection was cancelled." })
+  @ApiConflictResponse({ description: "No connection attempt is pending." })
+  @ApiServiceUnavailableResponse({
+    description: "The pending connection could not be cancelled.",
+  })
+  @ApiUnauthorizedResponse({ description: "Authentication is required." })
+  async cancel(@Req() request: object) {
+    const authenticated = getGuardedAuthenticatedContext(request);
+    try {
+      return toPublicStatusResponse(
+        await this.connectionInitiation.cancel(authenticated.userId),
+      );
+    } catch (error) {
+      throw mapCancelError(error);
+    }
+  }
+
   @Post("import-resume/provider-connections/codex/disconnect")
   @UseGuards(VerifiedPrincipalGuard)
   @ApiOperation({
@@ -331,6 +351,32 @@ function mapDisconnectError(error: unknown): HttpException {
       statusCode: HttpStatus.SERVICE_UNAVAILABLE,
       code: "disconnect_unavailable",
       message: "Codex could not be disconnected safely. Try again later.",
+    },
+    HttpStatus.SERVICE_UNAVAILABLE,
+  );
+}
+
+function mapCancelError(error: unknown): HttpException {
+  const code =
+    error instanceof ProviderConnectionError ? error.code : undefined;
+  if (
+    code === "provider_connection_state_conflict" ||
+    code === "provider_connection_not_found"
+  ) {
+    return new HttpException(
+      {
+        statusCode: HttpStatus.CONFLICT,
+        code: "connection_not_pending",
+        message: "There is no pending Codex connection to cancel.",
+      },
+      HttpStatus.CONFLICT,
+    );
+  }
+  return new HttpException(
+    {
+      statusCode: HttpStatus.SERVICE_UNAVAILABLE,
+      code: "cancel_unavailable",
+      message: "Codex connection could not be cancelled right now.",
     },
     HttpStatus.SERVICE_UNAVAILABLE,
   );

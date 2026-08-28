@@ -23,6 +23,7 @@ function serviceMock(overrides: Record<string, unknown> = {}) {
   return {
     begin: vi.fn(),
     status: vi.fn(async () => null),
+    cancel: vi.fn(async () => null),
     disconnect: vi.fn(async () => null),
     completeCallback: vi.fn(async () => undefined),
     ...overrides,
@@ -108,6 +109,44 @@ describe("ProviderConnectionController (T214)", () => {
     expect(disconnect).toHaveBeenCalledWith(ownerUserId);
     expect(response.connectionStatus).toBe("disconnected");
     expect(response.ready).toBe(false);
+    expect(JSON.stringify(response)).not.toMatch(
+      /token|account|session|credential|oauth|internal-connection-id/i,
+    );
+  });
+
+  it("cancels a pending login through the authenticated owner context", async () => {
+    const cancel = vi.fn(async () => ({
+      connectionId: "internal-connection-id",
+      providerKind: "codex",
+      displayName: "Codex",
+      connectionStatus: "login_cancelled" as const,
+      authenticationStatus: "unauthenticated" as const,
+      availabilityStatus: "unknown" as const,
+      capabilities: null,
+      capabilitySnapshotAt: null,
+      lastCheckedAt: new Date(),
+      loginStartedAt: new Date(),
+      connectedAt: null,
+      refreshedAt: null,
+      expiresAt: null,
+      disconnectedAt: null,
+      revokedAt: null,
+      deletedAt: null,
+      safeMessage: null,
+      ready: false,
+    }));
+    const controller = new ProviderConnectionController(
+      serviceMock({ cancel }),
+    );
+
+    const response = await controller.cancel(authenticatedRequest());
+
+    expect(cancel).toHaveBeenCalledWith(ownerUserId);
+    expect(response).toMatchObject({
+      connectionStatus: "login_cancelled",
+      authenticationStatus: "unauthenticated",
+      ready: false,
+    });
     expect(JSON.stringify(response)).not.toMatch(
       /token|account|session|credential|oauth|internal-connection-id/i,
     );

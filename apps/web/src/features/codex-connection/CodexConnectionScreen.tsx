@@ -3,6 +3,7 @@
 import { ConnectionStatusCard } from "./ConnectionStatusCard";
 import {
   beginCodexConnection,
+  cancelCodexConnection,
   disconnectCodexConnection,
   readCodexConnectionStatus,
 } from "./client";
@@ -10,6 +11,7 @@ import {
 export function CodexConnectionScreen(props: {
   readonly onInitiateConnection?: typeof beginCodexConnection;
   readonly onReadStatus?: typeof readCodexConnectionStatus;
+  readonly onCancelConnection?: typeof cancelCodexConnection;
   readonly onDisconnect?: typeof disconnectCodexConnection;
   readonly onNavigate?: (authorizationUrl: string) => void;
 }) {

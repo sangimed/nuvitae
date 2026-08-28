@@ -25,6 +25,10 @@ export type ReadCodexConnectionStatusOutcome =
   | { readonly ok: true; readonly response: ProviderConnectionStatusResponse }
   | { readonly ok: false; readonly message: string };
 
+export type CancelCodexConnectionOutcome =
+  | { readonly ok: true; readonly response: ProviderConnectionStatusResponse }
+  | { readonly ok: false; readonly message: string };
+
 export type DisconnectCodexConnectionOutcome =
   | { readonly ok: true; readonly response: ProviderConnectionStatusResponse }
   | { readonly ok: false; readonly message: string };
@@ -168,6 +172,49 @@ export async function disconnectCodexConnection(
     return {
       ok: false,
       message: "Codex could not be disconnected safely. Try again later.",
+    };
+  }
+}
+
+export async function cancelCodexConnection(
+  input: {
+    readonly fetchImpl?: typeof fetch;
+    readonly signal?: AbortSignal;
+  } = {},
+): Promise<CancelCodexConnectionOutcome> {
+  try {
+    const response = await (input.fetchImpl ?? fetch)(
+      apiPath("/import-resume/provider-connections/codex/oauth/cancel"),
+      {
+        method: "POST",
+        ...(input.signal === undefined ? {} : { signal: input.signal }),
+      },
+    );
+    if (!response.ok) {
+      return {
+        ok: false,
+        message: "Codex connection could not be cancelled right now.",
+      };
+    }
+    const parsed = providerConnectionStatusResponseSchema.safeParse(
+      await response.json(),
+    );
+    return parsed.success
+      ? { ok: true, response: parsed.data }
+      : {
+          ok: false,
+          message: "Codex connection could not be cancelled right now.",
+        };
+  } catch (error) {
+    if (isAbortError(error)) {
+      return {
+        ok: false,
+        message: "The cancellation request was stopped before it finished.",
+      };
+    }
+    return {
+      ok: false,
+      message: "Codex connection could not be cancelled right now.",
     };
   }
 }

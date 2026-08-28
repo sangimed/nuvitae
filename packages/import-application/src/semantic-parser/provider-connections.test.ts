@@ -298,6 +298,25 @@ describe("provider connection service", () => {
     expect(JSON.stringify(first)).not.toContain("token");
   });
 
+  it("cancels an owner-scoped pending browser handoff immediately", async () => {
+    const { service } = harness();
+    await service.beginBrowserLogin(ownerA);
+
+    const cancelled = await service.cancelLoginForProvider(
+      ownerA,
+      "test_provider",
+    );
+
+    expect(cancelled).toMatchObject({
+      connectionStatus: "login_cancelled",
+      authenticationStatus: "unauthenticated",
+      ready: false,
+    });
+    await expect(service.beginBrowserLogin(ownerA)).resolves.toMatchObject({
+      status: { connectionStatus: "login_pending" },
+    });
+  });
+
   it("fails closed when the owner already has a connected provider", async () => {
     const { service, repository } = harness();
     await service.connect(ownerA, connectionA);
@@ -561,6 +580,9 @@ describe("provider connection service", () => {
     }
     await expect(
       service.disconnectForProvider(ownerB, "test_provider"),
+    ).resolves.toBeNull();
+    await expect(
+      service.cancelLoginForProvider(ownerB, "test_provider"),
     ).resolves.toBeNull();
     const deleteView = await service.deleteConnection(ownerB, connectionA);
     expect(deleteView.deletedAt).not.toBeNull();
