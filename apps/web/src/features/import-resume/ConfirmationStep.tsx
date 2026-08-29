@@ -104,22 +104,19 @@ export function ConfirmationStep(props: {
       className="confirmation-panel"
       aria-labelledby="confirmation-title"
     >
-      <h2 id="confirmation-title">Finish your review</h2>
+      <h2 id="confirmation-title">
+        {readyForConfirmation
+          ? "Your review is complete"
+          : "Finish your review"}
+      </h2>
       <div role="status" aria-live="polite" aria-atomic="true">
         {pending ? message : message}
       </div>
       {readyForConfirmation ? (
         <div className="message message-success">
           <p>
-            This creates a new resume from the valid information you have kept.
-            Changes use your edited values. You do not have to confirm every
-            imported field individually for it to be included. Your uploaded
-            file stays separate and is available temporarily.
-          </p>
-          <p>
-            Original upload retention ends{" "}
-            {formatDate(props.draft.retentionExpiresAt)}. Confirmation does not
-            extend that deadline.
+            All review details are complete. Continue to create your editable
+            resume from the information you have kept and edited.
           </p>
           <button
             ref={actionRef}
@@ -140,13 +137,6 @@ export function ConfirmationStep(props: {
               : `${actionableItems.length} details still need your attention.`}{" "}
             Review these items before creating your resume.
           </p>
-          <div className="action-row">
-            {actionableItems.map((item) => (
-              <a key={item.key} href={item.href}>
-                Review {item.label}
-              </a>
-            ))}
-          </div>
         </div>
       )}
       <div className="action-row">
@@ -229,11 +219,4 @@ export function ConfirmationStep(props: {
       </AccessibleDialog>
     </section>
   );
-}
-
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 }

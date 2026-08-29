@@ -56,21 +56,18 @@ test.describe("import review accessibility", () => {
         level: 2,
       }),
     ).toBeVisible();
+    const provenance = page.locator(
+      ".review-field-needs-confirmation .review-field-provenance",
+    );
+    await provenance.getByText("Why am I seeing this?").click();
     await expect(
-      page.getByText("Found in your resume — your confirmation is needed"),
+      provenance.getByText(
+        "Found in your resume — your confirmation is needed",
+      ),
     ).toBeVisible();
     await expect(
       page.getByText("Confirmation needed before this information is used."),
     ).toBeVisible();
-    const preview = page.getByRole("tabpanel", {
-      name: "Preview",
-      exact: true,
-    });
-    await expect(
-      page.getByRole("tabpanel", { name: "Review", exact: true }),
-    ).toBeVisible();
-    await expect(preview).toBeVisible();
-
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(
       page.getByRole("button", { name: "Confirm this information" }),
@@ -83,11 +80,6 @@ test.describe("import review accessibility", () => {
       ),
     ).toBe(true);
 
-    await page.getByRole("tab", { name: "Preview", exact: true }).click();
-    await expect(preview).toBeVisible();
-    await expect(preview.getByText("Synthetic summary")).toHaveCount(0);
-    await page.getByRole("tab", { name: "Review", exact: true }).click();
-
     await page.keyboard.press("Tab");
     await expectFocusedElementHasVisibleFocus(page);
     await page
@@ -95,10 +87,6 @@ test.describe("import review accessibility", () => {
       .press("Enter");
     await expect(page.getByText("Your review change was saved.")).toBeVisible();
     await expect(page.getByText("Accepted for your resume.")).toBeVisible();
-    await page.getByRole("tab", { name: "Preview", exact: true }).click();
-    await expect(preview.getByText("Synthetic summary")).toBeVisible();
-    await page.getByRole("tab", { name: "Review", exact: true }).click();
-
     await page.getByRole("button", { name: "Edit field" }).press("Enter");
     await expect(page.getByLabel("Edit value")).toBeVisible();
     await page.getByRole("button", { name: "Cancel edit" }).press("Enter");

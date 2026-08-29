@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   ReviewDraftReadResponse,
   ReviewField,
@@ -13,28 +13,22 @@ import {
   sendReviewMutation,
 } from "./client";
 import { ConfirmationStep } from "./ConfirmationStep";
-import { needsExplicitConfirmation } from "./actionable-review-items";
+import {
+  actionableReviewItems,
+  needsExplicitConfirmation,
+} from "./actionable-review-items";
 import { ErrorSummary } from "./ErrorSummary";
 import { FieldProvenance } from "./FieldProvenance";
-import {
-  focusErrorSummary,
-  focusNextLogicalHeading,
-  focusTarget,
-} from "./focus-management";
+import { focusErrorSummary, focusTarget } from "./focus-management";
 import { ReviewWarning } from "./ReviewWarning";
 import { formatReviewDate, formatReviewDateRange } from "./review-date";
 import { reviewFieldLabel, reviewSectionLabel } from "./review-labels";
 import { recordImportTiming } from "./client";
-import {
-  createResumeRenderingModel,
-  ProfessionalResume,
-} from "../resume-renderer";
 
 export function ReviewStep(props: { readonly importId: string }) {
   const [draft, setDraft] = useState<ReviewDraftReadResponse | undefined>();
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
-  const [mobileMode, setMobileMode] = useState<"edit" | "preview">("edit");
   const [finalized, setFinalized] = useState<
     | {
         readonly kind: "confirmed";
@@ -46,9 +40,11 @@ export function ReviewStep(props: { readonly importId: string }) {
   >();
   const [message, setMessage] = useState<string | undefined>();
   const [error, setError] = useState<string | undefined>();
+  const [openedSections, setOpenedSections] = useState<
+    ReadonlySet<string> | undefined
+  >();
   const summaryRef = useRef<HTMLDivElement | null>(null);
   const liveRef = useRef<HTMLDivElement | null>(null);
-  const shellRef = useRef<HTMLElement | null>(null);
   const finalizedRef = useRef<HTMLDivElement | null>(null);
   const previousErrorRef = useRef<string | undefined>(undefined);
   const renderedTimingRef = useRef(false);
@@ -94,24 +90,19 @@ export function ReviewStep(props: { readonly importId: string }) {
     return () => controller.abort();
   }, [props.importId]);
 
+  useEffect(() => {
+    setOpenedSections(undefined);
+  }, [props.importId]);
+
   async function refreshDraft() {
     const refreshed = await readReviewDraft({ importId: props.importId });
     if (refreshed.ok) setDraft(refreshed.response);
   }
 
-  function switchModeFromKeyboard(event: KeyboardEvent<HTMLButtonElement>) {
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-    event.preventDefault();
-    const nextMode = event.key === "ArrowLeft" ? "edit" : "preview";
-    setMobileMode(nextMode);
-    requestAnimationFrame(() => {
-      document.getElementById(`review-${nextMode}-mode-tab`)?.focus();
-    });
-  }
-
   async function persistMutation(
     currentDraft: ReviewDraftReadResponse,
     action: ReviewMutationAction,
+    focusAfterSave = true,
   ) {
     setPending(true);
     setError(undefined);
@@ -129,7 +120,7 @@ export function ReviewStep(props: { readonly importId: string }) {
       setDraft(outcome.response.draft);
       setMessage(outcome.response.userMessage);
       setPending(false);
-      focusNextLogicalHeading(shellRef.current);
+      if (focusAfterSave) focusNextReviewItem(outcome.response.draft);
       return outcome.response.draft;
     }
     if (outcome.category === "stale_review") {
@@ -150,10 +141,14 @@ export function ReviewStep(props: { readonly importId: string }) {
 
   async function confirmReviewRequiredField(field: ReviewField) {
     if (pending || draft === undefined) return;
-    let updated = await persistMutation(draft, {
-      type: "confirm_field",
-      fieldId: field.fieldId,
-    });
+    let updated = await persistMutation(
+      draft,
+      {
+        type: "confirm_field",
+        fieldId: field.fieldId,
+      },
+      false,
+    );
     if (updated === undefined) return;
 
     // T259 keeps proposal/evidence and the field-bound review record separate.
@@ -167,11 +162,15 @@ export function ReviewStep(props: { readonly importId: string }) {
           warning.reviewStatus === "needs_review",
       );
     for (const warning of linkedWarnings) {
-      const current = await persistMutation(updated, {
-        type: "resolve_warning",
-        warningId: warning.warningId,
-        resolution: "confirmed",
-      });
+      const current = await persistMutation(
+        updated,
+        {
+          type: "resolve_warning",
+          warningId: warning.warningId,
+          resolution: "confirmed",
+        },
+        false,
+      );
       if (current === undefined) {
         setError(
           "Your confirmation was saved, but one related review item still needs attention.",
@@ -180,6 +179,30 @@ export function ReviewStep(props: { readonly importId: string }) {
       }
       updated = current;
     }
+    focusNextReviewItem(updated);
+  }
+
+  function focusNextReviewItem(updatedDraft: ReviewDraftReadResponse) {
+    const next = actionableReviewItems(updatedDraft)[0];
+    if (next !== undefined) {
+      setOpenedSections((current) => {
+        const nextOpened = new Set(current ?? []);
+        nextOpened.add(next.section);
+        return nextOpened;
+      });
+    }
+    const schedule =
+      typeof window === "undefined" ||
+      window.requestAnimationFrame === undefined
+        ? (callback: FrameRequestCallback) => window.setTimeout(callback, 0)
+        : window.requestAnimationFrame;
+    schedule(() => {
+      focusReviewTarget(
+        next === undefined
+          ? document.getElementById("confirmation-title")
+          : document.getElementById(next.href.slice(1)),
+      );
+    });
   }
 
   if (loading) {
@@ -209,15 +232,15 @@ export function ReviewStep(props: { readonly importId: string }) {
   }
 
   return (
-    <section
-      className="review-shell"
-      aria-labelledby="review-title"
-      ref={shellRef}
-    >
+    <section className="review-shell" aria-labelledby="review-title">
       <p className="eyebrow">Resume review</p>
       <h1 id="review-title">
         Check the information Nuvitae needs you to confirm
       </h1>
+      <p className="review-source-note">
+        You are reviewing a structured draft. Your uploaded file stays
+        unchanged.
+      </p>
       <div
         ref={liveRef}
         tabIndex={-1}
@@ -264,75 +287,57 @@ export function ReviewStep(props: { readonly importId: string }) {
         />
       )}
 
-      <div
-        className="review-mode-tabs"
-        role="tablist"
-        aria-label="Import review view"
-      >
-        <button
-          id="review-edit-mode-tab"
-          type="button"
-          role="tab"
-          aria-selected={mobileMode === "edit"}
-          aria-controls="review-edit-pane"
-          tabIndex={mobileMode === "edit" ? 0 : -1}
-          onClick={() => setMobileMode("edit")}
-          onKeyDown={switchModeFromKeyboard}
-        >
-          Review
-        </button>
-        <button
-          id="review-preview-mode-tab"
-          type="button"
-          role="tab"
-          aria-selected={mobileMode === "preview"}
-          aria-controls="review-preview-pane"
-          tabIndex={mobileMode === "preview" ? 0 : -1}
-          onClick={() => setMobileMode("preview")}
-          onKeyDown={switchModeFromKeyboard}
-        >
-          Preview
-        </button>
-      </div>
+      <div className="review-edit-pane">
+        <ReviewSummary draft={draft} />
 
-      <div className="review-visual-layout" data-mobile-mode={mobileMode}>
-        <div
-          id="review-edit-pane"
-          className="review-edit-pane"
-          role="tabpanel"
-          aria-labelledby="review-edit-mode-tab"
-        >
-          <ReviewSummary draft={draft} />
+        <ReviewNavigation draft={draft} />
 
-          <ConfirmationStep
-            importId={props.importId}
-            draft={draft}
-            disabled={pending || finalized !== undefined}
-            onConfirmed={(resumeUrl, userMessage) => {
-              setFinalized({
-                kind: "confirmed",
-                resumeUrl,
-                message: userMessage,
+        {draft.sections.map((section) => (
+          <details
+            className="review-section"
+            key={section.section}
+            open={
+              openedSections?.has(section.section) ??
+              sectionNeedsAttention(section)
+            }
+            onToggle={(event) => {
+              const isOpen = event.currentTarget.open;
+              setOpenedSections((current) => {
+                const next = new Set(
+                  current ??
+                    draft.sections
+                      .filter(sectionNeedsAttention)
+                      .map((item) => item.section),
+                );
+                if (isOpen) next.add(section.section);
+                else next.delete(section.section);
+                return next;
               });
-              setPending(false);
-              window.history.replaceState(null, "", resumeUrl);
             }}
-            onDiscarded={(userMessage) => {
-              setFinalized({ kind: "discarded", message: userMessage });
-              setPending(false);
-            }}
-            onStaleReview={refreshDraft}
-          />
-
-          {draft.sections.map((section) => (
-            <section
-              className="review-section"
-              key={section.section}
-              aria-labelledby={`${section.section}-review-heading`}
-            >
-              <h2 id={`${section.section}-review-heading`}>
-                {reviewSectionLabel(section.section, section.label)}
+          >
+            <summary>
+              <h2
+                className="review-section-title"
+                id={`${section.section}-review-heading`}
+              >
+                <span>
+                  {reviewSectionLabel(section.section, section.label)}
+                </span>
+                <span className="review-section-meta">
+                  {section.fields.length === 0
+                    ? "No information"
+                    : `${section.fields.length} ${section.fields.length === 1 ? "item" : "items"}`}
+                </span>
               </h2>
+              {sectionAttentionCount(section) === 0 ? (
+                <span className="review-section-status">Ready</span>
+              ) : (
+                <span className="review-section-count">
+                  {sectionAttentionCount(section)} to review
+                </span>
+              )}
+            </summary>
+            <div className="review-section-content">
               {section.fields.length === 0 ? (
                 <p>No imported information is active in this section.</p>
               ) : null}
@@ -385,50 +390,38 @@ export function ReviewStep(props: { readonly importId: string }) {
                   Exclude section
                 </button>
               </div>
-            </section>
-          ))}
-        </div>
-
-        <aside
-          id="review-preview-pane"
-          className="resume-preview-pane review-preview-pane"
-          role="tabpanel"
-          aria-labelledby="review-preview-mode-tab"
-          aria-label="Imported resume preview"
-          data-preview-surface="professional-resume"
-          aria-busy={pending}
-        >
-          <div className="preview-heading">
-            <div>
-              <p className="eyebrow">Effective resume</p>
-              <h2>Resume preview</h2>
             </div>
-            <p>
-              {pending ? "Updating…" : "Updates after each saved decision."}
-            </p>
-          </div>
-          <div className="preview-document">
-            {draft.effectiveResume === undefined ? (
-              <div className="preview-error" role="status">
-                <h3>Preview unavailable</h3>
-                <p>
-                  Your review is safe. Retry the preview without losing your
-                  decisions.
-                </p>
-                <button type="button" disabled={pending} onClick={refreshDraft}>
-                  Retry preview
-                </button>
-              </div>
-            ) : (
-              <ProfessionalResume
-                model={createResumeRenderingModel(draft.effectiveResume)}
-              />
-            )}
-          </div>
-        </aside>
+          </details>
+        ))}
       </div>
+      <ConfirmationStep
+        importId={props.importId}
+        draft={draft}
+        disabled={pending || finalized !== undefined}
+        onConfirmed={(resumeUrl, userMessage) => {
+          setFinalized({
+            kind: "confirmed",
+            resumeUrl,
+            message: userMessage,
+          });
+          setPending(false);
+          window.history.replaceState(null, "", resumeUrl);
+        }}
+        onDiscarded={(userMessage) => {
+          setFinalized({ kind: "discarded", message: userMessage });
+          setPending(false);
+        }}
+        onStaleReview={refreshDraft}
+      />
     </section>
   );
+}
+
+function focusReviewTarget(target: HTMLElement | null) {
+  if (target === null) return;
+  if (focusTarget(target)) return;
+  if (!target.hasAttribute("tabindex")) target.tabIndex = -1;
+  focusTarget(target);
 }
 
 function ReviewSummary(props: { readonly draft: ReviewDraftReadResponse }) {
@@ -440,25 +433,33 @@ function ReviewSummary(props: { readonly draft: ReviewDraftReadResponse }) {
       <h2 id="review-summary-title">
         {needsConfirmation.length === 0
           ? "Your imported information is ready"
-          : "A few details need your confirmation"}
+          : `${needsConfirmation.length} ${needsConfirmation.length === 1 ? "detail needs" : "details need"} your confirmation`}
       </h2>
       <p>
         {needsConfirmation.length === 0
           ? "The remaining imported information is ready to carry into your resume. You can still make changes below."
-          : "Nuvitae found these details in your resume. Confirm them, edit them, or leave them out before continuing."}
+          : "Start with the highlighted sections, then confirm, edit, or leave out each detail."}
       </p>
-      {needsConfirmation.length === 0 ? null : (
-        <ul className="review-summary-list">
-          {needsConfirmation.map((field) => (
-            <li key={field.fieldId}>
-              <a href={`#${field.fieldId}-label`}>
-                {reviewFieldLabel(field.fieldPath)}
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
     </section>
+  );
+}
+
+function ReviewNavigation(props: { readonly draft: ReviewDraftReadResponse }) {
+  const sectionsWithAttention = props.draft.sections.filter(
+    sectionNeedsAttention,
+  );
+  if (sectionsWithAttention.length === 0) return null;
+  return (
+    <nav className="review-navigation" aria-label="Sections to review">
+      <span>Jump to:</span>
+      {sectionsWithAttention.map((section) => (
+        <a key={section.section} href={`#${section.section}-review-heading`}>
+          {reviewSectionLabel(section.section, section.label)}
+          <span className="visually-hidden">, </span>
+          <span aria-hidden="true">({sectionAttentionCount(section)})</span>
+        </a>
+      ))}
+    </nav>
   );
 }
 
@@ -530,12 +531,13 @@ function ReviewFieldRow(props: {
       <p id={statusId} className="review-field-status" role="status">
         {fieldStatus(props.field)}
       </p>
-      <p>
+      <details className="review-field-provenance">
+        <summary>Why am I seeing this?</summary>
         <FieldProvenance
           provenance={props.field.provenance}
           inferenceStatus={props.field.inferenceStatus}
         />
-      </p>
+      </details>
       {editing ? (
         <form
           onSubmit={(event) => {
@@ -609,14 +611,27 @@ function ReviewFieldRow(props: {
               Leave out
             </button>
           </div>
-          <p className="message">
-            This only changes the information shown here. It does not change
-            your uploaded file.
-          </p>
         </>
       )}
     </article>
   );
+}
+
+function sectionAttentionCount(
+  section: ReviewDraftReadResponse["sections"][number],
+) {
+  return (
+    section.fields.filter(needsExplicitConfirmation).length +
+    section.warnings.filter(
+      (warning) => warning.reviewStatus === "needs_review",
+    ).length
+  );
+}
+
+function sectionNeedsAttention(
+  section: ReviewDraftReadResponse["sections"][number],
+) {
+  return sectionAttentionCount(section) > 0;
 }
 
 function fieldStatus(field: ReviewField): string {

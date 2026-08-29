@@ -76,9 +76,9 @@ describe("T221 simplified review", () => {
     expect(container.textContent).toContain("Professional summary");
     expect(container.textContent).not.toContain("inferred_needs_review");
     expect(container.textContent).not.toContain("review_required");
-    expect(document.getElementById("summary-review-heading")?.textContent).toBe(
-      "Professional summary",
-    );
+    expect(
+      document.getElementById("summary-review-heading")?.textContent,
+    ).toContain("Professional summary");
     expect(
       container.querySelectorAll(".review-field-needs-confirmation"),
     ).toHaveLength(3);
@@ -86,6 +86,23 @@ describe("T221 simplified review", () => {
     expect(
       container.querySelector(".review-field-accepted button.primary-action"),
     ).toBeNull();
+  });
+
+  it("opens sections with outstanding review work and collapses ready sections by default", async () => {
+    await render();
+
+    expect(
+      document
+        .getElementById("summary-review-heading")
+        ?.closest("details")
+        ?.hasAttribute("open"),
+    ).toBe(true);
+    expect(
+      document
+        .getElementById("personal-review-heading")
+        ?.closest("details")
+        ?.hasAttribute("open"),
+    ).toBe(false);
   });
 
   it("confirms a review-required field through the canonical field and linked-warning commands, then renders the persisted state", async () => {
@@ -112,6 +129,9 @@ describe("T221 simplified review", () => {
     await render(initial);
 
     await act(async () => button("Confirm this information").click());
+    await act(async () => {
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 20));
+    });
 
     expect(
       mocks.sendReviewMutation.mock.calls.map(([call]) => call.request.action),
@@ -130,38 +150,30 @@ describe("T221 simplified review", () => {
     expect(summary?.textContent).not.toContain(
       "Confirmation needed before this information is used.",
     );
-    expect(
-      container.querySelector("[aria-label='Imported resume preview']")
-        ?.textContent,
-    ).toContain("Synthetic summary about accessible product delivery.");
-  });
-
-  it("renders only the effective review state through the canonical preview", async () => {
-    await render();
-
-    const preview = container.querySelector(
-      "[aria-label='Imported resume preview']",
-    );
-    expect(preview?.textContent).toContain("Synthetic person");
-    expect(preview?.textContent).toContain("Example employer");
-    expect(preview?.textContent).not.toContain(
-      "Synthetic summary about accessible product delivery.",
+    expect(document.activeElement?.id).toBe(
+      "88888888-8888-4888-8888-888888888888-label",
     );
     expect(
-      preview?.querySelector("[data-resume-template='professional']"),
-    ).not.toBeNull();
+      container.querySelector("[aria-label='Imported resume preview']"),
+    ).toBeNull();
   });
 
-  it("keeps review controls available when canonical preview mapping fails", async () => {
+  it("keeps review controls available without an effective resume preview", async () => {
     const unavailable = { ...syntheticDraft(), effectiveResume: undefined };
     await render(unavailable);
 
-    const preview = container.querySelector(
-      "[aria-label='Imported resume preview']",
-    );
-    expect(preview?.textContent).toContain("Preview unavailable");
-    expect(preview?.textContent).toContain("Retry preview");
     expect(container.textContent).toContain("Confirm this information");
+    expect(
+      container.querySelector("[aria-label='Imported resume preview']"),
+    ).toBeNull();
+  });
+
+  it("does not render a resume preview during import review", async () => {
+    await render();
+
+    expect(
+      container.querySelector("[aria-label='Imported resume preview']"),
+    ).toBeNull();
   });
 
   it("keeps inline editing recoverable with a labelled edit field and cancel action", async () => {

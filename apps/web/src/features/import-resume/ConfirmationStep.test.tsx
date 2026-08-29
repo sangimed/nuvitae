@@ -255,7 +255,7 @@ describe("ConfirmationStep accessible dialogs (T063)", () => {
     expect(container.textContent).toContain(
       "1 detail still needs your attention",
     );
-    expect(container.textContent).toContain("Review Professional summary");
+    expect(container.textContent).not.toContain("Review Professional summary");
     expect(container.textContent).not.toContain("Confirmation is blocked");
     expect(container.textContent).not.toMatch(/needs_review|review_required/);
   });
@@ -287,14 +287,12 @@ describe("ConfirmationStep accessible dialogs (T063)", () => {
     expect(container.textContent).toContain(
       "1 detail still needs your attention",
     );
-    expect(container.textContent).toContain("Review Professional summary");
+    expect(container.textContent).not.toContain("Review Professional summary");
     expect(container.textContent).not.toContain("Create my resume");
     expect(container.textContent).not.toContain(
       "Your imported information is ready",
     );
-    expect(
-      container.querySelector(`a[href="#${fieldId}-label"]`),
-    ).not.toBeNull();
+    expect(container.querySelector(`a[href="#${fieldId}-label"]`)).toBeNull();
 
     renderStep({
       ...pendingDraft,
@@ -314,8 +312,9 @@ describe("ConfirmationStep accessible dialogs (T063)", () => {
     });
 
     expect(container.textContent).toContain(
-      "This creates a new resume from the valid information you have kept.",
+      "All review details are complete. Continue to create your editable resume from the information you have kept and edited.",
     );
+    expect(container.textContent).toContain("Your review is complete");
     expect(container.textContent).toContain("Create my resume");
     expect(container.textContent).not.toContain("Review remaining details");
   });

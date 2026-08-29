@@ -870,11 +870,18 @@ legend {
   gap: 1rem;
 }
 
-.review-visual-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(28rem, 0.85fr);
-  gap: 1.5rem;
-  align-items: start;
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.review-source-note {
+  margin: -0.35rem 0 0;
+  color: var(--muted);
 }
 
 .review-edit-pane {
@@ -883,19 +890,20 @@ legend {
   min-width: 0;
 }
 
-.review-preview-pane {
-  top: 6.5rem;
+.review-navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+  padding: 0 0 0.85rem;
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
-.preview-error {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel);
-  padding: 1rem;
-}
-
-.preview-error h3 {
-  margin-top: 0;
+.review-navigation a {
+  color: var(--color-brand-strong);
+  font-weight: 700;
 }
 
 .resume-actions {
@@ -948,12 +956,76 @@ legend {
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--panel);
+}
+
+.review-section > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  cursor: pointer;
+  list-style: none;
   padding: 1rem;
+}
+
+.review-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.review-section > summary::before {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-right: 0.6rem;
+  transform: rotate(-45deg);
+  border-bottom: 2px solid var(--muted);
+  border-left: 2px solid var(--muted);
+  content: "";
+}
+
+.review-section[open] > summary::before {
+  transform: rotate(-135deg) translate(-0.15rem, -0.15rem);
+}
+
+.review-section-title {
+  margin: 0;
+  color: var(--foreground);
+  font-weight: 700;
+}
+
+.review-section-meta {
+  margin-left: 0.5rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.review-section-count,
+.review-section-status {
+  flex: 0 0 auto;
+  border-radius: var(--radius-pill);
+  padding: 0.25rem 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.review-section-count {
+  background: #e6f5f8;
+  color: var(--color-brand-strong);
+}
+
+.review-section-status {
+  background: #eefbf3;
+  color: #16703c;
+}
+
+.review-section-content {
+  border-top: 1px solid var(--border);
+  padding: 0 1rem 1rem;
 }
 
 .review-field {
   border-top: 1px solid var(--border);
-  padding-block: 1rem;
+  padding: 1rem 0;
 }
 
 .review-summary,
@@ -988,8 +1060,31 @@ legend {
 
 .review-field-status,
 .review-warning-context {
+  display: inline-flex;
+  margin: 0.5rem 0;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-subtle);
+  padding: 0.25rem 0.55rem;
   font-size: 0.95rem;
   font-weight: 700;
+}
+
+.review-field-provenance {
+  margin: 0.45rem 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.review-field-provenance summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--color-brand-strong);
+  font-weight: 700;
+}
+
+.review-field-provenance .field-provenance {
+  display: inline-block;
+  margin-top: 0.5rem;
 }
 
 .work-review-group {
@@ -1449,8 +1544,7 @@ legend {
     top: 7.7rem;
   }
 
-  .editor-mode-tabs,
-  .review-mode-tabs {
+  .editor-mode-tabs {
     position: sticky;
     top: 14rem;
     z-index: 3;
@@ -1463,19 +1557,13 @@ legend {
     padding: 0.5rem;
   }
 
-  .editor-mode-tabs button[aria-selected="true"],
-  .review-mode-tabs button[aria-selected="true"] {
+  .editor-mode-tabs button[aria-selected="true"] {
     border-color: var(--accent);
     background: var(--accent);
     color: white;
   }
 
   .visual-editor-layout {
-    display: block;
-    margin-top: 1rem;
-  }
-
-  .review-visual-layout {
     display: block;
     margin-top: 1rem;
   }
@@ -1489,9 +1577,7 @@ legend {
   }
 
   .visual-editor[data-mobile-mode="edit"] .resume-preview-pane,
-  .visual-editor[data-mobile-mode="preview"] .resume-edit-pane,
-  .review-visual-layout[data-mobile-mode="edit"] .review-preview-pane,
-  .review-visual-layout[data-mobile-mode="preview"] .review-edit-pane {
+  .visual-editor[data-mobile-mode="preview"] .resume-edit-pane {
     display: none;
   }
 }
