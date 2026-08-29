@@ -1,0 +1,32 @@
+name: Design system lint
+
+on:
+  pull_request:
+    paths:
+      - ".stitch/DESIGN.md"
+      - ".github/workflows/design-lint.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+  push:
+    branches:
+      - main
+    paths:
+      - ".stitch/DESIGN.md"
+      - ".github/workflows/design-lint.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  design-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the pinned workspace image
+        run: docker compose build workspace
+      - name: Install locked dependencies
+        run: docker compose run --rm --no-deps workspace pnpm install --frozen-lockfile
+      - name: Validate DESIGN.md
+        run: docker compose run --rm --no-deps workspace pnpm design:lint

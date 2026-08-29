@@ -1,52 +1,98 @@
 :root {
   color-scheme: light;
 
-  /* Community color system: calm paper surfaces with ink and teal accents. */
-  --color-canvas: #f6f7f9;
-  --color-surface: #ffffff;
-  --color-surface-subtle: #f0f3f5;
-  --color-text: #18212f;
-  --color-text-muted: #526174;
-  --color-border: #ccd4de;
-  --color-brand: #176b87;
-  --color-brand-strong: #10546c;
-  --color-brand-subtle: #e7f3f6;
+  /* Canonical mapping from .stitch/DESIGN.md. */
+  --color-primary: #1b3022;
+  --color-primary-strong: #102118;
+  --color-primary-subtle: #e7ece7;
+  --color-on-primary: #ffffff;
+  --color-canvas: #f7f5ef;
+  --color-surface: #fdfcf8;
+  --color-surface-subtle: #f1efe8;
+  --color-text: #1c211d;
+  --color-text-muted: #62675f;
+  --color-border: #dedcd4;
   --color-focus: #a54b00;
-  --color-danger: #a12a20;
-  --color-danger-subtle: #fff1ef;
   --color-success: #146c3a;
-  --color-success-subtle: #eaf8ef;
   --color-warning: #805c0b;
-  --color-warning-subtle: #fff7df;
+  --color-error: #a12a20;
+  --color-resume-page: #ffffff;
+  --color-resume-text: #202020;
 
+  --font-serif: var(--font-source-serif), Georgia, "Times New Roman", serif;
   --font-sans:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --type-display-family: var(--font-serif);
+  --type-display-size: 3rem;
+  --type-display-weight: 500;
+  --type-display-line-height: 1.08;
+  --type-display-letter-spacing: -0.02em;
+  --type-heading-lg-family: var(--font-serif);
+  --type-heading-lg-size: 2rem;
+  --type-heading-lg-weight: 500;
+  --type-heading-lg-line-height: 1.15;
+  --type-heading-lg-letter-spacing: -0.015em;
+  --type-heading-md-family: var(--font-serif);
+  --type-heading-md-size: 1.5rem;
+  --type-heading-md-weight: 500;
+  --type-heading-md-line-height: 1.2;
+  --type-body-family: var(--font-sans);
+  --type-body-size: 1rem;
+  --type-body-weight: 400;
+  --type-body-line-height: 1.5;
+  --type-body-sm-family: var(--font-sans);
+  --type-body-sm-size: 0.875rem;
+  --type-body-sm-weight: 400;
+  --type-body-sm-line-height: 1.45;
+  --type-label-family: var(--font-sans);
+  --type-label-size: 0.875rem;
+  --type-label-weight: 600;
+  --type-label-line-height: 1.3;
+  --type-metadata-family: var(--font-sans);
+  --type-metadata-size: 0.75rem;
+  --type-metadata-weight: 500;
+  --type-metadata-line-height: 1.3;
+
+  /* Compatibility type aliases for screens awaiting incremental migration. */
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-md: 1rem;
   --font-size-lg: 1.125rem;
   --font-size-xl: 1.5rem;
-  --line-height-tight: 1.25;
-  --line-height-body: 1.6;
+  --line-height-tight: var(--type-heading-md-line-height);
+  --line-height-body: var(--type-body-line-height);
 
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.5rem;
-  --space-6: 2rem;
-  --space-8: 3rem;
-  --radius-sm: 0.375rem;
-  --radius-md: 0.625rem;
-  --radius-lg: 1rem;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --radius-none: 0;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-sheet: 16px;
+  /* Circular indicators are an intentional exception to control radii. */
   --radius-pill: 999px;
-  --shadow-sm: 0 1px 3px rgba(24, 33, 47, 0.12);
-  --shadow-md: 0 16px 40px rgba(24, 33, 47, 0.12);
-  --control-height: 2.75rem;
+  --shadow-sm: 0 1px 3px rgba(28, 33, 29, 0.12);
+  --shadow-md: 0 16px 40px rgba(28, 33, 29, 0.12);
+  --control-height: 44px;
   --transition-interaction: 140ms ease;
 
   /* Compatibility aliases keep existing screens on the shared tokens. */
+  --color-brand: var(--color-primary);
+  --color-brand-strong: var(--color-primary-strong);
+  --color-brand-subtle: var(--color-primary-subtle);
+  --color-danger: var(--color-error);
+  --color-danger-subtle: var(--color-surface);
+  --color-success-subtle: var(--color-surface);
+  --color-warning-subtle: var(--color-surface);
   --background: var(--color-canvas);
   --foreground: var(--color-text);
   --muted: var(--color-text-muted);
@@ -63,7 +109,10 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans);
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line-height);
 }
 
 .app-shell {
@@ -80,7 +129,7 @@ body {
   align-items: center;
   gap: 1rem clamp(1rem, 3vw, 2rem);
   border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.97);
+  background: var(--color-surface);
   padding: 0.75rem clamp(1rem, 4vw, 2.5rem);
 }
 
@@ -97,9 +146,9 @@ body {
   width: 2.5rem;
   height: 2.5rem;
   place-items: center;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   background: var(--accent);
-  color: white;
+  color: var(--color-on-primary);
   font-size: 1.25rem;
   font-weight: 800;
 }
@@ -110,8 +159,9 @@ body {
 }
 
 .brand-name {
+  font-family: var(--font-serif);
   font-size: 1.1rem;
-  font-weight: 800;
+  font-weight: 500;
   line-height: 1.1;
 }
 
@@ -132,15 +182,17 @@ body {
   display: inline-flex;
   min-height: 2.75rem;
   align-items: center;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--muted);
   padding: 0.6rem 0.8rem;
-  font-weight: 700;
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line-height);
   text-decoration: none;
 }
 
 .navigation-link[aria-current="page"] {
-  background: rgba(23, 107, 135, 0.1);
+  background: var(--color-primary-subtle);
   color: var(--accent);
   text-decoration: underline;
   text-decoration-thickness: 2px;
@@ -168,7 +220,7 @@ body {
 .owner-access-status button {
   min-height: 2.75rem;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 0.6rem 0.75rem;
   font: inherit;
 }
@@ -180,9 +232,9 @@ body {
 .owner-access-form button,
 .owner-access-status button {
   border-color: var(--accent);
-  background: white;
+  background: var(--color-surface);
   color: var(--accent);
-  font-weight: 700;
+  font-weight: var(--type-label-weight);
   cursor: pointer;
 }
 
@@ -244,14 +296,17 @@ body {
 
 h1 {
   margin: 0;
+  font-family: var(--type-display-family);
   font-size: clamp(2rem, 6vw, 3rem);
-  line-height: 1.05;
+  font-weight: var(--type-display-weight);
+  letter-spacing: var(--type-display-letter-spacing);
+  line-height: var(--type-display-line-height);
 }
 
 p {
   color: var(--muted);
-  font-size: 1.125rem;
-  line-height: 1.7;
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line-height);
 }
 
 .status-list {
@@ -286,8 +341,8 @@ select:focus-visible,
 textarea:focus-visible,
 [role="tab"]:focus-visible,
 [tabindex="-1"]:focus-visible {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 3px;
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 .import-shell {
@@ -1197,11 +1252,12 @@ legend {
   justify-content: center;
   gap: var(--space-2);
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  padding: var(--space-3) var(--space-4);
-  font: inherit;
-  font-weight: 700;
-  line-height: var(--line-height-tight);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  font-family: var(--type-label-family);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line-height);
   text-align: center;
   text-decoration: none;
   cursor: pointer;
@@ -1213,20 +1269,20 @@ legend {
 }
 
 .community-button-primary {
-  border-color: var(--color-brand);
-  background: var(--color-brand);
-  color: white;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
 .community-button-primary:hover:not(:disabled) {
-  border-color: var(--color-brand-strong);
-  background: var(--color-brand-strong);
+  border-color: var(--color-primary-strong);
+  background: var(--color-primary-strong);
 }
 
 .community-button-secondary {
-  border-color: var(--color-brand);
+  border-color: var(--color-border);
   background: var(--color-surface);
-  color: var(--color-brand-strong);
+  color: var(--color-text);
 }
 
 .community-button-secondary:hover:not(:disabled),
@@ -1236,13 +1292,13 @@ legend {
 
 .community-button-quiet {
   background: transparent;
-  color: var(--color-brand-strong);
+  color: var(--color-primary-strong);
 }
 
 .community-button-danger {
-  border-color: var(--color-danger);
-  background: var(--color-danger);
-  color: white;
+  border-color: var(--color-error);
+  background: var(--color-error);
+  color: var(--color-on-primary);
 }
 
 .community-button-danger:hover:not(:disabled) {
@@ -1264,12 +1320,10 @@ legend {
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   padding: clamp(var(--space-4), 4vw, var(--space-6));
-  box-shadow: var(--shadow-sm);
 }
 
 .community-panel-subtle {
   background: var(--color-surface-subtle);
-  box-shadow: none;
 }
 
 .community-field {
@@ -1279,19 +1333,24 @@ legend {
 
 .community-field label {
   color: var(--color-text);
-  font-size: var(--font-size-sm);
-  font-weight: 700;
+  font-family: var(--type-label-family);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line-height);
 }
 
 .community-input {
   width: 100%;
   min-height: var(--control-height);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   background: var(--color-surface);
   color: var(--color-text);
   padding: var(--space-3);
-  font: inherit;
+  font-family: var(--type-body-family);
+  font-size: var(--type-body-size);
+  font-weight: var(--type-body-weight);
+  line-height: var(--type-body-line-height);
   transition:
     border-color var(--transition-interaction),
     box-shadow var(--transition-interaction);
@@ -1302,14 +1361,14 @@ legend {
 }
 
 .community-input[aria-invalid="true"] {
-  border-color: var(--color-danger);
-  box-shadow: inset 0 0 0 1px var(--color-danger);
+  border-color: var(--color-error);
+  box-shadow: inset 0 0 0 1px var(--color-error);
 }
 
 .community-field-hint,
 .community-field-error {
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-body);
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-line-height);
 }
 
 .community-field-hint {
@@ -1317,8 +1376,8 @@ legend {
 }
 
 .community-field-error {
-  color: var(--color-danger);
-  font-weight: 650;
+  color: var(--color-error);
+  font-weight: var(--type-label-weight);
 }
 
 .community-alert,
@@ -1327,11 +1386,12 @@ legend {
   grid-template-columns: auto minmax(0, 1fr);
   gap: var(--space-3);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
   color: var(--color-text);
   padding: var(--space-4);
-  line-height: var(--line-height-body);
+  font-size: var(--type-body-sm-size);
+  line-height: var(--type-body-sm-line-height);
 }
 
 .community-alert-marker,
@@ -1350,8 +1410,7 @@ legend {
 }
 
 .community-alert-warning {
-  border-color: #d2b15f;
-  background: var(--color-warning-subtle);
+  color: var(--color-warning);
 }
 
 .community-alert-warning .community-alert-marker {
@@ -1360,8 +1419,7 @@ legend {
 
 .community-alert-success,
 .community-status-success {
-  border-color: #70ad87;
-  background: var(--color-success-subtle);
+  color: var(--color-success);
 }
 
 .community-alert-success .community-alert-marker,
@@ -1371,13 +1429,20 @@ legend {
 
 .community-alert-error,
 .community-status-error {
-  border-color: #d28c85;
-  background: var(--color-danger-subtle);
+  color: var(--color-error);
 }
 
 .community-alert-error .community-alert-marker,
 .community-status-error .community-status-marker {
-  background: var(--color-danger);
+  background: var(--color-error);
+}
+
+.community-alert-warning .community-alert-content,
+.community-alert-success .community-alert-content,
+.community-status-success .community-status-content,
+.community-alert-error .community-alert-content,
+.community-status-error .community-status-content {
+  color: inherit;
 }
 
 .community-status {
@@ -1413,8 +1478,10 @@ legend {
 
 .community-dialog-header h2 {
   margin: 0;
-  font-size: var(--font-size-xl);
-  line-height: var(--line-height-tight);
+  font-family: var(--type-heading-md-family);
+  font-size: var(--type-heading-md-size);
+  font-weight: var(--type-heading-md-weight);
+  line-height: var(--type-heading-md-line-height);
 }
 
 .community-dialog-header p {
@@ -1448,19 +1515,21 @@ legend {
   background: transparent;
   color: var(--color-text-muted);
   padding: var(--space-3) var(--space-4);
-  font: inherit;
-  font-weight: 700;
+  font-family: var(--type-label-family);
+  font-size: var(--type-label-size);
+  font-weight: var(--type-label-weight);
+  line-height: var(--type-label-line-height);
   white-space: nowrap;
   cursor: pointer;
 }
 
 .community-tab-list [role="tab"]:hover:not(:disabled) {
-  color: var(--color-brand-strong);
+  color: var(--color-primary-strong);
 }
 
 .community-tab-list [role="tab"][aria-selected="true"] {
-  border-bottom-color: var(--color-brand);
-  color: var(--color-brand-strong);
+  border-bottom-color: var(--color-primary);
+  color: var(--color-primary-strong);
 }
 
 .community-tab-list [role="tab"]:disabled {
@@ -1487,8 +1556,9 @@ legend {
   align-items: center;
   gap: var(--space-2);
   color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  font-weight: 700;
+  font-size: var(--type-metadata-size);
+  font-weight: var(--type-metadata-weight);
+  line-height: var(--type-metadata-line-height);
 }
 
 .community-progress li:not(:last-child)::after {
@@ -1511,14 +1581,14 @@ legend {
 }
 
 .community-progress-current {
-  color: var(--color-brand-strong) !important;
+  color: var(--color-primary-strong) !important;
 }
 
 .community-progress-current .community-progress-number,
 .community-progress-complete .community-progress-number {
-  border-color: var(--color-brand);
-  background: var(--color-brand);
-  color: white;
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
 @media (prefers-reduced-motion: reduce) {
