@@ -22,6 +22,11 @@ permissions:
 jobs:
   design-lint:
     runs-on: ubuntu-latest
+    env:
+      NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET: ci-design-lint-storage-signing-secret
+      NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET: ci-design-lint-provider-session-encryption-secret
+      NUVITAE_COMMUNITY_ACCESS_SECRET: ci-design-lint-community-access-secret
+      NUVITAE_COMMUNITY_COOKIE_SECURE: "false"
     steps:
       - uses: actions/checkout@v4
       - name: Build the pinned workspace image
