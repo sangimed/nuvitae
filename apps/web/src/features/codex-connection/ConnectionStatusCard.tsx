@@ -64,6 +64,32 @@ export function ConnectionStatusCard(props: {
     return () => controller.abort();
   }, [props.onInitiateConnection, props.onReadStatus, readStatus]);
 
+  useEffect(() => {
+    function handleConnectionComplete(event: MessageEvent<unknown>) {
+      if (event.origin !== window.location.origin) return;
+      if (
+        typeof event.data !== "object" ||
+        event.data === null ||
+        (event.data as { type?: unknown }).type !==
+          "nuvitae:codex-connection-complete"
+      ) {
+        return;
+      }
+      void readStatus().then((outcome) => {
+        if (outcome.ok) {
+          setStatus(outcome.response);
+          setStatusMessage(undefined);
+        } else {
+          setStatusMessage(outcome.message);
+        }
+      });
+    }
+
+    window.addEventListener("message", handleConnectionComplete);
+    return () =>
+      window.removeEventListener("message", handleConnectionComplete);
+  }, [readStatus]);
+
   const visibleStatus = toVisibleStatus(status);
   const canStart =
     visibleStatus === "disconnected" || visibleStatus === "expired";
@@ -90,7 +116,16 @@ export function ConnectionStatusCard(props: {
         safeMessage: null,
       });
       if (props.onNavigate === undefined) {
-        window.location.assign(outcome.response.authorizationUrl);
+        const popup = window.open(
+          outcome.response.authorizationUrl,
+          "nuvitae-codex-connection",
+          "popup,width=520,height=720",
+        );
+        if (popup === null) {
+          window.location.assign(outcome.response.authorizationUrl);
+        } else {
+          popup.focus();
+        }
       } else {
         props.onNavigate(outcome.response.authorizationUrl);
       }

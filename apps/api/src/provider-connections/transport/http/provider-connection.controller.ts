@@ -288,14 +288,14 @@ function mapCallbackError(error: unknown): {
 
 function localProductReturnUrl(outcome: "connected" | "attention"): string {
   const configured = process.env.NUVITAE_CODEX_OAUTH_RETURN_URL;
-  const candidate = configured ?? "http://localhost:3000/import-resume";
+  const candidate = configured ?? "http://localhost:3000/oauth/callback";
   try {
     const url = new URL(candidate);
     const allowedHost = new Set(["localhost", "127.0.0.1", "::1"]);
     if (
       !["http:", "https:"].includes(url.protocol) ||
       !allowedHost.has(url.hostname) ||
-      url.pathname !== "/import-resume" ||
+      !["/oauth/callback", "/import-resume"].includes(url.pathname) ||
       url.search !== "" ||
       url.hash !== ""
     ) {

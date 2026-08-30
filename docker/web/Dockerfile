@@ -20,6 +20,8 @@ RUN --mount=type=cache,id=nuvitae-web-pnpm-store,target=/pnpm/store \
   pnpm install --frozen-lockfile
 
 FROM deps AS builder
+ARG NUVITAE_INTERNAL_API_BASE_URL=http://api:3001
+ENV NUVITAE_INTERNAL_API_BASE_URL=${NUVITAE_INTERNAL_API_BASE_URL}
 COPY apps/web apps/web
 COPY packages/contracts packages/contracts
 RUN pnpm --filter @nuvitae/contracts build

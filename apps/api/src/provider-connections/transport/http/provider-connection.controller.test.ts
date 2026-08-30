@@ -207,7 +207,7 @@ describe("ProviderConnectionController (T214)", () => {
     });
     expect(redirect).toHaveBeenCalledWith(
       303,
-      "http://localhost:3000/import-resume?codex=connected",
+      "http://localhost:3000/oauth/callback?codex=connected",
     );
     expect(JSON.stringify(redirect.mock.calls)).not.toContain("one-time-code");
     expect(JSON.stringify(completeCallback.mock.calls)).not.toContain(

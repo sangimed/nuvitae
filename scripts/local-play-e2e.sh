@@ -3,6 +3,8 @@ set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -- "${script_dir}/.." && pwd)"
+# shellcheck source=local-play-env.sh
+source "${script_dir}/local-play-env.sh"
 artifact_dir="${repo_root}/.local-play/artifacts"
 phase="initialization"
 playwright_status=0
@@ -32,7 +34,9 @@ redact() {
   sed \
     -e 's/\(POSTGRES_PASSWORD[=: ][^[:space:]]*\)/POSTGRES_PASSWORD=<redacted>/g' \
     -e 's/\(QUEUE_PASSWORD[=: ][^[:space:]]*\)/QUEUE_PASSWORD=<redacted>/g' \
-    -e 's/\(NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET[=: ][^[:space:]]*\)/NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET=<redacted>/g'
+    -e 's/\(NUVITAE_COMMUNITY_ACCESS_SECRET[=: ][^[:space:]]*\)/NUVITAE_COMMUNITY_ACCESS_SECRET=<redacted>/g' \
+    -e 's/\(NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET[=: ][^[:space:]]*\)/NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET=<redacted>/g' \
+    -e 's/\(NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET[=: ][^[:space:]]*\)/NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET=<redacted>/g'
 }
 
 collect_compose_diagnostics() {

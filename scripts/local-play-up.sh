@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=local-play-env.sh
+source "${script_dir}/local-play-env.sh"
+
 compose() {
   docker compose -f compose.yml -f compose.local.yml "$@"
 }
@@ -9,12 +13,17 @@ run_step() {
   local label="$1"
   shift
   local log_file
+  local status
   log_file="$(mktemp -t "nuvitae-local-play-${label//[^A-Za-z0-9_.-]/_}.XXXXXX.log")"
   if "$@" >"$log_file" 2>&1; then
+    status=0
+  else
+    status=$?
+  fi
+  if [[ "$status" -eq 0 ]]; then
     rm -f "$log_file"
     return 0
   fi
-  local status=$?
   printf 'Local play startup failed during: %s\n' "$label" >&2
   printf 'Command: %q' "$1" >&2
   shift
@@ -25,7 +34,9 @@ run_step() {
   sed \
     -e 's/\(POSTGRES_PASSWORD[=: ][^[:space:]]*\)/POSTGRES_PASSWORD=<redacted>/g' \
     -e 's/\(QUEUE_PASSWORD[=: ][^[:space:]]*\)/QUEUE_PASSWORD=<redacted>/g' \
+    -e 's/\(NUVITAE_COMMUNITY_ACCESS_SECRET[=: ][^[:space:]]*\)/NUVITAE_COMMUNITY_ACCESS_SECRET=<redacted>/g' \
     -e 's/\(NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET[=: ][^[:space:]]*\)/NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET=<redacted>/g' \
+    -e 's/\(NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET[=: ][^[:space:]]*\)/NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET=<redacted>/g' \
     "$log_file" >&2
   rm -f "$log_file"
   return "$status"
