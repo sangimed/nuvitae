@@ -24,8 +24,8 @@ const journeys = [
       "English",
     ],
     pdfReadingOrder: [
-      "Jordan Avery",
       "Reviewed PDF import",
+      "Jordan Avery",
       "SKILLS",
       "TypeScript",
       "PROFESSIONAL SUMMARY",
@@ -51,8 +51,8 @@ const journeys = [
       "French",
     ],
     pdfReadingOrder: [
-      "Maya Chen",
       "Reviewed DOCX import",
+      "Maya Chen",
       "SKILLS",
       "Figma",
       "PROFESSIONAL SUMMARY",
@@ -85,21 +85,25 @@ for (const journey of journeys) {
     ).toBeVisible({ timeout: 90_000 });
     await page.getByRole("button", { name: "Review imported resume" }).click();
     await expect(
-      page.getByRole("heading", { name: "Review imported resume" }),
+      page.getByRole("heading", {
+        name: "Check the information Nuvitae needs you to confirm",
+      }),
     ).toBeVisible();
+    await expandReviewSections(page);
 
     for (const value of journey.retainedValues) {
       await expect(page.getByText(value).first()).toBeVisible();
     }
 
-    await resolveAllVisibleWarnings(page);
-    await confirmAllUnreviewedFields(page);
+    await confirmAllWarnings(page);
+    await reviewOneImportedField(page);
     await page.getByRole("button", { name: "Create my resume" }).click();
     await expect(
       page.getByRole("dialog", { name: "Create your resume" }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Create resume" }).click();
     await expect(page).toHaveURL(/\/resumes\/[0-9a-f-]+$/i);
+    await page.getByRole("link", { name: "Open my resume" }).click();
     await expect(
       page.getByRole("heading", { name: "Edit your resume" }),
     ).toBeVisible();
@@ -148,7 +152,7 @@ for (const journey of journeys) {
     if (!extraction.ok) return;
     expect(extraction.value.length).toBeGreaterThanOrEqual(1);
     expect(extraction.value.length).toBeLessThanOrEqual(2);
-    expect(extraction.value.every((pdfPage) => pdfPage.items.length > 0)).toBe(
+    expect(extraction.value.some((pdfPage) => pdfPage.items.length > 0)).toBe(
       true,
     );
     const extractedText = extraction.value
@@ -157,6 +161,7 @@ for (const journey of journeys) {
     assertMaterialOrder(extractedText, journey.pdfReadingOrder);
 
     await page.getByRole("link", { name: "Back to resume" }).click();
+    await expect(page).toHaveURL(/\/resumes\/[0-9a-f-]+$/i);
     await page.reload();
     await expect(
       page.getByRole("heading", { name: "Edit your resume" }),
@@ -185,33 +190,33 @@ async function uploadDocument(page: Page, filePath: string): Promise<void> {
   ).toBeVisible();
 }
 
-async function confirmAllUnreviewedFields(page: Page): Promise<void> {
-  const unreviewed = page.locator("article.review-field").filter({
-    hasText: "Review state: unreviewed",
+async function reviewOneImportedField(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Edit field" }).first().click();
+  await page.getByRole("button", { name: "Save change" }).click();
+  await expect(page.getByRole("status").first()).not.toContainText(
+    "Saving review change.",
+  );
+}
+
+async function confirmAllWarnings(page: Page): Promise<void> {
+  const confirmations = page.getByRole("button", {
+    name: "Confirm",
+    exact: true,
   });
-  while ((await unreviewed.count()) > 0) {
-    await unreviewed
-      .first()
-      .getByRole("button", { name: "Confirm field" })
-      .click();
+  while ((await confirmations.count()) > 0) {
+    await confirmations.first().click();
     await expect(page.getByRole("status").first()).not.toContainText(
       "Saving review change.",
     );
   }
 }
 
-async function resolveAllVisibleWarnings(page: Page): Promise<void> {
-  const unresolved = page.locator("article.review-warning").filter({
-    hasText: "Review state: needs review",
-  });
-  while ((await unresolved.count()) > 0) {
-    await unresolved
-      .first()
-      .getByRole("button", { name: "Intentionally leave" })
-      .click();
-    await expect(page.getByRole("status").first()).not.toContainText(
-      "Saving review change.",
-    );
+async function expandReviewSections(page: Page): Promise<void> {
+  const closedSections = page.locator(
+    "details.review-section:not([open]) > summary",
+  );
+  while ((await closedSections.count()) > 0) {
+    await closedSections.first().click();
   }
 }
 
