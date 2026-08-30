@@ -149,6 +149,15 @@ run_phase "semantic vertical slice: real PDF and DOCX" \
         tests/browser/import-resume/semantic-import-vertical-slice.spec.ts \
         -g "real"
 
+run_phase "deterministic import-to-PDF fidelity journeys" \
+  env NUVITAE_SEMANTIC_PROVIDER_MODE=deterministic-e2e-test \
+    docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
+    --profile test run --rm \
+      -e LOCAL_PLAY_ARTIFACT_DIR=/workspace/.local-play/artifacts \
+      playwright-test pnpm exec playwright test \
+        --config=playwright.local-play.config.ts \
+        tests/browser/resume-export/import-to-pdf-fidelity.spec.ts
+
 run_phase "restore production worker composition" \
   env NUVITAE_SEMANTIC_PROVIDER_MODE=production \
     docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
@@ -190,4 +199,5 @@ printf '%s\n' \
   "Local playable E2E: passed" \
   "Manual fresh draft: passed" \
   "Manual stale recovery: passed" \
-  "Anonymous PDF import: passed"
+  "Anonymous PDF import: passed" \
+  "Deterministic PDF/DOCX preview-to-export fidelity: passed"

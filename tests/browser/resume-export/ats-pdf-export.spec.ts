@@ -9,7 +9,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("canonical resume export produces selectable text in material reading order", async ({
+test("saved preview and PDF share all supported content in persisted section order", async ({
   page,
 }) => {
   await page.route(`**/api/structured-resumes/${resumeId}`, async (route) => {
@@ -20,14 +20,36 @@ test("canonical resume export produces selectable text in material reading order
   await expect(
     page.getByRole("heading", { name: "Edit your resume" }),
   ).toBeVisible();
+
+  const preview = page
+    .locator('[data-preview-surface="professional-resume"]')
+    .locator('[data-resume-template="professional"]');
+  await expect(preview).toContainText("Jordan Avery");
+  const previewRawText = await preview.innerText();
+  const previewText = normalizeResumeText(previewRawText);
+
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Edit your resume" }),
+  ).toBeVisible();
+  const reopenedPreview = page
+    .locator('[data-preview-surface="professional-resume"]')
+    .locator('[data-resume-template="professional"]');
+  await expect(reopenedPreview).toContainText("Jordan Avery");
+  expect(normalizeResumeText(await reopenedPreview.innerText())).toBe(
+    normalizeResumeText(previewRawText),
+  );
+
   await page.getByRole("link", { name: "Export PDF" }).click();
   await expect(page).toHaveURL(`/resumes/${resumeId}/export`);
   await expect(
     page.getByRole("heading", { name: "Your PDF is ready to save" }),
   ).toBeVisible();
-  await expect(
-    page.locator('[data-resume-template="professional"]'),
-  ).toContainText("Jordan Avery");
+  const exportedResume = page.locator('[data-resume-template="professional"]');
+  await expect(exportedResume).toContainText("Jordan Avery");
+  expect(normalizeResumeText(await exportedResume.innerText())).toBe(
+    previewText,
+  );
 
   const bytes = await page.pdf({
     format: "A4",
@@ -38,20 +60,33 @@ test("canonical resume export produces selectable text in material reading order
 
   expect(extraction.ok).toBe(true);
   if (!extraction.ok) return;
+  expect(extraction.value).toHaveLength(1);
+  expect(extraction.value[0]?.items.length).toBeGreaterThan(0);
   const text = extraction.value
     .flatMap((pdfPage) => pdfPage.items.map((item) => item.text))
     .join(" ");
   const expectedOrder = [
     "Jordan Avery",
-    "Software Engineer",
+    "Principal Platform Engineer",
+    "jordan.avery@example.test",
+    "Portfolio",
+    "SKILLS",
+    "TypeScript",
     "PROFESSIONAL SUMMARY",
-    "Builds reliable products.",
+    "Builds reliable, accessible products across international teams.",
     "EXPERIENCE",
     "Nova Systems",
     "Senior Engineer",
-    "Led platform delivery",
-    "SKILLS",
-    "TypeScript",
+    "Led platform delivery for eight product teams.",
+    "EDUCATION",
+    "State University",
+    "BSc, Computer Science",
+    "PROJECTS",
+    "Release Safety Toolkit",
+    "CERTIFICATIONS",
+    "Cloud Architecture Professional",
+    "LANGUAGES",
+    "French",
   ];
   expectedOrder.reduce((previousIndex, value) => {
     const index = text.indexOf(value);
@@ -103,6 +138,10 @@ async function extractText(bytes: Buffer) {
   });
 }
 
+function normalizeResumeText(value: string): string {
+  return value.replace(/\s+/gu, " ").trim();
+}
+
 function confirmedResumeResponse() {
   const sourced = (value: string) => ({
     value,
@@ -119,36 +158,91 @@ function confirmedResumeResponse() {
     confirmationStatus: "confirmed",
     provenanceLabel: "imported_from_initial_resume",
     content: {
-      personal: [sourced("Jordan Avery")],
-      contact: [sourced("jordan@example.test")],
-      headline: sourced("Software Engineer"),
-      summary: sourced("Builds reliable products."),
+      sectionOrder: [
+        "basics",
+        "skills",
+        "summary",
+        "workExperiences",
+        "education",
+        "projects",
+        "certifications",
+        "languages",
+        "professionalLinks",
+      ],
+      personal: [sourced("Jordan Avery"), sourced("Paris, France")],
+      contact: [
+        sourced("jordan.avery@example.test"),
+        sourced("+33 6 12 34 56 78"),
+      ],
+      headline: sourced("Principal Platform Engineer"),
+      summary: sourced(
+        "Builds reliable, accessible products across international teams.",
+      ),
       workExperiences: [
         {
           id: "55555555-5555-4555-8555-555555555555",
           employerName: "Nova Systems",
+          employerLocation: "Remote",
           roles: [
             {
               id: "66666666-6666-4666-8666-666666666666",
               title: "Senior Engineer",
+              location: "France",
+              startDate: { year: 2021, precision: "year" },
               isOngoing: true,
-              responsibilities: [sourced("Led platform delivery")],
-              achievements: [],
+              responsibilities: [
+                sourced("Led platform delivery for eight product teams."),
+              ],
+              achievements: [sourced("Improved availability to 99.99%.")],
             },
           ],
         },
       ],
-      education: [],
+      education: [
+        {
+          id: "88888888-8888-4888-8888-888888888888",
+          institution: sourced("State University"),
+          credential: sourced("BSc"),
+          fieldOfStudy: sourced("Computer Science"),
+          endDate: { year: 2019, precision: "year" },
+        },
+      ],
       skills: [
         {
           id: "77777777-7777-4777-8777-777777777777",
           name: sourced("TypeScript"),
         },
       ],
-      languages: [],
-      projects: [],
-      certifications: [],
-      professionalLinks: [],
+      languages: [
+        {
+          id: "99999999-9999-4999-8999-999999999999",
+          name: sourced("French"),
+          proficiency: sourced("Fluent"),
+        },
+      ],
+      projects: [
+        {
+          id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          name: sourced("Release Safety Toolkit"),
+          description: sourced("Automates privacy-safe release checks."),
+          links: [],
+        },
+      ],
+      certifications: [
+        {
+          id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          name: sourced("Cloud Architecture Professional"),
+          issuer: sourced("Example Cloud"),
+          issuedAt: { year: 2023, precision: "year" },
+        },
+      ],
+      professionalLinks: [
+        {
+          id: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+          label: "Portfolio",
+          url: sourced("https://jordan.example.test"),
+        },
+      ],
     },
     createdAt: "2026-08-22T09:00:00.000Z",
     updatedAt: "2026-08-22T09:00:00.000Z",
