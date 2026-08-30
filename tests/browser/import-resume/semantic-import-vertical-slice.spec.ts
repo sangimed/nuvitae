@@ -20,11 +20,13 @@ const pdfFixture =
   "/workspace/tests/fixtures/resumes/semantic-vertical-slice-jordan-avery.pdf";
 const docxFixture =
   "/workspace/tests/fixtures/resumes/semantic-vertical-slice-maya-chen.docx";
+const noSupportedFieldFixture =
+  "/workspace/packages/test-fixtures/resume-import/pdf/no-supported-field.pdf";
 
 const technicalDiagnosticPattern =
   /LibreOffice|PdfJs|Ooxml|parser-input|parser-output|storageKey|storage key|users\/|imports\/|provider|deterministic|transcript|fragment hash|schemaVersion|\.xml|\.docx|\.pdf/i;
 
-test("no production semantic provider is configured fails closed with privacy-safe recovery", async ({
+test("no production semantic provider is configured recovers the existing fallback draft after refresh", async ({
   page,
 }) => {
   const importStarts = trackImportStarts(page);
@@ -35,30 +37,19 @@ test("no production semantic provider is configured fails closed with privacy-sa
     page.getByRole("heading", { name: "Preparing your resume for review" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "This resume could not be prepared" }),
+    page.getByRole("button", { name: "Review imported resume" }),
   ).toBeVisible({ timeout: 90_000 });
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "This resume could not be prepared" }),
+    page.getByRole("button", { name: "Review imported resume" }),
   ).toBeVisible();
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "This resume could not be prepared" }),
+    page.getByRole("button", { name: "Review imported resume" }),
   ).toBeVisible();
   expect(importStarts()).toBe(1);
 
-  // Only already-supported recovery paths are offered.
-  await expect(
-    page.getByRole("button", { name: "Upload a different file" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Enter manually" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "Review imported resume" }),
-  ).toHaveCount(0);
-
-  // The browser receives only privacy-safe, non-technical recovery behavior.
+  // The processing result remains privacy-safe until the user enters review.
   const body = await page.locator("body").innerText();
   expect(body).not.toMatch(technicalDiagnosticPattern);
   for (const sensitive of [
@@ -70,10 +61,46 @@ test("no production semantic provider is configured fails closed with privacy-sa
     expect(body).not.toContain(sensitive);
   }
 
-  // Provider absence persists the provider-neutral unavailable failure, creates
-  // no draft, and creates no structured resume.
+  // The bounded fallback creates one review draft after one semantic attempt;
+  // refreshing never creates another attempt or structured resume.
   const invariants = await readImportInvariants(importId);
-  expect(invariants.processingStatus).toBe("provider_unavailable");
+  expect(invariants.processingStatus).toBe("ready_for_review");
+  expect(invariants.draftCount).toBe(1);
+  expect(invariants.structuredResumeCount).toBe(0);
+});
+
+test("real unsupported resume failure is recoverable after refresh", async ({
+  page,
+}) => {
+  const importStarts = trackImportStarts(page);
+  const importId = await uploadDocument(page, noSupportedFieldFixture);
+
+  await expect(page).toHaveURL(`/import-resume/${importId}`);
+  await expect(
+    page.getByRole("heading", { name: "This file cannot be imported" }),
+  ).toBeVisible({ timeout: 90_000 });
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "This file cannot be imported" }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "This file cannot be imported" }),
+  ).toBeVisible();
+  expect(importStarts()).toBe(1);
+
+  await expect(
+    page.getByRole("button", { name: "Upload a different file" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Enter manually" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Review imported resume" }),
+  ).toHaveCount(0);
+
+  const invariants = await readImportInvariants(importId);
+  expect(invariants.processingStatus).toBe("failed");
   expect(invariants.draftCount).toBe(0);
   expect(invariants.structuredResumeCount).toBe(0);
 });
@@ -105,8 +132,11 @@ test("real selectable-text PDF vertical slice reaches review, confirmation, and 
   await page.getByRole("button", { name: "Review imported resume" }).click();
   await expect(page).toHaveURL(/\/import-resume\/[0-9a-f-]+\/review/);
   await expect(
-    page.getByRole("heading", { name: "Review imported resume" }),
+    page.getByRole("heading", {
+      name: "Check the information Nuvitae needs you to confirm",
+    }),
   ).toBeVisible();
+  await expandReviewSections(page);
 
   // Small stable sentinel set of grounded fields from the T210 PDF profile.
   await expect(page.getByText("Jordan Avery")).toBeVisible();
@@ -116,20 +146,20 @@ test("real selectable-text PDF vertical slice reaches review, confirmation, and 
     page.getByText("Senior Software Engineer").first(),
   ).toBeVisible();
   await expect(
-    page.getByText("Imported from initial resume").first(),
+    page.getByText("Imported from your resume.", { exact: true }).first(),
   ).toBeVisible();
 
   // The T210 PDF profile carries no ambiguity or inference diagnostics, so the
   // review must show zero review-required warnings and confirmation must be
   // reachable once a field is confirmed.
   await expect(
-    page.locator(".status-list div", { hasText: "Needs review" }).last(),
-  ).toContainText("0");
+    page.getByText("0 details still need your attention.", { exact: false }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Create my resume" }),
   ).toHaveCount(0);
 
-  await confirmAllUnreviewedFields(page);
+  await reviewOneImportedField(page);
   await expect(
     page.getByRole("button", { name: "Create my resume" }),
   ).toBeEnabled();
@@ -147,7 +177,7 @@ test("real selectable-text PDF vertical slice reaches review, confirmation, and 
 
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Your resume is ready" }),
+    page.getByRole("heading", { name: "Edit your resume" }),
   ).toBeVisible();
   await expect(page.getByText("Jordan Avery")).toBeVisible();
   await expect(
@@ -176,14 +206,17 @@ test("real DOCX vertical slice proves OOXML extraction and review-required ambig
   await page.getByRole("button", { name: "Review imported resume" }).click();
   await expect(page).toHaveURL(/\/import-resume\/[0-9a-f-]+\/review/);
   await expect(
-    page.getByRole("heading", { name: "Review imported resume" }),
+    page.getByRole("heading", {
+      name: "Check the information Nuvitae needs you to confirm",
+    }),
   ).toBeVisible();
+  await expandReviewSections(page);
 
   // Small stable sentinel set of grounded fields from the T210 DOCX profile.
   await expect(page.getByText("Maya Chen")).toBeVisible();
   await expect(page.getByText("maya.chen@example.test")).toBeVisible();
-  await expect(page.getByText("Acme Studio")).toBeVisible();
-  await expect(page.getByText("Bright Labs")).toBeVisible();
+  await expect(page.getByText("Acme Studio").first()).toBeVisible();
+  await expect(page.getByText("Bright Labs").first()).toBeVisible();
 
   // The T210 DOCX profile carries one ambiguity diagnostic that must be
   // visibly review-required and block confirmation.
@@ -191,14 +224,14 @@ test("real DOCX vertical slice proves OOXML extraction and review-required ambig
     page.getByText("The end date could be read as a range or a single year."),
   ).toBeVisible();
   await expect(
-    page.locator(".status-list div", { hasText: "Needs review" }).last(),
-  ).toContainText("1");
+    page.getByText("1 detail still needs your attention.", { exact: false }),
+  ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Review remaining details" }),
   ).toBeVisible();
 
-  await resolveAllVisibleWarnings(page);
-  await confirmAllUnreviewedFields(page);
+  await confirmAllWarnings(page);
+  await reviewOneImportedField(page);
   await expect(
     page.getByRole("button", { name: "Create my resume" }),
   ).toBeEnabled();
@@ -212,7 +245,7 @@ test("real DOCX vertical slice proves OOXML extraction and review-required ambig
 
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Your resume is ready" }),
+    page.getByRole("heading", { name: "Edit your resume" }),
   ).toBeVisible();
   await expect(page.getByText("Maya Chen")).toBeVisible();
 
@@ -255,30 +288,30 @@ function trackImportStarts(page: Page): () => number {
   return () => count;
 }
 
-async function confirmAllUnreviewedFields(page: Page): Promise<void> {
-  const unreviewed = page.locator("article.review-field").filter({
-    hasText: "Review state: unreviewed",
-  });
-  while ((await unreviewed.count()) > 0) {
-    await unreviewed
-      .first()
-      .getByRole("button", { name: "Confirm field" })
-      .click();
-    await expect(page.getByRole("status").first()).not.toContainText(
-      "Saving review change.",
-    );
+async function expandReviewSections(page: Page): Promise<void> {
+  const closedSections = page.locator(
+    "details.review-section:not([open]) > summary",
+  );
+  while ((await closedSections.count()) > 0) {
+    await closedSections.first().click();
   }
 }
 
-async function resolveAllVisibleWarnings(page: Page): Promise<void> {
-  const unresolved = page.locator("article.review-warning").filter({
-    hasText: "Review state: needs review",
+async function reviewOneImportedField(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Edit field" }).first().click();
+  await page.getByRole("button", { name: "Save change" }).click();
+  await expect(page.getByRole("status").first()).not.toContainText(
+    "Saving review change.",
+  );
+}
+
+async function confirmAllWarnings(page: Page): Promise<void> {
+  const confirmations = page.getByRole("button", {
+    name: "Confirm",
+    exact: true,
   });
-  while ((await unresolved.count()) > 0) {
-    await unresolved
-      .first()
-      .getByRole("button", { name: "Intentionally leave" })
-      .click();
+  while ((await confirmations.count()) > 0) {
+    await confirmations.first().click();
     await expect(page.getByRole("status").first()).not.toContainText(
       "Saving review change.",
     );
