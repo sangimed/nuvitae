@@ -245,8 +245,9 @@ docker compose run --rm workspace pnpm format
 The API and worker both use the shared TypeORM Data Mapper persistence package
 for validated environment configuration, entities, migrations, repositories,
 and transactions. They do not carry application-specific entity lists or create
-independent data sources. `synchronize` and automatic migration execution are
-always disabled.
+independent data sources. `synchronize` is always disabled. The shared
+persistence default keeps `migrationsRun` disabled; the Community API explicitly
+opts into migration execution at startup, while the worker never does.
 
 The defaults `nuvitae` / `nuvitae_dev_password` are local Compose development
 credentials only. Production sets `NODE_ENV=production` and must explicitly
@@ -266,6 +267,42 @@ docker compose run --rm workspace pnpm db:migration:create
 `generate` and `create` write disposable files under `.tmp/migrations`; they do
 not overwrite the committed initial migration. Move and review an intentional
 generated migration before committing it.
+
+#### Pre-production schema evolution
+
+Nuvitae is currently pre-production and its schema is under active iteration.
+Fresh development and test schemas are built from the committed TypeORM
+migration set, so the entities and that pre-production schema history must stay
+consistent. Unless migration, upgrade, release, or compatibility behavior is
+part of the task, an iterative entity change does not require another migration
+file solely to preserve experimental history. Instead:
+
+1. update the entities and deliberately revise the relevant canonical
+   pre-production migration definitions;
+2. update affected repositories, fixtures, contracts, and tests;
+3. run the Docker persistence integration suite below to prove that migrations
+   build a fresh schema matching the current model.
+
+Do not enable TypeORM `synchronize`, bypass migration/schema tests, or blindly
+delete or rewrite migration history. Migration generation remains available for
+tasks that explicitly require a reviewed migration; generated files are only a
+starting point and must be inspected before they join the committed history.
+
+The integration suite's unique schemas in a database ending in `_test` are
+inherently disposable and are removed by the suite. Local Play and Community
+use named PostgreSQL volumes: normal shutdown preserves them, so do not assume
+their data is disposable. Use the documented [Local Play destructive reset](#local-playable-stack)
+only after a human intentionally confirms that all affected local data may be
+erased. Never reset a Community or other database containing important user or
+developer data; preserving such state requires an explicit reviewed forward
+migration rather than editing the history already applied to it.
+
+Before the first production or hosted release stores real user data, establish
+a production database baseline and deliberately decide whether the
+pre-production migration history is squashed, rebased into that baseline, or
+retained. Once that baseline is established, normal production discipline
+applies: every durable schema change receives a reviewed forward-compatible
+migration and upgrade validation.
 
 Persistence integration tests require `POSTGRES_TEST_DB` to end in `_test`.
 They create a unique schema per suite, run migrations there, and drop the schema
