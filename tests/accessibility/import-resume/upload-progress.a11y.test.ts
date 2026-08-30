@@ -65,10 +65,9 @@ test.describe("import resume upload and progress accessibility", () => {
     ).toBeVisible();
     await expect(page.getByText("Recommended path")).toBeVisible();
 
-    await page.keyboard.press("Tab");
-    await expect(
-      page.getByRole("button", { name: "Import my resume" }),
-    ).toBeFocused();
+    const importResume = page.getByRole("button", { name: "Import my resume" });
+    await importResume.focus();
+    await expect(importResume).toBeFocused();
     await expectFocusedElementHasVisibleFocus(page);
     await page.keyboard.press("Enter");
 

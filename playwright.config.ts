@@ -7,6 +7,7 @@ export default defineConfig({
     "browser/resume-export/**/*.spec.ts",
     "browser/resume-workspace/**/*.spec.ts",
   ],
+  outputDir: ".tmp/playwright-results",
   timeout: 30_000,
   expect: { timeout: 5_000 },
   use: {

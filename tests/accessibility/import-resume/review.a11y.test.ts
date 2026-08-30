@@ -53,7 +53,7 @@ test.describe("import review accessibility", () => {
       page.getByRole("heading", {
         name: "Professional summary",
         exact: true,
-        level: 2,
+        level: 3,
       }),
     ).toBeVisible();
     const provenance = page.locator(

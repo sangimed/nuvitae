@@ -70,26 +70,23 @@ test.describe("US3 confirmation accessibility", () => {
     });
 
     await page.goto(`/import-resume/${importId}/review`);
+    const createResume = page.getByRole("button", {
+      name: "Create my resume",
+    });
+    await expect(createResume).toBeVisible();
+    await createResume.press("Enter");
     await expect(
-      page.getByRole("button", { name: "Create structured resume" }),
-    ).toBeVisible();
-    await page
-      .getByRole("button", { name: "Create structured resume" })
-      .press("Enter");
-    await expect(
-      page.getByRole("dialog", { name: "Confirm resume creation" }),
+      page.getByRole("dialog", { name: "Create your resume" }),
     ).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toHaveCount(0);
-    await page
-      .getByRole("button", { name: "Create structured resume" })
-      .click();
-    await page
-      .getByRole("button", { name: "Confirm and create resume" })
-      .click();
-    await expect(
-      page.getByText("Your structured resume was created."),
-    ).toBeVisible();
+    await createResume.click();
+    await page.getByRole("button", { name: "Create resume" }).click();
+    const success = page.getByRole("status").filter({
+      has: page.getByRole("link", { name: "Open my resume" }),
+    });
+    await expect(success).toContainText("Your resume is ready.");
+    await expect(success).toBeFocused();
   });
 });
 

@@ -25,9 +25,9 @@ test.describe("Community application shell accessibility", () => {
     ).toBeVisible();
     await expect(page.getByRole("main")).toHaveCount(1);
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-      "Create your resume",
+      "Build a resume you feel good sending.",
     );
-    await expect(page.getByLabel("Owner access secret")).toBeVisible();
+    await expect(page.getByLabel("Access code")).toBeVisible();
     await expect(page.getByText("API route")).toHaveCount(0);
     await expect(page.getByText("Local Play", { exact: false })).toHaveCount(0);
 
