@@ -128,8 +128,16 @@ export function UnknownImportRecovery(props: {
   );
 }
 
-export function ImportFlow() {
-  const [state, setState] = useState<ClientImportState>(initialImportState);
+export function ImportFlow(props: { readonly importId?: string }) {
+  const [state, setState] = useState<ClientImportState>(() =>
+    props.importId === undefined
+      ? initialImportState
+      : {
+          state: "validating",
+          importId: props.importId,
+          progress: { known: false, label: "checking_document" },
+        },
+  );
   const [selectedFile, setSelectedFile] = useState<File | undefined>();
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | undefined>();
@@ -174,6 +182,9 @@ export function ImportFlow() {
         setAnnouncement(announcementForStatus(next, processingAnnounced));
         if (next.status === "processing") {
           processingAnnouncedImportRef.current = next.importId;
+        }
+        if (next.status === "not_found") {
+          window.history.replaceState(null, "", "/import-resume");
         }
         applyStatusState(next, setState);
       },
@@ -252,6 +263,11 @@ export function ImportFlow() {
       return;
     }
     setSelectedFile(undefined);
+    window.history.replaceState(
+      null,
+      "",
+      `/import-resume/${outcome.response.importId}`,
+    );
     setState(
       transitionImportState(state, {
         type: "start_validation",
@@ -419,6 +435,9 @@ function applyStatusState(
         importId: status.importId,
         recoveryActions: ["replace_upload", "manual_entry"],
       };
+    }
+    if (status.status === "not_found") {
+      return initialImportState;
     }
     return current;
   });

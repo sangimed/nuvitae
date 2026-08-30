@@ -54,6 +54,7 @@ let emitStatus: ((status: PublicImportStatusResponse) => void) | undefined;
 beforeEach(() => {
   container = document.createElement("div");
   document.body.appendChild(container);
+  window.history.replaceState(null, "", "/import-resume");
   emitStatus = undefined;
   mocks.startImportUpload.mockReset();
   mocks.pollImportStatus.mockReset();
@@ -289,6 +290,83 @@ describe("ImportFlow live announcements (T063)", () => {
       "processing_failed",
     );
     expect(announcementForRecoveryState("unknown")).toBe("unknown");
+  });
+});
+
+describe("ImportFlow route recovery", () => {
+  it("starts one attempt and never restarts it across recovered remounts", async () => {
+    render(<ImportFlow />);
+    await startUpload();
+
+    expect(window.location.pathname).toBe(`/import-resume/${importId}`);
+    expect(mocks.startImportUpload).toHaveBeenCalledTimes(1);
+
+    act(() => root?.unmount());
+    root = undefined;
+    render(<ImportFlow importId={importId} />);
+    act(() => root?.unmount());
+    root = undefined;
+    render(<ImportFlow importId={importId} />);
+
+    expect(mocks.startImportUpload).toHaveBeenCalledTimes(1);
+  });
+
+  it("observes an existing import without starting another upload", () => {
+    render(<ImportFlow importId={importId} />);
+
+    expect(container.textContent).toContain("Preparing your resume for review");
+    expect(mocks.pollImportStatus).toHaveBeenCalledWith(
+      expect.objectContaining({ importId }),
+    );
+    expect(mocks.startImportUpload).not.toHaveBeenCalled();
+  });
+
+  it("restores the existing completed and failed states", () => {
+    render(<ImportFlow importId={importId} />);
+    act(() => {
+      emitStatus?.(
+        statusResponse("draft_ready", {
+          progressKnown: true,
+          progressPercent: 100,
+          draftSummary: {
+            draftId: "33333333-3333-4333-8333-333333333333",
+            retentionExpiresAt: "2026-08-05T09:30:00.000Z",
+            fieldCount: 4,
+            warningCount: 0,
+          },
+        }),
+      );
+    });
+    expect(container.textContent).toContain("Your resume draft is ready");
+
+    act(() => root?.unmount());
+    root = undefined;
+    render(<ImportFlow importId={importId} />);
+    act(() => {
+      emitStatus?.(
+        statusResponse("terminal_processing_failure", {
+          failure: {
+            code: "terminal_failure",
+            retryable: false,
+            recoveryActions: ["replace_upload", "manual_entry"],
+            userMessage: "This import failed.",
+          },
+        }),
+      );
+    });
+    expect(container.textContent).toContain(
+      "This resume could not be prepared",
+    );
+    expect(container.textContent).toContain("This import failed.");
+    expect(mocks.startImportUpload).not.toHaveBeenCalled();
+  });
+
+  it("returns genuinely missing imports to the chooser", () => {
+    render(<ImportFlow importId={importId} />);
+    act(() => emitStatus?.(statusResponse("not_found")));
+
+    expect(window.location.pathname).toBe("/import-resume");
+    expect(container.textContent).toContain("Start from your existing resume");
   });
 });
 

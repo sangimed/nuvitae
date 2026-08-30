@@ -27,14 +27,25 @@ const technicalDiagnosticPattern =
 test("no production semantic provider is configured fails closed with privacy-safe recovery", async ({
   page,
 }) => {
+  const importStarts = trackImportStarts(page);
   const importId = await uploadDocument(page, pdfFixture);
 
+  await expect(page).toHaveURL(`/import-resume/${importId}`);
   await expect(
     page.getByRole("heading", { name: "Preparing your resume for review" }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "This resume could not be prepared" }),
   ).toBeVisible({ timeout: 90_000 });
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "This resume could not be prepared" }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "This resume could not be prepared" }),
+  ).toBeVisible();
+  expect(importStarts()).toBe(1);
 
   // Only already-supported recovery paths are offered.
   await expect(
@@ -70,14 +81,27 @@ test("no production semantic provider is configured fails closed with privacy-sa
 test("real selectable-text PDF vertical slice reaches review, confirmation, and a persisted structured resume", async ({
   page,
 }) => {
+  const importStarts = trackImportStarts(page);
   const importId = await uploadDocument(page, pdfFixture);
 
+  await expect(page).toHaveURL(`/import-resume/${importId}`);
   await expect(
     page.getByRole("heading", { name: "Preparing your resume for review" }),
   ).toBeVisible();
+  await page.reload();
+  await expect(page).toHaveURL(`/import-resume/${importId}`);
   await expect(
     page.getByRole("button", { name: "Review imported resume" }),
   ).toBeVisible({ timeout: 90_000 });
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Review imported resume" }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Review imported resume" }),
+  ).toBeVisible();
+  expect(importStarts()).toBe(1);
   await page.getByRole("button", { name: "Review imported resume" }).click();
   await expect(page).toHaveURL(/\/import-resume\/[0-9a-f-]+\/review/);
   await expect(
@@ -216,6 +240,19 @@ async function uploadDocument(page: Page, filePath: string): Promise<string> {
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
   );
   return body.importId;
+}
+
+function trackImportStarts(page: Page): () => number {
+  let count = 0;
+  page.on("request", (request) => {
+    if (
+      request.method() === "POST" &&
+      /\/api\/import-resume$/.test(request.url())
+    ) {
+      count += 1;
+    }
+  });
+  return () => count;
 }
 
 async function confirmAllUnreviewedFields(page: Page): Promise<void> {
