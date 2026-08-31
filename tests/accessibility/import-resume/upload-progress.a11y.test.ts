@@ -8,6 +8,136 @@ const base = {
 };
 
 test.describe("import resume upload and progress accessibility", () => {
+  test("keeps rotating copy quiet and stops decorative motion when reduced motion is requested", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.route(`**/import-resume/${importId}/status`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...base,
+          status: "processing",
+          currentStep: "reading_content",
+          progressKnown: false,
+          allowedRecoveryActions: [],
+          userMessage: "Nuvitae is reading supported content.",
+        }),
+      });
+    });
+
+    await page.goto(`/import-resume/${importId}`);
+
+    const card = page.locator(".import-processing-card");
+    await expect(card).toHaveAttribute("aria-busy", "true");
+    await expect(card.getByText("reading the content")).toBeVisible();
+    await expect(card.locator("[data-loading-message]")).toHaveAttribute(
+      "aria-live",
+      "off",
+    );
+    await expect(card.locator(".import-loading-visual")).toHaveAttribute(
+      "aria-hidden",
+      "true",
+    );
+    for (const selector of [
+      ".import-loading-document",
+      ".import-loading-orbit",
+    ]) {
+      await expect
+        .poll(() =>
+          card.locator(selector).evaluate((element) => {
+            return window.getComputedStyle(element).animationName;
+          }),
+        )
+        .toBe("none");
+    }
+  });
+
+  test("keeps the loading treatment readable within a mobile viewport", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.route(`**/import-resume/${importId}/status`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...base,
+          status: "processing",
+          currentStep: "preparing_review",
+          progressKnown: false,
+          allowedRecoveryActions: [],
+          userMessage: "Nuvitae is preparing the review result.",
+        }),
+      });
+    });
+
+    await page.goto(`/import-resume/${importId}`);
+    const card = page.locator(".import-processing-card");
+    await expect(card.locator(".import-loading-visual")).toBeVisible();
+    await expect(card.getByText("preparing review")).toBeVisible();
+    await expect
+      .poll(() =>
+        card.evaluate((element) => {
+          const bounds = element.getBoundingClientRect();
+          return (
+            bounds.width > 0 &&
+            bounds.left >= 16 &&
+            bounds.right <= window.innerWidth - 16
+          );
+        }),
+      )
+      .toBe(true);
+  });
+
+  test("shows real stage updates and immediately replaces the loader with recovery UI", async ({
+    page,
+  }) => {
+    let returnFailure = false;
+    await page.route(`**/import-resume/${importId}/status`, async (route) => {
+      const response = returnFailure
+        ? {
+            ...base,
+            status: "validation_failure",
+            progressKnown: false,
+            failure: {
+              code: "malformed_or_corrupted",
+              userMessage: "This file could not be accepted.",
+              retryable: true,
+              recoveryActions: ["replace_upload", "manual_entry"],
+            },
+            allowedRecoveryActions: ["replace_upload", "manual_entry"],
+            userMessage: "This file could not be accepted.",
+          }
+        : {
+            ...base,
+            status: "processing",
+            currentStep: "organizing_resume_sections",
+            progressKnown: false,
+            allowedRecoveryActions: [],
+            userMessage: "Nuvitae is organizing supported resume content.",
+          };
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(response),
+      });
+    });
+
+    await page.goto(`/import-resume/${importId}`);
+    await expect(page.getByText("organizing resume sections")).toBeVisible();
+    returnFailure = true;
+    await expect(
+      page.getByRole("heading", { name: "This file cannot be imported" }),
+    ).toBeVisible();
+    await expect(page.locator("[data-loading-message]")).toHaveCount(0);
+    await expect(page.locator(".import-loading-visual")).toHaveCount(0);
+    await expect(
+      page.getByRole("alert", { name: "There is a problem" }),
+    ).toContainText("This file could not be accepted.");
+  });
+
   test("exposes accessible choices, upload guidance, and duplicate-submit prevention", async ({
     page,
   }) => {
