@@ -7,6 +7,7 @@ import {
   type ProviderRuntimeConnectionAdapter,
   type ProviderSessionStore,
 } from "@nuvitae/import-application";
+import { CodexContextualResumeEditProvider } from "@nuvitae/import-application/codex";
 import { LocalProviderSessionStorage } from "@nuvitae/storage";
 import { ApiPersistenceModule } from "../persistence/api-persistence.module.js";
 import {
@@ -21,6 +22,7 @@ import {
   API_PROVIDER_CONNECTION_REPOSITORY,
   API_PROVIDER_CONNECTION_SERVICE,
   API_PROVIDER_SESSION_STORE,
+  API_CONTEXTUAL_RESUME_EDIT_PROVIDER,
 } from "./ports/tokens.js";
 
 const providerConnectionProviders: Provider[] = [
@@ -57,6 +59,14 @@ const providerConnectionProviders: Provider[] = [
       API_PROVIDER_SESSION_STORE,
     ],
   },
+  {
+    provide: API_CONTEXTUAL_RESUME_EDIT_PROVIDER,
+    useFactory: (
+      repository: AIProviderRuntimeConnectionsRepository,
+      sessionStore: ProviderSessionStore,
+    ) => new CodexContextualResumeEditProvider({ repository, sessionStore }),
+    inject: [API_PROVIDER_CONNECTION_REPOSITORY, API_PROVIDER_SESSION_STORE],
+  },
 ];
 
 /** Provider-connection feature composition at the API infrastructure edge. */
@@ -69,8 +79,11 @@ export class ProviderConnectionsRuntimeModule {
         ProviderConnectionsModule.register({
           imports: [ApiPersistenceModule],
           providers: [options.configProvider, ...providerConnectionProviders],
+          exports: [API_CONTEXTUAL_RESUME_EDIT_PROVIDER],
         }),
       ],
+      global: true,
+      exports: [ProviderConnectionsModule],
     };
   }
 }

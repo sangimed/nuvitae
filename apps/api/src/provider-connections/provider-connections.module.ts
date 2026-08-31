@@ -12,6 +12,7 @@ import { CodexConnectionInitiationService } from "./use-cases/codex-connection-i
 export interface ProviderConnectionsModuleOptions {
   readonly imports?: ModuleMetadata["imports"];
   readonly providers: readonly Provider[];
+  readonly exports?: readonly (string | symbol)[];
 }
 
 @Module({})
@@ -27,7 +28,7 @@ export class ProviderConnectionsModule {
         VerifiedPrincipalGuard,
         ...options.providers,
       ],
-      exports: [CodexConnectionInitiationService],
+      exports: [CodexConnectionInitiationService, ...(options.exports ?? [])],
     };
   }
 }

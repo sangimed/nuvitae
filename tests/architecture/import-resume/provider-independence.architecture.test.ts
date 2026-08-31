@@ -19,12 +19,17 @@ const workerRoot = join(repositoryRoot, "apps", "worker", "src");
 
 const testingProviderDirectory = join(applicationRoot, "providers", "testing");
 // Provider implementations and their provider-specific policy are the
-// intentional edge around ResumeSemanticParserProvider. Keep this inventory
+// intentional edge around the provider-neutral application ports. Keep this inventory
 // explicit: adding another provider-specific production file requires an
 // architecture review rather than silently broadening a directory exemption.
 // Domain and worker orchestration still cannot import provider-native code.
 const productionProviderEdgeFiles = new Set([
   join(applicationRoot, "providers", "codex.ts"),
+  join(
+    applicationRoot,
+    "providers",
+    "codex-contextual-resume-edit-provider.ts",
+  ),
   join(applicationRoot, "providers", "codex-direct-provider-adapter.ts"),
   join(applicationRoot, "providers", "codex-direct-transport.ts"),
   join(applicationRoot, "providers", "codex-model-selection.ts"),

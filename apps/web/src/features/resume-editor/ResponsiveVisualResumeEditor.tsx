@@ -13,6 +13,7 @@ import {
   StructuredResumeSections,
   type ResumeEditorSectionId,
 } from "./StructuredResumeSections";
+import type { ContextualAiEditingControls } from "./ContextualAiEditControl";
 
 const sectionLabels: Record<ResumeEditorSectionId, string> = {
   basics: "Basics",
@@ -31,6 +32,7 @@ export interface ResponsiveVisualResumeEditorProps {
   readonly onChange: (value: StructuredResumeContentContract) => void;
   readonly disabled?: boolean;
   readonly validationErrors?: Readonly<Record<string, string>> | undefined;
+  readonly aiEditing?: ContextualAiEditingControls | undefined;
 }
 
 export function ResponsiveVisualResumeEditor(
@@ -156,6 +158,9 @@ export function ResponsiveVisualResumeEditor(
               {...(props.validationErrors === undefined
                 ? {}
                 : { validationErrors: props.validationErrors })}
+              {...(props.aiEditing === undefined
+                ? {}
+                : { aiEditing: props.aiEditing })}
               onChange={props.onChange}
             />
           </div>
