@@ -8,6 +8,7 @@ ENV PNPM_HOME=/pnpm
 ENV PATH=/pnpm:$PATH
 ENV COREPACK_HOME=/pnpm/corepack
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+ENV HOME=/pnpm/home
 
 RUN mkdir -p /workspace/node_modules \
     /workspace/apps/web/node_modules \
@@ -21,6 +22,7 @@ RUN mkdir -p /workspace/node_modules \
     /workspace/packages/storage/node_modules \
     /workspace/packages/test-fixtures/node_modules \
     /pnpm/corepack \
+    /pnpm/home \
     /pnpm/store \
   && corepack enable \
   && corepack prepare pnpm@${PNPM_VERSION} --activate \
