@@ -38,6 +38,9 @@ becomes a measured problem.
   NestJS plugin was justified because the framework has no required official
   lint preset and the current rules cover the implemented code without
   decorator-specific churn.
+- React Hooks rules are enabled, except `set-state-in-effect`: current async
+  loading effects deliberately initialize state when their input changes, and
+  enabling that advisory would require unrelated state-flow rewrites.
 - Unused variables are errors, with underscore-prefixed parameters allowed for
   intentionally unused interface arguments. Explicit `any`, unreachable code,
   and other recommended TypeScript/JavaScript defects remain errors.

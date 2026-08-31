@@ -57,6 +57,9 @@ export default [
       ...nextPlugin.configs["core-web-vitals"].rules,
       ...reactHooks.configs.recommended.rules,
       "@next/next/no-html-link-for-pages": "off",
+      // Existing async loading effects intentionally set their initial state.
+      // Keep the core hooks rules without forcing unrelated state-flow rewrites.
+      "react-hooks/set-state-in-effect": "off",
     },
   },
   {
