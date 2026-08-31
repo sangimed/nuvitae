@@ -232,6 +232,19 @@ describe("StartImportService", () => {
     expect(harness.limits.releaseReservation).not.toHaveBeenCalled();
     expect(harness.limits.rollbackReservation).not.toHaveBeenCalled();
     expect(harness.queuePublisher.addBulk).toHaveBeenCalledOnce();
+    const jobs = harness.queuePublisher.addBulk.mock.calls[0]?.[0];
+    expect(jobs).toHaveLength(3);
+    expect(jobs?.[2]).toMatchObject({
+      name: "source_artifact_deletion",
+      jobId: `import-${importId}-retention-v1`,
+      data: {
+        jobType: "source_artifact_deletion",
+        importId,
+        owner: { ownerUserId },
+        reason: "retention_deadline",
+        deleteNoLaterThan: "2026-08-05T09:30:00.000Z",
+      },
+    });
   });
 
   it("rolls back without persistence when private storage fails", async () => {

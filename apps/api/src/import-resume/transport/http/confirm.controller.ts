@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpException,
   Param,
@@ -25,9 +26,14 @@ import {
   confirmStructuredResumeResponseSchema,
   discardImportErrorResponseSchema,
   discardImportResponseSchema,
+  deleteResumeSourceErrorResponseSchema,
   importResumeResponseSchemaVersion,
+  sourceDeletionResponseSchema,
 } from "@nuvitae/contracts";
-import { ConfirmStructuredResumeService } from "../../use-cases/index.js";
+import {
+  ConfirmStructuredResumeService,
+  DeleteSourceService,
+} from "../../use-cases/index.js";
 import {
   getGuardedAuthenticatedContext,
   VerifiedPrincipalGuard,
@@ -113,6 +119,50 @@ export class ConfirmedStructuredResumeController {
     });
     if (!result.ok) throwConfirmError(result);
     return result.response;
+  }
+}
+
+@ApiTags("structured resumes")
+@Controller("structured-resumes")
+export class SourceDeletionController {
+  constructor(private readonly service: DeleteSourceService) {}
+
+  @Delete(":resumeId/source")
+  @UseGuards(VerifiedPrincipalGuard)
+  @ApiOperation({
+    summary:
+      "Permanently delete an uploaded source without deleting its resume",
+  })
+  @ApiParam({ name: "resumeId", format: "uuid" })
+  @ApiOkResponse({ description: "Uploaded source deleted; resume preserved." })
+  @ApiUnauthorizedResponse({ description: "Authentication is required." })
+  @ApiNotFoundResponse({ description: "Resume or source is unavailable." })
+  async delete(
+    @Req() request: object,
+    @Param("resumeId", ParseUUIDPipe) resumeId: string,
+  ) {
+    const authenticated = getGuardedAuthenticatedContext(request);
+    const result = await this.service.deleteForStructuredResume({
+      structuredResumeId: resumeId,
+      ownerUserId: authenticated.userId,
+      ...(authenticated.requestId === undefined
+        ? {}
+        : { requestId: authenticated.requestId }),
+    });
+    if (!result.ok) {
+      throw new HttpException(
+        deleteResumeSourceErrorResponseSchema.parse({
+          version: importResumeResponseSchemaVersion,
+          requestId: result.requestId,
+          status: "source_document_deletion_error",
+          structuredResumeId: resumeId,
+          code: result.code,
+          userMessage: result.message,
+        }),
+        result.status,
+      );
+    }
+    return sourceDeletionResponseSchema.parse(result.response);
   }
 }
 

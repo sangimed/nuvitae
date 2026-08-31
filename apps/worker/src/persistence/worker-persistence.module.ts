@@ -2,12 +2,16 @@ import { Module, type Provider } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import {
   TypeOrmImportWorkflowRepository,
+  TypeOrmSourceDeletionRepository,
   createTypeOrmModuleOptions,
   readPersistenceConfigFromEnv,
 } from "@nuvitae/persistence/typeorm";
 import { DataSource } from "typeorm";
 export const WORKER_IMPORT_WORKFLOW_REPOSITORY = Symbol(
   "WORKER_IMPORT_WORKFLOW_REPOSITORY",
+);
+export const WORKER_SOURCE_DELETION_REPOSITORY = Symbol(
+  "WORKER_SOURCE_DELETION_REPOSITORY",
 );
 
 /**
@@ -27,6 +31,12 @@ export const workerPersistenceRepositoryProviders: Provider[] = [
       new TypeOrmImportWorkflowRepository(dataSource),
     inject: [DataSource],
   },
+  {
+    provide: WORKER_SOURCE_DELETION_REPOSITORY,
+    useFactory: (dataSource: DataSource) =>
+      new TypeOrmSourceDeletionRepository(dataSource),
+    inject: [DataSource],
+  },
 ];
 
 @Module({
@@ -36,6 +46,9 @@ export const workerPersistenceRepositoryProviders: Provider[] = [
     }),
   ],
   providers: workerPersistenceRepositoryProviders,
-  exports: [WORKER_IMPORT_WORKFLOW_REPOSITORY],
+  exports: [
+    WORKER_IMPORT_WORKFLOW_REPOSITORY,
+    WORKER_SOURCE_DELETION_REPOSITORY,
+  ],
 })
 export class WorkerPersistenceModule {}

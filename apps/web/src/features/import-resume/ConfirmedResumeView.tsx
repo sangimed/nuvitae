@@ -12,6 +12,7 @@ import {
   saveConfirmedStructuredResume,
 } from "./client";
 import { StructuredResumeProvenance } from "./StructuredResumeProvenance";
+import { DeleteSourceControl } from "./DeleteSourceControl";
 import { toEditableResumeContent } from "./editable-content";
 
 type SaveState = "saved" | "unsaved" | "saving" | "failed" | "stale";
@@ -81,6 +82,20 @@ export function ConfirmedResumeView(props: { readonly resumeId: string }) {
     setSaveMessage(outcome.response.userMessage);
   }
 
+  async function refreshAfterSourceDeletion(message: string) {
+    const outcome = await readConfirmedStructuredResume({
+      resumeId: props.resumeId,
+    });
+    if (!outcome.ok) {
+      setSaveState("failed");
+      setSaveMessage(outcome.message);
+      return;
+    }
+    setResume(outcome.response);
+    setContent(toEditableResumeContent(outcome.response.content));
+    setSaveMessage(message);
+  }
+
   if (error !== undefined) {
     return (
       <section className="import-card" aria-labelledby="resume-error-title">
@@ -139,6 +154,13 @@ export function ConfirmedResumeView(props: { readonly resumeId: string }) {
         </div>
       ) : null}
       <StructuredResumeProvenance resume={resume} />
+      {resume.sourceAvailability === "source_no_longer_available" ? null : (
+        <DeleteSourceControl
+          resumeId={props.resumeId}
+          disabled={saveState !== "saved"}
+          onDeleted={refreshAfterSourceDeletion}
+        />
+      )}
       <div className="resume-actions">
         <Link
           className="primary-action"

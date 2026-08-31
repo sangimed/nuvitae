@@ -7,6 +7,11 @@ import type {
   StructuredResume,
   UserCorrection,
 } from "@nuvitae/domain";
+import { reduceStructuredResumeSourceProvenance } from "@nuvitae/domain";
+import {
+  sourceReconstructingStorageKeys,
+  type SourceDeletionClaim,
+} from "@nuvitae/import-application";
 import { DataSource, EntityManager } from "typeorm";
 import {
   DeletionJobEntity,
@@ -883,6 +888,172 @@ export class TypeOrmImportResumeRepository
       reason: "user_discarded_import",
     });
     return entity === null ? null : mapDeletionJob(entity);
+  }
+
+  async claimSourceDeletion(
+    importId: string,
+    ownerUserId: string,
+    manager: EntityManager,
+  ): Promise<SourceDeletionClaim> {
+    const document = await manager
+      .createQueryBuilder(ImportedDocumentEntity, "document")
+      .setLock("pessimistic_write")
+      .where("document.id = :importId", { importId })
+      .andWhere("document.owner_user_id = :ownerUserId", { ownerUserId })
+      .getOne();
+    if (document === null) return { kind: "not_found" };
+    if (document.deletionStatus === "deleted" && document.deletedAt !== null) {
+      return { kind: "already_deleted", deletedAt: document.deletedAt };
+    }
+
+    const artifacts = await manager.findBy(DerivedExtractionArtifactEntity, {
+      importedDocumentId: importId,
+      ownerUserId,
+    });
+    await manager.update(
+      ImportedDocumentEntity,
+      { id: importId, ownerUserId },
+      { deletionStatus: "deleting" },
+    );
+    await manager
+      .createQueryBuilder()
+      .update(DerivedExtractionArtifactEntity)
+      .set({ deletionStatus: "deleting" })
+      .where("imported_document_id = :importId", { importId })
+      .andWhere("owner_user_id = :ownerUserId", { ownerUserId })
+      .andWhere("contains_source_reconstructing_data = true")
+      .andWhere("deletion_status <> 'deleted'")
+      .execute();
+
+    return {
+      kind: "claimed",
+      storageKeys: sourceReconstructingStorageKeys(
+        document.storageKey ?? undefined,
+        artifacts.map(mapDerivedArtifact),
+      ),
+    };
+  }
+
+  async completeSourceDeletion(
+    importId: string,
+    ownerUserId: string,
+    deletedAt: Date,
+    manager: EntityManager,
+  ): Promise<void> {
+    const documentResult = await manager.update(
+      ImportedDocumentEntity,
+      { id: importId, ownerUserId },
+      {
+        storageKey: null,
+        deletionStatus: "deleted",
+        deletedAt,
+      },
+    );
+    if (documentResult.affected !== 1) throw new Error("import_not_found");
+
+    await manager
+      .createQueryBuilder()
+      .update(DerivedExtractionArtifactEntity)
+      .set({ deletionStatus: "deleted", deletedAt })
+      .where("imported_document_id = :importId", { importId })
+      .andWhere("owner_user_id = :ownerUserId", { ownerUserId })
+      .andWhere("contains_source_reconstructing_data = true")
+      .execute();
+
+    const draft = await manager.findOneBy(ImportDraftEntity, {
+      importedDocumentId: importId,
+      ownerUserId,
+    });
+    if (draft !== null) {
+      const minimal = {
+        kind: "minimal",
+        label: "imported_from_initial_resume",
+        confirmedByUser: true,
+        sourceDeletedAt: deletedAt.toISOString(),
+      };
+      await manager.query(
+        `UPDATE extracted_fields
+         SET source_location = $1::jsonb,
+             source_status = CASE WHEN source_status = 'explicit_source'
+               THEN 'source_deleted_minimal_provenance' ELSE source_status END
+         WHERE import_draft_id = $2 AND owner_user_id = $3
+           AND (source_status = 'explicit_source'
+             OR source_location->>'kind' IN ('pdf', 'docx', 'semantic'))`,
+        [JSON.stringify(minimal), draft.id, ownerUserId],
+      );
+
+      const resume = await this.findStructuredResumeBySourceDraftAndOwner(
+        draft.id,
+        ownerUserId,
+        manager,
+      );
+      if (resume !== null) {
+        await this.replaceStructuredResume(
+          {
+            ...reduceStructuredResumeSourceProvenance(resume, deletedAt),
+            updatedAt: deletedAt,
+          },
+          resume.updatedAt,
+          manager,
+        );
+      }
+    }
+
+    await manager.update(
+      DeletionJobEntity,
+      { importedDocumentId: importId, ownerUserId },
+      {
+        status: "completed",
+        completedAt: deletedAt,
+        verificationStatus: "verified",
+      },
+    );
+  }
+
+  async failSourceDeletion(
+    importId: string,
+    ownerUserId: string,
+    manager: EntityManager,
+  ): Promise<void> {
+    await manager.update(
+      ImportedDocumentEntity,
+      { id: importId, ownerUserId },
+      { deletionStatus: "failed" },
+    );
+    await manager
+      .createQueryBuilder()
+      .update(DerivedExtractionArtifactEntity)
+      .set({ deletionStatus: "failed" })
+      .where("imported_document_id = :importId", { importId })
+      .andWhere("owner_user_id = :ownerUserId", { ownerUserId })
+      .andWhere("contains_source_reconstructing_data = true")
+      .andWhere("deletion_status <> 'deleted'")
+      .execute();
+    await manager.update(
+      DeletionJobEntity,
+      { importedDocumentId: importId, ownerUserId },
+      { status: "failed", verificationStatus: "failed" },
+    );
+  }
+
+  async findImportIdByStructuredResumeAndOwner(
+    structuredResumeId: string,
+    ownerUserId: string,
+    manager?: EntityManager,
+  ): Promise<string | null> {
+    const row = await this.manager(manager)
+      .createQueryBuilder(StructuredResumeEntity, "resume")
+      .innerJoin(
+        ImportDraftEntity,
+        "draft",
+        "draft.id = resume.source_import_draft_id",
+      )
+      .select("draft.imported_document_id", "importId")
+      .where("resume.id = :structuredResumeId", { structuredResumeId })
+      .andWhere("resume.owner_user_id = :ownerUserId", { ownerUserId })
+      .andWhere("draft.owner_user_id = :ownerUserId", { ownerUserId })
+      .getRawOne<{ readonly importId: string }>();
+    return row?.importId ?? null;
   }
 
   async createManualDraft(
