@@ -1,4 +1,5 @@
 import { ButtonLink, Panel, ProgressSteps } from "../components/community";
+import { CommunityFunnelBeacon } from "../components/CommunityFunnelBeacon";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +8,7 @@ export default function Home() {
 
   return (
     <main className="onboarding-shell">
+      <CommunityFunnelBeacon />
       <section className="onboarding-intro" aria-labelledby="page-title">
         <p className="eyebrow">Your next opportunity starts here</p>
         <h1 id="page-title">Build a resume you feel good sending.</h1>

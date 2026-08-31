@@ -35,6 +35,9 @@ export function CommunityOwnerAccess() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ accessSecret }),
       });
+      if (response.ok) {
+        window.dispatchEvent(new Event("nuvitae:community-authenticated"));
+      }
       setState(response.ok ? "signed-in" : "failed");
     } catch {
       setState("failed");

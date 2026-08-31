@@ -141,6 +141,26 @@ const providerConnectionFailureCategories = [
   "quota_exceeded",
 ] as const;
 
+const communityFunnelEvents = [
+  "first_run.reached",
+  "provider_connection.initiated",
+  "provider_connection.ready",
+  "provider_connection.failed",
+  "editor.opened",
+  "preview.used",
+  "pdf_export.succeeded",
+  "pdf_export.failed",
+  "resume.reopened",
+] as const;
+
+const communityFunnelFailureCategories = [
+  "initiation_failed",
+  "status_failed",
+  "preparation_timeout",
+  "load_failed",
+  "print_failed",
+] as const;
+
 const validationFailureCategories = [
   "accepted",
   "authentication_required",
@@ -632,6 +652,13 @@ const importTimingPhases = [
 const importTimingSources = ["api", "worker", "web"] as const;
 
 export const importEventSchemas = {
+  "community.funnel": {
+    level: "info",
+    fields: {
+      funnelEvent: enumOf(communityFunnelEvents),
+      failureCategory: enumOf(communityFunnelFailureCategories, true),
+    },
+  },
   "import.timing": {
     level: "info",
     fields: {
@@ -1103,6 +1130,10 @@ export const importEventSchemas = {
 export type ImportEventName = keyof typeof importEventSchemas;
 
 export interface ImportEventMetadataMap {
+  "community.funnel": {
+    readonly funnelEvent: (typeof communityFunnelEvents)[number];
+    readonly failureCategory?: (typeof communityFunnelFailureCategories)[number];
+  };
   "import.timing": {
     readonly importId: string;
     readonly correlationId?: string;

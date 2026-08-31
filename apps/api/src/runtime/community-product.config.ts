@@ -6,6 +6,9 @@ export function readCommunityProductRuntimeConfig(
 ): ProductRuntimeConfig {
   const parsed = z
     .object({
+      NUVITAE_COMMUNITY_FUNNEL_TELEMETRY_ENABLED: z
+        .enum(["true", "false"])
+        .default("false"),
       NUVITAE_PRIVATE_STORAGE_ROOT: z.string().trim().min(1),
       NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET: z.string().min(32),
       NUVITAE_PRIVATE_STORAGE_MAX_SIGNED_REFERENCE_TTL_SECONDS: z.coerce
@@ -45,6 +48,8 @@ export function readCommunityProductRuntimeConfig(
     throw new Error("Invalid Community product configuration: secret.");
   }
   return {
+    communityFunnelTelemetryEnabled:
+      parsed.data.NUVITAE_COMMUNITY_FUNNEL_TELEMETRY_ENABLED === "true",
     privateStorageRoot: parsed.data.NUVITAE_PRIVATE_STORAGE_ROOT,
     privateStorageSigningSecret:
       parsed.data.NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET,

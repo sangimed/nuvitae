@@ -39,13 +39,28 @@ application secrets, and no user-selected values. Do not commit or share it.
 | `NUVITAE_COMMUNITY_ACCESS_SECRET`                     | Generated secret            | Owner sign-in credential                               |
 | `NUVITAE_COMMUNITY_SESSION_TTL_SECONDS`               | Fixed safe configuration    | 86400 seconds                                          |
 | `NUVITAE_COMMUNITY_COOKIE_SECURE`                     | Fixed safe configuration    | `true`                                                 |
+| `NUVITAE_COMMUNITY_FUNNEL_TELEMETRY_ENABLED`          | Optional local telemetry    | `false`                                                |
 | `NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET`              | Generated secret            | 48 CSPRNG bytes, hex encoded                           |
 | `NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET`          | Generated secret            | 48 CSPRNG bytes, hex encoded                           |
 | `NUVITAE_LOCAL_PLAY_MODE`                             | Fixed safe configuration    | `false`                                                |
 | Storage roots, size limits, ports, and migration flag | Fixed Compose configuration | Internal roots, loopback ports, API migrations enabled |
 
 There are no user-selectable runtime values in this narrow Community V1
-bootstrap. The generated file contains all non-fixed Compose inputs.
+bootstrap except the optional local funnel counter described below. The
+generated file contains all non-fixed Compose inputs.
+
+## Optional Community funnel counters
+
+Community funnel telemetry is disabled by default. It never sends data to
+Nuvitae or a third party. An operator can enable privacy-safe local JSON log
+events by setting `NUVITAE_COMMUNITY_FUNNEL_TELEMETRY_ENABLED=true` in
+`.community.env` and restarting the API. Set it back to `false` and restart to
+disable the product events again. Existing operational logs remain available
+for diagnosis.
+
+The event vocabulary, privacy boundary, operational-to-product mapping, and
+local counting examples are documented in
+[`community-funnel-metrics.md`](community-funnel-metrics.md).
 
 Running the command again preserves an existing configuration and reports that
 the installation is already initialized. It never silently rotates the owner,

@@ -8,6 +8,7 @@ import {
   ProfessionalResume,
 } from "../resume-renderer";
 import { readConfirmedStructuredResume } from "../import-resume/client";
+import { recordCommunityFunnelEvent } from "../../services/community-funnel";
 
 const exportPreparationTimeoutMs = 15_000;
 
@@ -33,6 +34,10 @@ export function ResumeExportView(props: { readonly resumeId: string }) {
     const timeout = window.setTimeout(() => {
       controller.abort();
       if (active) {
+        recordCommunityFunnelEvent({
+          funnelEvent: "pdf_export.failed",
+          failureCategory: "preparation_timeout",
+        });
         setState({
           kind: "error",
           message:
@@ -54,6 +59,10 @@ export function ResumeExportView(props: { readonly resumeId: string }) {
           printStatus: "idle",
         });
       } else if (outcome.category !== "cancelled") {
+        recordCommunityFunnelEvent({
+          funnelEvent: "pdf_export.failed",
+          failureCategory: "load_failed",
+        });
         setState({ kind: "error", message: outcome.message });
       }
     });
@@ -104,12 +113,26 @@ export function ResumeExportView(props: { readonly resumeId: string }) {
   const openPrintDialog = () => {
     setState({ ...state, printStatus: "opening" });
     printTimer.current = window.setTimeout(() => {
-      window.print();
-      setState((current) =>
-        current.kind === "ready"
-          ? { ...current, printStatus: "complete" }
-          : current,
-      );
+      try {
+        window.print();
+        recordCommunityFunnelEvent({
+          funnelEvent: "pdf_export.succeeded",
+        });
+        setState((current) =>
+          current.kind === "ready"
+            ? { ...current, printStatus: "complete" }
+            : current,
+        );
+      } catch {
+        recordCommunityFunnelEvent({
+          funnelEvent: "pdf_export.failed",
+          failureCategory: "print_failed",
+        });
+        setState({
+          kind: "error",
+          message: "The print dialog could not be opened. Please try again.",
+        });
+      }
     }, 0);
   };
 

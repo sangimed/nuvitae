@@ -1,6 +1,7 @@
 import type { Provider } from "@nestjs/common";
 
 export interface ProductRuntimeConfig {
+  readonly communityFunnelTelemetryEnabled: boolean;
   readonly privateStorageRoot: string;
   readonly privateStorageSigningSecret: string;
   readonly maxSignedReferenceTtlSeconds: number;

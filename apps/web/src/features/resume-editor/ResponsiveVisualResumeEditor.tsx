@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import {
   resumeEditorSectionIds,
   type StructuredResumeContentContract,
@@ -13,6 +13,7 @@ import {
   StructuredResumeSections,
   type ResumeEditorSectionId,
 } from "./StructuredResumeSections";
+import { recordCommunityFunnelEvent } from "../../services/community-funnel";
 
 const sectionLabels: Record<ResumeEditorSectionId, string> = {
   basics: "Basics",
@@ -40,7 +41,22 @@ export function ResponsiveVisualResumeEditor(
     useState<ResumeEditorSectionId>("basics");
   const [mobileMode, setMobileMode] = useState<"edit" | "preview">("edit");
   const [reorderAnnouncement, setReorderAnnouncement] = useState("");
+  const openedRecorded = useRef(false);
+  const previewRecorded = useRef(false);
   const sectionOrder = props.value.sectionOrder ?? resumeEditorSectionIds;
+
+  useEffect(() => {
+    if (openedRecorded.current) return;
+    openedRecorded.current = true;
+    recordCommunityFunnelEvent({ funnelEvent: "editor.opened" });
+  }, []);
+
+  function usePreview() {
+    setMobileMode("preview");
+    if (previewRecorded.current) return;
+    previewRecorded.current = true;
+    recordCommunityFunnelEvent({ funnelEvent: "preview.used" });
+  }
 
   function moveSection(index: number, direction: -1 | 1) {
     const target = index + direction;
@@ -59,7 +75,8 @@ export function ResponsiveVisualResumeEditor(
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
     const nextMode = event.key === "ArrowLeft" ? "edit" : "preview";
-    setMobileMode(nextMode);
+    if (nextMode === "preview") usePreview();
+    else setMobileMode(nextMode);
     requestAnimationFrame(() => {
       document.getElementById(`${nextMode}-mode-tab`)?.focus();
     });
@@ -87,7 +104,7 @@ export function ResponsiveVisualResumeEditor(
           aria-selected={mobileMode === "preview"}
           aria-controls="resume-preview-pane"
           tabIndex={mobileMode === "preview" ? 0 : -1}
-          onClick={() => setMobileMode("preview")}
+          onClick={usePreview}
           onKeyDown={switchModeFromKeyboard}
         >
           Preview

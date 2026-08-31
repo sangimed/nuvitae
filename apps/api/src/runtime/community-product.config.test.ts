@@ -12,6 +12,18 @@ const valid = {
 };
 
 describe("Community product runtime configuration", () => {
+  it("keeps optional Community funnel telemetry disabled unless explicitly enabled", () => {
+    expect(readCommunityProductRuntimeConfig(valid)).toMatchObject({
+      communityFunnelTelemetryEnabled: false,
+    });
+    expect(
+      readCommunityProductRuntimeConfig({
+        ...valid,
+        NUVITAE_COMMUNITY_FUNNEL_TELEMETRY_ENABLED: "true",
+      }),
+    ).toMatchObject({ communityFunnelTelemetryEnabled: true });
+  });
+
   it("requires both private-storage and provider-session secrets", () => {
     expect(() => readCommunityProductRuntimeConfig({})).toThrow(
       /NUVITAE_PRIVATE_STORAGE_ROOT/,
