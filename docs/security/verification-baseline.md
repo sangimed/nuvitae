@@ -1,0 +1,158 @@
+# Security verification baseline
+
+## Method and status vocabulary
+
+The audit uses OWASP ASVS 5.0.0 as its application-control catalogue, OWASP
+SAMM for lifecycle maturity, NIST SP 800-218 SSDF v1.1 as the current final
+secure-development baseline, and CISA Secure by Design for safe-default product
+decisions. NIST's December 2025 SSDF v1.2 / SP 800-218 Rev.1 publication is a
+draft and is not represented as final.
+
+The default target is **ASVS Level 2**. This is a scoped applicability and
+evidence matrix, not a compliance claim. A release review must use the complete
+official ASVS 5.0.0 catalogue, not infer compliance from representative rows.
+
+Statuses:
+
+- **satisfied** — applicable implemented behavior has direct code/config/test
+  evidence;
+- **partial** — material control exists but L2 or operational coverage is
+  incomplete;
+- **missing** — applicable control is absent;
+- **not currently applicable** — the feature does not exist in the current
+  product;
+- **future requirement** — must be designed before the named future boundary.
+
+## ASVS 5.0.0 Level 2 evaluation
+
+| Relevant ASVS requirements | Status | Evidence and decision |
+| --- | --- | --- |
+| V1.1.2; V1.2.1–V1.2.5; V1.3.1–V1.3.3, V1.3.6–V1.3.7 | satisfied for implemented sinks | React text escaping; `ProfessionalResume.safeWebUrl`; parameterized TypeORM and `$1` SQL; parser `spawn` uses fixed argument arrays and `shell:false`; no `dangerouslySetInnerHTML`, `eval`, or dynamic templates found. New sinks remain review triggers. |
+| V1.5.1–V1.5.2 | partial | DOCX package allowlists, bounded ZIP/XML parsing, schema-validated queue/provider JSON. Detailed parser/XXE/deserialization isolation remains #40. |
+| V2.2.1–V2.2.3 | satisfied | Strict Zod request/job/provider schemas, UUID parsing/validation, bounded arrays/text, multipart field/file limits, and server-side validation independent of browser constraints. |
+| V2.3.1–V2.3.4 | satisfied for current import/resume flows | Domain transition checks, review revisions, operation IDs, pessimistic locks, transactions and idempotent confirmation/discard behavior have unit/integration/security coverage. Billing is a future requirement. |
+| V2.4.1; V15.1.3; V15.2.2 | partial | Per-owner rolling upload, active/queued import limits; worker concurrency 1; parser/provider/DB time/size limits. Missing deployment-wide quotas/resources and broader endpoint/login/provider cost controls. |
+| V3.3.1–V3.3.4 | partial | Community session is random, HttpOnly, SameSite=Strict, bounded Max-Age and Secure is mandatory in production. Name lacks ASVS `__Host-` prefix; hosted cookie architecture is future work. |
+| V3.4.1–V3.4.6 | missing | `poweredByHeader:false` is set, but no CSP, HSTS, `nosniff`, `Referrer-Policy`, or `frame-ancestors` configuration/tests exist. Deployment-aware remediation is P1 before hosted release. |
+| V3.5.1–V3.5.3 | partial | SameSite=Strict and same-origin `/api` provide current Community CSRF boundary; mutations use unsafe HTTP verbs appropriately. Hosted auth must explicitly choose Origin/Fetch Metadata or anti-forgery-token controls and test proxy behavior. |
+| V4.1.1–V4.1.3; V4.2.1 | partial | Nest/Next set typed responses and no user identity is read from forwarding headers. Reverse-proxy/TLS/request-smuggling assumptions are not defined for hosted deployment. |
+| V5.1.1; V5.2.1–V5.2.3; V5.3.1–V5.3.2 | partial | PDF/DOCX only, 10 MiB upload bound, structural/signature checks, DOCX entry/uncompressed/ratio limits, generated private keys and no public source route. #40 owns the complete upload catalogue, scanner/CDR decision and stronger parser isolation. |
+| V5.4.1–V5.4.3 | not currently applicable / future requirement | The application does not serve uploaded source files. Any future source download must set a server-controlled encoded filename and implement #40's malware decision. Browser print-to-PDF renders canonical text safely. |
+| V6.2.*; V6.4.* | not currently applicable | User passwords, registration and recovery are not implemented. The Community operator secret is a generated deployment secret, not a user password product. |
+| V6.3.1 | partial | Community authentication has constant-time secret comparison and an eight-failure/15-minute in-process throttle. Hosted distributed anti-automation and recovery are future P1 requirements. |
+| V6.3.3 | future requirement | Hosted auth must document risk-based MFA/passkey requirements. No claim is made for Community's single-owner secret. |
+| V7.2.1–V7.2.4; V7.4.1 | satisfied for Community | Backend verifies SHA-256 session references; raw 256-bit CSPRNG token exists only in cookie; login creates a fresh token; logout revokes it; expiry is checked server-side. |
+| V7.3.1–V7.3.2; V7.4.2–V7.4.3 | partial / future requirement | Community has absolute expiry but no inactivity timeout, account disable/delete, factor change, or terminate-all flow. Hosted session lifecycle must implement these deliberately. |
+| V8.1.1–V8.1.2 | satisfied by this baseline | Threat model and invariants define function/data/field ownership rules. |
+| V8.2.1–V8.2.3; V8.3.1; V8.4.1 | satisfied for implemented resources | `VerifiedPrincipalGuard`; no client owner ID; owner-qualified repositories and constraints; worker owner/resource re-read; opaque not-found; extensive `authorization-isolation.security.test.ts`. New resources require equivalent tests. |
+| V11.1.1–V11.1.2 | partial | Current keys and purposes are inventoried in the audit; rotation/versioning and operational custody are not implemented. |
+| V11.2.1, V11.2.3; V11.3.1–V11.3.3; V11.4.1; V11.5.1 | satisfied for current custom use | Node cryptography; AES-256-GCM provider-session envelope with associated data; SHA-256/HMAC; 256-bit session/OAuth state/verifier and storage references. |
+| V11.4.2 | not currently applicable | No user password verifier is stored. A future password design must use an approved password KDF, not the Community secret comparison pattern. |
+| V12.1.*; V12.2.*; V12.3.* | partial / future requirement | External provider endpoints use HTTPS and platform certificate validation. Internal Community Compose is a single-host network using plaintext HTTP/PostgreSQL/Valkey; hosted TLS/service-auth architecture is not implemented. |
+| V13.1.1 | partial | Compose and this threat model identify current communication. Hosted egress and proxy topology require explicit documentation/allowlists. |
+| V13.2.1–V13.2.5 | partial | Queue password and database credentials exist; queue/database are not host-published; provider endpoints/return URLs are constrained. API/worker share a broad DB role and internal static credentials; no hosted egress/network policy exists. |
+| V13.3.1–V13.3.2 | partial | Production requires explicit high-entropy secrets; `.env*` ignored; credentials absent from domain/client; provider sessions encrypted. Compose environment variables and broad service distribution are not a hosted secrets manager or rotation lifecycle. |
+| V13.4.1–V13.4.5 | partial | Runtime images copy selected build output without `.git`; production mode is fixed. Swagger `/openapi` is always exposed and production source-map/TRACE/proxy policy is not tested. |
+| V14.1.1–V14.1.2 | satisfied as documentation, implementation partial | `overview.md` classifies data and required handling. Source/provider/session handling is strong; hosted database/backups/log access/deletion controls are incomplete. |
+| V14.2.1–V14.2.4 | partial | Secrets are not in URLs; no third-party analytics; provider request is minimized but includes resume data by feature purpose. User disclosure/provider retention settings and hosted backup controls remain required. |
+| V14.3.1–V14.3.3 | partial | Session is HttpOnly and no sensitive local/session storage use was found. Sensitive authenticated pages/API responses lack explicit `Cache-Control: no-store` and logout does not send `Clear-Site-Data`. |
+| V15.1.1–V15.1.2; V15.2.1 | partial | Exact dependency pins, lockfile, frozen installs, controlled pnpm build scripts and this remediation policy exist. No automated vulnerability/update cadence or release SBOM exists. |
+| V15.2.3 | partial | Multi-stage non-root runtime images omit source/dev dependencies, but Swagger remains enabled and image vulnerability/configuration scanning is absent. |
+| V15.3.1–V15.3.7 | satisfied for reviewed current paths | Public response schemas, fixed provider URLs/redirect policy, strict request schemas, TypeScript/Zod, bounded query extraction and no observed mass assignment. Future outbound fetch and proxy headers are review triggers. |
+| V16.1.1; V16.2.1–V16.2.2 | partial | Closed structured event schemas and correlation/timing metadata exist. Stack-wide destination/access/retention/time-sync inventory belongs to #24. |
+| V16.2.5; V16.4.1; V16.5.1–V16.5.3 | satisfied for import/provider paths | Privacy logger deny-by-default metadata, control/multiline bounds, generic errors, provider-neutral categories and sentinel security tests. Nest bootstrap/default errors outside covered filters need scheduled verification. |
+| V16.3.1–V16.3.4; V16.4.2–V16.4.3 | missing / partial | Import security failures are observable without payloads, but auth success/failure, authorization denial, protected central storage, alerts and escalation are not implemented. Coordinate with #24/#59. |
+
+## SAMM small-project assessment
+
+The target is risk reduction, not an arbitrary maturity score.
+
+| Business function | Current evidence | Highest-value next maturity step |
+| --- | --- | --- |
+| Governance | Security issue backlog, this policy and priorities; no standing metrics/ownership cadence | Assign a security owner for each release, review P1 gates and vulnerability SLA monthly, and record accepted risk expiry |
+| Design | Asset/trust-boundary model, architecture invariants, upload/provider research | Require threat-model delta and abuse cases for auth, billing, uploads, providers and public network changes |
+| Implementation | Strict types/contracts, safe sinks, locked dependencies, agent rules | Add dependency-diff review, secret prevention, CodeQL and dependency update automation with narrow policy |
+| Verification | Strong authorization/upload/parser/provider privacy tests; local Docker checks | Add browser-header/config tests, security CI layers, scheduled scans and a pre-release ASVS subset; targeted DAST only after production-like auth exists |
+| Operations | Health checks and privacy-safe events; no hosted operations | Define patch/credential rotation, log access/retention, backup restore security, security alerts and incident runbook before hosting |
+
+## NIST SSDF v1.1 alignment
+
+| SSDF practice | Current/decided application |
+| --- | --- |
+| Prepare the Organization (PO) | `AGENTS.md`, security invariants, vulnerability roles/SLA and review triggers establish responsibilities. Branch protection and maintainer ownership remain repository settings to verify. |
+| Protect the Software (PS) | Private repository today, minimal Actions permissions, ignored secret files and locked dependencies. Add secret scanning/push protection, protected release credentials, artifact provenance and maintainer access review. |
+| Produce Well-Secured Software (PW) | Threat modelling, safe boundary patterns, negative tests, dependency justification, reviewed migrations and Docker reproducibility are required. |
+| Respond to Vulnerabilities (RV) | `vulnerability-management.md` defines intake, triage, remediation, disclosure and lessons learned; automation and a verified private intake channel remain follow-up. |
+
+SSDF v1.2 draft may inform future AI-specific or updated practices after it is
+finalized; it does not replace v1.1 in this baseline.
+
+## Supply-chain decisions
+
+| Control | Decision | Placement and policy |
+| --- | --- | --- |
+| Dependency updates | Adopt Dependabot for pnpm and GitHub Actions after the security workflow lands; group compatible low-risk updates, never auto-merge high-risk updates | PRs; weekly cadence; review lockfile, release notes and tests |
+| Dependency review | Adopt GitHub Dependency Review if available to this repository plan; otherwise produce an equivalent lockfile diff/advisory report | PR; block newly introduced known critical/high vulnerabilities unless narrowly accepted |
+| Package audit | Use `pnpm audit` as a scheduled/ad-hoc signal, not the only gate; registry advisories can be incomplete or unavailable | Scheduled/default branch and incident triage; record reachable impact |
+| SAST | Adopt CodeQL's maintained JavaScript/TypeScript queries first. Add Semgrep only for a specific uncovered Nuvitae rule; do not duplicate generic scanning | PR differential findings plus scheduled full scan; block high-confidence critical/high |
+| Secret scanning | Enable GitHub secret scanning/push protection when plan/settings permit; add Gitleaks CI only if native coverage is unavailable or local history scanning is required | Push/PR and scheduled history review; verified secrets trigger immediate revocation, never merely deletion from the latest commit |
+| Containers/config | Use Trivy for built web/API/worker images and Compose/Dockerfile misconfiguration; one scanner is sufficient initially | Scheduled/default branch and pre-release; critical/high reachable findings follow SLA |
+| SBOM | Generate CycloneDX or SPDX for hosted release images when distribution automation exists | Pre-release artifact; retain with release |
+| Provenance/signing | Defer signing/attestation until hosted image/release publishing exists, then use GitHub OIDC/keyless provenance rather than long-lived signing keys | Release workflow only |
+| Install scripts | Keep pnpm `allowBuilds` explicit; review every change. Current allowed native builds are `msgpackr-extract` and `sharp`; `@scarf/scarf` is denied | Lockfile/workspace review and CI frozen install |
+
+## Staged CI strategy
+
+```text
+local / pre-commit
+  formatting, lint/type checks and focused deterministic security tests only
+
+pull request
+  frozen install + quality gates (#44)
+  secret scan / dependency diff / CodeQL differential
+  security unit and integration tests selected by changed boundary
+  build and Compose configuration validation
+
+scheduled / default branch
+  full dependency audit, CodeQL, Trivy image/config scan
+  persistence-backed authorization/privacy/security suite
+
+pre-release / hosted deployment
+  complete release-relevant ASVS evidence review
+  production configuration and TLS/proxy review
+  SBOM and final image scan
+  targeted DAST against a disposable production-like environment
+
+runtime
+  dependency/image monitoring, security events and alerts
+  credential rotation, patch and incident process, restore verification
+```
+
+PR jobs should fail only on deterministic tests or high-confidence policy
+violations. Lower-confidence scanner results open triage work; they are not
+silently ignored and do not make normal feedback unusably noisy.
+
+## Layered security testing strategy
+
+- **Unit/contract:** malformed and boundary schemas; safe URL/rendering sinks;
+  production config guards; cryptographic envelope tamper/owner binding;
+  provider output schema/grounding; closed logging metadata.
+- **HTTP/application:** unauthenticated, wrong-owner, opaque not-found,
+  mass-assignment, stale/replayed mutation, login/session expiry/revocation,
+  body/content-type/size and security-header/cache behavior.
+- **Persistence:** composite ownership constraints, transactions/locks,
+  parameter binding, idempotency and migration integrity in an isolated test
+  schema.
+- **Queue/worker:** malformed/mismatched-owner payloads, duplicate delivery,
+  deterministic IDs, poison/final failure, retry bounds, stuck-job recovery and
+  sensitive payload absence.
+- **Upload/parser/AI:** #40 hostile binary corpus, decompression/resources,
+  external-reference denial, no-shell isolation, prompt-injection fixtures,
+  untrusted provider output and credential non-disclosure.
+- **Container/config:** Compose validation, non-root user, mount/port/secret
+  inventory, capabilities/read-only/resource exceptions and image scan.
+- **Browser/e2e:** CSP/header assertions, CSRF/origin behavior, inert markup and
+  URL schemes, owner isolation through real auth, sensitive cache behavior.
+- **DAST/manual:** targeted DAST only against disposable production-like auth
+  and routes. Commission a focused manual review/penetration test before the
+  first meaningful public hosted launch; automated scanning is not a pen test.
