@@ -23,14 +23,19 @@ jobs:
         include:
           - name: Lint
             command: pnpm lint
+            options: --no-deps
           - name: Formatting
             command: pnpm format:check
+            options: --no-deps
           - name: TypeScript
             command: pnpm typecheck
+            options: --no-deps
           - name: Tests
             command: pnpm test
+            options: ""
           - name: Build
             command: pnpm build
+            options: --no-deps
     env:
       NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET: ci-quality-storage-signing-secret
       NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET: ci-quality-provider-session-encryption-secret
@@ -54,4 +59,4 @@ jobs:
       - name: Install locked dependencies
         run: docker compose -f compose.yml -f .github/compose.quality.yml run --rm --no-deps workspace pnpm install --frozen-lockfile
       - name: Run ${{ matrix.name }}
-        run: docker compose -f compose.yml -f .github/compose.quality.yml run --rm --no-deps workspace ${{ matrix.command }}
+        run: docker compose -f compose.yml -f .github/compose.quality.yml run --rm ${{ matrix.options }} workspace ${{ matrix.command }}
