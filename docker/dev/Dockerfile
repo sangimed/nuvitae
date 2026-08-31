@@ -6,11 +6,10 @@ ARG PNPM_VERSION=11.15.1
 
 ENV PNPM_HOME=/pnpm
 ENV PATH=/pnpm:$PATH
+ENV COREPACK_HOME=/pnpm/corepack
 ENV COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
-RUN corepack enable \
-  && corepack prepare pnpm@${PNPM_VERSION} --activate \
-  && mkdir -p /workspace/node_modules \
+RUN mkdir -p /workspace/node_modules \
     /workspace/apps/web/node_modules \
     /workspace/apps/api/node_modules \
     /workspace/apps/worker/node_modules \
@@ -21,7 +20,10 @@ RUN corepack enable \
     /workspace/packages/persistence/node_modules \
     /workspace/packages/storage/node_modules \
     /workspace/packages/test-fixtures/node_modules \
+    /pnpm/corepack \
     /pnpm/store \
+  && corepack enable \
+  && corepack prepare pnpm@${PNPM_VERSION} --activate \
   && chown -R ${USER_ID}:${GROUP_ID} /workspace /pnpm
 
 WORKDIR /workspace
