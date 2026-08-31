@@ -36,7 +36,7 @@ jobs:
       NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET: ci-quality-provider-session-encryption-secret
       NUVITAE_COMMUNITY_ACCESS_SECRET: ci-quality-community-access-secret
       NUVITAE_COMMUNITY_COOKIE_SECURE: "false"
-      QUALITY_PNPM_STORE: ${{ runner.temp }}/pnpm-store
+      QUALITY_PNPM_STORE: /tmp/nuvitae-quality-pnpm-store
     steps:
       - uses: actions/checkout@v4
       - name: Restore the pnpm content-addressable store
