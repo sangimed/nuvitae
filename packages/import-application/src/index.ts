@@ -22,3 +22,5 @@ export * from "./semantic-parser/semantic-v2-candidates-to-draft.js";
 export * from "./semantic-parser/semantic-v2-source-section-inventory.js";
 export * from "./validation/semantic-validation.js";
 export * from "./validate-document.js";
+export * from "./contextual-editing/contextual-resume-edit-provider.js";
+export * from "./contextual-editing/fact-preservation.js";
