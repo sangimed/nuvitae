@@ -55,6 +55,7 @@ import {
   API_IMPORT_CONFIRMATION_REPOSITORY,
   API_IMPORT_RESUME_REPOSITORY,
   API_IMPORT_REVIEW_REPOSITORY,
+  API_SOURCE_DELETION_REPOSITORY,
   API_START_IMPORT_REPOSITORY,
 } from "../../../apps/api/src/persistence/api-persistence.module.js";
 import {
@@ -310,6 +311,7 @@ describe("privacy-safe import logging (T068)", () => {
         provide: IMPORT_STATUS_QUEUE_READER,
         useValue: { getJob: vi.fn(async () => undefined) },
       },
+      { provide: API_SOURCE_DELETION_REPOSITORY, useValue: {} },
     ];
     const moduleRef = await Test.createTestingModule({
       imports: [ImportResumeModule.register({ providers })],

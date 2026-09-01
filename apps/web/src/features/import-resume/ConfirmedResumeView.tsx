@@ -16,6 +16,7 @@ import {
   saveConfirmedStructuredResume,
 } from "./client";
 import { StructuredResumeProvenance } from "./StructuredResumeProvenance";
+import { DeleteSourceControl } from "./DeleteSourceControl";
 import { toEditableResumeContent } from "./editable-content";
 import { createContextualResumeEditProposal } from "../../services/resume-workspace/contextual-editing-client";
 
@@ -87,6 +88,21 @@ export function ConfirmedResumeView(props: { readonly resumeId: string }) {
     setContent(toEditableResumeContent(outcome.response.content));
     setSaveState("saved");
     setSaveMessage(outcome.response.userMessage);
+  }
+
+  async function refreshAfterSourceDeletion(message: string) {
+    const outcome = await readConfirmedStructuredResume({
+      resumeId: props.resumeId,
+    });
+    if (!outcome.ok) {
+      setSaveState("failed");
+      setSaveMessage(outcome.message);
+      return;
+    }
+    setResume(outcome.response);
+    setContent(toEditableResumeContent(outcome.response.content));
+    setSaveMessage(message);
+    setAiState({ status: "idle" });
   }
 
   async function requestAiEdit(
@@ -200,6 +216,13 @@ export function ConfirmedResumeView(props: { readonly resumeId: string }) {
         </div>
       ) : null}
       <StructuredResumeProvenance resume={resume} />
+      {resume.sourceAvailability === "source_no_longer_available" ? null : (
+        <DeleteSourceControl
+          resumeId={props.resumeId}
+          disabled={saveState !== "saved" || aiState.status === "generating"}
+          onDeleted={refreshAfterSourceDeletion}
+        />
+      )}
       <div className="resume-actions">
         <Link
           className="primary-action"

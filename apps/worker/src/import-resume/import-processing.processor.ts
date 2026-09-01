@@ -4,6 +4,7 @@ import {
   deterministicExtractionJobPayloadSchema,
   documentValidationJobPayloadSchema,
   foregroundTimeoutJobPayloadSchema,
+  sourceArtifactDeletionJobPayloadSchema,
   IMPORT_RESUME_JOB_NAMES,
   IMPORT_RESUME_PROCESSING_QUEUE,
 } from "@nuvitae/contracts";
@@ -15,6 +16,7 @@ import {
   type ImportProgress,
   type ImportValidationUseCase,
   type ImportWorkflowRepository,
+  type SourceDeletionService,
 } from "@nuvitae/import-application";
 import { Queue, UnrecoverableError, type Job } from "bullmq";
 import { z } from "zod";
@@ -36,6 +38,9 @@ export const WORKER_IMPORT_CAPACITY_PORT = Symbol(
   "WORKER_IMPORT_CAPACITY_PORT",
 );
 export const WORKER_IMPORT_CLOCK = Symbol("WORKER_IMPORT_CLOCK");
+export const WORKER_SOURCE_DELETION_USE_CASE = Symbol(
+  "WORKER_SOURCE_DELETION_USE_CASE",
+);
 
 @Injectable()
 @Processor(IMPORT_RESUME_PROCESSING_QUEUE, {
@@ -62,6 +67,9 @@ export class ImportProcessingProcessor extends WorkerHost {
     @Optional()
     @Inject(WORKER_IMPORT_CLOCK)
     clock?: { readonly now: () => Date },
+    @Optional()
+    @Inject(WORKER_SOURCE_DELETION_USE_CASE)
+    private readonly sourceDeletion?: SourceDeletionService,
   ) {
     super();
     this.clock = clock ?? { now: () => new Date() };
@@ -90,6 +98,9 @@ export class ImportProcessingProcessor extends WorkerHost {
         return;
       case IMPORT_RESUME_JOB_NAMES.foregroundTimeout:
         await this.processForegroundTimeout(job);
+        return;
+      case IMPORT_RESUME_JOB_NAMES.sourceDeletion:
+        await this.processSourceDeletion(job);
         return;
       default:
         throw new UnrecoverableError("Unsupported import processing job.");
@@ -133,6 +144,27 @@ export class ImportProcessingProcessor extends WorkerHost {
   private async processForegroundTimeout(job: Job<unknown>): Promise<void> {
     const payload = parsePayload(foregroundTimeoutJobPayloadSchema, job.data);
     await this.workflow.timeOut(payload);
+  }
+
+  private async processSourceDeletion(job: Job<unknown>): Promise<void> {
+    if (this.sourceDeletion === undefined) {
+      throw new Error("source_deletion_use_case_unavailable");
+    }
+    const payload = parsePayload(
+      sourceArtifactDeletionJobPayloadSchema,
+      job.data,
+    );
+    const result = await this.sourceDeletion.delete({
+      importId: payload.importId,
+      ownerUserId: payload.owner.ownerUserId,
+      now: this.clock.now(),
+    });
+    if (result.kind === "not_found") {
+      throw new UnrecoverableError("Import source is unavailable.");
+    }
+    if (result.kind === "failed") {
+      throw new Error("source_deletion_failed");
+    }
   }
 
   private async progress(

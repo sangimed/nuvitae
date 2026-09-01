@@ -3,6 +3,7 @@ export * from "./import-capacity.js";
 export * from "./import-limits.js";
 export * from "./import-workflow-repository.js";
 export * from "./import-processing-workflow.js";
+export * from "./source-deletion.js";
 export * from "./build-semantic-parse-request.js";
 export * from "./semantic-import-workflow.js";
 export * from "./repository-backed-import-limit-store.js";

@@ -8,13 +8,14 @@ export const IMPORT_RESUME_JOB_NAMES = Object.freeze({
   validation: "document_validation",
   extraction: "deterministic_extraction",
   foregroundTimeout: "foreground_timeout",
+  sourceDeletion: "source_artifact_deletion",
 });
 
 export function importResumeJobId(
   importId: string,
-  stage: "validation" | "extraction" | "timeout",
+  stage: "validation" | "extraction" | "timeout" | "retention",
 ): string {
-  return `import-${importId}-${stage === "timeout" ? "timeout" : stage}-v1`;
+  return `import-${importId}-${stage}-v1`;
 }
 
 const uuidSchema = z.string().uuid();

@@ -5,6 +5,7 @@
  * this boundary.
  */
 export { ConfirmStructuredResumeService } from "./confirm-structured-resume.js";
+export { DeleteSourceService } from "./delete-source.js";
 export { ReadImportDraftService } from "./read-draft.js";
 export { ImportStatusService } from "./read-status.js";
 export { StartImportService } from "./start-import.js";

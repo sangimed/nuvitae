@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import {
   confirmedStructuredResumeReadResponseSchema,
   confirmStructuredResumeRequestSchema,
@@ -18,9 +18,15 @@ import {
   type SourceLocation,
   type StructuredResume,
 } from "@nuvitae/domain";
-import type { ImportConfirmationRepository } from "@nuvitae/import-application";
+import type {
+  ImportConfirmationRepository,
+  SourceDeletionRepository,
+} from "@nuvitae/import-application";
 import type { ImportEventEmitter } from "../../observability/import-events.js";
-import { API_IMPORT_CONFIRMATION_REPOSITORY } from "../../persistence/api-persistence.module.js";
+import {
+  API_IMPORT_CONFIRMATION_REPOSITORY,
+  API_SOURCE_DELETION_REPOSITORY,
+} from "../../persistence/api-persistence.module.js";
 import type {
   StartImportClock,
   StartImportIdGenerator,
@@ -72,6 +78,9 @@ export class ConfirmStructuredResumeService {
     private readonly requestIds: ImportStatusRequestIdGenerator,
     @Inject(START_IMPORT_PRIVACY_LOGGER)
     private readonly logger: ImportEventEmitter,
+    @Optional()
+    @Inject(API_SOURCE_DELETION_REPOSITORY)
+    private readonly sourceDeletionRepository?: SourceDeletionRepository,
   ) {}
 
   async confirm(input: {
@@ -146,6 +155,10 @@ export class ConfirmStructuredResumeService {
       });
       return notFound(requestId);
     }
+    const source = await this.readSourceAvailability(
+      resume.id,
+      input.ownerUserId,
+    );
     return {
       ok: true,
       response: confirmedStructuredResumeReadResponseSchema.parse({
@@ -158,10 +171,52 @@ export class ConfirmStructuredResumeService {
         content: toPublicStructuredResumeContent(resume.content),
         createdAt: resume.createdAt.toISOString(),
         updatedAt: resume.updatedAt.toISOString(),
-        sourceAvailability: "source_availability_unknown",
+        sourceAvailability: source.availability,
+        ...(source.retentionExpiresAt === undefined
+          ? {}
+          : {
+              sourceRetentionExpiresAt: source.retentionExpiresAt.toISOString(),
+            }),
         userMessage:
           "This structured resume was created from your reviewed initial resume.",
       }),
+    };
+  }
+
+  private async readSourceAvailability(
+    structuredResumeId: string,
+    ownerUserId: string,
+  ): Promise<{
+    readonly availability:
+      | "source_available_until_retention_deadline"
+      | "source_no_longer_available"
+      | "source_availability_unknown";
+    readonly retentionExpiresAt?: Date;
+  }> {
+    if (this.sourceDeletionRepository === undefined) {
+      return { availability: "source_availability_unknown" };
+    }
+    const importId =
+      await this.sourceDeletionRepository.findImportIdByStructuredResumeAndOwner(
+        structuredResumeId,
+        ownerUserId,
+      );
+    if (importId === null) {
+      return { availability: "source_availability_unknown" };
+    }
+    const aggregate = await this.repository.findImportByOwner(
+      importId,
+      ownerUserId,
+    );
+    if (aggregate === null) {
+      return { availability: "source_availability_unknown" };
+    }
+    if (aggregate.document.deletionStatus === "deleted") {
+      return { availability: "source_no_longer_available" };
+    }
+    return {
+      availability: "source_available_until_retention_deadline",
+      retentionExpiresAt: aggregate.document.retentionExpiresAt,
     };
   }
 
