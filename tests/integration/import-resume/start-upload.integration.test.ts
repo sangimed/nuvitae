@@ -16,7 +16,7 @@ describe("authenticated background import start", () => {
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     ],
   ])(
-    "durably accepts a supported %s and publishes validation plus timeout",
+    "durably accepts a supported %s and publishes validation, timeout, and retention deletion",
     async (extension, contentType) => {
       const queuePublisher = { addBulk: vi.fn(async () => undefined) };
       const harness = await createHttpHarness({
@@ -46,10 +46,15 @@ describe("authenticated background import start", () => {
       expect(jobs.map((job) => job.name)).toEqual([
         "document_validation",
         "foreground_timeout",
+        "source_artifact_deletion",
       ]);
       expect(jobs.every((job) => !job.jobId.includes(":"))).toBe(true);
       expect(jobs[0]?.data).not.toHaveProperty("visibleFilename");
       expect(jobs[1]?.data).toMatchObject({ jobType: "foreground_timeout" });
+      expect(jobs[2]?.data).toMatchObject({
+        jobType: "source_artifact_deletion",
+        reason: "retention_deadline",
+      });
     },
   );
 });

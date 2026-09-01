@@ -2,9 +2,22 @@
 
 import { useEffect, useRef } from "react";
 import type { PublicImportStatusResponse } from "@nuvitae/contracts";
+import { RotatingLoadingMessage } from "../../components/community/RotatingLoadingMessage";
 import { ErrorSummary } from "./ErrorSummary";
 import { focusErrorSummary, focusNextLogicalHeading } from "./focus-management";
 import { ProviderRecoveryActions } from "./ProviderRecoveryActions";
+
+const importLoadingMessages = [
+  "Giving your experience section a quick once-over…",
+  "Making sure your bullet points behave…",
+  "Checking whether your document has any surprises…",
+  "Looking for dates that travelled through time…",
+  "Untangling the document, one section at a time…",
+  "Polishing things without inventing a promotion…",
+] as const;
+
+const importLongWaitMessage =
+  "This is taking a little longer. We’ll keep showing the latest processing step.";
 
 const failureStatuses = new Set<PublicImportStatusResponse["status"]>([
   "recoverable_timeout",
@@ -52,11 +65,13 @@ export function ProcessingStep(props: {
 
   return (
     <section
-      className="import-card"
+      className={`import-card${status.status === "processing" ? " import-processing-card" : ""}`}
       aria-labelledby="processing-title"
+      aria-busy={status.status === "processing" || undefined}
       ref={sectionRef}
     >
       <p className="eyebrow">Import status</p>
+      {status.status === "processing" ? <ImportLoadingVisual /> : null}
       <h1 id="processing-title">{heading}</h1>
       {failureStatuses.has(status.status) ? (
         <ErrorSummary
@@ -71,15 +86,27 @@ export function ProcessingStep(props: {
             ] as const
           }
         />
+      ) : status.status === "processing" ? (
+        <>
+          <RotatingLoadingMessage
+            className="import-loading-message"
+            messages={importLoadingMessages}
+            longWaitMessage={importLongWaitMessage}
+          />
+          <p className="import-processing-detail">{body}</p>
+        </>
       ) : (
         <p>{body}</p>
       )}
       {status.status === "processing" ? (
-        <p>
-          Current step: {labelForStep(status.currentStep)}
-          {status.progressKnown && status.progressPercent !== undefined
-            ? `, ${status.progressPercent}% complete`
-            : ""}
+        <p className="import-processing-stage">
+          <span>Current step: </span>
+          <strong>
+            {labelForStep(status.currentStep)}
+            {status.progressKnown && status.progressPercent !== undefined
+              ? `, ${status.progressPercent}% complete`
+              : ""}
+          </strong>
         </p>
       ) : null}
       {props.connectivityMessage === undefined ? null : (
@@ -161,6 +188,21 @@ export function ProcessingStep(props: {
         </>
       ) : null}
     </section>
+  );
+}
+
+function ImportLoadingVisual() {
+  return (
+    <div className="import-loading-visual" aria-hidden="true">
+      <div className="import-loading-document">
+        <span className="import-loading-avatar" />
+        <span className="import-loading-line import-loading-line-heading" />
+        <span className="import-loading-line" />
+        <span className="import-loading-line import-loading-line-short" />
+        <span className="import-loading-line" />
+      </div>
+      <span className="import-loading-orbit" />
+    </div>
   );
 }
 

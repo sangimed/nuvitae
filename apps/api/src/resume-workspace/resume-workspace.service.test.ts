@@ -69,6 +69,7 @@ function fixtureRepository(
     transaction: async (work) => work(repository),
     listStructuredResumesByOwner: vi.fn().mockResolvedValue([]),
     listManualDraftsByOwner: vi.fn().mockResolvedValue([]),
+    findStructuredResumeByOwner: vi.fn().mockResolvedValue(null),
     findStructuredResumeByOwnerForUpdate: vi.fn().mockResolvedValue(null),
     replaceStructuredResume: vi.fn(),
     ...overrides,

@@ -156,10 +156,8 @@ describe("Docker-volume-backed local private storage", () => {
     });
 
     const [payload, signature] = reference.split(".");
-    const lastCharacter = signature?.at(-1);
-    const tamperedSignature = `${signature?.slice(0, -1)}${
-      lastCharacter === "A" ? "B" : "A"
-    }`;
+    const firstCharacter = signature?.at(0);
+    const tamperedSignature = `${firstCharacter === "A" ? "B" : "A"}${signature?.slice(1)}`;
     const tampered = `${payload}.${tamperedSignature}`;
     expect(() =>
       storage.verifySignedReference(tampered, {

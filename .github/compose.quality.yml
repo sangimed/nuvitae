@@ -1,0 +1,4 @@
+services:
+  workspace:
+    volumes:
+      - ${QUALITY_PNPM_STORE:?QUALITY_PNPM_STORE must be configured}:/pnpm/store

@@ -45,6 +45,7 @@ import {
   TypeOrmImportResumeRepository,
   TypeOrmImportWorkflowRepository,
   TypeOrmSemanticParserRepository,
+  TypeOrmSourceDeletionRepository,
   UserCorrectionEntity,
   type DataSource,
 } from "@nuvitae/persistence";
@@ -273,7 +274,10 @@ describe("authorization isolation across the resume-import lifecycle", () => {
         provide: IMPORT_STATUS_QUEUE_READER,
         useValue: { getJob: vi.fn(async () => undefined) },
       },
-      { provide: API_SOURCE_DELETION_REPOSITORY, useValue: {} },
+      {
+        provide: API_SOURCE_DELETION_REPOSITORY,
+        useValue: new TypeOrmSourceDeletionRepository(database.dataSource),
+      },
     ];
     const moduleRef = await Test.createTestingModule({
       imports: [ImportResumeModule.register({ providers })],

@@ -26,3 +26,7 @@ export {
   type CodexDirectTransportTiming,
   type CodexDirectTransportTimingPhase,
 } from "./codex-direct-transport.js";
+export {
+  CodexContextualResumeEditProvider,
+  type CodexContextualResumeEditProviderPorts,
+} from "./codex-contextual-resume-edit-provider.js";

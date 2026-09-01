@@ -6,6 +6,10 @@ import type {
 } from "@nuvitae/contracts";
 import { createBrowserUuid } from "../../services/browser-ids";
 import { formatResumeDate } from "./date";
+import {
+  ContextualAiEditControl,
+  type ContextualAiEditingControls,
+} from "./ContextualAiEditControl";
 
 type Content = StructuredResumeContentContract;
 type TextValue = Content["personal"][number];
@@ -27,6 +31,7 @@ export interface StructuredResumeSectionsProps {
   readonly disabled?: boolean;
   readonly readOnly?: boolean;
   readonly activeSection?: ResumeEditorSectionId | undefined;
+  readonly aiEditing?: ContextualAiEditingControls | undefined;
 }
 
 export function StructuredResumeSections(props: StructuredResumeSectionsProps) {
@@ -98,6 +103,14 @@ export function StructuredResumeSections(props: StructuredResumeSectionsProps) {
               })
             }
           />
+          {props.aiEditing === undefined ||
+          props.value.summary === undefined ? null : (
+            <ContextualAiEditControl
+              label="professional summary"
+              target={{ kind: "summary" }}
+              controls={props.aiEditing}
+            />
+          )}
         </section>
       ) : null}
 
@@ -106,6 +119,7 @@ export function StructuredResumeSections(props: StructuredResumeSectionsProps) {
           values={props.value.workExperiences}
           disabled={disabled}
           errors={props.validationErrors}
+          aiEditing={props.aiEditing}
           onChange={(workExperiences) => set({ workExperiences })}
         />
       ) : null}
@@ -138,6 +152,7 @@ export function StructuredResumeSections(props: StructuredResumeSectionsProps) {
           values={props.value.projects}
           disabled={disabled}
           errors={props.validationErrors}
+          aiEditing={props.aiEditing}
           onChange={(projects) => set({ projects })}
         />
       ) : null}
@@ -214,6 +229,7 @@ function WorkSection(props: {
   readonly values: readonly WorkExperience[];
   readonly disabled: boolean;
   readonly errors?: Readonly<Record<string, string>> | undefined;
+  readonly aiEditing?: ContextualAiEditingControls | undefined;
   readonly onChange: (values: WorkExperience[]) => void;
 }) {
   return (
@@ -255,9 +271,11 @@ function WorkSection(props: {
               <legend>{`Role ${roleIndex + 1}`}</legend>
               <RoleEditor
                 role={role}
+                experienceId={experience.id}
                 path={`workExperiences.${index}.roles.${roleIndex}`}
                 disabled={props.disabled}
                 errors={props.errors}
+                aiEditing={props.aiEditing}
                 onChange={(nextRole) =>
                   props.onChange(
                     replaceAt(props.values, index, {
@@ -342,9 +360,11 @@ function WorkSection(props: {
 
 function RoleEditor(props: {
   readonly role: WorkRole;
+  readonly experienceId: string;
   readonly path: string;
   readonly disabled: boolean;
   readonly errors?: Readonly<Record<string, string>> | undefined;
+  readonly aiEditing?: ContextualAiEditingControls | undefined;
   readonly onChange: (role: WorkRole) => void;
 }) {
   return (
@@ -417,6 +437,13 @@ function RoleEditor(props: {
         label="responsibility"
         values={props.role.responsibilities}
         disabled={props.disabled}
+        aiEditing={props.aiEditing}
+        target={(itemIndex) => ({
+          kind: "work_responsibility",
+          experienceId: props.experienceId,
+          roleId: props.role.id,
+          itemIndex,
+        })}
         onChange={(responsibilities) =>
           props.onChange({ ...props.role, responsibilities })
         }
@@ -425,6 +452,13 @@ function RoleEditor(props: {
         label="achievement"
         values={props.role.achievements}
         disabled={props.disabled}
+        aiEditing={props.aiEditing}
+        target={(itemIndex) => ({
+          kind: "work_achievement",
+          experienceId: props.experienceId,
+          roleId: props.role.id,
+          itemIndex,
+        })}
         onChange={(achievements) =>
           props.onChange({ ...props.role, achievements })
         }
@@ -592,6 +626,7 @@ function ProjectSection(props: {
   readonly values: readonly Project[];
   readonly disabled: boolean;
   readonly errors?: Readonly<Record<string, string>> | undefined;
+  readonly aiEditing?: ContextualAiEditingControls | undefined;
   readonly onChange: (values: Project[]) => void;
 }) {
   return (
@@ -629,6 +664,14 @@ function ProjectSection(props: {
               )
             }
           />
+          {props.aiEditing === undefined ||
+          item.description === undefined ? null : (
+            <ContextualAiEditControl
+              label={`project ${index + 1} description`}
+              target={{ kind: "project_description", projectId: item.id }}
+              controls={props.aiEditing}
+            />
+          )}
           <LinkSection
             title="Project links"
             field={`projects.${index}.links`}
@@ -863,6 +906,15 @@ function TextArrayEditor(props: {
   readonly label: string;
   readonly values: readonly TextValue[];
   readonly disabled: boolean;
+  readonly aiEditing?: ContextualAiEditingControls | undefined;
+  readonly target?:
+    | ((index: number) => {
+        readonly kind: "work_responsibility" | "work_achievement";
+        readonly experienceId: string;
+        readonly roleId: string;
+        readonly itemIndex: number;
+      })
+    | undefined;
   readonly onChange: (values: TextValue[]) => void;
 }) {
   return (
@@ -879,6 +931,14 @@ function TextArrayEditor(props: {
               props.onChange(replaceAt(props.values, index, manualText(value)))
             }
           />
+          {props.aiEditing === undefined ||
+          props.target === undefined ? null : (
+            <ContextualAiEditControl
+              label={`${props.label} ${index + 1}`}
+              target={props.target(index)}
+              controls={props.aiEditing}
+            />
+          )}
           <RemoveButton
             label={`Remove ${props.label} ${index + 1}`}
             disabled={props.disabled}

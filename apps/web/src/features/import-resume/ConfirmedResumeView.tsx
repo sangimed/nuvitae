@@ -4,9 +4,13 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type {
   ConfirmedStructuredResumeReadResponse,
+  ContextualResumeEditAction,
+  ContextualResumeEditProposalResponse,
+  ContextualResumeEditTarget,
   StructuredResumeContentContract,
 } from "@nuvitae/contracts";
 import { ResponsiveVisualResumeEditor } from "../resume-editor/ResponsiveVisualResumeEditor";
+import type { ContextualAiEditingControls } from "../resume-editor/ContextualAiEditControl";
 import {
   readConfirmedStructuredResume,
   saveConfirmedStructuredResume,
@@ -14,6 +18,7 @@ import {
 import { StructuredResumeProvenance } from "./StructuredResumeProvenance";
 import { DeleteSourceControl } from "./DeleteSourceControl";
 import { toEditableResumeContent } from "./editable-content";
+import { createContextualResumeEditProposal } from "../../services/resume-workspace/contextual-editing-client";
 
 type SaveState = "saved" | "unsaved" | "saving" | "failed" | "stale";
 
@@ -27,6 +32,9 @@ export function ConfirmedResumeView(props: { readonly resumeId: string }) {
   >();
   const [saveState, setSaveState] = useState<SaveState>("saved");
   const [saveMessage, setSaveMessage] = useState("");
+  const [aiState, setAiState] = useState<ContextualAiEditingControls["state"]>({
+    status: "idle",
+  });
   const errorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -94,6 +102,43 @@ export function ConfirmedResumeView(props: { readonly resumeId: string }) {
     setResume(outcome.response);
     setContent(toEditableResumeContent(outcome.response.content));
     setSaveMessage(message);
+    setAiState({ status: "idle" });
+  }
+
+  async function requestAiEdit(
+    target: ContextualResumeEditTarget,
+    action: ContextualResumeEditAction,
+  ) {
+    if (resume === undefined || saveState !== "saved") {
+      setAiState({
+        status: "error",
+        target,
+        message: "Save or undo your current changes before using AI editing.",
+      });
+      return;
+    }
+    setAiState({ status: "generating", target });
+    const outcome = await createContextualResumeEditProposal({
+      resumeId: props.resumeId,
+      expectedUpdatedAt: resume.updatedAt,
+      action,
+      target,
+    });
+    setAiState(
+      outcome.ok
+        ? { status: "proposal", proposal: outcome.response }
+        : { status: "error", target, message: outcome.message },
+    );
+  }
+
+  function acceptAiProposal(proposal: ContextualResumeEditProposalResponse) {
+    setContent((current) =>
+      current === undefined
+        ? current
+        : applyProposal(current, proposal.target, proposal.after),
+    );
+    setSaveState("unsaved");
+    setAiState({ status: "idle" });
   }
 
   if (error !== undefined) {
@@ -132,6 +177,23 @@ export function ConfirmedResumeView(props: { readonly resumeId: string }) {
                     : "Saved"}
           </p>
           <button
+            className="secondary-button"
+            type="button"
+            disabled={
+              saveState === "saved" ||
+              saveState === "saving" ||
+              saveState === "stale"
+            }
+            onClick={() => {
+              setContent(toEditableResumeContent(resume.content));
+              setSaveState("saved");
+              setSaveMessage("Changes undone to the last saved version.");
+              setAiState({ status: "idle" });
+            }}
+          >
+            Undo to saved
+          </button>
+          <button
             className="primary-action"
             type="button"
             disabled={saveState === "saved" || saveState === "saving"}
@@ -157,7 +219,7 @@ export function ConfirmedResumeView(props: { readonly resumeId: string }) {
       {resume.sourceAvailability === "source_no_longer_available" ? null : (
         <DeleteSourceControl
           resumeId={props.resumeId}
-          disabled={saveState !== "saved"}
+          disabled={saveState !== "saved" || aiState.status === "generating"}
           onDeleted={refreshAfterSourceDeletion}
         />
       )}
@@ -174,12 +236,65 @@ export function ConfirmedResumeView(props: { readonly resumeId: string }) {
       </div>
       <ResponsiveVisualResumeEditor
         value={content}
-        disabled={saveState === "saving"}
+        disabled={saveState === "saving" || aiState.status === "generating"}
+        aiEditing={{
+          state: aiState,
+          disabled: saveState !== "saved" || aiState.status === "generating",
+          request: (target, action) => void requestAiEdit(target, action),
+          accept: acceptAiProposal,
+          reject: () => setAiState({ status: "idle" }),
+        }}
         onChange={(next) => {
           setContent(next);
           setSaveState("unsaved");
+          setAiState({ status: "idle" });
         }}
       />
     </section>
   );
+}
+
+function applyProposal(
+  content: StructuredResumeContentContract,
+  target: ContextualResumeEditTarget,
+  value: string,
+): StructuredResumeContentContract {
+  if (target.kind === "summary") {
+    return content.summary === undefined
+      ? content
+      : { ...content, summary: { ...content.summary, value } };
+  }
+  if (target.kind === "project_description") {
+    return {
+      ...content,
+      projects: content.projects.map((project) =>
+        project.id !== target.projectId || project.description === undefined
+          ? project
+          : { ...project, description: { ...project.description, value } },
+      ),
+    };
+  }
+  return {
+    ...content,
+    workExperiences: content.workExperiences.map((experience) =>
+      experience.id !== target.experienceId
+        ? experience
+        : {
+            ...experience,
+            roles: experience.roles.map((role) => {
+              if (role.id !== target.roleId) return role;
+              const field =
+                target.kind === "work_responsibility"
+                  ? "responsibilities"
+                  : "achievements";
+              return {
+                ...role,
+                [field]: role[field].map((item, index) =>
+                  index === target.itemIndex ? { ...item, value } : item,
+                ),
+              };
+            }),
+          },
+    ),
+  };
 }

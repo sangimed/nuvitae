@@ -80,7 +80,10 @@ const docxLines = [
 ];
 
 async function generatePdf() {
-  const pdfPath = resolve(directory, "semantic-vertical-slice-jordan-avery.pdf");
+  const pdfPath = resolve(
+    directory,
+    "semantic-vertical-slice-jordan-avery.pdf",
+  );
   const document = new PDFDocument({
     autoFirstPage: false,
     compress: false,
