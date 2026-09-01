@@ -236,9 +236,14 @@ docker compose run --rm workspace pnpm test
 docker compose run --rm workspace pnpm build
 ```
 
-Format files through Docker when needed:
+These are the same root-level validation commands enforced by CI. See the
+[code quality gate guide](docs/development/quality-gates.md) for the tooling
+decision, focused package commands, and policy for adding rules or packages.
+
+Fix supported lint and formatting issues through Docker when needed:
 
 ```bash
+docker compose run --rm workspace pnpm lint:fix
 docker compose run --rm workspace pnpm format
 ```
 
