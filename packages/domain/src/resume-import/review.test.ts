@@ -143,6 +143,66 @@ describe("review domain operations", () => {
       }),
     ).toMatchObject({ ok: false, code: "draft_not_reviewable" });
   });
+
+  it("confirms grounded inferred fields and their linked warnings atomically", () => {
+    const inferred = {
+      ...field(),
+      inferenceStatus: "inferred_needs_review" as const,
+      warningId: "44444444-4444-4444-8444-444444444444",
+    };
+    const result = applyReviewCommand({
+      draft: draft({ fields: [inferred] }),
+      ownerUserId,
+      command: {
+        type: "confirm_inferred_fields",
+        operationId,
+        fieldIds: [inferred.id],
+      },
+      now,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.draft.fields[0]).toMatchObject({
+      reviewStatus: "confirmed",
+      inferenceStatus: "confirmed_inference",
+    });
+    expect(result.draft.warnings[0]).toMatchObject({
+      reviewStatus: "confirmed",
+      resolvedAt: now,
+    });
+    expect(result.correction).toMatchObject({
+      targetType: "import_draft",
+      targetId: result.draft.id,
+      action: "confirm",
+    });
+  });
+
+  it("rejects invalid inferred-field batches without partial mutation", () => {
+    const original = draft();
+    for (const fieldIds of [
+      [],
+      [original.fields[0]!.id, original.fields[0]!.id],
+      ["99999999-9999-4999-8999-999999999999"],
+      [original.fields[0]!.id],
+    ]) {
+      const result = applyReviewCommand({
+        draft: original,
+        ownerUserId,
+        command: {
+          type: "confirm_inferred_fields",
+          operationId,
+          fieldIds,
+        },
+        now,
+      });
+      expect(result).toMatchObject({
+        ok: false,
+        code: "invalid_field_transition",
+      });
+      expect(original.fields[0]?.reviewStatus).toBe("unreviewed");
+    }
+  });
 });
 
 function draft(overrides: Partial<ImportDraft> = {}): ImportDraft {

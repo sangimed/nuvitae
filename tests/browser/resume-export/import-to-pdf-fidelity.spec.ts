@@ -81,14 +81,10 @@ for (const journey of journeys) {
 
     await uploadDocument(page, journey.fixture);
     await expect(
-      page.getByRole("button", { name: "Review imported resume" }),
-    ).toBeVisible({ timeout: 90_000 });
-    await page.getByRole("button", { name: "Review imported resume" }).click();
-    await expect(
       page.getByRole("heading", {
         name: "Check the information Nuvitae needs you to confirm",
       }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 90_000 });
     await expandReviewSections(page);
 
     for (const value of journey.retainedValues) {

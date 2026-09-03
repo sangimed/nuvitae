@@ -29,6 +29,11 @@ export type ReviewCommand =
       readonly fieldId: FieldId;
     }
   | {
+      readonly type: "confirm_inferred_fields";
+      readonly operationId: string;
+      readonly fieldIds: readonly FieldId[];
+    }
+  | {
       readonly type: "edit_field";
       readonly operationId: string;
       readonly fieldId: FieldId;
@@ -149,6 +154,79 @@ export function applyReviewCommand(
           "confirm",
         );
       });
+    case "confirm_inferred_fields": {
+      const selected = new Set(input.command.fieldIds);
+      if (
+        selected.size === 0 ||
+        selected.size !== input.command.fieldIds.length
+      ) {
+        return failure(
+          "invalid_field_transition",
+          "The suggested information selection is invalid.",
+        );
+      }
+      const fields = input.draft.fields.filter((field) =>
+        selected.has(field.id),
+      );
+      if (
+        fields.length !== selected.size ||
+        fields.some(
+          (field) =>
+            field.inferenceStatus !== "inferred_needs_review" ||
+            field.reviewStatus !== "unreviewed",
+        )
+      ) {
+        return failure(
+          "invalid_field_transition",
+          "Only suggested information awaiting review can be accepted together.",
+        );
+      }
+      const linkedWarningIds = new Set(
+        input.draft.warnings
+          .filter(
+            (warning) =>
+              warning.reviewStatus === "needs_review" &&
+              fields.some(
+                (field) =>
+                  warning.id === field.warningId ||
+                  (warning.fieldPath !== undefined &&
+                    warning.fieldPath === field.fieldPath),
+              ),
+          )
+          .map((warning) => warning.id),
+      );
+      return success(
+        input,
+        input.draft.fields.map((field) =>
+          selected.has(field.id)
+            ? {
+                ...field,
+                reviewStatus: "confirmed" as const,
+                inferenceStatus: "confirmed_inference" as const,
+                updatedAt: input.now,
+              }
+            : field,
+        ),
+        input.draft.warnings.map((warning) =>
+          linkedWarningIds.has(warning.id)
+            ? {
+                ...warning,
+                reviewStatus: "confirmed" as const,
+                resolvedAt: input.now,
+              }
+            : warning,
+        ),
+        {
+          id: input.command.operationId,
+          importDraftId: input.draft.id,
+          targetType: "import_draft",
+          targetId: input.draft.id,
+          action: "confirm",
+          createdAt: input.now,
+          createdByUserId: input.ownerUserId,
+        },
+      );
+    }
     case "edit_field": {
       const command = input.command;
       return updateField(input, command.fieldId, (field) => {

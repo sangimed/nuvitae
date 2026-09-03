@@ -338,6 +338,7 @@ describe("ImportFlow route recovery", () => {
       );
     });
     expect(container.textContent).toContain("Your resume draft is ready");
+    expect(mocks.pollImportStatus).toHaveBeenCalledTimes(1);
 
     act(() => root?.unmount());
     root = undefined;

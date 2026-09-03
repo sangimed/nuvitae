@@ -119,6 +119,7 @@ describe("import review draft contract", () => {
 
   it.each([
     { type: "confirm_field", fieldId },
+    { type: "confirm_inferred_fields", fieldIds: [fieldId] },
     {
       type: "edit_field",
       fieldId,
@@ -162,6 +163,18 @@ describe("import review draft contract", () => {
         action,
       }),
     ).toMatchObject({ action });
+  });
+
+  it("rejects empty or duplicate inferred-field batches", () => {
+    for (const fieldIds of [[], [fieldId, fieldId]]) {
+      expect(() =>
+        reviewMutationRequestSchema.parse({
+          operationId: "66666666-6666-4666-8666-666666666666",
+          expectedReviewRevision: 0,
+          action: { type: "confirm_inferred_fields", fieldIds },
+        }),
+      ).toThrow();
+    }
   });
 
   it.each([

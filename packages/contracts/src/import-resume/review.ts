@@ -409,6 +409,16 @@ export const reviewMutationActionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("confirm_field"), fieldId: uuidSchema }).strict(),
   z
     .object({
+      type: z.literal("confirm_inferred_fields"),
+      fieldIds: z
+        .array(uuidSchema)
+        .min(1)
+        .max(200)
+        .refine((fieldIds) => new Set(fieldIds).size === fieldIds.length),
+    })
+    .strict(),
+  z
+    .object({
       type: z.literal("edit_field"),
       fieldId: uuidSchema,
       value: extractedValueSchema,

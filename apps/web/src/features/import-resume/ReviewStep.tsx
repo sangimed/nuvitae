@@ -231,6 +231,8 @@ export function ReviewStep(props: { readonly importId: string }) {
     );
   }
 
+  const initialOpenSection = firstAttentionSection(draft);
+
   return (
     <section className="review-shell" aria-labelledby="review-title">
       <p className="eyebrow">Resume review</p>
@@ -288,7 +290,13 @@ export function ReviewStep(props: { readonly importId: string }) {
       )}
 
       <div className="review-edit-pane">
-        <ReviewSummary draft={draft} />
+        <ReviewSummary
+          draft={draft}
+          pending={pending || finalized !== undefined}
+          onAcceptAll={(fieldIds) =>
+            mutate({ type: "confirm_inferred_fields", fieldIds })
+          }
+        />
 
         <ReviewNavigation draft={draft} />
 
@@ -298,16 +306,16 @@ export function ReviewStep(props: { readonly importId: string }) {
             key={section.section}
             open={
               openedSections?.has(section.section) ??
-              sectionNeedsAttention(section)
+              initialOpenSection === section.section
             }
             onToggle={(event) => {
               const isOpen = event.currentTarget.open;
               setOpenedSections((current) => {
                 const next = new Set(
                   current ??
-                    draft.sections
-                      .filter(sectionNeedsAttention)
-                      .map((item) => item.section),
+                    (initialOpenSection === undefined
+                      ? []
+                      : [initialOpenSection]),
                 );
                 if (isOpen) next.add(section.section);
                 else next.delete(section.section);
@@ -424,7 +432,11 @@ function focusReviewTarget(target: HTMLElement | null) {
   focusTarget(target);
 }
 
-function ReviewSummary(props: { readonly draft: ReviewDraftReadResponse }) {
+function ReviewSummary(props: {
+  readonly draft: ReviewDraftReadResponse;
+  readonly pending: boolean;
+  readonly onAcceptAll: (fieldIds: string[]) => Promise<unknown>;
+}) {
   const needsConfirmation = props.draft.sections.flatMap((section) =>
     section.fields.filter(needsExplicitConfirmation),
   );
@@ -438,8 +450,20 @@ function ReviewSummary(props: { readonly draft: ReviewDraftReadResponse }) {
       <p>
         {needsConfirmation.length === 0
           ? "The remaining imported information is ready to carry into your resume. You can still make changes below."
-          : "Start with the highlighted sections, then confirm, edit, or leave out each detail."}
+          : "These are grounded suggestions, not text copied exactly from your document. Review them below, or accept them together and keep editing anything you want to change."}
       </p>
+      {needsConfirmation.length === 0 ? null : (
+        <button
+          type="button"
+          className="primary-action"
+          disabled={props.pending}
+          onClick={() =>
+            props.onAcceptAll(needsConfirmation.map((field) => field.fieldId))
+          }
+        >
+          Accept all {needsConfirmation.length} suggested details
+        </button>
+      )}
     </section>
   );
 }
@@ -632,6 +656,12 @@ function sectionNeedsAttention(
   section: ReviewDraftReadResponse["sections"][number],
 ) {
   return sectionAttentionCount(section) > 0;
+}
+
+function firstAttentionSection(
+  draft: ReviewDraftReadResponse,
+): string | undefined {
+  return draft.sections.find(sectionNeedsAttention)?.section;
 }
 
 function fieldStatus(field: ReviewField): string {

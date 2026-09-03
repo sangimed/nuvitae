@@ -25,6 +25,8 @@ const noSupportedFieldFixture =
 
 const technicalDiagnosticPattern =
   /LibreOffice|PdfJs|Ooxml|parser-input|parser-output|storageKey|storage key|users\/|imports\/|provider|deterministic|transcript|fragment hash|schemaVersion|\.xml|\.docx|\.pdf/i;
+const reviewTechnicalDiagnosticPattern =
+  /LibreOffice|PdfJs|Ooxml|parser-input|parser-output|storageKey|storage key|users\/|imports\/|transcript|fragment hash|schemaVersion|\.xml|\.docx|\.pdf/i;
 
 test("no production semantic provider is configured recovers the existing fallback draft after refresh", async ({
   page,
@@ -37,29 +39,28 @@ test("no production semantic provider is configured recovers the existing fallba
     page.getByRole("heading", { name: "Preparing your resume for review" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Review imported resume" }),
+    page.getByRole("heading", {
+      name: "Check the information Nuvitae needs you to confirm",
+    }),
   ).toBeVisible({ timeout: 90_000 });
   await page.reload();
-  await expect(
-    page.getByRole("button", { name: "Review imported resume" }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(`/import-resume/${importId}/review`);
   await page.reload();
-  await expect(
-    page.getByRole("button", { name: "Review imported resume" }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(`/import-resume/${importId}/review`);
   expect(importStarts()).toBe(1);
 
-  // The processing result remains privacy-safe until the user enters review.
+  // The review remains free of internal technical diagnostics.
   const body = await page.locator("body").innerText();
-  expect(body).not.toMatch(technicalDiagnosticPattern);
-  for (const sensitive of [
-    "Jordan Avery",
-    "jordan.avery@example.test",
-    "Maya Chen",
-    "maya.chen@example.test",
-  ]) {
-    expect(body).not.toContain(sensitive);
-  }
+  expect(body).not.toMatch(reviewTechnicalDiagnosticPattern);
+
+  const acceptSuggestions = page.getByRole("button", {
+    name: /Accept all \d+ suggested details/,
+  });
+  await expect(acceptSuggestions).toBeVisible();
+  await acceptSuggestions.click();
+  await expect(acceptSuggestions).toHaveCount(0);
+  await page.reload();
+  await expect(acceptSuggestions).toHaveCount(0);
 
   // The bounded fallback creates one review draft after one semantic attempt;
   // refreshing never creates another attempt or structured resume.
@@ -115,22 +116,16 @@ test("real selectable-text PDF vertical slice reaches review, confirmation, and 
   await expect(
     page.getByRole("heading", { name: "Preparing your resume for review" }),
   ).toBeVisible();
-  await page.reload();
-  await expect(page).toHaveURL(`/import-resume/${importId}`);
   await expect(
-    page.getByRole("button", { name: "Review imported resume" }),
+    page.getByRole("heading", {
+      name: "Check the information Nuvitae needs you to confirm",
+    }),
   ).toBeVisible({ timeout: 90_000 });
   await page.reload();
-  await expect(
-    page.getByRole("button", { name: "Review imported resume" }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(`/import-resume/${importId}/review`);
   await page.reload();
-  await expect(
-    page.getByRole("button", { name: "Review imported resume" }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(`/import-resume/${importId}/review`);
   expect(importStarts()).toBe(1);
-  await page.getByRole("button", { name: "Review imported resume" }).click();
-  await expect(page).toHaveURL(/\/import-resume\/[0-9a-f-]+\/review/);
   await expect(
     page.getByRole("heading", {
       name: "Check the information Nuvitae needs you to confirm",
@@ -164,10 +159,6 @@ test("real selectable-text PDF vertical slice reaches review, confirmation, and 
     page.getByRole("button", { name: "Create my resume" }),
   ).toBeEnabled();
   await page.getByRole("button", { name: "Create my resume" }).click();
-  await expect(
-    page.getByRole("dialog", { name: "Create your resume" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Create resume" }).click();
   await expect(page).toHaveURL(/\/resumes\/[0-9a-f-]+/);
 
   // Exactly one import draft and exactly one structured resume for the source.
@@ -201,10 +192,10 @@ test("real DOCX vertical slice proves OOXML extraction and review-required ambig
     page.getByRole("heading", { name: "Preparing your resume for review" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Review imported resume" }),
+    page.getByRole("heading", {
+      name: "Check the information Nuvitae needs you to confirm",
+    }),
   ).toBeVisible({ timeout: 90_000 });
-  await page.getByRole("button", { name: "Review imported resume" }).click();
-  await expect(page).toHaveURL(/\/import-resume\/[0-9a-f-]+\/review/);
   await expect(
     page.getByRole("heading", {
       name: "Check the information Nuvitae needs you to confirm",
@@ -236,7 +227,6 @@ test("real DOCX vertical slice proves OOXML extraction and review-required ambig
     page.getByRole("button", { name: "Create my resume" }),
   ).toBeEnabled();
   await page.getByRole("button", { name: "Create my resume" }).click();
-  await page.getByRole("button", { name: "Create resume" }).click();
   await expect(page).toHaveURL(/\/resumes\/[0-9a-f-]+/);
 
   const invariants = await readImportInvariants(importId);

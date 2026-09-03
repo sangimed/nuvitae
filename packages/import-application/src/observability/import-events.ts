@@ -452,6 +452,7 @@ const validationDiagnosticCategories = [
 
 const reviewOperationTypes = [
   "confirm_field",
+  "confirm_inferred_fields",
   "edit_field",
   "remove_field",
   "add_field",
