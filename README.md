@@ -84,6 +84,17 @@ Then open:
 http://localhost:3000
 ```
 
+#### Connect Codex from an Amp Orb
+
+Nuvitae uses Codex's device authorization flow, so no localhost callback or URL
+editing is required. Select **Connect Codex** in Nuvitae: it opens the secure
+OpenAI device page and displays a one-time code, which it also attempts to copy.
+Enter the code on the OpenAI page. Nuvitae detects completion automatically.
+
+Only the Nuvitae web portal is needed when running in an Amp Orb. Port 1455 is
+not used. Treat the one-time code as short-lived authentication data: do not
+paste it into issues, logs, docs, or chat.
+
 Stop the stack without deleting Docker volumes:
 
 ```bash
@@ -236,9 +247,14 @@ docker compose run --rm workspace pnpm test
 docker compose run --rm workspace pnpm build
 ```
 
-Format files through Docker when needed:
+These are the same root-level validation commands enforced by CI. See the
+[code quality gate guide](docs/development/quality-gates.md) for the tooling
+decision, focused package commands, and policy for adding rules or packages.
+
+Fix supported lint and formatting issues through Docker when needed:
 
 ```bash
+docker compose run --rm workspace pnpm lint:fix
 docker compose run --rm workspace pnpm format
 ```
 

@@ -19,6 +19,7 @@ export * from "./mappers/semantic-parser-validation-status.mapper.js";
 export * from "./repositories/import-resume.repository.js";
 export * from "./repositories/typeorm-import-resume.repository.js";
 export * from "./repositories/typeorm-import-workflow.repository.js";
+export * from "./repositories/typeorm-source-deletion.repository.js";
 export * from "./repositories/import-limit-attempts.repository.js";
 export * from "./repositories/typeorm-import-limit-attempts.repository.js";
 export * from "./repositories/community-auth.repository.js";

@@ -156,6 +156,7 @@ export function ImportFlow(props: { readonly importId?: string }) {
   const announcedUnknownRef = useRef(false);
   const firstPollTimedImportRef = useRef<string | null>(null);
   const reviewAvailableTimedImportRef = useRef<string | null>(null);
+  const reviewNavigationImportRef = useRef<string | null>(null);
 
   const activeImportId = useMemo(
     () => ("importId" in state ? state.importId : undefined),
@@ -164,12 +165,6 @@ export function ImportFlow(props: { readonly importId?: string }) {
 
   useEffect(() => {
     if (activeImportId === undefined) return;
-    if (
-      status !== undefined &&
-      status.importId === activeImportId &&
-      status.status !== "processing"
-    )
-      return;
     const controller = new AbortController();
     void pollImportStatus({
       importId: activeImportId,
@@ -187,6 +182,14 @@ export function ImportFlow(props: { readonly importId?: string }) {
           window.history.replaceState(null, "", "/import-resume");
         }
         applyStatusState(next, setState);
+        if (
+          (next.status === "draft_ready" ||
+            next.status === "partial_extraction") &&
+          reviewNavigationImportRef.current !== next.importId
+        ) {
+          reviewNavigationImportRef.current = next.importId;
+          window.location.assign(`/import-resume/${next.importId}/review`);
+        }
       },
       onConnectivityLost: setConnectivityMessage,
       onTiming: (timing) => {
@@ -213,7 +216,7 @@ export function ImportFlow(props: { readonly importId?: string }) {
       },
     });
     return () => controller.abort();
-  }, [activeImportId, status]);
+  }, [activeImportId]);
 
   const unknownRecovery =
     state.state !== "initial_choice" &&
@@ -286,6 +289,7 @@ export function ImportFlow(props: { readonly importId?: string }) {
     processingAnnouncedImportRef.current = null;
     firstPollTimedImportRef.current = null;
     reviewAvailableTimedImportRef.current = null;
+    reviewNavigationImportRef.current = null;
     announcedUnknownRef.current = false;
     setState({ state: "upload_selection" });
   }

@@ -121,6 +121,19 @@ describe("ProcessingStep error summary and recovery (T063)", () => {
     expect(container.textContent).toContain(
       "Current step: reading the content",
     );
+    expect(container.querySelector("section")?.getAttribute("aria-busy")).toBe(
+      "true",
+    );
+    expect(
+      container
+        .querySelector(".import-loading-visual")
+        ?.getAttribute("aria-hidden"),
+    ).toBe("true");
+    expect(
+      container
+        .querySelector("[data-loading-message]")
+        ?.getAttribute("aria-live"),
+    ).toBe("off");
     expect(container.textContent).not.toContain("percent");
     expect(summary()).toBeNull();
 
@@ -138,6 +151,34 @@ describe("ProcessingStep error summary and recovery (T063)", () => {
       ),
     );
     expect(container.textContent).toContain("42% complete");
+  });
+
+  it("removes playful loading content as soon as a failure arrives", () => {
+    renderProcessing(
+      statusResponse("processing", { currentStep: "reading_content" }),
+    );
+    expect(container.querySelector("[data-loading-message]")).not.toBeNull();
+
+    renderProcessing(
+      statusResponse("terminal_processing_failure", {
+        failure: {
+          code: "unexpected_processing_failure",
+          retryable: false,
+          recoveryActions: ["replace_upload", "manual_entry"],
+          userMessage: "This resume could not be prepared.",
+        },
+      }),
+    );
+
+    expect(container.querySelector("[data-loading-message]")).toBeNull();
+    expect(container.querySelector(".import-loading-visual")).toBeNull();
+    expect(container.querySelector("section")?.hasAttribute("aria-busy")).toBe(
+      false,
+    );
+    expect(summary()?.textContent).toContain(
+      "This resume could not be prepared.",
+    );
+    expect(document.activeElement).toBe(summary());
   });
 
   it("does not duplicate the authoritative live region", () => {

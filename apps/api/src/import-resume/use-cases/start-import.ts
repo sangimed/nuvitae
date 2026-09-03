@@ -264,6 +264,26 @@ export class StartImportService {
               foregroundDeadline: deadline.toISOString(),
             },
           },
+          {
+            name: IMPORT_RESUME_JOB_NAMES.sourceDeletion,
+            jobId: importResumeJobId(importId, "retention"),
+            delay: Math.max(0, retentionExpiresAt.getTime() - Date.now()),
+            data: {
+              schemaVersion: "2026-07-28",
+              jobType: "source_artifact_deletion",
+              importId,
+              owner: { ownerUserId: input.ownerUserId },
+              correlationId: importId,
+              idempotencyKey: importResumeJobId(importId, "retention"),
+              requestedAt: createdAt.toISOString(),
+              target: {
+                kind: "source_and_derived_artifacts",
+                id: importId,
+              },
+              reason: "retention_deadline",
+              deleteNoLaterThan: retentionExpiresAt.toISOString(),
+            },
+          },
         ]);
         const enqueuedAt = this.clock.now();
         emitImportTiming(this.logger, {

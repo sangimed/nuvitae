@@ -64,6 +64,18 @@ Development, checks, tests, builds, and runtime services use the
 repository-supported Docker Compose workflow in `README.md`; do not invent a
 parallel host workflow.
 
+## Amp Orb testing URLs
+
+Whenever an agent starts or restarts Nuvitae in an Amp Orb for user testing, it
+must provide the current clickable web portal URL in the conversation.
+
+Portal URLs are specific to an Orb and may change, so obtain them from the
+current portal command output rather than hard-coding them in tracked files.
+Never tell the user to open a raw `localhost`, `127.0.0.1`, `[::1]`, or direct
+sandbox-host URL. Codex uses device authorization: do not expose port 1455 or
+ask the user to edit a callback URL. The user enters the one-time code shown by
+Nuvitae on the secure OpenAI page; never ask them to paste that code in chat.
+
 ## Pre-production schema evolution
 
 Do not create a new SQL/TypeORM migration for every iterative schema change by
@@ -80,3 +92,37 @@ Before the first production or hosted release persists real user data, the
 project must deliberately establish a production baseline and decide whether to
 squash, rebase, or retain pre-production migration history. From that baseline
 onward, durable schema changes require reviewed forward-compatible migrations.
+
+## Security engineering invariants
+
+Detailed rationale and the current threat model live in `docs/security/`.
+Every change must preserve these rules:
+
+- Treat browser input, uploads and extracted text, provider/AI output, queue
+  payloads, webhooks, external APIs, and unproven persisted data as untrusted.
+- Enforce authorization server-side with a verified principal and owner-scoped
+  access. A client-supplied identity or knowledge of an object ID is never
+  authorization.
+- Do not weaken fail-closed validation, ownership, grounding, private storage,
+  safe logging, or credential isolation to make a feature or test pass. Fix a
+  protection narrowly with evidence and a regression test instead.
+- Keep secrets, tokens, personal resume data, raw prompts/responses, private
+  storage references, and credentials out of logs, fixtures, issues, tests,
+  prompts, client bundles, and layers that do not require them.
+- Use safe sinks: parameterized persistence, framework-escaped rendering,
+  no-shell argument-array process execution, bounded structured logs, and
+  explicit URL/network allowlists. Do not substitute malicious-string
+  detection for sink safety.
+- Apply least privilege and secure defaults to service credentials, filesystem
+  access, volumes, network access, and runtime permissions. An insecure fallback
+  requires an explicit documented reason.
+- Add negative tests for security-relevant changes: unauthenticated/wrong-owner,
+  malformed/adversarial input, credential leakage/revocation, untrusted AI
+  output, and background-job replay/idempotency as applicable.
+- Justify new external dependencies by maintenance health, security history,
+  dependency weight, privileges/network access, licence, and whether the
+  repository already has a simpler capability.
+- Never broadly suppress a security-tool finding. A false positive may be
+  suppressed only narrowly, with a documented reason and review trigger.
+- Update `docs/security/` when a change alters assets, trust boundaries,
+  external communications, sensitive-data handling, or a security invariant.

@@ -13,6 +13,10 @@ export interface ResumeWorkspaceRepository {
   listManualDraftsByOwner(
     ownerUserId: string,
   ): Promise<readonly ManualStructuredResumeDraft[]>;
+  findStructuredResumeByOwner(
+    resumeId: string,
+    ownerUserId: string,
+  ): Promise<StructuredResume | null>;
   findStructuredResumeByOwnerForUpdate(
     resumeId: string,
     ownerUserId: string,

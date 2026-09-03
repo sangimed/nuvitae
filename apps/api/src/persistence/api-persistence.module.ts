@@ -3,6 +3,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import {
   TypeOrmImportResumeRepository,
   TypeOrmImportWorkflowRepository,
+  TypeOrmSourceDeletionRepository,
   createTypeOrmModuleOptions,
   readPersistenceConfigFromEnv,
 } from "@nuvitae/persistence/typeorm";
@@ -23,6 +24,9 @@ export const API_IMPORT_CONFIRMATION_REPOSITORY = Symbol(
 );
 export const API_START_IMPORT_REPOSITORY = Symbol(
   "API_START_IMPORT_REPOSITORY",
+);
+export const API_SOURCE_DELETION_REPOSITORY = Symbol(
+  "API_SOURCE_DELETION_REPOSITORY",
 );
 export const API_MANUAL_RESUME_DRAFT_REPOSITORY = Symbol(
   "API_MANUAL_RESUME_DRAFT_REPOSITORY",
@@ -68,6 +72,12 @@ export const apiPersistenceRepositoryProviders: Provider[] = [
     inject: [DataSource],
   },
   {
+    provide: API_SOURCE_DELETION_REPOSITORY,
+    useFactory: (dataSource: DataSource) =>
+      new TypeOrmSourceDeletionRepository(dataSource),
+    inject: [DataSource],
+  },
+  {
     provide: API_MANUAL_RESUME_DRAFT_REPOSITORY,
     useFactory: (dataSource: DataSource) =>
       new TypeOrmManualResumeDraftRepository(dataSource),
@@ -98,6 +108,7 @@ export const apiPersistenceRepositoryProviders: Provider[] = [
     API_IMPORT_REVIEW_REPOSITORY,
     API_IMPORT_CONFIRMATION_REPOSITORY,
     API_START_IMPORT_REPOSITORY,
+    API_SOURCE_DELETION_REPOSITORY,
     API_MANUAL_RESUME_DRAFT_REPOSITORY,
     API_RESUME_WORKSPACE_REPOSITORY,
   ],

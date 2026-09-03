@@ -3,6 +3,7 @@ import {
   PersistenceConfigError,
   TypeOrmImportResumeRepository,
   TypeOrmImportWorkflowRepository,
+  TypeOrmSourceDeletionRepository,
 } from "@nuvitae/persistence";
 import { DataSource } from "typeorm";
 import { describe, expect, it, vi } from "vitest";
@@ -11,6 +12,7 @@ import {
   API_IMPORT_CONFIRMATION_REPOSITORY,
   API_IMPORT_REVIEW_REPOSITORY,
   API_MANUAL_RESUME_DRAFT_REPOSITORY,
+  API_SOURCE_DELETION_REPOSITORY,
   API_START_IMPORT_REPOSITORY,
   apiPersistenceRepositoryProviders,
   createApiTypeOrmModuleOptions,
@@ -81,6 +83,9 @@ describe("ApiPersistenceModule", () => {
       API_IMPORT_CONFIRMATION_REPOSITORY,
     );
     const startRepository = testingModule.get(API_START_IMPORT_REPOSITORY);
+    const sourceDeletionRepository = testingModule.get(
+      API_SOURCE_DELETION_REPOSITORY,
+    );
     const manualRepository = testingModule.get(
       API_MANUAL_RESUME_DRAFT_REPOSITORY,
     );
@@ -89,6 +94,9 @@ describe("ApiPersistenceModule", () => {
     expect(reviewRepository).toBeInstanceOf(TypeOrmImportWorkflowRepository);
     expect(confirmationRepository).toBe(reviewRepository);
     expect(startRepository).toBe(reviewRepository);
+    expect(sourceDeletionRepository).toBeInstanceOf(
+      TypeOrmSourceDeletionRepository,
+    );
     expect(manualRepository).toBeInstanceOf(TypeOrmManualResumeDraftRepository);
   });
 });

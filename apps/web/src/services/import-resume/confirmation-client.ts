@@ -5,6 +5,8 @@ import {
   type ConfirmStructuredResumeRequest,
   type ConfirmStructuredResumeResponse,
   type ConfirmedStructuredResumeReadResponse,
+  sourceDeletionResponseSchema,
+  type SourceDeletionResponse,
   updateConfirmedStructuredResumeRequestSchema,
   type StructuredResumeContentContract,
 } from "@nuvitae/contracts";
@@ -103,6 +105,32 @@ export async function readConfirmedStructuredResume(input: {
     );
     if (!response.ok) return mapResponseError(response.status);
     const parsed = confirmedStructuredResumeReadResponseSchema.safeParse(
+      await response.json(),
+    );
+    if (!parsed.success) return malformed();
+    return { ok: true, response: parsed.data };
+  } catch (error) {
+    return mapThrown(error);
+  }
+}
+
+export async function deleteConfirmedResumeSource(input: {
+  readonly resumeId: string;
+  readonly signal?: AbortSignal;
+  readonly fetchImpl?: typeof fetch;
+}): Promise<ConfirmationClientOutcome<SourceDeletionResponse>> {
+  const fetcher = input.fetchImpl ?? fetch;
+  try {
+    const response = await fetcher(
+      apiPath(`/structured-resumes/${input.resumeId}/source`),
+      {
+        method: "DELETE",
+        credentials: "include",
+        ...(input.signal === undefined ? {} : { signal: input.signal }),
+      },
+    );
+    if (!response.ok) return mapResponseError(response.status);
+    const parsed = sourceDeletionResponseSchema.safeParse(
       await response.json(),
     );
     if (!parsed.success) return malformed();

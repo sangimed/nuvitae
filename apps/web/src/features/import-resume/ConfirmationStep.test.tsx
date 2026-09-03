@@ -100,6 +100,14 @@ function dialog(): HTMLElement | null {
   return container.querySelector<HTMLElement>('[role="dialog"]');
 }
 
+function dialogButton(name: string): HTMLButtonElement {
+  const found = Array.from(dialog()?.querySelectorAll("button") ?? []).find(
+    (button) => button.textContent?.includes(name),
+  );
+  expect(found, `dialog button ${name}`).toBeDefined();
+  return found as HTMLButtonElement;
+}
+
 function pressKey(element: Element, key: string, shiftKey = false) {
   act(() => {
     element.dispatchEvent(
@@ -114,32 +122,32 @@ function pressKey(element: Element, key: string, shiftKey = false) {
 }
 
 describe("ConfirmationStep accessible dialogs (T063)", () => {
-  it("opens the confirm dialog with accessible semantics and deterministic initial focus", () => {
+  it("creates the resume directly without a redundant confirmation dialog", async () => {
+    mocks.confirmStructuredResume.mockResolvedValue({
+      ok: true,
+      response: { resumeUrl: "/resumes/ready" },
+    });
     renderStep();
-    act(() => button("Create my resume").click());
-    const node = dialog();
-    expect(node).not.toBeNull();
-    expect(node?.getAttribute("role")).toBe("dialog");
-    expect(node?.getAttribute("aria-modal")).toBe("true");
-    expect(node?.getAttribute("aria-label")).toBe("Create your resume");
-    expect(document.activeElement).toBe(button("Create resume"));
+    await act(async () => button("Create my resume").click());
+    expect(mocks.confirmStructuredResume).toHaveBeenCalledTimes(1);
+    expect(dialog()).toBeNull();
   });
 
-  it("keeps Tab and Shift+Tab inside the confirm dialog", () => {
+  it("keeps Tab and Shift+Tab inside the discard dialog", () => {
     renderStep();
-    act(() => button("Create my resume").click());
-    expect(document.activeElement).toBe(button("Create resume"));
+    act(() => button("Discard import").click());
+    expect(document.activeElement).toBe(dialogButton("Discard import"));
     pressKey(document.activeElement, "Tab");
     expect(document.activeElement).toBe(button("Cancel"));
     pressKey(document.activeElement, "Tab");
-    expect(document.activeElement).toBe(button("Create resume"));
+    expect(document.activeElement).toBe(dialogButton("Discard import"));
     pressKey(document.activeElement, "Tab", true);
     expect(document.activeElement).toBe(button("Cancel"));
   });
 
   it("returns focus into the dialog when focus escapes to background content", () => {
     renderStep();
-    const trigger = button("Create my resume");
+    const trigger = button("Discard import");
     act(() => trigger.click());
     expect(dialog()).not.toBeNull();
     act(() => trigger.focus());
@@ -148,7 +156,7 @@ describe("ConfirmationStep accessible dialogs (T063)", () => {
 
   it("closes on Escape and restores focus to the initiating control", () => {
     renderStep();
-    const trigger = button("Create my resume");
+    const trigger = button("Discard import");
     act(() => {
       trigger.focus();
       trigger.click();
@@ -186,9 +194,8 @@ describe("ConfirmationStep accessible dialogs (T063)", () => {
       message: "Resume creation is temporarily unavailable.",
     });
     renderStep();
-    act(() => button("Create my resume").click());
     await act(async () => {
-      button("Create resume").click();
+      button("Create my resume").click();
     });
     const summary = container.querySelector("[data-error-summary]");
     expect(summary).not.toBeNull();
@@ -196,7 +203,7 @@ describe("ConfirmationStep accessible dialogs (T063)", () => {
       "Resume creation is temporarily unavailable.",
     );
     expect(document.activeElement).toBe(summary);
-    expect(dialog()).not.toBeNull();
+    expect(dialog()).toBeNull();
   });
 
   it("closes the dialog and reports success after confirmation", async () => {
@@ -208,9 +215,8 @@ describe("ConfirmationStep accessible dialogs (T063)", () => {
       },
     });
     renderStep();
-    act(() => button("Create my resume").click());
     await act(async () => {
-      button("Create resume").click();
+      button("Create my resume").click();
     });
     expect(dialog()).toBeNull();
     expect(onConfirmed).toHaveBeenCalledWith(

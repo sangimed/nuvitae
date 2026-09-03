@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import { attachVerifiedPrincipal } from "../../../auth/user-context.js";
-import { ProviderConnectionError } from "@nuvitae/import-application";
 import { CodexConnectionInitiationService } from "../../use-cases/codex-connection-initiation.js";
 import { ProviderConnectionController } from "./provider-connection.controller.js";
 import { VerifiedPrincipalGuard } from "../../../auth/verified-principal.guard.js";
@@ -25,7 +24,6 @@ function serviceMock(overrides: Record<string, unknown> = {}) {
     status: vi.fn(async () => null),
     cancel: vi.fn(async () => null),
     disconnect: vi.fn(async () => null),
-    completeCallback: vi.fn(async () => undefined),
     ...overrides,
   } as unknown as CodexConnectionInitiationService;
 }
@@ -184,58 +182,6 @@ describe("ProviderConnectionController (T214)", () => {
       availabilityStatus: "unavailable",
       ready: false,
       safeMessage: "Codex is temporarily unavailable.",
-    });
-  });
-
-  it("redirects a valid callback only to the allowlisted local product", async () => {
-    const completeCallback = vi.fn(async () => undefined);
-    const controller = new ProviderConnectionController(
-      serviceMock({ completeCallback }),
-    );
-    const redirect = vi.fn();
-    await controller.completeCallback(
-      {
-        state: "valid-state",
-        code: "one-time-code",
-        ownerUserId: "attacker-selected-owner",
-      },
-      { redirect },
-    );
-    expect(completeCallback).toHaveBeenCalledWith({
-      state: "valid-state",
-      authorizationCode: "one-time-code",
-    });
-    expect(redirect).toHaveBeenCalledWith(
-      303,
-      "http://localhost:3000/oauth/callback?codex=connected",
-    );
-    expect(JSON.stringify(redirect.mock.calls)).not.toContain("one-time-code");
-    expect(JSON.stringify(completeCallback.mock.calls)).not.toContain(
-      "attacker-selected-owner",
-    );
-  });
-
-  it("rejects a wrong-state callback with a sanitized response", async () => {
-    const controller = new ProviderConnectionController(
-      serviceMock({
-        completeCallback: vi.fn(async () => {
-          throw new ProviderConnectionError(
-            "provider_connection_login_invalid_state",
-          );
-        }),
-      }),
-    );
-    await expect(
-      controller.completeCallback(
-        { state: "wrong-state", code: "one-time-code" },
-        { redirect: vi.fn() },
-      ),
-    ).rejects.toMatchObject({
-      status: 400,
-      response: {
-        code: "callback_invalid",
-        message: "This Codex connection callback is no longer valid.",
-      },
     });
   });
 });

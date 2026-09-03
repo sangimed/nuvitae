@@ -18,11 +18,13 @@ import { ReviewController } from "./transport/http/review.controller.js";
 import {
   ConfirmController,
   ConfirmedStructuredResumeController,
+  SourceDeletionController,
 } from "./transport/http/confirm.controller.js";
 import { ImportTimingController } from "./transport/http/import-timing.controller.js";
 import { CommunityFunnelController } from "./transport/http/community-funnel.controller.js";
 import {
   ConfirmStructuredResumeService,
+  DeleteSourceService,
   ImportStatusService,
   ReadImportDraftService,
   StartImportService,
@@ -51,6 +53,7 @@ export class ImportResumeModule {
         ReviewController,
         ConfirmController,
         ConfirmedStructuredResumeController,
+        SourceDeletionController,
         ImportTimingController,
         CommunityFunnelController,
       ],
@@ -60,6 +63,7 @@ export class ImportResumeModule {
         ReadImportDraftService,
         UpdateImportReviewService,
         ConfirmStructuredResumeService,
+        DeleteSourceService,
         {
           provide: IMPORT_STATUS_REQUEST_ID_GENERATOR,
           useValue: { nextRequestId: () => randomUUID() },
@@ -79,6 +83,7 @@ export class ImportResumeModule {
         ReadImportDraftService,
         UpdateImportReviewService,
         ConfirmStructuredResumeService,
+        DeleteSourceService,
       ],
     };
   }

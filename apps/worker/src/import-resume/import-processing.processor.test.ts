@@ -31,7 +31,10 @@ function document(overrides: Partial<ImportedDocument> = {}): ImportedDocument {
 
 function payload(
   jobType:
-    "document_validation" | "deterministic_extraction" | "foreground_timeout",
+    | "document_validation"
+    | "deterministic_extraction"
+    | "foreground_timeout"
+    | "source_artifact_deletion",
 ) {
   const base = {
     schemaVersion: "2026-07-28" as const,
@@ -60,6 +63,15 @@ function payload(
       sourceStorageKey: document().storageKey!,
       validationCompletedAt: now.toISOString(),
       foregroundDeadline: new Date(now.getTime() + 180_000).toISOString(),
+    };
+  }
+  if (jobType === "source_artifact_deletion") {
+    return {
+      ...base,
+      jobType,
+      target: { kind: "source_and_derived_artifacts" as const, id: importId },
+      reason: "retention_deadline" as const,
+      deleteNoLaterThan: document().retentionExpiresAt.toISOString(),
     };
   }
   return {
@@ -104,11 +116,18 @@ function setup(
   };
   const extraction = { process: vi.fn(async () => undefined) };
   const queue = { add: vi.fn(async () => undefined) };
+  const sourceDeletion = {
+    delete: vi.fn(async () => ({ kind: "deleted" as const, deletedAt: now })),
+  };
   const processor = new ImportProcessingProcessor(
     repository as never,
     validation,
     extraction,
     queue as never,
+    undefined,
+    undefined,
+    { now: () => now },
+    sourceDeletion as never,
   );
   return {
     processor,
@@ -116,6 +135,7 @@ function setup(
     validation,
     extraction,
     queue,
+    sourceDeletion,
   };
 }
 
@@ -125,6 +145,21 @@ describe("ImportProcessingProcessor", () => {
     await expect(
       processor.process(job(IMPORT_RESUME_JOB_NAMES.validation, {})),
     ).rejects.toBeInstanceOf(UnrecoverableError);
+  });
+
+  it("executes the automatic retention source-deletion job with owner scope", async () => {
+    const { processor, sourceDeletion } = setup();
+    await processor.process(
+      job(
+        IMPORT_RESUME_JOB_NAMES.sourceDeletion,
+        payload("source_artifact_deletion"),
+      ),
+    );
+    expect(sourceDeletion.delete).toHaveBeenCalledWith({
+      importId,
+      ownerUserId,
+      now,
+    });
   });
 
   it("treats a missing owner-scoped import as a no-op", async () => {

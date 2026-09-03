@@ -5,6 +5,7 @@ import {
   type DeterministicExtractionJobPayload,
   type DocumentValidationJobPayload,
   type ForegroundTimeoutJobPayload,
+  type SourceArtifactDeletionJobPayload,
 } from "@nuvitae/contracts";
 import { Queue } from "bullmq";
 import type { StartImportQueuePublisher } from "../../ports/start-import.js";
@@ -22,7 +23,8 @@ export class StartImportQueue implements StartImportQueuePublisher {
       readonly data:
         | DocumentValidationJobPayload
         | DeterministicExtractionJobPayload
-        | ForegroundTimeoutJobPayload;
+        | ForegroundTimeoutJobPayload
+        | SourceArtifactDeletionJobPayload;
       readonly delay?: number;
     }[],
   ): Promise<void> {

@@ -110,6 +110,20 @@ export const confirmedResumeSourceAvailabilitySchema = z.enum([
   "source_availability_unknown",
 ]);
 
+export const deleteResumeSourceErrorResponseSchema = responseBaseSchema
+  .extend({
+    status: z.literal("source_document_deletion_error"),
+    structuredResumeId: uuidSchema.optional(),
+    code: z.enum([
+      "authentication_required",
+      "not_found",
+      "deletion_in_progress",
+      "temporarily_unavailable",
+    ]),
+    userMessage: plainMessageSchema,
+  })
+  .strict();
+
 const confirmedSourcedTextSchema = z
   .object({
     value: z.string().max(4_000),

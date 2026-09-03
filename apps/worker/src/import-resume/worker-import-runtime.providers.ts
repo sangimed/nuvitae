@@ -21,6 +21,8 @@ import {
   type ImportEventEmitter,
   type ImportWorkflowRepository,
   SemanticImportWorkflow,
+  SourceDeletionService,
+  type SourceDeletionRepository,
 } from "@nuvitae/import-application";
 import {
   CodexDirectProviderAdapter,
@@ -42,9 +44,13 @@ import {
   WORKER_IMPORT_CLOCK,
   WORKER_IMPORT_EXTRACTION_USE_CASE,
   WORKER_IMPORT_VALIDATION_USE_CASE,
+  WORKER_SOURCE_DELETION_USE_CASE,
 } from "./import-processing.processor.js";
 import { parseWorkerImportProcessingLimits } from "./import-processing-limits.js";
-import { WORKER_IMPORT_WORKFLOW_REPOSITORY } from "../persistence/worker-persistence.module.js";
+import {
+  WORKER_IMPORT_WORKFLOW_REPOSITORY,
+  WORKER_SOURCE_DELETION_REPOSITORY,
+} from "../persistence/worker-persistence.module.js";
 import {
   readWorkerPrivateRuntimeConfig,
   type WorkerPrivateRuntimeConfig,
@@ -210,6 +216,14 @@ export const workerImportRuntimeProviders: Provider[] = [
     useFactory: (storage: LocalPrivateImportStorage) =>
       new PrivateStorageSourceReader(storage),
     inject: [WORKER_PRIVATE_IMPORT_STORAGE],
+  },
+  {
+    provide: WORKER_SOURCE_DELETION_USE_CASE,
+    useFactory: (
+      repository: SourceDeletionRepository,
+      storage: LocalPrivateImportStorage,
+    ) => new SourceDeletionService(repository, storage, logger),
+    inject: [WORKER_SOURCE_DELETION_REPOSITORY, WORKER_PRIVATE_IMPORT_STORAGE],
   },
   {
     provide: WORKER_IMPORT_VALIDATION_USE_CASE,

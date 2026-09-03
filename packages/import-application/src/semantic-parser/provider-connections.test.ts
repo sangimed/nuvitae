@@ -159,6 +159,7 @@ class FakeAdapter implements ProviderRuntimeConnectionAdapter {
     safeMessage: null,
     browserHandoff: {
       loginReference: "login-reference-123456",
+      userCode: "TEST-CODE",
       authorizationUrl:
         "https://auth.openai.com/oauth/authorize?state=server-state",
     },

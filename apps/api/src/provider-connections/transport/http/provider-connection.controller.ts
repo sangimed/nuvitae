@@ -4,9 +4,7 @@ import {
   HttpException,
   HttpStatus,
   Post,
-  Query,
   Req,
-  Res,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -107,36 +105,6 @@ export class ProviderConnectionController {
       throw mapDisconnectError(error);
     }
   }
-
-  @Get([
-    "import-resume/provider-connections/codex/oauth/callback",
-    "auth/callback",
-  ])
-  @ApiOperation({ summary: "Complete the Codex browser connection callback" })
-  async completeCallback(
-    @Query() query: Record<string, unknown>,
-    @Res() response: { redirect: (status: number, url: string) => void },
-  ): Promise<void> {
-    const callback = normalizeCallbackQuery(query);
-    try {
-      await this.connectionInitiation.completeCallback(callback);
-      response.redirect(303, localProductReturnUrl("connected"));
-    } catch (error) {
-      const safeError = mapCallbackError(error);
-      if (safeError.redirect) {
-        response.redirect(303, localProductReturnUrl("attention"));
-        return;
-      }
-      throw new HttpException(
-        {
-          statusCode: safeError.status,
-          code: safeError.code,
-          message: safeError.message,
-        },
-        safeError.status,
-      );
-    }
-  }
 }
 
 function publicStatusMessage(status: {
@@ -190,122 +158,6 @@ function toPublicStatusResponse(
           safeMessage: publicStatusMessage(status),
         },
   );
-}
-
-function normalizeCallbackQuery(query: Record<string, unknown>) {
-  const state = boundedQueryValue(query.state, 256);
-  if (state === undefined) {
-    throw new HttpException(
-      {
-        statusCode: HttpStatus.BAD_REQUEST,
-        code: "callback_invalid",
-        message: "This Codex connection callback is no longer valid.",
-      },
-      HttpStatus.BAD_REQUEST,
-    );
-  }
-  const providerError = boundedQueryValue(query.error, 64);
-  if (providerError !== undefined) {
-    return {
-      state,
-      providerError:
-        providerError === "access_denied"
-          ? ("access_denied" as const)
-          : providerError === "temporarily_unavailable"
-            ? ("temporarily_unavailable" as const)
-            : providerError === "invalid_request"
-              ? ("invalid_request" as const)
-              : ("unknown" as const),
-    };
-  }
-  const authorizationCode = boundedQueryValue(query.code, 4096);
-  if (authorizationCode === undefined) {
-    throw new HttpException(
-      {
-        statusCode: HttpStatus.BAD_REQUEST,
-        code: "callback_invalid",
-        message: "This Codex connection callback is no longer valid.",
-      },
-      HttpStatus.BAD_REQUEST,
-    );
-  }
-  return { state, authorizationCode };
-}
-
-function boundedQueryValue(
-  value: unknown,
-  maximumLength: number,
-): string | undefined {
-  if (
-    typeof value !== "string" ||
-    value.length === 0 ||
-    value.length > maximumLength
-  ) {
-    return undefined;
-  }
-  return value;
-}
-
-function mapCallbackError(error: unknown): {
-  readonly status: number;
-  readonly code: string;
-  readonly message: string;
-  readonly redirect: boolean;
-} {
-  if (error instanceof HttpException) {
-    return {
-      status: error.getStatus(),
-      code: "callback_invalid",
-      message: "This Codex connection callback is no longer valid.",
-      redirect: false,
-    };
-  }
-  if (error instanceof ProviderConnectionError) {
-    if (error.code === "provider_connection_login_invalid_state") {
-      return {
-        status: HttpStatus.BAD_REQUEST,
-        code: "callback_invalid",
-        message: "This Codex connection callback is no longer valid.",
-        redirect: false,
-      };
-    }
-    if (error.code === "provider_connection_login_expired") {
-      return {
-        status: HttpStatus.GONE,
-        code: "callback_expired",
-        message: "This Codex connection callback has expired.",
-        redirect: false,
-      };
-    }
-  }
-  return {
-    status: HttpStatus.SERVICE_UNAVAILABLE,
-    code: "callback_unavailable",
-    message: "Codex could not be connected right now. Try again later.",
-    redirect: true,
-  };
-}
-
-function localProductReturnUrl(outcome: "connected" | "attention"): string {
-  const configured = process.env.NUVITAE_CODEX_OAUTH_RETURN_URL;
-  const candidate = configured ?? "http://localhost:3000/oauth/callback";
-  try {
-    const url = new URL(candidate);
-    const allowedHost = new Set(["localhost", "127.0.0.1", "::1"]);
-    if (
-      !["http:", "https:"].includes(url.protocol) ||
-      !allowedHost.has(url.hostname) ||
-      !["/oauth/callback", "/import-resume"].includes(url.pathname) ||
-      url.search !== "" ||
-      url.hash !== ""
-    ) {
-      throw new Error("unsafe_return_url");
-    }
-    url.searchParams.set("codex", outcome);
-    return url.toString();
-  } catch {
-    return `http://localhost:3000/import-resume?codex=${outcome}`;
-  }
 }
 
 function mapInitiationError(error: unknown): HttpException {

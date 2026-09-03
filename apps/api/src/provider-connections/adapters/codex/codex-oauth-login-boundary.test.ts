@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { CodexOAuthLoginBoundary } from "./codex-oauth-login-boundary.js";
 import type {
   ProviderRuntimeAdapterContext,
@@ -12,6 +12,8 @@ const sessionStore: ProviderSessionStore = {
   hasSession: async () => false,
 };
 
+afterEach(() => vi.unstubAllGlobals());
+
 function context(
   ownerUserId: string,
   connectionId: string,
@@ -20,8 +22,73 @@ function context(
 }
 
 describe("CodexOAuthLoginBoundary (T213)", () => {
-  it("generates the audited PKCE/state browser handoff without network activity", async () => {
+  it("requests a device code without sending owner or resume data", async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            device_auth_id: "device-auth-id",
+            user_code: "ABCD-EFGH",
+            interval: "5",
+          }),
+          { status: 200 },
+        ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
     const boundary = new CodexOAuthLoginBoundary();
+
+    await boundary.startLogin(
+      context(
+        "10000000-0000-4000-8000-000000000001",
+        "20000000-0000-4000-8000-000000000001",
+      ),
+      null,
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://auth.openai.com/api/accounts/deviceauth/usercode",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          client_id: "app_EMoamEEZ73f0CkXaXp7hrann",
+        }),
+      }),
+    );
+    expect(JSON.stringify(fetchMock.mock.calls)).not.toMatch(
+      /10000000|resume/i,
+    );
+  });
+
+  it("fails closed on malformed provider device metadata", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              device_auth_id: "device-auth-id",
+              user_code: "<script>not-a-code</script>",
+              interval: "5",
+            }),
+            { status: 200 },
+          ),
+      ),
+    );
+    await expect(
+      new CodexOAuthLoginBoundary().startLogin(
+        context(
+          "10000000-0000-4000-8000-000000000001",
+          "20000000-0000-4000-8000-000000000001",
+        ),
+        null,
+      ),
+    ).rejects.toMatchObject({ code: "provider_adapter_failed" });
+  });
+
+  it("returns the official device page and a bounded one-time code", async () => {
+    const boundary = new CodexOAuthLoginBoundary({
+      deviceAuth: fakeDeviceAuth(),
+    });
     const result = await boundary.startLogin(
       context(
         "10000000-0000-4000-8000-000000000001",
@@ -29,102 +96,21 @@ describe("CodexOAuthLoginBoundary (T213)", () => {
       ),
       null,
     );
-    const url = new URL(result.browserHandoff!.authorizationUrl);
-    const verifier = url.searchParams.get("code_challenge")!;
-    const state = url.searchParams.get("state")!;
-
-    expect(url.origin).toBe("https://auth.openai.com");
-    expect(url.pathname).toBe("/oauth/authorize");
-    expect(url.searchParams.get("response_type")).toBe("code");
-    expect(url.searchParams.get("code_challenge_method")).toBe("S256");
-    expect(state.length).toBeGreaterThan(20);
-    expect(verifier).toMatch(/^[A-Za-z0-9_-]+$/);
+    expect(result.browserHandoff).toMatchObject({
+      authorizationUrl: "https://auth.openai.com/codex/device",
+      userCode: "ABCD-EFGH",
+    });
     expect(result.browserHandoff!.loginReference).toMatch(/^[0-9a-f-]{36}$/);
     expect(JSON.stringify(result)).not.toContain("access_token");
     expect(JSON.stringify(result)).not.toContain("refresh_token");
     expect(JSON.stringify(result)).not.toContain("code_verifier");
-    expect(result.browserHandoff!.authorizationUrl).not.toContain("openclaw");
-  });
-
-  it("matches the qualified live OAuth request contract structurally", async () => {
-    const originalHost = process.env.NUVITAE_CODEX_OAUTH_REDIRECT_HOST;
-    const originalPort = process.env.NUVITAE_CODEX_OAUTH_CALLBACK_PORT;
-    delete process.env.NUVITAE_CODEX_OAUTH_REDIRECT_HOST;
-    delete process.env.NUVITAE_CODEX_OAUTH_CALLBACK_PORT;
-    try {
-      const result = await new CodexOAuthLoginBoundary().startLogin(
-        context(
-          "10000000-0000-4000-8000-000000000001",
-          "20000000-0000-4000-8000-000000000001",
-        ),
-        null,
-      );
-      const url = new URL(result.browserHandoff!.authorizationUrl);
-
-      expect({
-        origin: url.origin,
-        pathname: url.pathname,
-        parameterNames: [...url.searchParams.keys()].sort(),
-        clientId: url.searchParams.get("client_id"),
-        responseType: url.searchParams.get("response_type"),
-        redirectUri: url.searchParams.get("redirect_uri"),
-        scopes: url.searchParams.get("scope")?.split(" ").sort(),
-        codeChallengeMethod: url.searchParams.get("code_challenge_method"),
-        requiredDynamicFieldsPresent: ["state", "code_challenge"].every(
-          (name) => url.searchParams.has(name),
-        ),
-        authorizationExtras: {
-          idTokenAddOrganizations: url.searchParams.get(
-            "id_token_add_organizations",
-          ),
-          codexCliSimplifiedFlow: url.searchParams.get(
-            "codex_cli_simplified_flow",
-          ),
-          originator: url.searchParams.get("originator"),
-        },
-      }).toEqual({
-        origin: "https://auth.openai.com",
-        pathname: "/oauth/authorize",
-        parameterNames: [
-          "client_id",
-          "code_challenge",
-          "code_challenge_method",
-          "codex_cli_simplified_flow",
-          "id_token_add_organizations",
-          "originator",
-          "redirect_uri",
-          "response_type",
-          "scope",
-          "state",
-        ],
-        clientId: "app_EMoamEEZ73f0CkXaXp7hrann",
-        responseType: "code",
-        redirectUri: "http://localhost:1455/auth/callback",
-        scopes: ["email", "offline_access", "openid", "profile"],
-        codeChallengeMethod: "S256",
-        requiredDynamicFieldsPresent: true,
-        authorizationExtras: {
-          idTokenAddOrganizations: "true",
-          codexCliSimplifiedFlow: "true",
-          originator: "nuvitae",
-        },
-      });
-    } finally {
-      if (originalHost === undefined) {
-        delete process.env.NUVITAE_CODEX_OAUTH_REDIRECT_HOST;
-      } else {
-        process.env.NUVITAE_CODEX_OAUTH_REDIRECT_HOST = originalHost;
-      }
-      if (originalPort === undefined) {
-        delete process.env.NUVITAE_CODEX_OAUTH_CALLBACK_PORT;
-      } else {
-        process.env.NUVITAE_CODEX_OAUTH_CALLBACK_PORT = originalPort;
-      }
-    }
+    expect(JSON.stringify(result)).not.toContain("device-auth-id");
   });
 
   it("resumes one active attempt for repeated clicks and isolates owners", async () => {
-    const boundary = new CodexOAuthLoginBoundary();
+    const boundary = new CodexOAuthLoginBoundary({
+      deviceAuth: fakeDeviceAuth(),
+    });
     const ownerA = context(
       "10000000-0000-4000-8000-000000000001",
       "20000000-0000-4000-8000-000000000001",
@@ -142,51 +128,22 @@ describe("CodexOAuthLoginBoundary (T213)", () => {
   });
 
   it("clears the cancelled handoff before allowing a replacement attempt", async () => {
-    const boundary = new CodexOAuthLoginBoundary();
+    const boundary = new CodexOAuthLoginBoundary({
+      deviceAuth: fakeDeviceAuth(),
+    });
     const owner = context(
       "10000000-0000-4000-8000-000000000001",
       "20000000-0000-4000-8000-000000000001",
     );
     const first = await boundary.startLogin(owner, null);
-    const firstState = new URL(
-      first.browserHandoff!.authorizationUrl,
-    ).searchParams.get("state")!;
-
     await boundary.cancelLogin(owner, null);
     const replacement = await boundary.startLogin(owner, null);
 
     expect(replacement.browserHandoff).not.toEqual(first.browserHandoff);
-    expect(() => boundary.resolvePendingLogin(firstState)).toThrowError(
-      expect.objectContaining({
-        code: "provider_connection_login_invalid_state",
-      }),
-    );
-  });
-
-  it("rejects an unsafe redirect host before producing a handoff", async () => {
-    const original = process.env.NUVITAE_CODEX_OAUTH_REDIRECT_HOST;
-    process.env.NUVITAE_CODEX_OAUTH_REDIRECT_HOST = "attacker.test";
-    try {
-      await expect(
-        new CodexOAuthLoginBoundary().startLogin(
-          context(
-            "10000000-0000-4000-8000-000000000001",
-            "20000000-0000-4000-8000-000000000001",
-          ),
-          null,
-        ),
-      ).rejects.toMatchObject({ code: "provider_adapter_failed" });
-    } finally {
-      if (original === undefined) {
-        delete process.env.NUVITAE_CODEX_OAUTH_REDIRECT_HOST;
-      } else {
-        process.env.NUVITAE_CODEX_OAUTH_REDIRECT_HOST = original;
-      }
-    }
   });
 });
 
-describe("CodexOAuthLoginBoundary callback completion (T214)", () => {
+describe("CodexOAuthLoginBoundary device completion", () => {
   it("exchanges once, writes an opaque owner-bound session, and inspects ready state", async () => {
     const stored = new Map<string, Uint8Array>();
     const sessionStore: ProviderSessionStore = {
@@ -203,7 +160,7 @@ describe("CodexOAuthLoginBoundary callback completion (T214)", () => {
     };
     let exchanges = 0;
     const boundary = new CodexOAuthLoginBoundary({
-      exchange: {
+      deviceAuth: fakeDeviceAuth({
         async exchange() {
           exchanges += 1;
           return {
@@ -213,7 +170,7 @@ describe("CodexOAuthLoginBoundary callback completion (T214)", () => {
             expiresAt: new Date("2099-01-01T00:00:00.000Z"),
           };
         },
-      },
+      }),
     });
     const context = {
       ownerUserId: "10000000-0000-4000-8000-000000000001",
@@ -221,17 +178,8 @@ describe("CodexOAuthLoginBoundary callback completion (T214)", () => {
       sessionStore,
     };
     const login = await boundary.startLogin(context, null);
-    const state = new URL(
-      login.browserHandoff!.authorizationUrl,
-    ).searchParams.get("state")!;
-    expect(boundary.resolvePendingLogin(state)).toEqual({
-      ownerUserId: context.ownerUserId,
-      connectionId: context.connectionId,
-    });
-
     const result = await boundary.completeLogin(context, null, {
-      state,
-      authorizationCode: "authorization-code-sentinel",
+      deviceLoginReference: login.browserHandoff!.loginReference,
     });
 
     expect(exchanges).toBe(1);
@@ -249,53 +197,43 @@ describe("CodexOAuthLoginBoundary callback completion (T214)", () => {
   });
 
   it.each([
-    "wrong state",
+    "wrong reference",
     "foreign owner",
-    "replayed callback",
-    "stale callback",
-  ])("rejects %s without another exchange", async (caseName) => {
+    "replayed login",
+    "stale login",
+  ])("rejects %s without accepting a credential", async (caseName) => {
     let now = new Date("2026-08-08T12:00:00.000Z");
     const boundary = new CodexOAuthLoginBoundary({
       now: () => now,
-      exchange: {
-        async exchange() {
-          return {
-            accessToken: "a",
-            refreshToken: "r",
-            accountId: null,
-            expiresAt: null,
-          };
-        },
-      },
+      deviceAuth: fakeDeviceAuth(),
     });
     const owner = context(
       "10000000-0000-4000-8000-000000000001",
       "20000000-0000-4000-8000-000000000001",
     );
     const login = await boundary.startLogin(owner, null);
-    const state = new URL(
-      login.browserHandoff!.authorizationUrl,
-    ).searchParams.get("state")!;
-    const callbackState = caseName === "wrong state" ? `${state}-wrong` : state;
-    const callbackOwner =
+    const loginReference = login.browserHandoff!.loginReference;
+    const completionReference =
+      caseName === "wrong reference"
+        ? `${loginReference}-wrong`
+        : loginReference;
+    const completionOwner =
       caseName === "foreign owner"
         ? context(
             "10000000-0000-4000-8000-000000000002",
             "20000000-0000-4000-8000-000000000002",
           )
         : owner;
-    if (caseName === "stale callback") {
-      now = new Date("2026-08-08T12:11:00.000Z");
+    if (caseName === "stale login") {
+      now = new Date("2026-08-08T12:16:00.000Z");
     }
-    if (caseName === "replayed callback") {
+    if (caseName === "replayed login") {
       await boundary.completeLogin(owner, null, {
-        state,
-        authorizationCode: "code",
+        deviceLoginReference: loginReference,
       });
       await expect(
         boundary.completeLogin(owner, null, {
-          state,
-          authorizationCode: "code",
+          deviceLoginReference: loginReference,
         }),
       ).rejects.toMatchObject({
         code: "provider_connection_login_invalid_state",
@@ -303,62 +241,58 @@ describe("CodexOAuthLoginBoundary callback completion (T214)", () => {
       return;
     }
     await expect(
-      boundary.completeLogin(callbackOwner, null, {
-        state: callbackState,
-        authorizationCode: "code",
+      boundary.completeLogin(completionOwner, null, {
+        deviceLoginReference: completionReference,
       }),
     ).rejects.toMatchObject({
       code:
-        caseName === "stale callback"
+        caseName === "stale login"
           ? "provider_connection_login_expired"
           : "provider_connection_login_invalid_state",
     });
   });
 
-  it("sanitizes a provider error and consumes its callback state", async () => {
-    const boundary = new CodexOAuthLoginBoundary();
-    const owner = context(
-      "10000000-0000-4000-8000-000000000001",
-      "20000000-0000-4000-8000-000000000001",
-    );
-    const login = await boundary.startLogin(owner, null);
-    const state = new URL(
-      login.browserHandoff!.authorizationUrl,
-    ).searchParams.get("state")!;
-    await expect(
-      boundary.completeLogin(owner, null, {
-        state,
-        providerError: "access_denied",
+  it("aborts provider polling when the user cancels", async () => {
+    let observedSignal: AbortSignal | undefined;
+    const boundary = new CodexOAuthLoginBoundary({
+      deviceAuth: fakeDeviceAuth({
+        waitForGrant: async (_authorization, signal) => {
+          observedSignal = signal;
+          return await new Promise(() => undefined);
+        },
       }),
-    ).rejects.toMatchObject({ code: "provider_connection_login_cancelled" });
-    expect(() => boundary.resolvePendingLogin(state)).toThrowError(
-      expect.objectContaining({
-        code: "provider_connection_login_invalid_state",
-      }),
-    );
-  });
-
-  it("resolves a cross-site callback to its initiating owner without a Community session", async () => {
-    const boundary = new CodexOAuthLoginBoundary();
-    const owner = context(
-      "10000000-0000-4000-8000-000000000001",
-      "20000000-0000-4000-8000-000000000001",
-    );
-    const login = await boundary.startLogin(owner, null);
-    const state = new URL(
-      login.browserHandoff!.authorizationUrl,
-    ).searchParams.get("state")!;
-
-    expect(boundary.resolvePendingLogin(state)).toEqual({
-      ownerUserId: owner.ownerUserId,
-      connectionId: owner.connectionId,
     });
-    expect(() =>
-      boundary.resolvePendingLogin(`${state}-tampered`),
-    ).toThrowError(
-      expect.objectContaining({
-        code: "provider_connection_login_invalid_state",
-      }),
+    const owner = context(
+      "10000000-0000-4000-8000-000000000001",
+      "20000000-0000-4000-8000-000000000001",
     );
+    const login = await boundary.startLogin(owner, null);
+    void boundary.completeLogin(owner, null, {
+      deviceLoginReference: login.browserHandoff!.loginReference,
+    });
+    await Promise.resolve();
+    await boundary.cancelLogin(owner, null);
+    expect(observedSignal?.aborted).toBe(true);
   });
 });
+
+function fakeDeviceAuth(overrides: Record<string, unknown> = {}) {
+  return {
+    start: async () => ({
+      deviceAuthId: "device-auth-id",
+      userCode: "ABCD-EFGH",
+      intervalSeconds: 1,
+    }),
+    waitForGrant: async () => ({
+      authorizationCode: "authorization-code-sentinel",
+      codeVerifier: "code-verifier-sentinel",
+    }),
+    exchange: async () => ({
+      accessToken: "a",
+      refreshToken: "r",
+      accountId: null,
+      expiresAt: null,
+    }),
+    ...overrides,
+  };
+}

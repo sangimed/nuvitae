@@ -105,6 +105,57 @@ describe("T221 simplified review", () => {
     ).toBe(false);
   });
 
+  it("accepts all grounded suggestions in one explicit action", async () => {
+    const initial = syntheticDraft();
+    const accepted = {
+      ...initial,
+      reviewRevision: initial.reviewRevision + 1,
+      sections: initial.sections.map((section) => ({
+        ...section,
+        fields: section.fields.map((field) =>
+          field.inferenceStatus === "inferred_needs_review"
+            ? {
+                ...field,
+                reviewStatus: "confirmed" as const,
+                inferenceStatus: "confirmed_inference" as const,
+              }
+            : field,
+        ),
+        warnings: section.warnings.map((warning) =>
+          warning.fieldPath !== undefined
+            ? { ...warning, reviewStatus: "confirmed" as const }
+            : warning,
+        ),
+      })),
+    };
+    mocks.sendReviewMutation.mockResolvedValue({
+      ok: true,
+      response: { draft: accepted, userMessage: "Suggestions accepted." },
+    });
+    await render(initial);
+
+    await act(async () => button("Accept all 3 suggested details").click());
+
+    expect(mocks.sendReviewMutation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        request: expect.objectContaining({
+          action: {
+            type: "confirm_inferred_fields",
+            fieldIds: [
+              summaryId,
+              "88888888-8888-4888-8888-888888888888",
+              "99999999-9999-4999-8999-999999999999",
+            ],
+          },
+        }),
+      }),
+    );
+    expect(container.textContent).not.toContain(
+      "Accept all 3 suggested details",
+    );
+    expect(container.textContent).toContain("Suggestions accepted.");
+  });
+
   it("confirms a review-required field through the canonical field and linked-warning commands, then renders the persisted state", async () => {
     const initial = syntheticDraft();
     const afterFieldConfirmation = withSummaryState(

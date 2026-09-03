@@ -14,6 +14,7 @@ import {
   type ResumeEditorSectionId,
 } from "./StructuredResumeSections";
 import { recordCommunityFunnelEvent } from "../../services/community-funnel";
+import type { ContextualAiEditingControls } from "./ContextualAiEditControl";
 
 const sectionLabels: Record<ResumeEditorSectionId, string> = {
   basics: "Basics",
@@ -32,6 +33,7 @@ export interface ResponsiveVisualResumeEditorProps {
   readonly onChange: (value: StructuredResumeContentContract) => void;
   readonly disabled?: boolean;
   readonly validationErrors?: Readonly<Record<string, string>> | undefined;
+  readonly aiEditing?: ContextualAiEditingControls | undefined;
 }
 
 export function ResponsiveVisualResumeEditor(
@@ -51,7 +53,7 @@ export function ResponsiveVisualResumeEditor(
     recordCommunityFunnelEvent({ funnelEvent: "editor.opened" });
   }, []);
 
-  function usePreview() {
+  function selectPreview() {
     setMobileMode("preview");
     if (previewRecorded.current) return;
     previewRecorded.current = true;
@@ -75,7 +77,7 @@ export function ResponsiveVisualResumeEditor(
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
     const nextMode = event.key === "ArrowLeft" ? "edit" : "preview";
-    if (nextMode === "preview") usePreview();
+    if (nextMode === "preview") selectPreview();
     else setMobileMode(nextMode);
     requestAnimationFrame(() => {
       document.getElementById(`${nextMode}-mode-tab`)?.focus();
@@ -104,7 +106,7 @@ export function ResponsiveVisualResumeEditor(
           aria-selected={mobileMode === "preview"}
           aria-controls="resume-preview-pane"
           tabIndex={mobileMode === "preview" ? 0 : -1}
-          onClick={usePreview}
+          onClick={selectPreview}
           onKeyDown={switchModeFromKeyboard}
         >
           Preview
@@ -173,6 +175,9 @@ export function ResponsiveVisualResumeEditor(
               {...(props.validationErrors === undefined
                 ? {}
                 : { validationErrors: props.validationErrors })}
+              {...(props.aiEditing === undefined
+                ? {}
+                : { aiEditing: props.aiEditing })}
               onChange={props.onChange}
             />
           </div>

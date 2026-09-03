@@ -2,6 +2,7 @@ import type { ImportInitializationResponse } from "@nuvitae/contracts";
 import type {
   DocumentValidationJobPayload,
   ForegroundTimeoutJobPayload,
+  SourceArtifactDeletionJobPayload,
   DeterministicExtractionJobPayload,
 } from "@nuvitae/contracts";
 import type {
@@ -36,7 +37,8 @@ export interface StartImportQueuePublisher {
       readonly data:
         | DocumentValidationJobPayload
         | DeterministicExtractionJobPayload
-        | ForegroundTimeoutJobPayload;
+        | ForegroundTimeoutJobPayload
+        | SourceArtifactDeletionJobPayload;
       readonly delay?: number;
     }[],
   ): Promise<void>;

@@ -35,6 +35,14 @@ export class TypeOrmResumeWorkspaceRepository implements ResumeWorkspaceReposito
     );
   }
 
+  findStructuredResumeByOwner(resumeId: string, ownerUserId: string) {
+    return this.resumes.findStructuredResumeByOwner(
+      resumeId,
+      ownerUserId,
+      this.transactionManager,
+    );
+  }
+
   findStructuredResumeByOwnerForUpdate(resumeId: string, ownerUserId: string) {
     return this.resumes.findStructuredResumeByOwnerForUpdate(
       resumeId,

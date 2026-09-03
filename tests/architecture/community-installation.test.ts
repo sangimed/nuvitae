@@ -134,14 +134,13 @@ describe("Community installation bootstrap", () => {
 });
 
 describe("Community Compose exposure", () => {
-  it("keeps Community traffic local while preserving the loopback callback", async () => {
+  it("keeps Community traffic local without a device-auth callback port", async () => {
     const compose = await readFile(composePath, "utf8");
 
     expect(compose).toContain('- "127.0.0.1:3000:3000"');
     expect(compose).not.toContain('- "3000:3000"');
     expect(compose).not.toContain('- "3001:3001"');
-    expect(compose).toContain('- "127.0.0.1:1455:3001"');
-    expect(compose).toContain('- "[::1]:1455:3001"');
+    expect(compose).not.toContain("1455:3001");
     expect(compose).toContain('NUVITAE_LOCAL_PLAY_MODE: "false"');
     expect(serviceBlock(compose, "postgres")).not.toContain("\n    ports:");
     expect(serviceBlock(compose, "queue")).not.toContain("\n    ports:");

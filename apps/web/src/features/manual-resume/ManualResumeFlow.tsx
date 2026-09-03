@@ -244,6 +244,22 @@ export function ManualResumeFlow(props: { readonly draftId?: string }) {
             {statusCopy}
           </p>
           <button
+            className="secondary-button"
+            type="button"
+            disabled={
+              saving || saveState === "saved" || saveState === "stale-conflict"
+            }
+            onClick={() => {
+              if (draft === undefined) return;
+              setContent(draft.content);
+              setValidationErrors({});
+              setSaveState("saved");
+              setMessage("Changes undone to the last saved version.");
+            }}
+          >
+            Undo to saved
+          </button>
+          <button
             className="primary-action"
             type="button"
             disabled={saving || saveState === "saved"}

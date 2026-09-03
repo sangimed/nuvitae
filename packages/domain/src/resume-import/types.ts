@@ -456,7 +456,11 @@ export interface UserCorrection {
   readonly id: string;
   readonly importDraftId: ImportDraftId;
   readonly targetType:
-    "extracted_field" | "import_warning" | "section" | "work_experience_role";
+    | "extracted_field"
+    | "import_warning"
+    | "section"
+    | "work_experience_role"
+    | "import_draft";
   readonly targetId: string;
   readonly action:
     "confirm" | "edit" | "remove" | "add" | "exclude" | "intentionally_leave";

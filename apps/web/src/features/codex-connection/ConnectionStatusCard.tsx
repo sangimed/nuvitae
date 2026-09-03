@@ -15,6 +15,11 @@ import {
 } from "./client";
 import { DisconnectDialog } from "./DisconnectDialog";
 
+type DeviceHandoff = {
+  readonly authorizationUrl: string;
+  readonly userCode: string;
+};
+
 type VisibleStatus =
   | "loading"
   | "disconnected"
@@ -32,6 +37,7 @@ export function ConnectionStatusCard(props: {
 }) {
   const [status, setStatus] = useState<ProviderConnectionStatusResponse>();
   const [statusMessage, setStatusMessage] = useState<string>();
+  const [deviceHandoff, setDeviceHandoff] = useState<DeviceHandoff>();
   const [busy, setBusy] = useState(false);
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const inFlight = useRef(false);
@@ -104,6 +110,27 @@ export function ConnectionStatusCard(props: {
       window.removeEventListener("message", handleConnectionComplete);
   }, [readStatus]);
 
+  useEffect(() => {
+    if (status?.connectionStatus !== "login_pending") return;
+    const controller = new AbortController();
+    const refresh = () => {
+      void readStatus({ signal: controller.signal }).then((outcome) => {
+        if (controller.signal.aborted || !outcome.ok) return;
+        setStatus(outcome.response);
+        if (outcome.response.connectionStatus !== "login_pending") {
+          setDeviceHandoff(undefined);
+          setBusy(false);
+          inFlight.current = false;
+        }
+      });
+    };
+    const interval = window.setInterval(refresh, 2_000);
+    return () => {
+      controller.abort();
+      window.clearInterval(interval);
+    };
+  }, [readStatus, status?.connectionStatus]);
+
   const visibleStatus = toVisibleStatus(status);
   const canStart =
     visibleStatus === "disconnected" || visibleStatus === "expired";
@@ -129,6 +156,14 @@ export function ConnectionStatusCard(props: {
     recordCommunityFunnelEvent({
       funnelEvent: "provider_connection.initiated",
     });
+    const popup =
+      props.onNavigate === undefined
+        ? window.open(
+            "about:blank",
+            "nuvitae-codex-connection",
+            "popup,width=520,height=720",
+          )
+        : null;
     const outcome = await initiate();
     if (outcome.ok) {
       setStatus({
@@ -140,15 +175,24 @@ export function ConnectionStatusCard(props: {
         ready: false,
         safeMessage: null,
       });
+      setDeviceHandoff({
+        authorizationUrl: outcome.response.authorizationUrl,
+        userCode: outcome.response.userCode,
+      });
+      setBusy(false);
+      inFlight.current = false;
+      if (navigator.clipboard !== undefined) {
+        void navigator.clipboard
+          .writeText(outcome.response.userCode)
+          .catch(() => undefined);
+      }
       if (props.onNavigate === undefined) {
-        const popup = window.open(
-          outcome.response.authorizationUrl,
-          "nuvitae-codex-connection",
-          "popup,width=520,height=720",
-        );
         if (popup === null) {
-          window.location.assign(outcome.response.authorizationUrl);
+          setStatusMessage(
+            "Open the secure OpenAI page below to finish connecting.",
+          );
         } else {
+          popup.location.replace(outcome.response.authorizationUrl);
           popup.focus();
         }
       } else {
@@ -156,6 +200,7 @@ export function ConnectionStatusCard(props: {
       }
       return;
     }
+    popup?.close();
     inFlight.current = false;
     setBusy(false);
     setStatusMessage(outcome.message);
@@ -210,6 +255,29 @@ export function ConnectionStatusCard(props: {
       {statusMessage === undefined ? null : (
         <p role="status">{statusMessage}</p>
       )}
+      {visibleStatus === "connecting" && deviceHandoff !== undefined ? (
+        <div>
+          <p>
+            Enter this one-time code on the secure OpenAI page. It has also been
+            copied when your browser permits it.
+          </p>
+          <p>
+            <strong
+              aria-label={`Codex one-time code ${deviceHandoff.userCode}`}
+            >
+              {deviceHandoff.userCode}
+            </strong>
+          </p>
+          <a
+            className="secondary-action"
+            href={deviceHandoff.authorizationUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Open secure OpenAI page
+          </a>
+        </div>
+      ) : null}
       {canStart ? (
         <button
           type="button"
