@@ -40,6 +40,7 @@ provider_session_encryption_secret=$(generate_secret)
   printf '%s\n' "NUVITAE_COMMUNITY_ACCESS_SECRET=$community_access_secret"
   printf '%s\n' 'NUVITAE_COMMUNITY_SESSION_TTL_SECONDS=86400'
   printf '%s\n' 'NUVITAE_COMMUNITY_COOKIE_SECURE=true'
+  printf '%s\n' 'NUVITAE_COMMUNITY_FUNNEL_TELEMETRY_ENABLED=false'
   printf '%s\n' "NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET=$private_storage_signing_secret"
   printf '%s\n' "NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET=$provider_session_encryption_secret"
   printf '%s\n' 'NUVITAE_LOCAL_PLAY_MODE=false'

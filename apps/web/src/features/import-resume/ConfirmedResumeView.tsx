@@ -18,6 +18,7 @@ import {
 import { StructuredResumeProvenance } from "./StructuredResumeProvenance";
 import { DeleteSourceControl } from "./DeleteSourceControl";
 import { toEditableResumeContent } from "./editable-content";
+import { recordCommunityFunnelEvent } from "../../services/community-funnel";
 import { createContextualResumeEditProposal } from "../../services/resume-workspace/contextual-editing-client";
 
 type SaveState = "saved" | "unsaved" | "saving" | "failed" | "stale";
@@ -36,6 +37,7 @@ export function ConfirmedResumeView(props: { readonly resumeId: string }) {
     status: "idle",
   });
   const errorRef = useRef<HTMLDivElement>(null);
+  const reopenedRecorded = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -47,6 +49,10 @@ export function ConfirmedResumeView(props: { readonly resumeId: string }) {
         setResume(outcome.response);
         setContent(toEditableResumeContent(outcome.response.content));
         setError(undefined);
+        if (!reopenedRecorded.current) {
+          reopenedRecorded.current = true;
+          recordCommunityFunnelEvent({ funnelEvent: "resume.reopened" });
+        }
       } else if (outcome.category !== "cancelled") {
         setError(outcome.message);
       }

@@ -12,6 +12,7 @@ const nonProductionNodeEnvSchema = z
 export interface LocalPlayConfig {
   readonly enabled: boolean;
   readonly localUserId: string;
+  readonly communityFunnelTelemetryEnabled: boolean;
   readonly privateStorageRoot: string;
   readonly privateStorageSigningSecret: string;
   readonly maxSignedReferenceTtlSeconds: number;
@@ -37,6 +38,9 @@ export function readLocalPlayConfig(
   const parsed = z
     .object({
       NUVITAE_LOCAL_PLAY_USER_ID: uuidSchema,
+      NUVITAE_COMMUNITY_FUNNEL_TELEMETRY_ENABLED: z
+        .enum(["true", "false"])
+        .default("false"),
       NUVITAE_PRIVATE_STORAGE_ROOT: z.string().min(1),
       NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET: z.string().min(32),
       NUVITAE_PRIVATE_STORAGE_MAX_SIGNED_REFERENCE_TTL_SECONDS: z
@@ -65,6 +69,8 @@ export function readLocalPlayConfig(
   return {
     enabled: true,
     localUserId: parsed.NUVITAE_LOCAL_PLAY_USER_ID,
+    communityFunnelTelemetryEnabled:
+      parsed.NUVITAE_COMMUNITY_FUNNEL_TELEMETRY_ENABLED === "true",
     privateStorageRoot: parsed.NUVITAE_PRIVATE_STORAGE_ROOT,
     privateStorageSigningSecret: parsed.NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET,
     maxSignedReferenceTtlSeconds:

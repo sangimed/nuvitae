@@ -20,6 +20,38 @@ class RecordingSink implements ImportEventSink {
 const importId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 
 describe("privacy-safe import events (T075)", () => {
+  it("allows only bounded, ownerless Community funnel metadata", () => {
+    const sink = new RecordingSink();
+    const emitter = createImportEventEmitter(sink);
+
+    emitter.emit("community.funnel", {
+      funnelEvent: "pdf_export.failed",
+      failureCategory: "load_failed",
+      ownerUserId: "10000000-0000-4000-8000-000000000001",
+      resumeContent: "private resume content",
+      providerToken: "private-provider-token",
+      filename: "private-resume.pdf",
+    });
+    emitter.emit("community.funnel" as never, {
+      funnelEvent: "pdf_export.failed",
+      failureCategory: "raw provider exception",
+    });
+
+    expect(sink.records).toEqual([
+      {
+        level: "info",
+        event: "community.funnel",
+        metadata: {
+          funnelEvent: "pdf_export.failed",
+          failureCategory: "load_failed",
+        },
+      },
+    ]);
+    expect(JSON.stringify(sink.records)).not.toMatch(
+      /ownerUserId|private resume|provider-token|private-resume\.pdf/,
+    );
+  });
+
   it("exposes a closed event-name vocabulary with strict per-event metadata", () => {
     const sink = new RecordingSink();
     const emitter = createImportEventEmitter(sink);

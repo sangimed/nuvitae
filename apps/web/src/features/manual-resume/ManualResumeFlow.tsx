@@ -15,6 +15,7 @@ import {
   type ManualDraftClientOutcome,
 } from "./client";
 import { createBrowserUuid } from "../../services/browser-ids";
+import { recordCommunityFunnelEvent } from "../../services/community-funnel";
 
 type SaveState = "saved" | "unsaved" | "saving" | "stale-conflict" | "failed";
 
@@ -90,6 +91,9 @@ export function ManualResumeFlow(props: { readonly draftId?: string }) {
           })
         : await readManualDraft({ draftId: existingDraftId, signal });
     if (signal.aborted) return;
+    if (outcome.ok && existingDraftId !== null) {
+      recordCommunityFunnelEvent({ funnelEvent: "resume.reopened" });
+    }
     applyLoadOutcome(outcome);
   }
 

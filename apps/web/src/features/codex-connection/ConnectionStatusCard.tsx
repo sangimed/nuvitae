@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ProviderConnectionStatusResponse } from "@nuvitae/contracts";
+import { recordCommunityFunnelEvent } from "../../services/community-funnel";
 import {
   beginCodexConnection,
   cancelCodexConnection,
@@ -41,6 +42,8 @@ export function ConnectionStatusCard(props: {
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const inFlight = useRef(false);
   const connectionAttempted = useRef(false);
+  const readyRecorded = useRef(false);
+  const statusFailureRecorded = useRef(false);
   const readStatus = props.onReadStatus ?? readCodexConnectionStatus;
   const initiate = props.onInitiateConnection ?? beginCodexConnection;
   const cancel = props.onCancelConnection ?? cancelCodexConnection;
@@ -65,6 +68,13 @@ export function ConnectionStatusCard(props: {
         setStatusMessage(undefined);
       } else {
         setStatusMessage(outcome.message);
+        if (!statusFailureRecorded.current) {
+          statusFailureRecorded.current = true;
+          recordCommunityFunnelEvent({
+            funnelEvent: "provider_connection.failed",
+            failureCategory: "status_failed",
+          });
+        }
       }
     });
     return () => controller.abort();
@@ -87,6 +97,10 @@ export function ConnectionStatusCard(props: {
           setStatusMessage(undefined);
         } else {
           setStatusMessage(outcome.message);
+          recordCommunityFunnelEvent({
+            funnelEvent: "provider_connection.failed",
+            failureCategory: "status_failed",
+          });
         }
       });
     }
@@ -125,12 +139,23 @@ export function ConnectionStatusCard(props: {
       ? "Connect Codex"
       : "Reconnect Codex";
 
+  useEffect(() => {
+    if (visibleStatus !== "ready" || readyRecorded.current) return;
+    readyRecorded.current = true;
+    recordCommunityFunnelEvent({
+      funnelEvent: "provider_connection.ready",
+    });
+  }, [visibleStatus]);
+
   async function connect() {
     if (inFlight.current || !canStart) return;
     inFlight.current = true;
     connectionAttempted.current = true;
     setBusy(true);
     setStatusMessage(undefined);
+    recordCommunityFunnelEvent({
+      funnelEvent: "provider_connection.initiated",
+    });
     const popup =
       props.onNavigate === undefined
         ? window.open(
@@ -179,6 +204,10 @@ export function ConnectionStatusCard(props: {
     inFlight.current = false;
     setBusy(false);
     setStatusMessage(outcome.message);
+    recordCommunityFunnelEvent({
+      funnelEvent: "provider_connection.failed",
+      failureCategory: "initiation_failed",
+    });
   }
 
   async function disconnectCodex() {

@@ -21,6 +21,7 @@ import { StartImportQueue } from "./adapters/bullmq/start-import.queue.js";
 import { ImportStatusQueue } from "./adapters/bullmq/import-status.queue.js";
 import { parseImportProcessingLimitsEnv } from "../config/import-processing-limits.js";
 import {
+  COMMUNITY_FUNNEL_EVENT_EMITTER,
   IMPORT_STATUS_QUEUE_READER,
   START_IMPORT_CLOCK,
   START_IMPORT_ID_GENERATOR,
@@ -75,6 +76,18 @@ const importResumeRuntimeProviders: Provider[] = [
     useValue: createImportEventEmitter({
       write: (record) => console.log(JSON.stringify(record)),
     }),
+  },
+  {
+    provide: COMMUNITY_FUNNEL_EVENT_EMITTER,
+    useFactory: (config: ProductRuntimeConfig) =>
+      createImportEventEmitter({
+        write: (record) => {
+          if (config.communityFunnelTelemetryEnabled) {
+            console.log(JSON.stringify(record));
+          }
+        },
+      }),
+    inject: [PRODUCT_RUNTIME_CONFIG],
   },
   StartImportQueue,
   { provide: START_IMPORT_QUEUE_PUBLISHER, useExisting: StartImportQueue },

@@ -6,7 +6,10 @@ import {
 } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { VerifiedPrincipalGuard } from "../auth/verified-principal.guard.js";
-import { IMPORT_STATUS_REQUEST_ID_GENERATOR } from "./ports/tokens.js";
+import {
+  COMMUNITY_FUNNEL_EVENT_EMITTER,
+  IMPORT_STATUS_REQUEST_ID_GENERATOR,
+} from "./ports/tokens.js";
 import { StartImportExceptionFilter } from "./transport/http/start-import-exception.filter.js";
 import { StartImportMultipartInterceptor } from "./transport/http/start-import-multipart.interceptor.js";
 import { StartImportController } from "./transport/http/start-import.controller.js";
@@ -18,6 +21,7 @@ import {
   SourceDeletionController,
 } from "./transport/http/confirm.controller.js";
 import { ImportTimingController } from "./transport/http/import-timing.controller.js";
+import { CommunityFunnelController } from "./transport/http/community-funnel.controller.js";
 import {
   ConfirmStructuredResumeService,
   DeleteSourceService,
@@ -51,6 +55,7 @@ export class ImportResumeModule {
         ConfirmedStructuredResumeController,
         SourceDeletionController,
         ImportTimingController,
+        CommunityFunnelController,
       ],
       providers: [
         StartImportService,
@@ -62,6 +67,10 @@ export class ImportResumeModule {
         {
           provide: IMPORT_STATUS_REQUEST_ID_GENERATOR,
           useValue: { nextRequestId: () => randomUUID() },
+        },
+        {
+          provide: COMMUNITY_FUNNEL_EVENT_EMITTER,
+          useValue: { emit: () => undefined },
         },
         VerifiedPrincipalGuard,
         StartImportMultipartInterceptor,

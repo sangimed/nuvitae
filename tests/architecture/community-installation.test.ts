@@ -55,6 +55,7 @@ describe("Community installation bootstrap", () => {
       NUVITAE_LOCAL_PLAY_MODE: "false",
       NUVITAE_COMMUNITY_COOKIE_SECURE: "true",
       NUVITAE_COMMUNITY_SESSION_TTL_SECONDS: "86400",
+      NUVITAE_COMMUNITY_FUNNEL_TELEMETRY_ENABLED: "false",
     });
     for (const key of [
       "POSTGRES_PASSWORD",
@@ -80,6 +81,7 @@ describe("Community installation bootstrap", () => {
           "/var/lib/nuvitae/private/provider-sessions",
       }),
     ).toMatchObject({
+      communityFunnelTelemetryEnabled: false,
       privateStorageRoot: "/var/lib/nuvitae/private",
       providerSessionRoot: "/var/lib/nuvitae/private/provider-sessions",
     });
