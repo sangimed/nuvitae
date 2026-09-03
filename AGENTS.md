@@ -64,6 +64,18 @@ Development, checks, tests, builds, and runtime services use the
 repository-supported Docker Compose workflow in `README.md`; do not invent a
 parallel host workflow.
 
+## Amp Orb testing URLs
+
+Whenever an agent starts or restarts Nuvitae in an Amp Orb for user testing, it
+must provide the current clickable web portal URL in the conversation.
+
+Portal URLs are specific to an Orb and may change, so obtain them from the
+current portal command output rather than hard-coding them in tracked files.
+Never tell the user to open a raw `localhost`, `127.0.0.1`, `[::1]`, or direct
+sandbox-host URL. Codex uses device authorization: do not expose port 1455 or
+ask the user to edit a callback URL. The user enters the one-time code shown by
+Nuvitae on the secure OpenAI page; never ask them to paste that code in chat.
+
 ## Pre-production schema evolution
 
 Do not create a new SQL/TypeORM migration for every iterative schema change by

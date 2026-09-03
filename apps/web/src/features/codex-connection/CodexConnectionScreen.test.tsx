@@ -48,8 +48,8 @@ const successfulInitiation = async () => ({
     version: "2026-08-08" as const,
     status: "login_pending" as const,
     loginReference: "login-reference-123456",
-    authorizationUrl:
-      "https://auth.openai.com/oauth/authorize?state=server-state",
+    authorizationUrl: "https://auth.openai.com/codex/device",
+    userCode: "ABCD-EFGH",
   },
 });
 
@@ -82,8 +82,9 @@ describe("CodexConnectionScreen (T213)", () => {
     });
     expect(initiate).toHaveBeenCalledTimes(1);
     expect(onNavigate).toHaveBeenCalledWith(
-      "https://auth.openai.com/oauth/authorize?state=server-state",
+      "https://auth.openai.com/codex/device",
     );
+    expect(container.textContent).toContain("ABCD-EFGH");
     expect(container.textContent).not.toContain("Codex is ready");
   });
 

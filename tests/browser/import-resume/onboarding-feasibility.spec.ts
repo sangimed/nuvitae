@@ -4,6 +4,24 @@ test("disconnected import flow exposes an actionable Connect Codex handoff", asy
   page,
 }) => {
   await page.route(
+    "**/api/import-resume/provider-connections/codex/status",
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          version: "2026-08-08",
+          providerKind: "codex",
+          connectionStatus: "not_configured",
+          authenticationStatus: "unauthenticated",
+          availabilityStatus: "unknown",
+          ready: false,
+          safeMessage: null,
+        }),
+      });
+    },
+  );
+  await page.route(
     "**/api/import-resume/provider-connections/codex/oauth/start",
     async (route) => {
       await route.fulfill({
@@ -13,8 +31,8 @@ test("disconnected import flow exposes an actionable Connect Codex handoff", asy
           version: "2026-08-08",
           status: "login_pending",
           loginReference: "login-reference-123456",
-          authorizationUrl:
-            "https://auth.openai.com/oauth/authorize?state=local-test",
+          authorizationUrl: "https://auth.openai.com/codex/device",
+          userCode: "ABCD-EFGH",
         }),
       });
     },
@@ -48,13 +66,14 @@ test("disconnected import flow exposes an actionable Connect Codex handoff", asy
   }
   await expect(page.getByText("Codex is ready")).toHaveCount(0);
 
+  const popupPromise = page.waitForEvent("popup");
   await connect.click();
-  await expect(page).toHaveURL(
-    "https://auth.openai.com/oauth/authorize?state=local-test",
-  );
+  const popup = await popupPromise;
+  await expect(popup).toHaveURL(/^https:\/\/auth\.openai\.com\//);
+  await expect(page.getByText("ABCD-EFGH", { exact: true })).toBeVisible();
 });
 
-test("local callback returns to import with a persisted ready state", async ({
+test("device authorization polling reaches a persisted ready state", async ({
   page,
 }) => {
   let connectionStatus = "not_configured";
@@ -89,29 +108,20 @@ test("local callback returns to import with a persisted ready state", async ({
           version: "2026-08-08",
           status: "login_pending",
           loginReference: "login-reference-123456",
-          authorizationUrl: "http://localhost:3000/local-oauth-handoff",
+          authorizationUrl: "https://auth.openai.com/codex/device",
+          userCode: "ABCD-EFGH",
         }),
       });
-    },
-  );
-  await page.route(
-    "**/api/import-resume/provider-connections/codex/oauth/callback**",
-    async (route) => {
       connectionStatus = "connected";
-      await route.fulfill({
-        status: 303,
-        headers: { location: "/import-resume?codex=connected" },
-      });
     },
   );
+  await page.route("https://auth.openai.com/**", async (route) => {
+    await route.fulfill({ status: 200, body: "OpenAI device authorization" });
+  });
 
   await page.goto("/import-resume");
   await page.getByRole("button", { name: "Import my resume" }).click();
   await page.getByRole("button", { name: "Connect Codex" }).click();
-  await page.goto(
-    "/api/import-resume/provider-connections/codex/oauth/callback?state=local-state&code=local-code",
-  );
-  await page.getByRole("button", { name: "Import my resume" }).click();
   await expect(page.getByText("Codex is ready.")).toBeVisible();
   await page.reload();
   await page.getByRole("button", { name: "Import my resume" }).click();
@@ -173,8 +183,8 @@ test("connected users can disconnect and use the bounded reconnect handoff", asy
           version: "2026-08-08",
           status: "login_pending",
           loginReference: "login-reference-reconnect",
-          authorizationUrl:
-            "https://auth.openai.com/oauth/authorize?state=local-reconnect",
+          authorizationUrl: "https://auth.openai.com/codex/device",
+          userCode: "ABCD-EFGH",
         }),
       });
     },
@@ -200,10 +210,10 @@ test("connected users can disconnect and use the bounded reconnect handoff", asy
   await page.route("https://auth.openai.com/**", async (route) => {
     await route.fulfill({ status: 200, body: "local OAuth boundary" });
   });
+  const reconnectPopupPromise = page.waitForEvent("popup");
   await page.getByRole("button", { name: "Reconnect Codex" }).click();
-  await expect(page).toHaveURL(
-    "https://auth.openai.com/oauth/authorize?state=local-reconnect",
-  );
+  const reconnectPopup = await reconnectPopupPromise;
+  await expect(reconnectPopup).toHaveURL(/^https:\/\/auth\.openai\.com\//);
 });
 
 test("expired and revoked states offer a bounded reconnect handoff", async ({
@@ -244,8 +254,8 @@ test("expired and revoked states offer a bounded reconnect handoff", async ({
             version: "2026-08-08",
             status: "login_pending",
             loginReference: `login-reference-${connectionStatus}`,
-            authorizationUrl:
-              "https://auth.openai.com/oauth/authorize?state=local-reconnect",
+            authorizationUrl: "https://auth.openai.com/codex/device",
+            userCode: "ABCD-EFGH",
           }),
         });
       },
@@ -258,11 +268,11 @@ test("expired and revoked states offer a bounded reconnect handoff", async ({
     await page.route("https://auth.openai.com/**", async (route) => {
       await route.fulfill({ status: 200, body: "local OAuth boundary" });
     });
+    const popupPromise = page.waitForEvent("popup");
     await page.getByRole("button", { name: "Reconnect Codex" }).click();
-    await expect(page).toHaveURL(
-      "https://auth.openai.com/oauth/authorize?state=local-reconnect",
-    );
-    await page.goBack();
+    const popup = await popupPromise;
+    await expect(popup).toHaveURL(/^https:\/\/auth\.openai\.com\//);
+    await popup.close();
   }
 });
 

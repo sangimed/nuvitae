@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import {
   parseCodexSessionMaterial,
   type CodexSessionMaterial,
@@ -10,31 +10,28 @@ import {
   type ProviderAdapterInspection,
   type ProviderAdapterLoginResult,
   type ProviderAdapterQuotaResult,
-  type ProviderOAuthCallback,
+  type ProviderLoginCompletion,
   type ProviderRuntimeAdapterContext,
   type ProviderRuntimeConnectionAdapter,
 } from "@nuvitae/import-application";
 
-const authorizationEndpoint = "https://auth.openai.com/oauth/authorize";
+const issuer = "https://auth.openai.com";
 const clientId = "app_EMoamEEZ73f0CkXaXp7hrann";
-const originator = "nuvitae";
-const defaultCallbackPort = "1455";
-// The official/qualified Codex browser contract owns this exact loopback
-// callback path. The application exposes an alias for its provider-neutral
-// route, but the authorization request must remain on the qualified contract.
-const callbackPath = "/auth/callback";
-const callbackHosts = new Set(["localhost", "127.0.0.1", "::1"]);
-const pendingLoginTtlMs = 10 * 60 * 1000;
+const deviceVerificationUrl = `${issuer}/codex/device`;
+const deviceTokenRedirectUri = `${issuer}/deviceauth/callback`;
+const pendingLoginTtlMs = 15 * 60 * 1000;
 const maximumPendingLogins = 1_000;
 
 interface PendingLogin {
   readonly ownerUserId: string;
   readonly connectionId: string;
-  readonly state: string;
-  readonly codeVerifier: string;
+  readonly deviceAuthId: string;
+  readonly userCode: string;
+  readonly intervalSeconds: number;
   readonly handoff: ProviderAdapterBrowserLoginHandoff;
   readonly loginStartedAt: Date;
   readonly expiresAt: number;
+  readonly abortController: AbortController;
 }
 
 export interface CodexOAuthCredentialMaterial {
@@ -44,11 +41,27 @@ export interface CodexOAuthCredentialMaterial {
   readonly expiresAt: Date | null;
 }
 
-export interface CodexOAuthTokenExchange {
-  exchange(input: {
-    readonly authorizationCode: string;
-    readonly codeVerifier: string;
-  }): Promise<CodexOAuthCredentialMaterial>;
+interface CodexDeviceAuthorization {
+  readonly deviceAuthId: string;
+  readonly userCode: string;
+  readonly intervalSeconds: number;
+}
+
+interface CodexDeviceGrant {
+  readonly authorizationCode: string;
+  readonly codeVerifier: string;
+}
+
+export interface CodexDeviceAuthClient {
+  start(signal?: AbortSignal): Promise<CodexDeviceAuthorization>;
+  waitForGrant(
+    authorization: CodexDeviceAuthorization,
+    signal: AbortSignal,
+  ): Promise<CodexDeviceGrant>;
+  exchange(
+    grant: CodexDeviceGrant,
+    signal?: AbortSignal,
+  ): Promise<CodexOAuthCredentialMaterial>;
 }
 
 const codexCapabilities = Object.freeze({
@@ -71,10 +84,10 @@ const codexCapabilities = Object.freeze({
 });
 
 /**
- * Codex broker boundary. It owns PKCE/state material, authorization-code
- * exchange, encrypted session persistence, and privacy-safe inspection. The
- * application service receives only an opaque session reference and
- * provider-neutral metadata.
+ * Codex broker boundary. It owns the callback-free device authorization,
+ * authorization-code exchange, encrypted session persistence, and privacy-safe
+ * inspection. The application service receives only an opaque session
+ * reference and provider-neutral metadata.
  */
 export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter {
   readonly providerKind = "codex";
@@ -82,7 +95,7 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
 
   constructor(
     private readonly options: {
-      readonly exchange?: CodexOAuthTokenExchange;
+      readonly deviceAuth?: CodexDeviceAuthClient;
       readonly now?: () => Date;
     } = {},
   ) {}
@@ -103,25 +116,31 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
     }
 
     const loginStartedAt = this.clock();
-    const state = base64Url(randomBytes(32));
-    const codeVerifier = base64Url(randomBytes(32));
-    const codeChallenge = base64Url(
-      createHash("sha256").update(codeVerifier, "ascii").digest(),
-    );
-    const authorizationUrl = this.buildAuthorizationUrl(state, codeChallenge);
+    const deviceAuth =
+      this.options.deviceAuth ?? new OpenAiCodexDeviceAuthClient();
+    let authorization: CodexDeviceAuthorization;
+    try {
+      authorization = await deviceAuth.start();
+    } catch (error) {
+      if (error instanceof ProviderConnectionError) throw error;
+      throw new ProviderConnectionError("provider_adapter_failed");
+    }
     const handoff: ProviderAdapterBrowserLoginHandoff = {
       loginReference: randomUUID(),
-      authorizationUrl,
+      authorizationUrl: deviceVerificationUrl,
+      userCode: authorization.userCode,
     };
     this.boundPendingCapacity();
     this.pending.set(key, {
       ownerUserId: context.ownerUserId,
       connectionId: context.connectionId,
-      state,
-      codeVerifier,
+      deviceAuthId: authorization.deviceAuthId,
+      userCode: authorization.userCode,
+      intervalSeconds: authorization.intervalSeconds,
       handoff,
       loginStartedAt,
       expiresAt: loginStartedAt.getTime() + pendingLoginTtlMs,
+      abortController: new AbortController(),
     });
     return { loginStartedAt, safeMessage: null, browserHandoff: handoff };
   }
@@ -182,34 +201,44 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
   async completeLogin(
     context: ProviderRuntimeAdapterContext,
     _sessionReference: string | null,
-    callback?: ProviderOAuthCallback,
+    completion?: ProviderLoginCompletion,
   ): Promise<ProviderAdapterConnectedResult> {
-    if (callback === undefined) {
+    if (completion === undefined || !("deviceLoginReference" in completion)) {
       throw new ProviderConnectionError(
         "provider_connection_login_invalid_state",
       );
     }
-    const pending = this.consumePending(context, callback.state);
-    if (callback.providerError !== undefined) {
-      throw new ProviderConnectionError("provider_connection_login_cancelled");
-    }
-    if (callback.authorizationCode === undefined) {
-      throw new ProviderConnectionError(
-        "provider_connection_login_invalid_state",
-      );
-    }
-    const exchange =
-      this.options.exchange ?? new OpenAiCodexOAuthTokenExchange();
+    const pending = this.requirePending(
+      context,
+      completion.deviceLoginReference,
+    );
+    const deviceAuth =
+      this.options.deviceAuth ?? new OpenAiCodexDeviceAuthClient();
     let credentials: CodexOAuthCredentialMaterial;
     try {
-      credentials = await exchange.exchange({
-        authorizationCode: callback.authorizationCode,
-        codeVerifier: pending.codeVerifier,
-      });
+      const grant = await deviceAuth.waitForGrant(
+        {
+          deviceAuthId: pending.deviceAuthId,
+          userCode: pending.userCode,
+          intervalSeconds: pending.intervalSeconds,
+        },
+        pending.abortController.signal,
+      );
+      credentials = await deviceAuth.exchange(
+        grant,
+        pending.abortController.signal,
+      );
     } catch (error) {
+      this.pending.delete(this.key(context));
+      if (pending.abortController.signal.aborted) {
+        throw new ProviderConnectionError(
+          "provider_connection_login_cancelled",
+        );
+      }
       if (error instanceof ProviderConnectionError) throw error;
       throw new ProviderConnectionError("provider_adapter_failed");
     }
+    this.pending.delete(this.key(context));
     const sessionReference = randomBytes(32).toString("hex");
     const payload = new TextEncoder().encode(
       JSON.stringify({
@@ -242,6 +271,8 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
   async cancelLogin(
     context: ProviderRuntimeAdapterContext,
   ): Promise<ProviderAdapterLoginResult> {
+    const pending = this.pending.get(this.key(context));
+    pending?.abortController.abort();
     this.pending.delete(this.key(context));
     return {
       loginStartedAt: this.clock(),
@@ -284,73 +315,27 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
     throw unsupportedUntilFutureState("quota_state");
   }
 
-  /**
-   * Resolves a cross-site callback to its initiating owner and connection.
-   * The callback must never take an owner identity from browser input or rely
-   * on the ordinary Community session cookie being present.
-   */
-  resolvePendingLogin(state: string): {
-    readonly ownerUserId: string;
-    readonly connectionId: string;
-  } {
-    const pending = [...this.pending.values()].find(
-      (candidate) => candidate.state === state,
-    );
-    if (pending === undefined) {
-      throw new ProviderConnectionError(
-        "provider_connection_login_invalid_state",
-      );
-    }
-    if (pending.expiresAt <= this.clock().getTime()) {
-      this.pending.delete(`${pending.ownerUserId}:${pending.connectionId}`);
-      throw new ProviderConnectionError("provider_connection_login_expired");
-    }
-    return {
-      ownerUserId: pending.ownerUserId,
-      connectionId: pending.connectionId,
-    };
-  }
-
-  private buildAuthorizationUrl(state: string, codeChallenge: string): string {
-    const callbackHost =
-      process.env.NUVITAE_CODEX_OAUTH_REDIRECT_HOST ?? "localhost";
-    if (!callbackHosts.has(callbackHost)) {
-      throw new ProviderConnectionError("provider_adapter_failed");
-    }
-    const url = new URL(authorizationEndpoint);
-    url.searchParams.set("client_id", clientId);
-    url.searchParams.set("response_type", "code");
-    url.searchParams.set(
-      "redirect_uri",
-      `http://${callbackHost}:${callbackPort()}${callbackPath}`,
-    );
-    url.searchParams.set("scope", "openid profile email offline_access");
-    url.searchParams.set("code_challenge", codeChallenge);
-    url.searchParams.set("code_challenge_method", "S256");
-    url.searchParams.set("state", state);
-    url.searchParams.set("id_token_add_organizations", "true");
-    url.searchParams.set("codex_cli_simplified_flow", "true");
-    url.searchParams.set("originator", originator);
-    return url.toString();
-  }
-
   private key(context: ProviderRuntimeAdapterContext): string {
     return `${context.ownerUserId}:${context.connectionId}`;
   }
 
-  private consumePending(
+  private requirePending(
     context: ProviderRuntimeAdapterContext,
-    state: string,
+    loginReference: string,
   ): PendingLogin {
     const key = this.key(context);
     const pending = this.pending.get(key);
-    if (pending === undefined || pending.state !== state) {
+    if (
+      pending === undefined ||
+      pending.handoff.loginReference !== loginReference
+    ) {
       throw new ProviderConnectionError(
         "provider_connection_login_invalid_state",
       );
     }
-    this.pending.delete(key);
     if (pending.expiresAt <= this.clock().getTime()) {
+      pending.abortController.abort();
+      this.pending.delete(key);
       throw new ProviderConnectionError("provider_connection_login_expired");
     }
     return pending;
@@ -363,7 +348,10 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
   private removeExpiredLogins(): void {
     const now = Date.now();
     for (const [key, login] of this.pending) {
-      if (login.expiresAt <= now) this.pending.delete(key);
+      if (login.expiresAt <= now) {
+        login.abortController.abort();
+        this.pending.delete(key);
+      }
     }
   }
 
@@ -371,6 +359,7 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
     while (this.pending.size >= maximumPendingLogins) {
       const oldest = this.pending.keys().next().value;
       if (oldest === undefined) return;
+      this.pending.get(oldest)?.abortController.abort();
       this.pending.delete(oldest);
     }
   }
@@ -378,50 +367,115 @@ export class CodexOAuthLoginBoundary implements ProviderRuntimeConnectionAdapter
 
 type CodexSessionPayload = CodexSessionMaterial;
 
-class OpenAiCodexOAuthTokenExchange implements CodexOAuthTokenExchange {
-  async exchange(input: {
-    readonly authorizationCode: string;
-    readonly codeVerifier: string;
-  }): Promise<CodexOAuthCredentialMaterial> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15_000);
+class OpenAiCodexDeviceAuthClient implements CodexDeviceAuthClient {
+  async start(signal?: AbortSignal): Promise<CodexDeviceAuthorization> {
+    const response = await fetch(`${issuer}/api/accounts/deviceauth/usercode`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ client_id: clientId }),
+      signal: requestSignal(signal),
+      redirect: "error",
+    });
+    if (!response.ok) throw providerFailure();
+    const parsed = await boundedJson(response);
+    const deviceAuthId = boundedString(parsed, "device_auth_id", 4096);
+    const userCode =
+      boundedString(parsed, "user_code", 32) ??
+      boundedString(parsed, "usercode", 32);
+    const rawInterval = boundedString(parsed, "interval", 8);
+    if (
+      deviceAuthId === undefined ||
+      userCode === undefined ||
+      !/^[A-Za-z0-9-]{4,32}$/.test(userCode)
+    ) {
+      throw providerFailure();
+    }
+    const parsedInterval = Number.parseInt(rawInterval ?? "1", 10);
+    return {
+      deviceAuthId,
+      userCode,
+      intervalSeconds: Number.isFinite(parsedInterval)
+        ? Math.min(30, Math.max(1, parsedInterval))
+        : 1,
+    };
+  }
+
+  async waitForGrant(
+    authorization: CodexDeviceAuthorization,
+    signal: AbortSignal,
+  ): Promise<CodexDeviceGrant> {
+    const deadline = Date.now() + pendingLoginTtlMs;
+    while (Date.now() < deadline) {
+      const response = await fetch(`${issuer}/api/accounts/deviceauth/token`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          device_auth_id: authorization.deviceAuthId,
+          user_code: authorization.userCode,
+        }),
+        signal: requestSignal(signal),
+        redirect: "error",
+      });
+      if (response.ok) {
+        const parsed = await boundedJson(response);
+        const authorizationCode = boundedString(
+          parsed,
+          "authorization_code",
+          4096,
+        );
+        const codeVerifier = boundedString(parsed, "code_verifier", 4096);
+        if (authorizationCode === undefined || codeVerifier === undefined) {
+          throw providerFailure();
+        }
+        return { authorizationCode, codeVerifier };
+      }
+      if (response.status !== 403 && response.status !== 404) {
+        throw providerFailure();
+      }
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) break;
+      await abortableDelay(
+        Math.min(authorization.intervalSeconds * 1_000, remainingMs),
+        signal,
+      );
+    }
+    throw new ProviderConnectionError("provider_connection_login_expired");
+  }
+
+  async exchange(
+    grant: CodexDeviceGrant,
+    signal?: AbortSignal,
+  ): Promise<CodexOAuthCredentialMaterial> {
     try {
-      const response = await fetch("https://auth.openai.com/oauth/token", {
+      const response = await fetch(`${issuer}/oauth/token`, {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
           grant_type: "authorization_code",
           client_id: clientId,
-          code: input.authorizationCode,
-          code_verifier: input.codeVerifier,
-          redirect_uri: redirectUri(),
+          code: grant.authorizationCode,
+          code_verifier: grant.codeVerifier,
+          redirect_uri: deviceTokenRedirectUri,
         }),
-        signal: controller.signal,
+        signal: requestSignal(signal),
         redirect: "error",
       });
-      const body = await response.text();
-      if (!response.ok || body.length > 65_536) {
-        throw new ProviderConnectionError("provider_adapter_failed");
-      }
-      const parsed: unknown = JSON.parse(body);
+      if (!response.ok) throw providerFailure();
+      const parsed = await boundedJson(response);
       if (
-        typeof parsed !== "object" ||
-        parsed === null ||
-        typeof (parsed as { access_token?: unknown }).access_token !==
-          "string" ||
-        typeof (parsed as { refresh_token?: unknown }).refresh_token !==
-          "string"
+        boundedString(parsed, "access_token", 65_536) === undefined ||
+        boundedString(parsed, "refresh_token", 65_536) === undefined
       ) {
-        throw new ProviderConnectionError("provider_adapter_failed");
+        throw providerFailure();
       }
-      const expiresIn = (parsed as { expires_in?: unknown }).expires_in;
+      const accessToken = boundedString(parsed, "access_token", 65_536)!;
+      const refreshToken = boundedString(parsed, "refresh_token", 65_536)!;
+      const accountId = boundedString(parsed, "account_id", 512) ?? null;
+      const expiresIn = parsed.expires_in;
       return {
-        accessToken: (parsed as { access_token: string }).access_token,
-        refreshToken: (parsed as { refresh_token: string }).refresh_token,
-        accountId:
-          typeof (parsed as { account_id?: unknown }).account_id === "string"
-            ? (parsed as { account_id: string }).account_id
-            : null,
+        accessToken,
+        refreshToken,
+        accountId,
         expiresAt:
           typeof expiresIn === "number" && Number.isFinite(expiresIn)
             ? new Date(Date.now() + Math.max(0, expiresIn) * 1000)
@@ -430,36 +484,69 @@ class OpenAiCodexOAuthTokenExchange implements CodexOAuthTokenExchange {
     } catch (error) {
       if (error instanceof ProviderConnectionError) throw error;
       throw new ProviderConnectionError("provider_adapter_failed");
-    } finally {
-      clearTimeout(timeout);
     }
   }
 }
 
-function redirectUri(): string {
-  const host = process.env.NUVITAE_CODEX_OAUTH_REDIRECT_HOST ?? "localhost";
-  return `http://${host}:${callbackPort()}${callbackPath}`;
+function requestSignal(signal?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(15_000);
+  return signal === undefined ? timeout : AbortSignal.any([signal, timeout]);
 }
 
-function callbackPort(): string {
-  const configured = process.env.NUVITAE_CODEX_OAUTH_CALLBACK_PORT;
-  if (
-    configured !== undefined &&
-    /^(?:[1-9]\d{0,3}|[1-5]\d{4}|6[0-4]\d{3}|65[0-4]\d|655[0-2]\d|6553[0-5])$/.test(
-      configured,
-    )
-  ) {
-    return configured;
+async function boundedJson(
+  response: Response,
+): Promise<Record<string, unknown>> {
+  const body = await response.text();
+  if (body.length > 65_536) throw providerFailure();
+  try {
+    const parsed: unknown = JSON.parse(body);
+    if (
+      typeof parsed !== "object" ||
+      parsed === null ||
+      Array.isArray(parsed)
+    ) {
+      throw providerFailure();
+    }
+    return parsed as Record<string, unknown>;
+  } catch (error) {
+    if (error instanceof ProviderConnectionError) throw error;
+    throw providerFailure();
   }
-  return defaultCallbackPort;
 }
 
-function base64Url(value: Buffer): string {
-  return value
-    .toString("base64")
-    .replaceAll("+", "-")
-    .replaceAll("/", "_")
-    .replaceAll("=", "");
+function boundedString(
+  value: Record<string, unknown>,
+  key: string,
+  maximumLength: number,
+): string | undefined {
+  const candidate = value[key];
+  return typeof candidate === "string" &&
+    candidate.length > 0 &&
+    candidate.length <= maximumLength
+    ? candidate
+    : undefined;
+}
+
+function abortableDelay(milliseconds: number, signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    if (signal.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timeout);
+      reject(signal.reason);
+    };
+    const timeout = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, milliseconds);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+function providerFailure() {
+  return new ProviderConnectionError("provider_adapter_failed");
 }
 
 function unsupportedUntilFutureState(

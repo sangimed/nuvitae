@@ -1035,6 +1035,7 @@ class FakeAdapter implements ProviderRuntimeConnectionAdapter {
     safeMessage: null,
     browserHandoff: {
       loginReference: "test-login-reference",
+      userCode: "TEST-CODE",
       authorizationUrl: "https://codex.test/login",
     },
   };

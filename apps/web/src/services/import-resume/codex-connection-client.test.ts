@@ -9,8 +9,8 @@ const response = {
   version: "2026-08-08",
   status: "login_pending",
   loginReference: "login-reference-123456",
-  authorizationUrl:
-    "https://auth.openai.com/oauth/authorize?state=server-state",
+  authorizationUrl: "https://auth.openai.com/codex/device",
+  userCode: "ABCD-EFGH",
 };
 
 describe("beginCodexConnection (T213)", () => {

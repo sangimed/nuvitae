@@ -70,8 +70,8 @@ preserve the error before changing configuration.
 Open <http://localhost:3000>. Web is published only as
 `127.0.0.1:3000`. Normal browser API requests use `/api` through the web
 rewrite to the internal `api:3001` service, so port 3001 is not published.
-The direct OAuth callback keeps `127.0.0.1:1455:3001` and `[::1]:1455:3001`
-loopback mappings. PostgreSQL and queue are internal only.
+Codex device authorization needs no inbound callback port. PostgreSQL and queue
+are internal only.
 
 ## Owner access
 
@@ -91,15 +91,15 @@ Sign out action to end its browser session.
 
 After owner sign-in, choose **Create a resume manually** for a blank draft, or
 **Import an existing resume**. The import flow contains the Codex connection and
-status entrypoint; it does not mean Codex is connected already. This guide does
-not perform an upload, OAuth sign-in, or provider invocation.
+status entrypoint; it does not mean Codex is connected already. Selecting
+**Connect Codex** opens OpenAI's secure device page and shows a one-time code.
+No localhost URL editing is required. This guide does not perform an upload,
+sign-in, or provider invocation.
 
 Secure cookies are intentionally enabled for `http://localhost:3000`; validate
 that the session survives a page refresh. The cookie remains HttpOnly, Secure,
-and SameSite=Strict. A known compatibility concern remains for a future real
-Codex OAuth completion: its cross-site callback may not receive the Strict
-Community session cookie. It is not resolved or validated by this installation
-guide.
+and SameSite=Strict. Codex completion is polled server-side and does not depend
+on a cross-site request carrying this cookie.
 
 ## Stop and restart
 
@@ -122,8 +122,6 @@ normal operation.
   Desktop or install Docker Compose before retrying.
 - `localhost:3000` busy: identify and stop only the process you own, then run
   the start command again. Do not change the published Community boundary.
-- `localhost:1455` busy: it is reserved for the loopback callback; stop only
-  the conflicting process you own before a future Codex connection attempt.
 - Bootstrap already initialized: this is safe; it preserved `.community.env`.
 - Missing or invalid generated config: verify `.community.env` exists and was
   created by the bootstrap helper; rerun does not repair or replace it.

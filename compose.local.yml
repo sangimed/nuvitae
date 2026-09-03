@@ -29,8 +29,6 @@ services:
       QUEUE_PASSWORD: ${QUEUE_PASSWORD:-nuvitae_queue_password}
     ports: !override
       - "127.0.0.1:3001:3001"
-      - "127.0.0.1:1455:3001"
-      - "[::1]:1455:3001"
     depends_on:
       postgres:
         condition: service_healthy

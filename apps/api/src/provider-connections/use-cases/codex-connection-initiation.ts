@@ -1,18 +1,15 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type { CodexConnectionInitiationResponse } from "@nuvitae/contracts";
-import {
-  ProviderConnectionService,
-  type ProviderOAuthCallback,
-} from "@nuvitae/import-application";
-import { CodexOAuthLoginBoundary } from "../adapters/codex/codex-oauth-login-boundary.js";
+import { ProviderConnectionService } from "@nuvitae/import-application";
 import { API_PROVIDER_CONNECTION_SERVICE } from "../ports/tokens.js";
 
 @Injectable()
 export class CodexConnectionInitiationService {
+  private readonly activeCompletions = new Set<string>();
+
   constructor(
     @Inject(API_PROVIDER_CONNECTION_SERVICE)
     private readonly providerConnections: ProviderConnectionService,
-    private readonly oauthBoundary: CodexOAuthLoginBoundary,
   ) {}
 
   async begin(ownerUserId: string): Promise<CodexConnectionInitiationResponse> {
@@ -22,22 +19,19 @@ export class CodexConnectionInitiationService {
         displayName: "Codex",
       },
     );
-    return {
+    const response = {
       version: "2026-08-08",
       status: "login_pending",
       loginReference: result.browserHandoff.loginReference,
       authorizationUrl: result.browserHandoff.authorizationUrl,
-    };
-  }
-
-  async completeCallback(callback: ProviderOAuthCallback) {
-    const { ownerUserId, connectionId } =
-      this.oauthBoundary.resolvePendingLogin(callback.state);
-    return this.providerConnections.completeLogin(
+      userCode: result.browserHandoff.userCode,
+    } as const;
+    this.completeInBackground(
       ownerUserId,
-      connectionId,
-      callback,
+      result.status.connectionId,
+      result.browserHandoff.loginReference,
     );
+    return response;
   }
 
   async status(ownerUserId: string) {
@@ -53,5 +47,18 @@ export class CodexConnectionInitiationService {
 
   async disconnect(ownerUserId: string) {
     return this.providerConnections.disconnectForProvider(ownerUserId, "codex");
+  }
+
+  private completeInBackground(
+    ownerUserId: string,
+    connectionId: string,
+    deviceLoginReference: string,
+  ) {
+    if (this.activeCompletions.has(deviceLoginReference)) return;
+    this.activeCompletions.add(deviceLoginReference);
+    void this.providerConnections
+      .completeLogin(ownerUserId, connectionId, { deviceLoginReference })
+      .catch(() => undefined)
+      .finally(() => this.activeCompletions.delete(deviceLoginReference));
   }
 }

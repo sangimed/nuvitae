@@ -22,6 +22,7 @@ afterEach(() => {
   act(() => root?.unmount());
   container.remove();
   root = undefined;
+  vi.useRealTimers();
 });
 
 const status = (overrides: Record<string, unknown> = {}) => ({
@@ -64,6 +65,33 @@ describe("ConnectionStatusCard (T214)", () => {
     expect(container.textContent).toContain("Cancel connection");
     expect(container.textContent).not.toContain("Connect Codex");
     expect(container.textContent).not.toContain("Codex is ready");
+  });
+
+  it("detects completed device authorization without a browser callback", async () => {
+    vi.useFakeTimers();
+    root = createRoot(container);
+    const onReadStatus = vi
+      .fn()
+      .mockResolvedValueOnce(
+        status({
+          connectionStatus: "login_pending",
+          authenticationStatus: "pending",
+        }),
+      )
+      .mockResolvedValue(
+        status({
+          connectionStatus: "connected",
+          authenticationStatus: "authenticated",
+          availabilityStatus: "available",
+          ready: true,
+        }),
+      );
+    await act(async () => {
+      root?.render(<ConnectionStatusCard onReadStatus={onReadStatus} />);
+    });
+    await act(async () => vi.advanceTimersByTimeAsync(2_000));
+    expect(container.textContent).toContain("Codex is ready");
+    expect(onReadStatus).toHaveBeenCalledTimes(2);
   });
 
   it("shows ready only for the server-approved ready projection", async () => {

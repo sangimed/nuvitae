@@ -94,6 +94,8 @@ export interface ProviderAdapterLoginResult {
 export interface ProviderAdapterBrowserLoginHandoff {
   readonly loginReference: string;
   readonly authorizationUrl: string;
+  /** Provider-issued code intended for explicit display to the owner. */
+  readonly userCode: string;
 }
 
 export interface ProviderAdapterConnectedResult {
@@ -115,6 +117,14 @@ export interface ProviderOAuthCallback {
   readonly providerError?:
     "access_denied" | "temporarily_unavailable" | "invalid_request" | "unknown";
 }
+
+/** Opaque server-side continuation for callback-free device authorization. */
+export interface ProviderDeviceLoginCompletion {
+  readonly deviceLoginReference: string;
+}
+
+export type ProviderLoginCompletion =
+  ProviderOAuthCallback | ProviderDeviceLoginCompletion;
 
 export interface ProviderAdapterQuotaResult {
   readonly availabilityState: ProviderRuntimeAvailabilityStatus;
@@ -142,7 +152,7 @@ export interface ProviderRuntimeConnectionAdapter {
   completeLogin(
     context: ProviderRuntimeAdapterContext,
     sessionReference: string | null,
-    callback?: ProviderOAuthCallback,
+    completion?: ProviderLoginCompletion,
   ): Promise<ProviderAdapterConnectedResult>;
   cancelLogin(
     context: ProviderRuntimeAdapterContext,
@@ -496,7 +506,7 @@ export class ProviderConnectionService {
   async completeLogin(
     ownerUserId: string,
     connectionId: string,
-    callback?: ProviderOAuthCallback,
+    completion?: ProviderLoginCompletion,
   ): Promise<ProviderConnectionStatusView> {
     const connection = await this.requireActiveByOwner(
       ownerUserId,
@@ -512,12 +522,12 @@ export class ProviderConnectionService {
       connected = await this.ports.adapter.completeLogin(
         this.context(ownerUserId, connectionId),
         connection.sessionReference,
-        callback,
+        completion,
       );
     } catch (error) {
       const mapped = mapAdapterError(error);
       if (
-        mapped.code === "provider_connection_login_cancelled" ||
+        mapped.code === "provider_connection_login_expired" ||
         mapped.code === "provider_adapter_failed" ||
         mapped.code === "provider_session_storage_unavailable"
       ) {

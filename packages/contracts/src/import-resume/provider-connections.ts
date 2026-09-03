@@ -17,7 +17,9 @@ const browserAuthorizationUrlSchema = z
       return (
         url.protocol === "https:" &&
         url.hostname === "auth.openai.com" &&
-        url.pathname === "/oauth/authorize"
+        url.pathname === "/codex/device" &&
+        url.search === "" &&
+        url.hash === ""
       );
     } catch {
       return false;
@@ -36,6 +38,11 @@ export const codexConnectionInitiationResponseSchema = z
     status: z.literal("login_pending"),
     loginReference: opaqueLoginReferenceSchema,
     authorizationUrl: browserAuthorizationUrlSchema,
+    userCode: z
+      .string()
+      .min(4)
+      .max(32)
+      .regex(/^[A-Za-z0-9-]+$/),
   })
   .strict();
 
