@@ -7,12 +7,12 @@ import { ProviderDisclosure } from "./ProviderDisclosure";
 describe("ProviderDisclosure (T175)", () => {
   it("explains provider requirement and provider use before provider-backed processing", async () => {
     const markup = renderToStaticMarkup(createElement(ProviderDisclosure));
-    expect(markup).toContain("Codex to be connected");
-    expect(markup).toContain("text extracted from your resume");
-    expect(markup).toContain("unconfirmed until you review");
-    expect(markup).toContain("backed by your document");
-    expect(markup).toContain("limited automatic extraction");
-    expect(markup).toContain("does not provide a reliable complete analysis");
+    expect(markup).toContain("Codex needs to be connected");
+    expect(markup).toContain("only the text from your resume");
+    expect(markup).toContain("until you review it");
+    expect(markup).toContain("against your document");
+    expect(markup).toContain("limited import");
+    expect(markup).toContain("may miss information");
 
     const uploadSource = await readFile(
       "apps/web/src/features/import-resume/UploadStep.tsx",
@@ -28,7 +28,7 @@ describe("ProviderDisclosure (T175)", () => {
     const markup = renderToStaticMarkup(createElement(ProviderDisclosure));
     expect(markup).toContain('aria-labelledby="provider-disclosure-title"');
     expect(markup).toContain(
-      '<h2 id="provider-disclosure-title">AI analysis of your resume</h2>',
+      '<h2 id="provider-disclosure-title">How Codex helps with your import</h2>',
     );
   });
 

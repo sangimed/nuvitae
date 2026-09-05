@@ -205,7 +205,10 @@ test.describe("import resume upload and progress accessibility", () => {
     await expect(fileInput).toBeVisible();
     await expect(page.getByText("PDF and DOCX files only.")).toBeVisible();
     await expect(
-      page.getByText("Uploaded sources and source-reconstructing artifacts"),
+      page.getByText("Your uploaded file and temporary working copies"),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Enter my details manually instead" }),
     ).toBeVisible();
     await expect(
       fileInput,

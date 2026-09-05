@@ -48,7 +48,12 @@ test("disconnected import flow exposes an actionable Connect Codex handoff", asy
   await expect(connect).toBeVisible();
   await expect(connect).toBeEnabled();
   await expect(
-    page.getByText("Connect Codex so Nuvitae can organize your resume."),
+    page.getByText(
+      "Codex helps Nuvitae organize the information in your file.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Enter my details manually instead" }),
   ).toBeVisible();
 
   const body = (await page.locator("body").innerText()).toLowerCase();

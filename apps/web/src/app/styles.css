@@ -647,6 +647,25 @@ textarea:focus-visible,
   box-shadow: inset 0 0 0 2px rgba(23, 107, 135, 0.14);
 }
 
+.codex-connection-card {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.codex-connection-card > h2,
+.codex-connection-card .community-alert,
+.codex-connection-card .community-status {
+  margin: 0;
+}
+
+.codex-device-handoff {
+  margin-top: var(--space-4);
+}
+
+.codex-device-handoff p {
+  margin: 0 0 var(--space-3);
+}
+
 .badge {
   display: inline-block;
   margin: 0;

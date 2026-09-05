@@ -14,6 +14,7 @@ export function CodexConnectionScreen(props: {
   readonly onCancelConnection?: typeof cancelCodexConnection;
   readonly onDisconnect?: typeof disconnectCodexConnection;
   readonly onNavigate?: (authorizationUrl: string) => void;
+  readonly manualEntryHref?: string;
 }) {
   return <ConnectionStatusCard {...props} />;
 }

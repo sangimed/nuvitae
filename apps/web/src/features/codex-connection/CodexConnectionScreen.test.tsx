@@ -57,7 +57,7 @@ describe("CodexConnectionScreen (T213)", () => {
   it("shows a clear non-technical Connect Codex action", () => {
     renderScreen(successfulInitiation);
     expect(container.textContent).toContain("Connect Codex");
-    expect(container.textContent).toContain("organize your resume");
+    expect(container.textContent).toContain("organize the information");
     for (const forbidden of [
       "OAuth",
       "token",

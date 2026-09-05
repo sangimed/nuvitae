@@ -2,6 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ProviderConnectionStatusResponse } from "@nuvitae/contracts";
+import {
+  Alert,
+  Button,
+  ButtonLink,
+  StatusState,
+  type StatusTone,
+} from "../../components/community";
 import { recordCommunityFunnelEvent } from "../../services/community-funnel";
 import {
   beginCodexConnection,
@@ -34,9 +41,17 @@ export function ConnectionStatusCard(props: {
   readonly onCancelConnection?: typeof cancelCodexConnection;
   readonly onDisconnect?: typeof disconnectCodexConnection;
   readonly onNavigate?: (authorizationUrl: string) => void;
+  readonly manualEntryHref?: string;
 }) {
   const [status, setStatus] = useState<ProviderConnectionStatusResponse>();
   const [statusMessage, setStatusMessage] = useState<string>();
+  const [statusMessageTone, setStatusMessageTone] = useState<
+    "success" | "error"
+  >("error");
+  const [statusChecked, setStatusChecked] = useState(
+    props.onReadStatus === undefined &&
+      props.onInitiateConnection !== undefined,
+  );
   const [deviceHandoff, setDeviceHandoff] = useState<DeviceHandoff>();
   const [busy, setBusy] = useState(false);
   const [disconnectOpen, setDisconnectOpen] = useState(false);
@@ -67,6 +82,7 @@ export function ConnectionStatusCard(props: {
         setStatus(outcome.response);
         setStatusMessage(undefined);
       } else {
+        setStatusMessageTone("error");
         setStatusMessage(outcome.message);
         if (!statusFailureRecorded.current) {
           statusFailureRecorded.current = true;
@@ -76,6 +92,7 @@ export function ConnectionStatusCard(props: {
           });
         }
       }
+      setStatusChecked(true);
     });
     return () => controller.abort();
   }, [props.onInitiateConnection, props.onReadStatus, readStatus]);
@@ -96,6 +113,7 @@ export function ConnectionStatusCard(props: {
           setStatus(outcome.response);
           setStatusMessage(undefined);
         } else {
+          setStatusMessageTone("error");
           setStatusMessage(outcome.message);
           recordCommunityFunnelEvent({
             funnelEvent: "provider_connection.failed",
@@ -131,7 +149,7 @@ export function ConnectionStatusCard(props: {
     };
   }, [readStatus, status?.connectionStatus]);
 
-  const visibleStatus = toVisibleStatus(status);
+  const visibleStatus = statusChecked ? toVisibleStatus(status) : "loading";
   const canStart =
     visibleStatus === "disconnected" || visibleStatus === "expired";
   const connectAction =
@@ -175,6 +193,7 @@ export function ConnectionStatusCard(props: {
         ready: false,
         safeMessage: null,
       });
+      setStatusChecked(true);
       setDeviceHandoff({
         authorizationUrl: outcome.response.authorizationUrl,
         userCode: outcome.response.userCode,
@@ -188,6 +207,7 @@ export function ConnectionStatusCard(props: {
       }
       if (props.onNavigate === undefined) {
         if (popup === null) {
+          setStatusMessageTone("error");
           setStatusMessage(
             "Open the secure OpenAI page below to finish connecting.",
           );
@@ -203,6 +223,7 @@ export function ConnectionStatusCard(props: {
     popup?.close();
     inFlight.current = false;
     setBusy(false);
+    setStatusMessageTone("error");
     setStatusMessage(outcome.message);
     recordCommunityFunnelEvent({
       funnelEvent: "provider_connection.failed",
@@ -219,8 +240,10 @@ export function ConnectionStatusCard(props: {
     if (outcome.ok) {
       setStatus(outcome.response);
       setDisconnectOpen(false);
+      setStatusMessageTone("success");
       setStatusMessage("Codex disconnected. Your resume data is still here.");
     } else {
+      setStatusMessageTone("error");
       setStatusMessage(outcome.message);
     }
     inFlight.current = false;
@@ -236,8 +259,10 @@ export function ConnectionStatusCard(props: {
     if (outcome.ok) {
       connectionAttempted.current = false;
       setStatus(outcome.response);
+      setStatusMessageTone("success");
       setStatusMessage("Codex connection cancelled. You can try again.");
     } else {
+      setStatusMessageTone("error");
       setStatusMessage(outcome.message);
     }
     inFlight.current = false;
@@ -246,70 +271,83 @@ export function ConnectionStatusCard(props: {
 
   return (
     <section
-      className="guidance-panel"
+      className="guidance-panel codex-connection-card"
       aria-labelledby="codex-connection-title"
-      aria-live="polite"
     >
-      <h2 id="codex-connection-title">Codex connection</h2>
-      {renderStatusMessage(visibleStatus, status)}
+      <h2 id="codex-connection-title">Codex for resume import</h2>
       {statusMessage === undefined ? null : (
-        <p role="status">{statusMessage}</p>
+        <Alert tone={statusMessageTone}>{statusMessage}</Alert>
       )}
-      {visibleStatus === "connecting" && deviceHandoff !== undefined ? (
-        <div>
-          <p>
-            Enter this one-time code on the secure OpenAI page. It has also been
-            copied when your browser permits it.
-          </p>
-          <p>
-            <strong
-              aria-label={`Codex one-time code ${deviceHandoff.userCode}`}
+      <StatusState
+        tone={toneForStatus(visibleStatus)}
+        title={titleForStatus(visibleStatus, status)}
+        action={
+          visibleStatus === "loading" ? undefined : (
+            <div className="action-row">
+              {canStart ? (
+                <Button
+                  onClick={() => void connect()}
+                  loading={busy}
+                  disabled={busy}
+                >
+                  {busy ? "Opening secure connection…" : connectAction}
+                </Button>
+              ) : null}
+              {visibleStatus === "connecting" ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => void cancelConnection()}
+                  loading={busy}
+                  disabled={busy}
+                >
+                  {busy ? "Cancelling…" : "Cancel connection"}
+                </Button>
+              ) : null}
+              {visibleStatus === "ready" ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => setDisconnectOpen(true)}
+                  disabled={busy}
+                >
+                  Disconnect
+                </Button>
+              ) : null}
+              {props.manualEntryHref === undefined ||
+              visibleStatus === "ready" ||
+              visibleStatus === "connecting" ? null : (
+                <ButtonLink href={props.manualEntryHref} variant="quiet">
+                  Enter my details manually instead
+                </ButtonLink>
+              )}
+            </div>
+          )
+        }
+      >
+        {bodyForStatus(visibleStatus, status)}
+        {visibleStatus === "connecting" && deviceHandoff !== undefined ? (
+          <div className="codex-device-handoff">
+            <p>
+              Enter this one-time code on the secure OpenAI page. It has also
+              been copied when your browser permits it.
+            </p>
+            <p>
+              <strong
+                aria-label={`Codex one-time code ${deviceHandoff.userCode}`}
+              >
+                {deviceHandoff.userCode}
+              </strong>
+            </p>
+            <ButtonLink
+              href={deviceHandoff.authorizationUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="secondary"
             >
-              {deviceHandoff.userCode}
-            </strong>
-          </p>
-          <a
-            className="secondary-action"
-            href={deviceHandoff.authorizationUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Open secure OpenAI page
-          </a>
-        </div>
-      ) : null}
-      {canStart ? (
-        <button
-          type="button"
-          className="primary-action"
-          onClick={() => void connect()}
-          disabled={busy}
-          aria-busy={busy}
-        >
-          {busy ? "Opening secure connection…" : connectAction}
-        </button>
-      ) : null}
-      {visibleStatus === "connecting" ? (
-        <button
-          type="button"
-          className="secondary-action"
-          onClick={() => void cancelConnection()}
-          disabled={busy}
-          aria-busy={busy}
-        >
-          {busy ? "Cancelling…" : "Cancel connection"}
-        </button>
-      ) : null}
-      {visibleStatus === "ready" ? (
-        <button
-          type="button"
-          className="secondary-action"
-          onClick={() => setDisconnectOpen(true)}
-          disabled={busy}
-        >
-          Disconnect
-        </button>
-      ) : null}
+              Open secure OpenAI page
+            </ButtonLink>
+          </div>
+        ) : null}
+      </StatusState>
       <DisconnectDialog
         open={disconnectOpen}
         busy={busy}
@@ -346,42 +384,62 @@ function toVisibleStatus(
   return "disconnected";
 }
 
-function renderStatusMessage(
-  status: VisibleStatus,
-  response: ProviderConnectionStatusResponse | undefined,
-) {
+function toneForStatus(status: VisibleStatus): StatusTone {
   switch (status) {
     case "loading":
-      return <p>Checking your Codex connection.</p>;
-    case "disconnected":
-      return (
-        <p>
-          Connect Codex so Nuvitae can organize your resume. You will review the
-          information before anything becomes part of your resume.
-        </p>
-      );
     case "connecting":
-      return <p>Connecting Codex. Keep this page open while you finish.</p>;
+      return "loading";
+    case "disconnected":
+      return "empty";
     case "ready":
-      return <p>Codex is ready.</p>;
+      return "success";
     case "unavailable":
-      return (
-        <p>
-          Codex is temporarily unavailable. Your connection and resume data are
-          still here. Try again later.
-        </p>
-      );
     case "expired":
-      return (
-        <p>
-          {response?.connectionStatus === "authentication_revoked"
-            ? "Codex connection needs attention. Reconnect Codex before you can continue."
-            : "Codex connection expired. Reconnect Codex before you can continue."}
-          {response?.safeMessage === null
-            ? null
-            : ` ${response?.safeMessage ?? ""}`}
-        </p>
-      );
+      return "error";
+  }
+}
+
+function titleForStatus(
+  status: VisibleStatus,
+  response: ProviderConnectionStatusResponse | undefined,
+): string {
+  switch (status) {
+    case "loading":
+      return "Checking your Codex connection";
+    case "disconnected":
+      return "Connect Codex to import your resume";
+    case "connecting":
+      return "Finish connecting Codex";
+    case "ready":
+      return "Codex is ready.";
+    case "unavailable":
+      return "Codex is temporarily unavailable";
+    case "expired":
+      return response?.connectionStatus === "authentication_revoked"
+        ? "Reconnect Codex to continue"
+        : "Your Codex connection has expired";
+  }
+}
+
+function bodyForStatus(
+  status: VisibleStatus,
+  response: ProviderConnectionStatusResponse | undefined,
+): string {
+  switch (status) {
+    case "loading":
+      return "This will only take a moment.";
+    case "disconnected":
+      return "Codex helps Nuvitae organize the information in your file. You will review every detail before it is saved.";
+    case "connecting":
+      return "Keep this page open while you finish on the secure OpenAI page.";
+    case "ready":
+      return "You can now choose a resume file below.";
+    case "unavailable":
+      return "Your connection and resume data are still here. Try again later or enter your details manually.";
+    case "expired":
+      return `Reconnect before importing a resume.${
+        response?.safeMessage === null ? "" : ` ${response?.safeMessage ?? ""}`
+      }`;
   }
 }
 

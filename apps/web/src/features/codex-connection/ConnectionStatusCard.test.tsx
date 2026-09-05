@@ -48,9 +48,34 @@ async function renderStatus(response: ReturnType<typeof status>["response"]) {
 }
 
 describe("ConnectionStatusCard (T214)", () => {
+  it("shows a truthful loading state before connection status is known", async () => {
+    root = createRoot(container);
+    const onReadStatus = vi.fn(() => new Promise<never>(() => undefined));
+
+    await act(async () => {
+      root?.render(<ConnectionStatusCard onReadStatus={onReadStatus} />);
+    });
+
+    expect(container.textContent).toContain("Checking your Codex connection");
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(container.textContent).not.toContain("Connect Codex to import");
+  });
+
   it("offers Connect Codex when disconnected", async () => {
-    await renderStatus(status().response);
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(
+        <ConnectionStatusCard
+          onReadStatus={vi.fn(async () => status())}
+          manualEntryHref="/resumes/new/manual"
+        />,
+      );
+    });
     expect(container.textContent).toContain("Connect Codex");
+    expect(container.textContent).toContain(
+      "Enter my details manually instead",
+    );
+    expect(container.querySelector(".community-status-empty")).not.toBeNull();
     expect(container.textContent).not.toContain("Codex is ready");
   });
 
@@ -61,9 +86,13 @@ describe("ConnectionStatusCard (T214)", () => {
         authenticationStatus: "pending",
       }).response,
     );
-    expect(container.textContent).toContain("Connecting Codex");
+    expect(container.textContent).toContain("Finish connecting Codex");
     expect(container.textContent).toContain("Cancel connection");
-    expect(container.textContent).not.toContain("Connect Codex");
+    expect(
+      [...container.querySelectorAll("button")].some((button) =>
+        button.textContent?.includes("Connect Codex"),
+      ),
+    ).toBe(false);
     expect(container.textContent).not.toContain("Codex is ready");
   });
 

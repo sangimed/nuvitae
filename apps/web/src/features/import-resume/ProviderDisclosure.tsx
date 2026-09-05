@@ -9,25 +9,21 @@
 export function ProviderDisclosure() {
   return (
     <div className="guidance-panel" aria-labelledby="provider-disclosure-title">
-      <h2 id="provider-disclosure-title">AI analysis of your resume</h2>
+      <h2 id="provider-disclosure-title">How Codex helps with your import</h2>
       <ul>
-        <li>Reliable analysis of your resume needs Codex to be connected.</li>
+        <li>Codex needs to be connected for the most complete import.</li>
         <li>
-          Codex receives only the text extracted from your resume, not access to
-          anything else in Nuvitae.
+          Codex receives only the text from your resume, not access to anything
+          else in Nuvitae.
         </li>
-        <li>Suggested fields stay unconfirmed until you review them.</li>
+        <li>Nothing is saved to your resume until you review it.</li>
         <li>
-          Before creating a draft, Nuvitae checks that suggestions follow the
-          expected format, are backed by your document, and are not invented.
-        </li>
-        <li>
-          If Codex is not available, you can still use limited automatic
-          extraction or enter your resume manually.
+          Nuvitae checks suggestions against your document and leaves out
+          anything that cannot be verified.
         </li>
         <li>
-          Limited automatic extraction is partial. It may miss information and
-          does not provide a reliable complete analysis.
+          If Codex is unavailable, you can use a limited import that may miss
+          information, or enter your details manually.
         </li>
       </ul>
     </div>

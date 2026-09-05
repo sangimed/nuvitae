@@ -20,12 +20,17 @@ beforeEach(() => {
   container = document.createElement("div");
   document.body.appendChild(container);
   vi.clearAllMocks();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(() => new Promise<Response>(() => undefined)),
+  );
 });
 
 afterEach(() => {
   act(() => root?.unmount());
   container?.remove();
   root = undefined;
+  vi.unstubAllGlobals();
 });
 
 function renderUpload(props: { readonly busy?: boolean } = {}) {

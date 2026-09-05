@@ -13,6 +13,7 @@ import { ProviderDisclosure } from "./ProviderDisclosure";
 import { ErrorSummary } from "./ErrorSummary";
 import { focusErrorSummary } from "./focus-management";
 import { CodexConnectionScreen } from "../codex-connection/CodexConnectionScreen";
+import { Button } from "../../components/community";
 
 const maximumFileSizeBytes = 10 * 1024 * 1024;
 const allowedExtensions = [".pdf", ".docx"] as const;
@@ -85,9 +86,8 @@ export function UploadStep(props: {
       <p className="eyebrow">Resume import</p>
       <h1 id="upload-title">Choose the resume file to import</h1>
       <p className="lead">
-        Your uploaded file is used only to prepare information for your review.
-        You will review the extracted information before structured resume
-        creation.
+        Your file is used only to prepare a draft. You will review every detail
+        before it is saved as a resume.
       </p>
 
       <div id={guidanceId} className="guidance-panel">
@@ -96,17 +96,16 @@ export function UploadStep(props: {
           <li>PDF and DOCX files only.</li>
           <li>French, English, or bilingual French-English resumes.</li>
           <li>10 MB maximum file size.</li>
-          <li>5 rendered pages maximum.</li>
-          <li>Selectable text is required.</li>
-          <li>Scanned or image-only documents are not supported.</li>
+          <li>Up to 5 pages.</li>
+          <li>The text must be selectable, not a scan or photo.</li>
           <li>
-            Uploaded sources and source-reconstructing artifacts are retained
-            for no more than seven days from upload.
+            Your uploaded file and temporary working copies are removed within
+            seven days.
           </li>
         </ul>
       </div>
 
-      <CodexConnectionScreen />
+      <CodexConnectionScreen manualEntryHref="/resumes/new/manual" />
       <ProviderDisclosure />
 
       <form className="upload-form" onSubmit={submit} noValidate>
@@ -162,21 +161,17 @@ export function UploadStep(props: {
             : `Selected file: ${props.selectedFile.name}`}
         </p>
         <div className="action-row">
-          <button
+          <Button
             type="button"
-            className="secondary-button"
+            variant="secondary"
             onClick={props.onBack}
             disabled={props.busy}
           >
             Back
-          </button>
-          <button
-            type="submit"
-            className="primary-action"
-            disabled={props.busy}
-          >
+          </Button>
+          <Button type="submit" disabled={props.busy} loading={props.busy}>
             {props.busy ? "Uploading…" : "Upload and start import"}
-          </button>
+          </Button>
         </div>
       </form>
     </section>
