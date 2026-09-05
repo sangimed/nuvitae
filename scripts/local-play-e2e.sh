@@ -118,6 +118,41 @@ run_phase "wait for local stack health" \
     docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
     up --wait web api worker postgres queue
 
+run_phase "response policy: enforcement" \
+  env NUVITAE_CSP_REPORT_ONLY=false NUVITAE_SEMANTIC_PROVIDER_MODE=production \
+    docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
+    --profile test run --rm \
+      -e LOCAL_PLAY_ARTIFACT_DIR=/workspace/.local-play/artifacts \
+      playwright-test pnpm exec playwright test \
+        --config=playwright.local-play.config.ts \
+        tests/e2e/local-play/response-policy.e2e.test.ts
+
+run_phase "switch web to CSP report-only trial" \
+  env NUVITAE_CSP_REPORT_ONLY=true \
+    docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
+    up -d --force-recreate web
+run_phase "wait for report-only web health" \
+  env NUVITAE_CSP_REPORT_ONLY=true \
+    docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
+    up --wait --no-recreate web
+run_phase "response policy: report-only trial" \
+  env NUVITAE_CSP_REPORT_ONLY=true NUVITAE_SEMANTIC_PROVIDER_MODE=production \
+    docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
+    --profile test run --rm \
+      -e LOCAL_PLAY_ARTIFACT_DIR=/workspace/.local-play/artifacts \
+      playwright-test pnpm exec playwright test \
+        --config=playwright.local-play.config.ts \
+        tests/e2e/local-play/response-policy.e2e.test.ts
+
+run_phase "restore enforced CSP" \
+  env NUVITAE_CSP_REPORT_ONLY=false \
+    docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
+    up -d --force-recreate web
+run_phase "wait for enforced web health" \
+  env NUVITAE_CSP_REPORT_ONLY=false \
+    docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
+    up --wait --no-recreate web
+
 run_phase "semantic vertical slice: no provider" \
   env NUVITAE_SEMANTIC_PROVIDER_MODE=production \
     docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
@@ -173,6 +208,7 @@ phase="playwright regression"
 playwright_args=(
   pnpm exec playwright test
   --config=playwright.local-play.config.ts
+  tests/browser/import-resume/onboarding-feasibility.spec.ts
   tests/e2e/local-play/local-play-user-regression.e2e.test.ts
   tests/e2e/local-play/local-play-flow.e2e.test.ts
 )
@@ -199,5 +235,7 @@ printf '%s\n' \
   "Local playable E2E: passed" \
   "Manual fresh draft: passed" \
   "Manual stale recovery: passed" \
+  "Codex onboarding and recovery UI: passed" \
   "Anonymous PDF import: passed" \
-  "Deterministic PDF/DOCX preview-to-export fidelity: passed"
+  "Deterministic PDF/DOCX preview-to-export fidelity: passed" \
+  "Response policy enforcement and report-only trial: passed"

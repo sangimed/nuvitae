@@ -46,6 +46,8 @@ run_phase "deterministic unit, contract, import integration, and security tests"
   compose run --rm workspace pnpm test
 run_phase "isolated persistence integration tests" \
   compose run --rm workspace pnpm test:integration:persistence
+run_phase "production dependency vulnerability gate" \
+  compose run --rm workspace pnpm audit --prod --audit-level high
 run_phase "build application packages" compose run --rm workspace pnpm build
 run_phase "network-disabled parser image" compose --profile test build parser-test
 run_phase "network-disabled parser checks" compose --profile test run --rm parser-test
