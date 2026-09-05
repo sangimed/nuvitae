@@ -48,7 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Restore the pnpm content-addressable store
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ env.QUALITY_PNPM_STORE }}
           key: pnpm-${{ runner.os }}-11.15.1-${{ hashFiles('pnpm-lock.yaml') }}
