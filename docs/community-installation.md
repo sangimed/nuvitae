@@ -88,6 +88,12 @@ rewrite to the internal `api:3001` service, so port 3001 is not published.
 Codex device authorization needs no inbound callback port. PostgreSQL and queue
 are internal only.
 
+Next.js owns the browser CSP, anti-framing, content-type, referrer, permissions,
+and page cache policy; Nest owns API no-store and disables OpenAPI in
+production. This loopback HTTP installation deliberately does not emit HSTS:
+only a future supported and verified HTTPS terminator may own that header. Do
+not add a second response-header layer to Community Compose.
+
 ## Owner access
 
 Retrieve the generated owner access secret only when ready to sign in:

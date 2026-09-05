@@ -48,6 +48,10 @@ describe("CommunityAuthController", () => {
 
     expect(logout).toHaveBeenCalledWith("previous-session");
     expect(String(setHeader.mock.calls[0]?.[1])).toContain("Max-Age=0");
+    expect(setHeader).toHaveBeenCalledWith(
+      "Clear-Site-Data",
+      '"cache"',
+    );
   });
 
   it("never serializes auth configuration into a session cookie", () => {

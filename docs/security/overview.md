@@ -89,6 +89,8 @@ and source-deletion execution tracked by issue #57.
   parser/resource controls, safe-sink evidence, and Community/hosted decisions.
 - [Security invariants](security-invariants.md) — non-negotiable engineering
   properties and security-sensitive change review.
+- [Browser and API response policy](response-policy.md) — CSP, caching,
+  OpenAPI, logout, HSTS, and authoritative layer ownership.
 - [Verification baseline](verification-baseline.md) — ASVS, SAMM, SSDF,
   supply-chain, CI, and testing decisions.
 - [Vulnerability management](vulnerability-management.md) — triage,

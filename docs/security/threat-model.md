@@ -1,6 +1,6 @@
 # Threat model and asset inventory
 
-**Model date:** 2 September 2026
+**Model date:** 5 September 2026
 
 **Review trigger:** authentication, public exposure, billing, a new upload or
 provider, new external network access, a new sensitive store, or a material
@@ -62,7 +62,7 @@ operator ──▶ Community configuration, TLS/reverse proxy, backups and updat
 
 | Boundary                     | Trusted assertion                                        | Untrusted material and required check                                                                                                     |
 | ---------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Browser ↔ Next.js            | None from browser state alone                            | Render with safe framework sinks; constrain URLs; add response headers/cache policy; never expose server secrets                          |
+| Browser ↔ Next.js            | Nonce-bound Next.js bootstrap and self-hosted static resources | Render with safe framework sinks; constrain URLs; Next owns CSP/browser headers and page no-store; never expose server secrets         |
 | Browser ↔ OpenAI device page | OpenAI owns the allowlisted HTTPS page                   | Display only the bounded one-time code; never expose device state or tokens; Nuvitae polls completion server-side                         |
 | Next.js ↔ API                | Same-origin routing is deployment plumbing, not identity | API verifies the session/principal and validates every path/query/body independently                                                      |
 | API ↔ PostgreSQL             | Parameterized driver and migration set                   | Every user-owned query includes trusted owner identity; transactions/locks preserve state invariants                                      |
@@ -76,6 +76,12 @@ operator ──▶ Community configuration, TLS/reverse proxy, backups and updat
 | Containers ↔ runtime         | Pinned image tag and Compose topology                    | Host kernel/network/volume are privileged boundaries; non-root, least mounts/secrets, resource/egress controls and patching               |
 | CI ↔ GitHub/secrets          | Reviewed source and locked dependencies                  | PR code/dependencies are untrusted; read-only permissions by default, no secret exposure to untrusted jobs, scans and artifact provenance |
 | Community ↔ operator         | Operator controls host and configuration                 | Fail invalid production config; document HTTPS, secret generation, backup/update responsibility and unsafe overrides                      |
+
+The current browser-facing boundary is plaintext loopback Community/Local Play,
+not a verified HTTPS ingress. Next owns browser policy except HSTS; Nest owns
+API no-store and production OpenAPI suppression. A future verified TLS
+terminator exclusively owns HSTS. The full non-duplicated policy and trial
+procedure are recorded in [the response-policy decision](response-policy.md).
 
 ## Attackers and misuse
 
@@ -108,7 +114,7 @@ operator ──▶ Community configuration, TLS/reverse proxy, backups and updat
 | Spoofing               | Forge an owner header or local-play identity                      | Identity is attached by trusted middleware; feature guards ignore client owner IDs; local play fails in production | Define hosted identity/session/MFA/recovery boundary before public hosting                |
 | Tampering              | Change another user's resume/review or replay a queue job         | Owner-qualified transactions, revisions, operation IDs, deterministic jobs, worker resource re-read                | Preserve negative/replay tests for every new mutation/job                                 |
 | Repudiation            | Dispute a security-sensitive action                               | Correlation IDs and bounded lifecycle events exist                                                                 | #24 must define security event retention, access and alerting without PII                 |
-| Information disclosure | Guess an ID, read source/provider token, leak through logs/cache  | Opaque not-found, private storage, encrypted sessions, response schemas, privacy logger                            | Add browser no-store policy; define hosted backup/log/secret lifecycle                    |
+| Information disclosure | Guess an ID, read source/provider token, leak through logs/cache  | Opaque not-found, private storage, encrypted sessions, response schemas, privacy logger, page/API no-store and logout cache clearing | Define hosted backup/log/secret lifecycle                              |
 | Denial of service      | Flood login/import/provider/parser/queue                          | Community login throttling, import rolling/queue limits, worker concurrency, parser/provider/DB bounds             | Add deployment-wide/global quotas, resource limits and stuck/poison-job operations        |
 | Elevation of privilege | Provider output or uploaded text becomes executable/authoritative | No provider tools, strict canonicalization/grounding/review; safe SQL/React/process sinks                          | Isolate hosted parsers and require untrusted-output tests for every future AI feature |
 

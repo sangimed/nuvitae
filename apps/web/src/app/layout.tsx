@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   description: "Create and improve your resume with Nuvitae Community",
 };
 
+// A per-request render lets Next.js propagate the middleware CSP nonce to its
+// framework bootstrap scripts and styles. Static assets remain independently
+// cacheable under /_next/static.
+export const dynamic = "force-dynamic";
+
 type RootLayoutProps = {
   children: ReactNode;
 };

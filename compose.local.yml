@@ -58,6 +58,9 @@ services:
       LOCAL_PLAY_BASE_URL: http://web:3000
       LOCAL_PLAY_API_HEALTH_URL: http://api:3001/health
       LOCAL_PLAY_DISABLED_API_URL: http://api-local-mode-off:3001
+      PRODUCTION_POLICY_API_URL: http://api-local-mode-off:3001
+      PRODUCTION_POLICY_ACCESS_SECRET: "community-mode-off-development-access-secret-000001"
+      EXPECT_CSP_REPORT_ONLY: ${NUVITAE_CSP_REPORT_ONLY:-false}
       LOCAL_PLAY_USER_ID: "00000000-0000-4000-8000-000000000101"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -80,7 +83,7 @@ services:
   api-local-mode-off:
     image: nuvitae-api:0.1.0
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       HOST: 0.0.0.0
       PORT: 3001
       NUVITAE_LOCAL_PLAY_MODE: "false"
@@ -97,7 +100,7 @@ services:
       NUVITAE_PROVIDER_SESSION_ROOT: /var/lib/nuvitae/private/provider-sessions
       NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET: "local-play-provider-session-encryption-secret-not-for-production"
       NUVITAE_COMMUNITY_ACCESS_SECRET: "community-mode-off-development-access-secret-000001"
-      NUVITAE_COMMUNITY_COOKIE_SECURE: "false"
+      NUVITAE_COMMUNITY_COOKIE_SECURE: "true"
       QUEUE_HOST: queue
       QUEUE_PORT: 6379
       QUEUE_PASSWORD: ${QUEUE_PASSWORD:-nuvitae_queue_password}

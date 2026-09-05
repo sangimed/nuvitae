@@ -85,6 +85,9 @@ export class CommunityAuthController {
       readCookie(request.headers?.cookie, communitySessionCookieName),
     );
     response.setHeader("Set-Cookie", clearSessionCookie(this.config));
+    // The precise Set-Cookie expiry owns session removal. Clear only HTTP cache;
+    // broader Clear-Site-Data directives could erase unrelated origin state.
+    response.setHeader("Clear-Site-Data", '"cache"');
   }
 }
 
