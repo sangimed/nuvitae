@@ -12,7 +12,7 @@ not demonstrated. This decision is based on executed evidence, not on whether
 the implementation appears likely to work.
 
 The validated integration candidate was
-`0f4b3023f8aa8dde116584501f29555059936320`; the following documentation-only
+`0f4b302c4ce7014edab6c70f5df9da2256cb02f0`; the following documentation-only
 issue #61 result commit records the outcome.
 
 ### Integrated commits
@@ -26,7 +26,7 @@ issue #61 result commit records the outcome.
 | Issue #75 | `7ca8c45` | `fc756469885425f1d5f9578434eb6186463445e9` |
 | Issue #58 | `0ff7b33` | `03893921d363074abe1a104f2804df8219c83c21` |
 | Issue #60 | `1434c09` | `6db6168400d309f33c0d791d9c2787ede8e61f7c` |
-| Issue #61 combined runner | issue-owned | `0f4b3023f8aa8dde116584501f29555059936320` |
+| Issue #61 combined runner | issue-owned | `0f4b302c4ce7014edab6c70f5df9da2256cb02f0` |
 
 The #76 security-document conflict retained #40's upload status as satisfied
 for Community and partial for hosted deployment, then added #76's browser
