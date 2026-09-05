@@ -89,11 +89,11 @@ interface ChildExit {
 }
 
 /**
- * Runs a parser below a Linux `prlimit --as` address-space ceiling. This is a
- * process-level RLIMIT_AS limit inherited by descendants, not a cgroup limit.
- * It limits virtual address space and can make runtimes with large reservations
- * fail earlier than their resident-memory use suggests. Production callers
- * fail closed when the configured `prlimit` executable is unavailable.
+ * Runs a parser below Linux `prlimit` address-space and CPU-time ceilings.
+ * These process limits are inherited by descendants and are not cgroup limits.
+ * RLIMIT_AS can make runtimes with large reservations fail earlier than their
+ * resident-memory use suggests. Production callers fail closed when the
+ * configured `prlimit` executable is unavailable.
  */
 export class IsolatedParserRunner {
   private readonly options: Required<IsolatedParserRunnerOptions>;
@@ -152,8 +152,13 @@ export class IsolatedParserRunner {
         command.environment,
         command.allowedEnvironmentKeys,
       );
+      const cpuLimitSeconds = Math.max(
+        1,
+        Math.ceil(this.options.foregroundTimeoutMilliseconds / 1_000),
+      );
       const childArguments = [
         `--as=${String(this.options.memoryLimitBytes)}:${String(this.options.memoryLimitBytes)}`,
+        `--cpu=${String(cpuLimitSeconds)}:${String(cpuLimitSeconds)}`,
         "--",
         command.executable,
         ...argumentsWithStaging,

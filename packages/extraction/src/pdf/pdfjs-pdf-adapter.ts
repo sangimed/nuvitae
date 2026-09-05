@@ -10,6 +10,7 @@ import type {
   PdfSafetyReasonCode,
   PdfTextItem,
 } from "../adapters.js";
+import { documentExtractionSecurityLimits } from "../adapters.js";
 import type { PDFDocumentProxy } from "pdfjs-dist/types/src/display/api.js";
 import {
   ExtractionOperationError,
@@ -79,6 +80,7 @@ export class PdfJsPdfAdapter
           validatePageCount(pdf.numPages, this.limits.maximumPageCount);
           const result: PdfPageText[] = [];
           let readingOrder = 0;
+          let extractedCharacters = 0;
 
           for (
             let pageNumber = 1;
@@ -101,6 +103,13 @@ export class PdfJsPdfAdapter
                 }
                 const transform = candidate.transform;
                 const itemIndex = items.length;
+                extractedCharacters += candidate.str.length;
+                if (
+                  readingOrder + 1 > this.maximumTextItemCount() ||
+                  extractedCharacters > this.maximumExtractedTextCharacters()
+                ) {
+                  throw new ExtractionOperationError("resource_limit");
+                }
                 items.push(
                   Object.freeze({
                     text: normalizePdfText(candidate.str),
@@ -140,6 +149,13 @@ export class PdfJsPdfAdapter
               for (const annotation of httpAnnotations) {
                 if (existingText.has(annotation.url)) continue;
                 const itemIndex = items.length;
+                extractedCharacters += annotation.url.length;
+                if (
+                  readingOrder + 1 > this.maximumTextItemCount() ||
+                  extractedCharacters > this.maximumExtractedTextCharacters()
+                ) {
+                  throw new ExtractionOperationError("resource_limit");
+                }
                 items.push(
                   Object.freeze({
                     text: annotation.url,
@@ -191,14 +207,35 @@ export class PdfJsPdfAdapter
   }
 
   private validateStructuralSafety(source: Uint8Array): void {
-    const inspection = inspectPdfStructuralSafety(source);
+    const inspection = inspectPdfStructuralSafety(
+      source,
+      this.limits.maximumObjectCount ??
+        documentExtractionSecurityLimits.maximumPdfObjectCount,
+    );
     if (inspection.safe) return;
+    if (inspection.failure === "resource_limit") {
+      throw new ExtractionOperationError("resource_limit");
+    }
     if (inspection.failure === "malformed_pdf") {
       throw new ExtractionOperationError("malformed");
     }
     throw new ExtractionOperationError(
       "unsupported",
       inspection.reasonCode ?? "pdf_unclassified_action",
+    );
+  }
+
+  private maximumTextItemCount(): number {
+    return (
+      this.limits.maximumTextItemCount ??
+      documentExtractionSecurityLimits.maximumPdfTextItemCount
+    );
+  }
+
+  private maximumExtractedTextCharacters(): number {
+    return (
+      this.limits.maximumExtractedTextCharacters ??
+      documentExtractionSecurityLimits.maximumExtractedTextCharacters
     );
   }
 
@@ -277,11 +314,19 @@ export class PdfJsPdfAdapter
 }
 
 function validateLimits(limits: PdfExtractionLimits): void {
+  const optionalLimits = [
+    limits.maximumObjectCount,
+    limits.maximumTextItemCount,
+    limits.maximumExtractedTextCharacters,
+  ].filter((value): value is number => value !== undefined);
   if (
     !Number.isSafeInteger(limits.maximumFileSizeBytes) ||
     limits.maximumFileSizeBytes <= 0 ||
     !Number.isSafeInteger(limits.maximumPageCount) ||
-    limits.maximumPageCount <= 0
+    limits.maximumPageCount <= 0 ||
+    optionalLimits.some(
+      (value) => !Number.isSafeInteger(value) || value <= 0,
+    )
   ) {
     throw new TypeError("PDF extraction limits must be positive integers.");
   }

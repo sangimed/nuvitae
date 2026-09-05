@@ -496,12 +496,48 @@ function prepareUpload(
       "Upload a PDF or DOCX resume with matching file details.",
     );
   }
+  if (!hasExpectedFileSignature(input.content, format)) {
+    throw new StartImportHttpError(
+      415,
+      "file_type_mismatch",
+      "The file contents do not match the selected PDF or DOCX format.",
+    );
+  }
   return {
     visibleFilename: capVisibleFilename(filename),
     format,
     contentType,
     sizeBytes,
   };
+}
+
+function hasExpectedFileSignature(
+  content: Uint8Array,
+  format: SupportedDocumentFormat,
+): boolean {
+  if (format === "docx") {
+    return (
+      content.byteLength >= 4 &&
+      content[0] === 0x50 &&
+      content[1] === 0x4b &&
+      content[2] === 0x03 &&
+      content[3] === 0x04
+    );
+  }
+
+  const headerWindow = content.subarray(0, Math.min(content.byteLength, 1_024));
+  for (let index = 0; index <= headerWindow.byteLength - 5; index += 1) {
+    if (
+      headerWindow[index] === 0x25 &&
+      headerWindow[index + 1] === 0x50 &&
+      headerWindow[index + 2] === 0x44 &&
+      headerWindow[index + 3] === 0x46 &&
+      headerWindow[index + 4] === 0x2d
+    ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function normalizeVisibleFilename(value: string): string {
@@ -575,6 +611,7 @@ function uploadRejectionCategory(
   error: unknown,
 ):
   | "unsupported_format"
+  | "file_type_mismatch"
   | "empty_file"
   | "oversized_file"
   | "unsafe_upload_metadata" {
@@ -582,6 +619,8 @@ function uploadRejectionCategory(
     switch (error.code) {
       case "unsupported_format":
         return "unsupported_format";
+      case "file_type_mismatch":
+        return "file_type_mismatch";
       case "empty_file":
         return "empty_file";
       case "oversized_file":

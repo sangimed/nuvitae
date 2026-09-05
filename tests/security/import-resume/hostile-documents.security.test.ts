@@ -835,8 +835,8 @@ describe("hostile-document security suite (T066)", () => {
     });
   });
 
-  describe("safety.ts integration - adapter text scanning", () => {
-    it("DOCX adapter rejects visible script-like text in w:t elements", async () => {
+  describe("sink-based visible-text handling", () => {
+    it("DOCX adapter keeps visible script-like text inert as resume data", async () => {
       const bytes = await buildDocx({
         documentXml: documentXml(
           paragraphXml(
@@ -848,7 +848,10 @@ describe("hostile-document security suite (T066)", () => {
         syntheticSourceReader(bytes),
         normalDocxLimits,
       ).extractText(docxRequest());
-      expect(result.ok).toBe(false);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value[0]?.runs[0]?.text).toContain("/JAVASCRIPT");
+      }
     });
 
     it("DOCX adapter accepts safe visible text with structural checks passing", async () => {
@@ -891,7 +894,7 @@ describe("hostile-document security suite (T066)", () => {
       expect(result.ok).toBe(true);
     });
 
-    it("DOCX adapter rejects entity expansion text in visible content", async () => {
+    it("DOCX adapter treats entity-looking visible text as inert data", async () => {
       const bytes = await buildDocx({
         documentXml: documentXml(
           paragraphXml(
@@ -903,7 +906,10 @@ describe("hostile-document security suite (T066)", () => {
         syntheticSourceReader(bytes),
         normalDocxLimits,
       ).extractText(docxRequest());
-      expect(result.ok).toBe(false);
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value[0]?.runs[0]?.text).toContain("%xxe;");
+      }
     });
 
     it("DOCX adapter still extracts valid text alongside hostile field instructions", async () => {

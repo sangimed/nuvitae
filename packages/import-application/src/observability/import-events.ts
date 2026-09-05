@@ -483,6 +483,7 @@ const reviewOperationTypes = [
 
 const uploadRejectionCategories = [
   "unsupported_format",
+  "file_type_mismatch",
   "empty_file",
   "oversized_file",
   "unsafe_upload_metadata",

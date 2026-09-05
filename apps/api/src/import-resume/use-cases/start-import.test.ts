@@ -44,7 +44,7 @@ describe("StartImportService", () => {
         ownerUserId,
         visibleFilename: filename,
         contentType,
-        content: Buffer.from("synthetic resume bytes"),
+        content: uploadBytes(expectedFormat),
       });
 
       expect(response).toMatchObject({
@@ -66,7 +66,7 @@ describe("StartImportService", () => {
         visibleFilename: filename,
         contentType,
         fileExtension: expectedFormat,
-        sizeBytes: Buffer.byteLength("synthetic resume bytes"),
+        sizeBytes: uploadBytes(expectedFormat).byteLength,
         uploadStatus: "uploaded",
         validationStatus: "not_started",
         processingStatus: "not_started",
@@ -102,7 +102,7 @@ describe("StartImportService", () => {
       ownerUserId,
       visibleFilename: `C:\\client\\folder\\${longStem}.pdf`,
       contentType: "application/pdf",
-      content: Buffer.from("pdf"),
+      content: uploadBytes("pdf"),
     });
 
     const document = createdDocument(harness);
@@ -168,6 +168,30 @@ describe("StartImportService", () => {
       expect(harness.storage.writeObject).not.toHaveBeenCalled();
     }
   });
+
+  it.each([
+    ["resume.pdf", "application/pdf", uploadBytes("docx")],
+    ["resume.docx", docxContentType, uploadBytes("pdf")],
+    ["resume.pdf", "application/pdf", Buffer.from("not a document")],
+  ])(
+    "rejects %s when its bytes disagree with accepted metadata",
+    async (visibleFilename, contentType, content) => {
+      const harness = createHarness();
+      await expect(
+        harness.service.start({
+          ownerUserId,
+          visibleFilename,
+          contentType,
+          content,
+        }),
+      ).rejects.toMatchObject({ status: 415, code: "file_type_mismatch" });
+      expect(harness.storage.writeObject).not.toHaveBeenCalled();
+      expect(harness.logger.emit).toHaveBeenCalledWith(
+        "import.upload_rejected",
+        { errorCategory: "file_type_mismatch" },
+      );
+    },
+  );
 
   it("returns rate limiting with retry timing and fails closed on unavailable state", async () => {
     const denied: ImportReservationResult = {
@@ -333,7 +357,7 @@ describe("StartImportService", () => {
         ownerUserId,
         visibleFilename: "Candidate Resume.pdf",
         contentType: "application/pdf",
-        content: Buffer.from("top secret resume content"),
+        content: Buffer.from("%PDF-1.7\ntop secret resume content"),
       });
     } catch (caught) {
       error = caught;
@@ -482,8 +506,14 @@ function startPdf(service: StartImportService) {
     ownerUserId,
     visibleFilename: "resume.pdf",
     contentType: "application/pdf",
-    content: Buffer.from("same synthetic file"),
+    content: uploadBytes("pdf"),
   });
+}
+
+function uploadBytes(format: "pdf" | "docx"): Buffer {
+  return format === "pdf"
+    ? Buffer.from("%PDF-1.7\nsynthetic resume bytes", "ascii")
+    : Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00]);
 }
 
 function createdDocument(

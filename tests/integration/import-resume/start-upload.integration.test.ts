@@ -28,7 +28,6 @@ describe("authenticated background import start", () => {
       const response = await postFile(harness.baseUrl, {
         filename: `resume.${extension}`,
         contentType,
-        content: "synthetic parser-capable fixture",
       });
 
       expect(response.status).toBe(201);

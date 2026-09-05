@@ -337,7 +337,7 @@ describe("privacy-safe import logging (T068)", () => {
       const form = new FormData();
       form.append(
         "file",
-        new Blob([new TextEncoder().encode(sentinels.fullResume)], {
+        new Blob([new TextEncoder().encode(`%PDF-1.7\n${sentinels.fullResume}`)], {
           type: "application/pdf",
         }),
         sentinels.filename,
@@ -398,7 +398,7 @@ describe("privacy-safe import logging (T068)", () => {
       const form = new FormData();
       form.append(
         "file",
-        new Blob([new TextEncoder().encode(sentinels.fullResume)], {
+        new Blob([new TextEncoder().encode(`%PDF-1.7\n${sentinels.fullResume}`)], {
           type: "application/pdf",
         }),
         sentinels.filename,
@@ -424,7 +424,7 @@ describe("privacy-safe import logging (T068)", () => {
       const form = new FormData();
       form.append(
         "file",
-        new Blob([new TextEncoder().encode(sentinels.fullResume)], {
+        new Blob([new TextEncoder().encode(`%PDF-1.7\n${sentinels.fullResume}`)], {
           type: "application/pdf",
         }),
         sentinels.filename,
@@ -460,7 +460,7 @@ describe("privacy-safe import logging (T068)", () => {
       const form = new FormData();
       form.append(
         "file",
-        new Blob([new TextEncoder().encode(sentinels.fullResume)], {
+        new Blob([new TextEncoder().encode(`%PDF-1.7\n${sentinels.fullResume}`)], {
           type: "application/pdf",
         }),
         sentinels.filename,

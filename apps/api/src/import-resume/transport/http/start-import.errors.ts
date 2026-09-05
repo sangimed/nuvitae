@@ -6,6 +6,7 @@ export type StartImportPublicErrorCode =
   | "queued_job_limit_reached"
   | "processing_start_denied"
   | "unsupported_format"
+  | "file_type_mismatch"
   | "empty_file"
   | "unsafe_upload_metadata"
   | "oversized_file"

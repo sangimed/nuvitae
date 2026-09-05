@@ -291,9 +291,10 @@ export const resumeImportFixtureSpecs: readonly ResumeFixtureSpec[] = (
     layout: layouts[entry.id] ?? "ats_one_column",
     profile,
     complexity:
-      entry.expectedFailureCategory === undefined
-        ? "intermediate"
-        : "adversarial",
+      entry.expectedFailureCategory !== undefined ||
+      entry.expectedWarnings.includes("unsafe")
+        ? "adversarial"
+        : "intermediate",
     mutation: mutations[entry.id] ?? "none",
     rendererVersion: resumeImportRendererVersion,
     outputPath: entry.futurePath,

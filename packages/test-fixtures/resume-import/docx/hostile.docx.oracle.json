@@ -32,8 +32,11 @@
       "projects": ["Open Atlas — offline-first planning toolkit"]
     },
     "expectedWarnings": ["unsafe"],
-    "expectedEligibility": "ineligible",
-    "expectedFailureCategory": "unsafe_content",
-    "provenance": { "sourceLocationRequired": false }
+    "expectedEligibility": "eligible",
+    "provenance": {
+      "sourceLocationRequired": true,
+      "docxPackagePartLocation": true,
+      "docxParagraphRunLocation": true
+    }
   }
 }

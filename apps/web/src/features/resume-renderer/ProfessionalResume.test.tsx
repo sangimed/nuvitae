@@ -192,4 +192,20 @@ describe("professional resume renderer", () => {
     expect(markup).toContain("Portfolio");
     expect(markup).not.toContain("href=");
   });
+
+  it("renders uploaded HTML-looking text as escaped inert content", () => {
+    const markup = renderToStaticMarkup(
+      <ProfessionalResume
+        model={createResumeRenderingModel({
+          ...blankResume(),
+          summary: value('<script>alert("resume")</script>'),
+        })}
+      />,
+    );
+
+    expect(markup).toContain(
+      "&lt;script&gt;alert(&quot;resume&quot;)&lt;/script&gt;",
+    );
+    expect(markup).not.toContain("<script>");
+  });
 });

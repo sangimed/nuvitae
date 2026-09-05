@@ -12,6 +12,7 @@ import type {
   ExtractionResult,
   ExtractionSourceReader,
 } from "../adapters.js";
+import { documentExtractionSecurityLimits } from "../adapters.js";
 import {
   ExtractionOperationError,
   categoryFromUnknown,
@@ -19,17 +20,6 @@ import {
   succeeded,
   throwIfAborted,
 } from "../extraction-failures.js";
-import { scanTextForHostileContent } from "../safety.js";
-
-const structuralDangerCategories = new Set([
-  "script",
-  "macro",
-  "ole_object",
-  "entity_expansion",
-  "path_traversal",
-  "launch_action",
-  "embedded_file",
-]);
 
 const contentTypesPart = "[Content_Types].xml";
 const rootRelationshipsPart = "_rels/.rels";
@@ -99,13 +89,6 @@ export class OoxmlDocxAdapter implements DocxDeterministicTextExtractor {
         throw new ExtractionOperationError("corrupted");
       }
       const result = parseDocumentXml(documentXml, this.limits);
-      const allText = result
-        .flatMap((paragraph) => paragraph.runs.map((run) => run.text))
-        .join(" ");
-      const hostile = scanTextForHostileContent(allText);
-      if (hostile.some((cat) => structuralDangerCategories.has(cat))) {
-        throw new ExtractionOperationError("unsupported");
-      }
       return succeeded(Object.freeze(result));
     } catch (error) {
       return failed(mapDocxFailure(error, request.abortSignal));
@@ -180,7 +163,10 @@ async function readPackage(
         ) {
           throw new ExtractionOperationError("unsupported");
         }
-        if (securitySensitiveParts.has(lowerName)) {
+        if (
+          securitySensitiveParts.has(lowerName) ||
+          lowerName.endsWith(".rels")
+        ) {
           if (seenSensitive.has(lowerName)) {
             throw new ExtractionOperationError("malformed");
           }
@@ -189,7 +175,8 @@ async function readPackage(
 
         if (
           !entry.fileName.endsWith("/") &&
-          collectedParts.has(entry.fileName)
+          (collectedParts.has(entry.fileName) ||
+            entry.fileName.toLowerCase().endsWith(".rels"))
         ) {
           const content = await readEntry(zip, entry, limits, signal);
           result.set(entry.fileName, content);
@@ -348,11 +335,39 @@ function validateDocxPackage(
   if (documentRelationships !== undefined) {
     validateXmlComplexity(documentRelationships, limits.maximumXmlDepth);
     try {
-      // Parse for structural safety only. External relationships (including
-      // hyperlinks, templates and images) are never dereferenced.
+      // Parse for structural safety only. Hyperlinks remain inert; other
+      // external targets are rejected below before rendered-page conversion.
       parser.parse(documentRelationships);
     } catch {
       throw new ExtractionOperationError("malformed");
+    }
+  }
+
+  for (const [partName, relationshipXml] of parts) {
+    if (!partName.toLowerCase().endsWith(".rels")) continue;
+    validateNoAutomaticallyDereferencedRelationship(relationshipXml, parser);
+  }
+}
+
+function validateNoAutomaticallyDereferencedRelationship(
+  xml: string,
+  parser: XMLParser,
+): void {
+  let parsed: unknown;
+  try {
+    parsed = parser.parse(xml);
+  } catch {
+    throw new ExtractionOperationError("malformed");
+  }
+  const relationships = toArray(
+    record(record(parsed).Relationships).Relationship,
+  ).map(record);
+  for (const relationship of relationships) {
+    if (
+      relationship.TargetMode === "External" &&
+      !String(relationship.Type ?? "").endsWith("/hyperlink")
+    ) {
+      throw new ExtractionOperationError("unsupported");
     }
   }
 }
@@ -367,6 +382,11 @@ interface TraversalState {
   tableIndex: number;
   paragraphReadingOrder: number;
   runReadingOrder: number;
+  parsedTextRunCount: number;
+  extractedTextCharacters: number;
+  readonly maximumParagraphCount: number;
+  readonly maximumTextRunCount: number;
+  readonly maximumExtractedTextCharacters: number;
   readonly paragraphs: DocxParagraph[];
 }
 interface TableContext {
@@ -403,6 +423,17 @@ function parseDocumentXml(
     tableIndex: 0,
     paragraphReadingOrder: 0,
     runReadingOrder: 0,
+    parsedTextRunCount: 0,
+    extractedTextCharacters: 0,
+    maximumParagraphCount:
+      limits.maximumParagraphCount ??
+      documentExtractionSecurityLimits.maximumDocxParagraphCount,
+    maximumTextRunCount:
+      limits.maximumTextRunCount ??
+      documentExtractionSecurityLimits.maximumDocxTextRunCount,
+    maximumExtractedTextCharacters:
+      limits.maximumExtractedTextCharacters ??
+      documentExtractionSecurityLimits.maximumExtractedTextCharacters,
     paragraphs: [],
   };
   const documentNode = findChild(parsed, "document");
@@ -469,6 +500,9 @@ function emitParagraph(
   state: TraversalState,
   context?: TableContext,
 ): void {
+  if (state.paragraphIndex + 1 > state.maximumParagraphCount) {
+    throw new ExtractionOperationError("resource_limit");
+  }
   const paragraphIndex = state.paragraphIndex;
   state.paragraphIndex += 1;
   let runIndex = 0;
@@ -476,11 +510,21 @@ function emitParagraph(
   const runs: DocxTextRun[] = [];
 
   walkRunContainers(nodes, (runNode) => {
+    state.parsedTextRunCount += 1;
+    if (state.parsedTextRunCount > state.maximumTextRunCount) {
+      throw new ExtractionOperationError("resource_limit");
+    }
     const text = textFromRun(runNode);
     const currentRunIndex = runIndex;
     runIndex += 1;
     if (text.length === 0) {
       return;
+    }
+    state.extractedTextCharacters += text.length;
+    if (
+      state.extractedTextCharacters > state.maximumExtractedTextCharacters
+    ) {
+      throw new ExtractionOperationError("resource_limit");
     }
     const provenance: DocxRunProvenance = Object.freeze({
       kind: "docx_run",
@@ -622,7 +666,9 @@ function record(value: unknown): Record<string, unknown> {
 }
 
 function validateLimits(limits: DocxExtractionLimits): void {
-  const values = Object.values(limits);
+  const values = Object.values(limits).filter(
+    (value): value is number => value !== undefined,
+  );
   if (
     values.some(
       (value) =>

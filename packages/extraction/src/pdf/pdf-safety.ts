@@ -7,7 +7,10 @@ export type PdfSafetyInspection =
   | { readonly safe: true }
   | {
       readonly safe: false;
-      readonly failure: "malformed_pdf" | "unsafe_active_content";
+      readonly failure:
+        | "malformed_pdf"
+        | "unsafe_active_content"
+        | "resource_limit";
       readonly reasonCode?: PdfSafetyReasonCode;
     };
 
@@ -34,6 +37,7 @@ type PdfValue =
 interface TokenizationResult {
   readonly tokens: readonly Token[];
   readonly malformed: boolean;
+  readonly resourceLimitExceeded: boolean;
 }
 
 const activeContentNames = new Set([
@@ -61,6 +65,7 @@ const embeddedFileNames = new Set([
 ]);
 
 const richMediaNames = new Set(["RichMedia", "Movie", "Sound", "3D"]);
+const maximumPdfSyntaxTokenCount = 1_000_000;
 
 /**
  * Inspects only PDF dictionary tokens. It deliberately ignores strings and
@@ -70,13 +75,23 @@ const richMediaNames = new Set(["RichMedia", "Movie", "Sound", "3D"]);
  */
 export function inspectPdfStructuralSafety(
   source: Uint8Array,
+  maximumObjectCount = 50_000,
 ): PdfSafetyInspection {
-  const tokenized = tokenize(source);
+  if (!Number.isSafeInteger(maximumObjectCount) || maximumObjectCount <= 0) {
+    return { safe: false, failure: "resource_limit" };
+  }
+  const tokenized = tokenize(source, maximumPdfSyntaxTokenCount);
+  if (tokenized.resourceLimitExceeded) {
+    return { safe: false, failure: "resource_limit" };
+  }
   if (tokenized.malformed) {
     return { safe: false, failure: "malformed_pdf" };
   }
 
-  const parsed = parsePdfTokens(tokenized.tokens);
+  const parsed = parsePdfTokens(tokenized.tokens, maximumObjectCount);
+  if (parsed.resourceLimitExceeded) {
+    return { safe: false, failure: "resource_limit" };
+  }
   if (parsed.malformed) {
     return { safe: false, failure: "malformed_pdf" };
   }
@@ -309,18 +324,29 @@ function resolveValue(
   return resolveValue(target, objects, seen);
 }
 
-function parsePdfTokens(tokens: readonly Token[]): {
+function parsePdfTokens(tokens: readonly Token[], maximumObjectCount: number): {
   readonly dictionaries: readonly PdfDictionary[];
   readonly objects: ReadonlyMap<string, PdfValue>;
   readonly malformed: boolean;
+  readonly resourceLimitExceeded: boolean;
 } {
   const parser = new TokenParser(tokens);
   const dictionaries: PdfDictionary[] = [];
   const objects = new Map<string, PdfValue>();
   let malformed = false;
+  let objectCount = 0;
 
   while (!parser.done()) {
     if (parser.isObjectHeader()) {
+      objectCount += 1;
+      if (objectCount > maximumObjectCount) {
+        return {
+          dictionaries,
+          objects,
+          malformed: false,
+          resourceLimitExceeded: true,
+        };
+      }
       const objectId = parser.objectId();
       const value = parser.parseValue();
       if (value === undefined) {
@@ -339,7 +365,12 @@ function parsePdfTokens(tokens: readonly Token[]): {
     if (value.kind === "dictionary") dictionaries.push(value.value);
   }
 
-  return { dictionaries, objects, malformed };
+  return {
+    dictionaries,
+    objects,
+    malformed,
+    resourceLimitExceeded: false,
+  };
 }
 
 class TokenParser {
@@ -436,11 +467,17 @@ class TokenParser {
   }
 }
 
-function tokenize(source: Uint8Array): TokenizationResult {
+function tokenize(
+  source: Uint8Array,
+  maximumTokenCount: number,
+): TokenizationResult {
   const tokens: Token[] = [];
   let index = 0;
   let malformed = false;
   while (index < source.length) {
+    if (tokens.length >= maximumTokenCount) {
+      return { tokens, malformed: false, resourceLimitExceeded: true };
+    }
     const byte = source[index];
     if (isWhitespace(byte)) {
       index += 1;
@@ -511,7 +548,7 @@ function tokenize(source: Uint8Array): TokenizationResult {
     tokens.push({ kind: "word", value: word.value });
     index = word.index;
   }
-  return { tokens, malformed };
+  return { tokens, malformed, resourceLimitExceeded: false };
 }
 
 function readName(

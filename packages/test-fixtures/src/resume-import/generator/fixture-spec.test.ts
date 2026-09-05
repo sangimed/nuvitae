@@ -24,6 +24,9 @@ describe("deterministic resume-import fixture specs", () => {
       if (spec.oracle.expectedFailureCategory !== undefined) {
         expect(spec.complexity).toBe("adversarial");
       }
+      if (spec.oracle.expectedWarnings.includes("unsafe")) {
+        expect(spec.complexity).toBe("adversarial");
+      }
     }
   });
 

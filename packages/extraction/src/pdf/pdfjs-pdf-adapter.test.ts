@@ -160,6 +160,34 @@ describe("PdfJsPdfAdapter", () => {
     });
   });
 
+  it("enforces PDF object and extracted-text limits", async () => {
+    const bytes = await buildPdf({ pages: [["first", "second"]] });
+    const objectLimited = new PdfJsPdfAdapter(readerFor({ source: bytes }), {
+      maximumFileSizeBytes: bytes.byteLength,
+      maximumPageCount: 5,
+      maximumObjectCount: 1,
+    });
+    const itemLimited = new PdfJsPdfAdapter(readerFor({ source: bytes }), {
+      maximumFileSizeBytes: bytes.byteLength,
+      maximumPageCount: 5,
+      maximumTextItemCount: 1,
+    });
+    const textLimited = new PdfJsPdfAdapter(readerFor({ source: bytes }), {
+      maximumFileSizeBytes: bytes.byteLength,
+      maximumPageCount: 5,
+      maximumExtractedTextCharacters: 3,
+    });
+
+    for (const adapter of [objectLimited, itemLimited, textLimited]) {
+      await expect(
+        adapter.extractSelectableText(request("source")),
+      ).resolves.toMatchObject({
+        ok: false,
+        error: { category: "resource_limit" },
+      });
+    }
+  });
+
   it("honours cancellation and remains reusable after PDF.js cleanup", async () => {
     const bytes = await buildPdf({ pages: [["Synthetic"]] });
     const controller = new AbortController();

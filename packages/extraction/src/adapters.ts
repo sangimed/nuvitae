@@ -59,6 +59,9 @@ export interface ExtractionSourceReader {
 export interface PdfExtractionLimits {
   readonly maximumFileSizeBytes: number;
   readonly maximumPageCount: number;
+  readonly maximumObjectCount?: number;
+  readonly maximumTextItemCount?: number;
+  readonly maximumExtractedTextCharacters?: number;
 }
 
 export interface DocxExtractionLimits {
@@ -68,7 +71,18 @@ export interface DocxExtractionLimits {
   readonly maximumTotalUncompressedSizeBytes: number;
   readonly maximumCompressionRatio: number;
   readonly maximumXmlDepth: number;
+  readonly maximumParagraphCount?: number;
+  readonly maximumTextRunCount?: number;
+  readonly maximumExtractedTextCharacters?: number;
 }
+
+export const documentExtractionSecurityLimits = Object.freeze({
+  maximumPdfObjectCount: 50_000,
+  maximumPdfTextItemCount: 20_000,
+  maximumDocxParagraphCount: 10_000,
+  maximumDocxTextRunCount: 20_000,
+  maximumExtractedTextCharacters: 120_000,
+});
 
 export interface PdfBoundingBox {
   readonly x: number;

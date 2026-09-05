@@ -269,7 +269,11 @@ export async function postFile(
 ): Promise<Response> {
   const form = new FormData();
   if (options.includeFile !== false) {
-    const content = options.content ?? "synthetic resume bytes";
+    const filename = options.filename ?? "resume.pdf";
+    const content = options.content ??
+      (filename.toLowerCase().endsWith(".docx")
+        ? new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00])
+        : "%PDF-1.7\nsynthetic resume bytes");
     form.append(
       "file",
       new Blob(
@@ -282,7 +286,7 @@ export async function postFile(
           type: options.contentType ?? "application/pdf",
         },
       ),
-      options.filename ?? "resume.pdf",
+      filename,
     );
   }
   if (options.secondFile === true) {

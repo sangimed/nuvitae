@@ -848,7 +848,7 @@ describe("authorization isolation across the resume-import lifecycle", () => {
       const form = new FormData();
       form.append(
         "file",
-        new Blob([new TextEncoder().encode(sentinels.content)], {
+        new Blob([new TextEncoder().encode(`%PDF-1.7\n${sentinels.content}`)], {
           type: "application/pdf",
         }),
         sentinels.filename,
