@@ -28,7 +28,7 @@ Statuses:
 | Relevant ASVS requirements | Status | Evidence and decision |
 | --- | --- | --- |
 | V1.1.2; V1.2.1–V1.2.5; V1.3.1–V1.3.3, V1.3.6–V1.3.7 | satisfied for implemented sinks | React text escaping; `ProfessionalResume.safeWebUrl`; parameterized TypeORM and `$1` SQL; parser `spawn` uses fixed argument arrays and `shell:false`; no `dangerouslySetInnerHTML`, `eval`, or dynamic templates found. New sinks remain review triggers. |
-| V1.5.1–V1.5.2 | partial | DOCX package allowlists, bounded ZIP/XML parsing, schema-validated queue/provider JSON. Detailed parser/XXE/deserialization isolation remains #40. |
+| V1.5.1–V1.5.2 | satisfied for Community; hosted partial | DOCX package allowlists, bounded ZIP/XML/text parsing with entities disabled, PDF object/text limits, and schema-validated queue/provider JSON. Hosted requires the separately isolated parser runtime documented in `upload-security.md`. |
 | V2.2.1–V2.2.3 | satisfied | Strict Zod request/job/provider schemas, UUID parsing/validation, bounded arrays/text, multipart field/file limits, and server-side validation independent of browser constraints. |
 | V2.3.1–V2.3.4 | satisfied for current import/resume flows | Domain transition checks, review revisions, operation IDs, pessimistic locks, transactions and idempotent confirmation/discard behavior have unit/integration/security coverage. Billing is a future requirement. |
 | V2.4.1; V15.1.3; V15.2.2 | partial | Per-owner rolling upload, active/queued import limits; worker concurrency 1; parser/provider/DB time/size limits. Missing deployment-wide quotas/resources and broader endpoint/login/provider cost controls. |
@@ -36,7 +36,7 @@ Statuses:
 | V3.4.1–V3.4.6 | missing | `poweredByHeader:false` is set, but no CSP, HSTS, `nosniff`, `Referrer-Policy`, or `frame-ancestors` configuration/tests exist. Deployment-aware remediation is P1 before hosted release. |
 | V3.5.1–V3.5.3 | partial | SameSite=Strict and same-origin `/api` provide current Community CSRF boundary; mutations use unsafe HTTP verbs appropriately. Hosted auth must explicitly choose Origin/Fetch Metadata or anti-forgery-token controls and test proxy behavior. |
 | V4.1.1–V4.1.3; V4.2.1 | partial | Nest/Next set typed responses and no user identity is read from forwarding headers. Reverse-proxy/TLS/request-smuggling assumptions are not defined for hosted deployment. |
-| V5.1.1; V5.2.1–V5.2.3; V5.3.1–V5.3.2 | partial | PDF/DOCX only, 10 MiB upload bound, structural/signature checks, DOCX entry/uncompressed/ratio limits, generated private keys and no public source route. #40 owns the complete upload catalogue, scanner/CDR decision and stronger parser isolation. |
+| V5.1.1; V5.2.1–V5.2.3; V5.3.1–V5.3.2 | satisfied for Community; hosted partial | `upload-security.md` inventories the sole upload route and absent future routes. PDF/DOCX extension, MIME and signature must agree; structural, byte/page/text/object/ZIP/XML/process limits, generated private keys, retention deletion, and no public source route are enforced. Malware and dedicated parser isolation remain explicit hosted release decisions. |
 | V5.4.1–V5.4.3 | not currently applicable / future requirement | The application does not serve uploaded source files. Any future source download must set a server-controlled encoded filename and implement #40's malware decision. Browser print-to-PDF renders canonical text safely. |
 | V6.2.*; V6.4.* | not currently applicable | User passwords, registration and recovery are not implemented. The Community operator secret is a generated deployment secret, not a user password product. |
 | V6.3.1 | partial | Community authentication has constant-time secret comparison and an eight-failure/15-minute in-process throttle. Hosted distributed anti-automation and recovery are future P1 requirements. |
@@ -146,7 +146,7 @@ silently ignored and do not make normal feedback unusably noisy.
 - **Queue/worker:** malformed/mismatched-owner payloads, duplicate delivery,
   deterministic IDs, poison/final failure, retry bounds, stuck-job recovery and
   sensitive payload absence.
-- **Upload/parser/AI:** #40 hostile binary corpus, decompression/resources,
+- **Upload/parser/AI:** the #37 hostile binary corpus, decompression/resources,
   external-reference denial, no-shell isolation, prompt-injection fixtures,
   untrusted provider output and credential non-disclosure.
 - **Container/config:** Compose validation, non-root user, mount/port/secret

@@ -85,6 +85,8 @@ and source-deletion execution tracked by issue #57.
 
 - [Threat model](threat-model.md) — assets, trust boundaries, attackers, and
   abuse cases.
+- [Upload security boundary](upload-security.md) — complete upload inventory,
+  parser/resource controls, safe-sink evidence, and Community/hosted decisions.
 - [Security invariants](security-invariants.md) — non-negotiable engineering
   properties and security-sensitive change review.
 - [Verification baseline](verification-baseline.md) — ASVS, SAMM, SSDF,
@@ -96,9 +98,9 @@ and source-deletion execution tracked by issue #57.
 
 ## Related scope
 
-- GitHub issue #40 owns detailed hostile-upload, parser-isolation, malware/CDR,
-  and upload prompt-injection hardening. This audit consumes, but does not
-  duplicate, that scope.
+- The upload security boundary records the implementation and deployment
+  decisions completed through GitHub issue #40. Hosted parser separation and
+  scanner operations remain release gates documented there.
 - Issue #28 owns the broader MkDocs developer/architecture site. These security
   pages should become its security section rather than be copied.
 - Issues #24 and #59 own observability architecture and privacy-safe metrics.

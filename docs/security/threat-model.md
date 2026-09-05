@@ -70,7 +70,7 @@ operator ──▶ Community configuration, TLS/reverse proxy, backups and updat
 | API ↔ queue                  | API publisher is trusted to create the envelope          | Queue can be replayed or tampered with after compromise; worker validates schema and re-authorizes resource owner                         |
 | Queue ↔ worker               | Authenticated network location only                      | Treat payload as untrusted; deterministic job IDs, idempotent transitions, bounded attempts and opaque failures                           |
 | Worker ↔ private storage     | Owner-qualified database aggregate                       | Never accept arbitrary host paths; verify key and keep parser environment free of storage/provider secrets                                |
-| Worker ↔ parser              | Fixed executable and argument arrays                     | Hostile file bytes/text; filtered environment, no shell, tmp confinement, memory/time/output limits; #40 owns stronger isolation decision |
+| Worker ↔ parser              | Fixed executable and argument arrays                     | Hostile file bytes/text; signature/structure/text/object bounds, filtered environment, no shell, tmp confinement, CPU/memory/time/output limits; hosted parsing requires a separate no-secret/no-network runtime |
 | Worker ↔ provider adapter    | Provider-neutral capability contract                     | Minimized source data; no raw storage path; explicit instruction/data separation; bounded request/response                                |
 | Provider ↔ external service  | TLS endpoint allowlist and scoped token                  | Service/output/metadata may be malicious or unavailable; no tools; strict schema, grounding, failure categories and review                |
 | Containers ↔ runtime         | Pinned image tag and Compose topology                    | Host kernel/network/volume are privileged boundaries; non-root, least mounts/secrets, resource/egress controls and patching               |
@@ -85,7 +85,8 @@ operator ──▶ Community configuration, TLS/reverse proxy, backups and updat
   connection.
 - A malicious upload or extracted instruction attempting parser exploitation,
   resource exhaustion, prompt injection, SSRF, log/shell/HTML/SQL injection, or
-  public storage exposure. Detailed controls remain in #40.
+  public storage exposure. Detailed controls and hosted gates are in the upload
+  security boundary.
 - A compromised direct/transitive dependency, base image, package registry,
   build action, or CI credential.
 - A leaked session, OAuth token, provider refresh token, database/queue secret,
@@ -109,7 +110,7 @@ operator ──▶ Community configuration, TLS/reverse proxy, backups and updat
 | Repudiation            | Dispute a security-sensitive action                               | Correlation IDs and bounded lifecycle events exist                                                                 | #24 must define security event retention, access and alerting without PII                 |
 | Information disclosure | Guess an ID, read source/provider token, leak through logs/cache  | Opaque not-found, private storage, encrypted sessions, response schemas, privacy logger                            | Add browser no-store policy; define hosted backup/log/secret lifecycle                    |
 | Denial of service      | Flood login/import/provider/parser/queue                          | Community login throttling, import rolling/queue limits, worker concurrency, parser/provider/DB bounds             | Add deployment-wide/global quotas, resource limits and stuck/poison-job operations        |
-| Elevation of privilege | Provider output or uploaded text becomes executable/authoritative | No provider tools, strict canonicalization/grounding/review; safe SQL/React/process sinks                          | Keep #40 isolation work and require untrusted-output tests for #56 and future AI features |
+| Elevation of privilege | Provider output or uploaded text becomes executable/authoritative | No provider tools, strict canonicalization/grounding/review; safe SQL/React/process sinks                          | Isolate hosted parsers and require untrusted-output tests for every future AI feature |
 
 ## Security invariants derived from the model
 

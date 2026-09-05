@@ -351,6 +351,12 @@ Supported uploads in this slice:
 - 5 rendered pages maximum.
 - Selectable text required; scanned or image-only documents are not supported.
 
+The server requires filename extension, declared MIME type, and PDF/DOCX binary
+signature agreement before private persistence. The complete upload inventory,
+resource ceilings, parser-isolation posture, and Community/hosted malware, CDR,
+and moderation decisions are documented in
+[`docs/security/upload-security.md`](docs/security/upload-security.md).
+
 The web client uploads only after an explicit submit action, sends one
 multipart `file` field without setting the multipart boundary manually, and does
 not store source bytes in URLs, browser storage, cookies, analytics, or logs.
@@ -483,8 +489,9 @@ rejected because OCR is not implemented.
 DOCX text extraction treats Office Open XML as an untrusted ZIP package. It
 streams only recognized package parts, validates the main document content type
 and relationship, rejects traversal, encryption, macros, malformed structures,
-and configured ZIP/XML resource limits, and never dereferences external
-relationships. Provenance uses `word/document.xml`, zero-based paragraph,
+external non-hyperlink relationships, and configured ZIP/XML/text resource
+limits, and never dereferences external relationships. Provenance uses
+`word/document.xml`, zero-based paragraph,
 table, row, cell, and run indexes, zero-based character offsets, and global
 reading order. Rendered coordinates are not promised for DOCX.
 
@@ -500,10 +507,10 @@ network service or Docker-socket access.
 External parser commands run without a shell and without inheriting the full
 environment. The parent enforces the three-minute timeout, terminates the
 detached process group with `SIGTERM` followed by `SIGKILL`, and bounds stdout
-and stderr independently without returning them in public failures. The 512 MiB
-limit uses Linux `prlimit --as`, inherited by descendants. This is a
-process-level `RLIMIT_AS` virtual-address-space limit, not a cgroup resident
-memory limit; the runner fails closed when `prlimit` is unavailable.
+and stderr independently without returning them in public failures. Linux
+`prlimit` enforces 180-second CPU and 512 MiB address-space limits inherited by
+descendants. These are process-level limits, not cgroup resident-memory limits;
+the runner fails closed when `prlimit` is unavailable.
 
 Parser output is written to a unique staging directory and atomically renamed
 only after successful exit, confinement checks, expected-output validation, and
