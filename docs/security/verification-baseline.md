@@ -56,8 +56,8 @@ Statuses:
 | V14.1.1–V14.1.2 | satisfied as documentation, implementation partial | `overview.md` classifies data and required handling. Source/provider/session handling is strong; hosted database/backups/log access/deletion controls are incomplete. |
 | V14.2.1–V14.2.4 | partial | Secrets are not in URLs; no third-party analytics; provider request is minimized but includes resume data by feature purpose. User disclosure/provider retention settings and hosted backup controls remain required. |
 | V14.3.1–V14.3.3 | satisfied for current browser/session storage behavior | Session is HttpOnly and no browser storage use exists. All pages and API responses are explicitly `Cache-Control: no-store`; static framework assets retain immutable caching. Logout revokes/expires the session cookie and clears HTTP cache with narrowly scoped `Clear-Site-Data`. |
-| V15.1.1–V15.1.2; V15.2.1 | partial | Exact dependency pins, lockfile, frozen installs, controlled pnpm build scripts and this remediation policy exist. No automated vulnerability/update cadence or release SBOM exists. |
-| V15.2.3 | partial | Multi-stage non-root runtime images omit source/dev dependencies and production Swagger is disabled; image vulnerability/configuration scanning is absent. |
+| V15.1.1–V15.1.2; V15.2.1 | partial | Exact dependency pins, lockfile, frozen installs, controlled pnpm build scripts, blocking high/critical production audit fallback, reviewed weekly updates, and remediation policy exist. Native dependency graph/review settings and release SBOM remain owner/release gates. |
+| V15.2.3 | partial | Multi-stage non-root runtime images omit source/dev dependencies, production Swagger is disabled, and scheduled Trivy covers actual web/API/worker images and Dockerfiles; Compose validates every active topology because Trivy does not parse Compose YAML. First hosted execution/triage is pending. |
 | V15.3.1–V15.3.7 | satisfied for reviewed current paths | Public response schemas, fixed provider URLs/redirect policy, strict request schemas, TypeScript/Zod, bounded query extraction and no observed mass assignment. Future outbound fetch and proxy headers are review triggers. |
 | V16.1.1; V16.2.1–V16.2.2 | partial | Closed structured event schemas and correlation/timing metadata exist. Stack-wide destination/access/retention/time-sync inventory belongs to #24. |
 | V16.2.5; V16.4.1; V16.5.1–V16.5.3 | satisfied for import/provider paths | Privacy logger deny-by-default metadata, control/multiline bounds, generic errors, provider-neutral categories and sentinel security tests. Nest bootstrap/default errors outside covered filters need scheduled verification. |
@@ -71,8 +71,8 @@ The target is risk reduction, not an arbitrary maturity score.
 | --- | --- | --- |
 | Governance | Security issue backlog, this policy and priorities; no standing metrics/ownership cadence | Assign a security owner for each release, review P1 gates and vulnerability SLA monthly, and record accepted risk expiry |
 | Design | Asset/trust-boundary model, architecture invariants, upload/provider research | Require threat-model delta and abuse cases for auth, billing, uploads, providers and public network changes |
-| Implementation | Strict types/contracts, safe sinks, locked dependencies, agent rules | Add dependency-diff review, secret prevention, CodeQL and dependency update automation with narrow policy |
-| Verification | Strong authorization/upload/parser/provider privacy tests; local Docker checks | Add browser-header/config tests, security CI layers, scheduled scans and a pre-release ASVS subset; targeted DAST only after production-like auth exists |
+| Implementation | Strict types/contracts, safe sinks, locked dependencies, reviewed weekly updates, Gitleaks fallback and CodeQL workflow | Enable available native GitHub dependency/secret settings and replace, rather than overlap, fallbacks after verification |
+| Verification | Strong authorization/upload/parser/provider privacy tests; fail-closed security workflow contracts; scheduled CodeQL and Trivy configuration | Complete first hosted scanner runs/triage, add browser-header/config tests and a pre-release ASVS subset; targeted DAST only after production-like auth exists |
 | Operations | Health checks and privacy-safe events; no hosted operations | Define patch/credential rotation, log access/retention, backup restore security, security alerts and incident runbook before hosting |
 
 ## NIST SSDF v1.1 alignment
@@ -80,7 +80,7 @@ The target is risk reduction, not an arbitrary maturity score.
 | SSDF practice | Current/decided application |
 | --- | --- |
 | Prepare the Organization (PO) | `AGENTS.md`, security invariants, vulnerability roles/SLA and review triggers establish responsibilities. Branch protection and maintainer ownership remain repository settings to verify. |
-| Protect the Software (PS) | Private repository today, minimal Actions permissions, ignored secret files and locked dependencies. Add secret scanning/push protection, protected release credentials, artifact provenance and maintainer access review. |
+| Protect the Software (PS) | Private repository, least-privilege workflow files, ignored secret files, Gitleaks fallback, locked/reviewed dependencies and CODEOWNERS exist. Native push protection, enforced maintainer review, protected future release credentials and artifact provenance remain owner/release gates. |
 | Produce Well-Secured Software (PW) | Threat modelling, safe boundary patterns, negative tests, dependency justification, reviewed migrations and Docker reproducibility are required. |
 | Respond to Vulnerabilities (RV) | `vulnerability-management.md` defines intake, triage, remediation, disclosure and lessons learned; automation and a verified private intake channel remain follow-up. |
 
@@ -91,12 +91,12 @@ finalized; it does not replace v1.1 in this baseline.
 
 | Control | Decision | Placement and policy |
 | --- | --- | --- |
-| Dependency updates | Adopt Dependabot for pnpm and GitHub Actions after the security workflow lands; group compatible low-risk updates, never auto-merge high-risk updates | PRs; weekly cadence; review lockfile, release notes and tests |
-| Dependency review | Adopt GitHub Dependency Review if available to this repository plan; otherwise produce an equivalent lockfile diff/advisory report | PR; block newly introduced known critical/high vulnerabilities unless narrowly accepted |
-| Package audit | Use `pnpm audit` as a scheduled/ad-hoc signal, not the only gate; registry advisories can be incomplete or unavailable | Scheduled/default branch and incident triage; record reachable impact |
-| SAST | Adopt CodeQL's maintained JavaScript/TypeScript queries first. Add Semgrep only for a specific uncovered Nuvitae rule; do not duplicate generic scanning | PR differential findings plus scheduled full scan; block high-confidence critical/high |
-| Secret scanning | Enable GitHub secret scanning/push protection when plan/settings permit; add Gitleaks CI only if native coverage is unavailable or local history scanning is required | Push/PR and scheduled history review; verified secrets trigger immediate revocation, never merely deletion from the latest commit |
-| Containers/config | Use Trivy for built web/API/worker images and Compose/Dockerfile misconfiguration; one scanner is sufficient initially | Scheduled/default branch and pre-release; critical/high reachable findings follow SLA |
+| Dependency updates | Dependabot covers pnpm and GitHub Actions; compatible minor/patch updates are grouped, major updates remain separate, and none auto-merge | PRs; weekly cadence; CODEOWNERS/reviewer request covers lockfile, native-build policy, release notes and tests; repository ruleset must enforce review |
+| Dependency review | The private personal repository does not currently expose native Dependency Review; the canonical quality matrix uses `pnpm audit --prod --audit-level high` as a whole-lockfile fallback | PR/default branch; replace the fallback with native differential review if the owner enables and verifies support; do not run both |
+| Package audit | The quality workflow blocks high/critical production advisories; registry advisories can be incomplete and scanner severity still requires reachability triage | PR/default branch and incident triage; record reachable impact and narrow accepted risk |
+| SAST | CodeQL maintained JavaScript/TypeScript default queries run on PR, default branch, schedule and dispatch. Add Semgrep only for a specific uncovered Nuvitae rule | GitHub Code Security and a high/critical merge-protection rule remain owner settings; do not expose secrets or use `pull_request_target` for fork code |
+| Secret scanning | Gitleaks default rules plus a harmless deterministic control marker provide the fallback because native settings were not observable | Push/PR and scheduled history review; owner should enable/test native scanning and push protection, then remove overlapping fallback; real secrets require immediate revocation |
+| Containers/config | Scheduled/manual Trivy scans built web/API/worker Compose images and Dockerfiles with high/critical blocking; `docker compose config --quiet` validates all active topology combinations because Trivy 0.74 does not recognize Compose YAML | Saturday/default branch and pre-release; findings follow the SLA, and any suppression requires scoped owner/evidence/expiry |
 | SBOM | Generate CycloneDX or SPDX for hosted release images when distribution automation exists | Pre-release artifact; retain with release |
 | Provenance/signing | Defer signing/attestation until hosted image/release publishing exists, then use GitHub OIDC/keyless provenance rather than long-lived signing keys | Release workflow only |
 | Install scripts | Keep pnpm `allowBuilds` explicit; review every change. Current allowed native builds are `msgpackr-extract` and `sharp`; `@scarf/scarf` is denied | Lockfile/workspace review and CI frozen install |
@@ -109,7 +109,7 @@ local / pre-commit
 
 pull request
   frozen install + quality gates (#44)
-  secret scan / dependency diff / CodeQL differential
+  Gitleaks / blocking production dependency audit / CodeQL differential
   security unit and integration tests selected by changed boundary
   build and Compose configuration validation
 

@@ -1,0 +1,22 @@
+# Exact historical false-positive fingerprints reviewed for issue #75.
+# Owner: @sangimed. Review on Gitleaks generic-api-key rule changes or when any
+# named file's purpose changes. These suppress only the listed commit/path/rule/
+# line tuples; they do not suppress future findings in the same paths.
+#
+# SHA-256 fixture checksum (not a credential).
+aad96320f7182a25411403abc84cfa0ae3e0b694:packages/test-fixtures/resume-import/checksums.json:generic-api-key:12
+1c53e85869100c0df2da9c05e4ae360c7847c8ad:packages/test-fixtures/resume-import/checksums.json:generic-api-key:12
+# Historical authorization evidence containing Dockerfile SHA-256 checksums.
+a3b02ca90fc6468962cd239645954a329325fc21:.codex/import-resume-issue-25-authorizations.json:generic-api-key:36
+306b3bf508e002c53a131af2d5fbc86d0d41bfb3:.codex/import-resume-issue-25-authorizations.json:generic-api-key:102
+# Synthetic opaque authentication subject in unit tests.
+b0f5b667c01bc9df1814c22280f82d07856e3757:apps/api/src/auth/user-context.test.ts:generic-api-key:24
+b0f5b667c01bc9df1814c22280f82d07856e3757:apps/api/src/auth/user-context.test.ts:generic-api-key:33
+3528e96c4941c61e289550bc1a18230134ad71f2:apps/api/src/auth/user-context.test.ts:generic-api-key:24
+3528e96c4941c61e289550bc1a18230134ad71f2:apps/api/src/auth/user-context.test.ts:generic-api-key:33
+# Explicitly synthetic storage signing value in unit tests.
+b0f5b667c01bc9df1814c22280f82d07856e3757:packages/storage/src/private-import-storage.test.ts:generic-api-key:16
+3528e96c4941c61e289550bc1a18230134ad71f2:packages/storage/src/private-import-storage.test.ts:generic-api-key:16
+# Version-pinned Valkey image references (not API keys).
+cbc899d6de311b59527079ae5f9022447f357fb1:README.md:generic-api-key:32
+cbc899d6de311b59527079ae5f9022447f357fb1:compose.yml:generic-api-key:151

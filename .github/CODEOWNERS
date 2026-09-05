@@ -1,0 +1,11 @@
+# Supply-chain changes need explicit maintainer review. Enforcement still
+# requires the repository owner to enable code-owner review on the main branch.
+/package.json @sangimed
+/pnpm-lock.yaml @sangimed
+/pnpm-workspace.yaml @sangimed
+/apps/*/package.json @sangimed
+/packages/*/package.json @sangimed
+/.github/dependabot.yml @sangimed
+/.github/workflows/ @sangimed
+/compose*.yml @sangimed
+/docker/ @sangimed

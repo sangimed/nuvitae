@@ -1,0 +1,13 @@
+title = "Nuvitae secret scanning"
+
+[extend]
+useDefault = true
+
+# This is a non-secret marker used only by the architecture contract test and
+# deliberate CI dry runs. It proves the repository configuration is loaded
+# without placing credential-shaped material in source control.
+[[rules]]
+id = "nuvitae-harmless-test-marker"
+description = "Deterministic non-secret CI test marker"
+regex = '''NUVITAE_GITLEAKS_TEST_MARKER=[A-Z0-9]{16}'''
+keywords = ["NUVITAE_GITLEAKS_TEST_MARKER"]

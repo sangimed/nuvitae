@@ -93,6 +93,8 @@ and source-deletion execution tracked by issue #57.
   OpenAPI, logout, HSTS, and authoritative layer ownership.
 - [Verification baseline](verification-baseline.md) — ASVS, SAMM, SSDF,
   supply-chain, CI, and testing decisions.
+- [Security automation](automation.md) — implemented workflow controls,
+  GitHub capability audit, local reproduction, and owner-managed settings.
 - [Vulnerability management](vulnerability-management.md) — triage,
   remediation, disclosure, and release response.
 - [31 August 2026 audit](audit-2026-08.md) — implementation evidence,

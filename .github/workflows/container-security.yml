@@ -1,0 +1,85 @@
+name: Container security
+
+on:
+  schedule:
+    - cron: "41 4 * * 6"
+  workflow_dispatch:
+
+concurrency:
+  group: container-security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  configuration:
+    name: Dockerfile configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Scan Dockerfiles
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: docker
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
+  compose:
+    name: Compose (${{ matrix.topology }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - topology: default
+            files: -f compose.yml
+          - topology: development
+            files: -f compose.yml -f compose.dev.yml
+          - topology: local-play
+            files: -f compose.yml -f compose.local.yml
+          - topology: quality
+            files: -f compose.yml -f .github/compose.quality.yml
+    env:
+      NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET: ci-container-storage-signing-secret
+      NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET: ci-container-provider-session-encryption-secret
+      NUVITAE_COMMUNITY_ACCESS_SECRET: ci-container-community-access-secret
+      NUVITAE_COMMUNITY_COOKIE_SECURE: "false"
+      QUALITY_PNPM_STORE: /tmp/nuvitae-quality-pnpm-store
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Validate the ${{ matrix.topology }} topology
+        run: docker compose ${{ matrix.files }} config --quiet
+
+  images:
+    name: Image (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: web
+            image: nuvitae-web:0.1.0
+          - service: api
+            image: nuvitae-api:0.1.0
+          - service: worker
+            image: nuvitae-worker:0.1.0
+    env:
+      NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET: ci-container-storage-signing-secret
+      NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET: ci-container-provider-session-encryption-secret
+      NUVITAE_COMMUNITY_ACCESS_SECRET: ci-container-community-access-secret
+      NUVITAE_COMMUNITY_COOKIE_SECURE: "false"
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Build the Compose ${{ matrix.service }} image
+        run: docker compose build ${{ matrix.service }}
+      - name: Scan the ${{ matrix.service }} runtime image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ matrix.image }}
+          format: table
+          severity: HIGH,CRITICAL
+          exit-code: "1"
