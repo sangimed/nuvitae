@@ -4,6 +4,99 @@ This is the execution record and reproducible checklist for issue #61. It is a
 final integration gate, not a substitute for completing its dependencies. A
 passing subset must never be reported as **READY**.
 
+## Final execution record — 5 September 2026
+
+**Verdict: NOT READY.** The integrated implementation is materially more
+complete, but the required Docker-first and bounded real-provider evidence was
+not demonstrated. This decision is based on executed evidence, not on whether
+the implementation appears likely to work.
+
+The validated integration candidate was
+`0f4b3023f8aa8dde116584501f29555059936320`; the following documentation-only
+issue #61 result commit records the outcome.
+
+### Integrated commits
+
+| Scope | Parent/source equivalent | Local integrated commit |
+| --- | --- | --- |
+| Issue #61 prep | `add1cec` | `97979cdc0f7ae378cd2b55854a187fc40cee2c72` |
+| Issue #40 implementation | `1b08741` | `7ccba103de94858582153f480673c6c6cb30c18a` |
+| Issue #40 security decision | `dd042f1` | `94080241d7eb5fabca384d24a20d6f8c0b24608f` |
+| Issue #76 | `1cb932a` | `f594845de508d96102ff64272d082ca26b0d7a6c` |
+| Issue #75 | `7ca8c45` | `fc756469885425f1d5f9578434eb6186463445e9` |
+| Issue #58 | `0ff7b33` | `03893921d363074abe1a104f2804df8219c83c21` |
+| Issue #60 | `1434c09` | `6db6168400d309f33c0d791d9c2787ede8e61f7c` |
+| Issue #61 combined runner | issue-owned | `0f4b3023f8aa8dde116584501f29555059936320` |
+
+The #76 security-document conflict retained #40's upload status as satisfied
+for Community and partial for hosted deployment, then added #76's browser
+policy, API/page no-store, narrowly scoped logout cache clearing, HSTS ownership,
+and production OpenAPI suppression. The #75 conflict retained that #76 V14.3
+statement, added #75's V15 automation, and records production Swagger as
+disabled. Issue #60 was applied after and against #58 as required.
+
+### Evidence
+
+| Gate | Result | Exact evidence |
+| --- | --- | --- |
+| Patch integration | PASS | Five supplied patch files applied in the required order; only the documented #76/#75 security-document overlaps needed semantic resolution. |
+| Combined source hygiene | PASS | `git diff --check 4e258cb727fd71caa2dd54141c6f082163deadee` exited 0. |
+| Shell syntax | PASS | `bash -n`/`sh -n` passed for all 7 repository shell scripts. |
+| Documentation links | PASS | All relative Markdown links resolved across README and 59 files under `docs/`. |
+| Security-baseline merge | PASS | Static assertions found #40's two Community/hosted rows, #76's satisfied V14.3 row, and #75's Trivy/V15 row with production Swagger disabled; stale contradictory phrases were absent. |
+| #40 source-orb checks | PASS (limited) | Static/diff checks passed; Docker-backed hostile parser/upload checks were not executed because Compose was unavailable. |
+| #76 source-orb checks | BLOCKED | Static checks passed, but required built-container/browser checks and the report-only CSP trial did not execute. |
+| #75 source-orb checks | PASS (limited) | Actionlint, Gitleaks history/control-marker, Trivy config scan of 5 Dockerfiles, and diff/patch scans passed. Image build/scan and hosted workflows did not execute. |
+| #58 source-orb checks | PASS (limited) | Web typecheck, targeted ESLint, and 22 focused Vitest tests passed. Desktop/mobile rendered verification did not execute because the Docker daemon failed. |
+| #60 source-orb checks | PASS (limited) | Link, anchor, label-source, and diff checks passed; runtime Docker verification did not execute. |
+| Combined Docker gate | BLOCKED | The single attempt of `scripts/community-alpha-deterministic-gate.sh` exited 1 immediately with `Docker Compose is required.` The Compose plugin is unavailable and daemon access is denied in this orb. No phase was retried. |
+| Clean Community installation | NOT RUN | No Docker runtime was available, so first boot, migrations, service health, network exposure, and restart persistence were not demonstrated. |
+| Normal owner access/session | NOT RUN | Signed-out behavior, sign-in, refresh persistence, cookie policy, logout revocation, and no-store behavior were not exercised against a running Community stack. |
+| Codex connection/recovery | NOT RUN | No device authorization occurred and no real connection survived refresh/restart in this candidate. |
+| Bounded real install-to-PDF journey | NOT RUN | No real resume/provider invocation occurred. Review, editor/live preview, one contextual proposal, PDF, save/reopen, and source deletion were therefore not demonstrated end to end. |
+| Current-candidate deterministic journey | BLOCKED | The runner includes deterministic PDF/DOCX import-to-PDF/reopen, mocked Codex recovery UI, enforced/report-only response policy, parser isolation, persistence and security suites, but Docker prevented their execution on the combined candidate. |
+| Privacy budget | PASS | No resume content, token, device code, prompt, provider response, or provider secret was used or recorded; real-provider invocation count was zero. |
+
+PyYAML was unavailable, so an extra host YAML parse was `NOT RUN`. Actionlint,
+Gitleaks, and Trivy were also unavailable in this orb; only the explicitly
+reported source-orb results above are carried forward. Host pnpm commands were
+not substituted for the repository-required Docker workflow.
+
+### Release blockers
+
+1. **Combined runtime evidence is absent.** A Docker-capable environment must run
+   the complete deterministic gate successfully, including persistence,
+   hostile-upload/parser, authorization/privacy, #58 browser journeys, #76 CSP
+   report-only and enforcement modes, PDF fidelity, and image/dependency checks.
+2. **The required clean Community journey is absent.** A fresh isolated Compose
+   project must prove normal first access/session, one bounded Codex connection
+   and recovery, one approved real import, review/confirmation, editor/preview,
+   one contextual proposal review, PDF export, save/reopen, and source deletion.
+   The fixed budget remains one authorization, one import/semantic attempt, and
+   one proposal; a failure is recorded without retry.
+3. **Issue #75 owner-managed controls are unverified.** The repository owner must
+   verify or enable read-only Actions defaults, required quality/security checks
+   and CODEOWNERS review, CodeQL blocking policy, dependency/native secret
+   controls (without duplicate fallbacks), and a monitored private
+   vulnerability-reporting route. The first hosted CodeQL/Trivy image runs and
+   triage must also be observed rather than inferred from workflow files.
+4. **Rendered UX and response-policy evidence is absent.** The #58 desktop/mobile
+   critical states and #76 built-image CSP/font/print/cache behavior have source
+   tests but no successful rendered run from either the source or integration
+   orb.
+
+### Known limitations
+
+- Community remains loopback-only HTTP. HSTS and a supported reverse-proxy/TLS
+  topology are intentionally hosted concerns, not Community blockers.
+- Malware scanning and a separately deployed no-secret/no-network parser are
+  documented hosted requirements; Community uses the bounded isolated parser
+  subprocess and local scanner decision documented by #40.
+- There is no image publication workflow, so release SBOM and keyless
+  provenance remain deferred until real release artifacts exist.
+- The repository's older Local Play capability list is not release evidence;
+  only successful current-candidate commands may close the blockers above.
+
 ## Evidence rules
 
 - Run from a clean checkout of the exact candidate commit using the repository's
@@ -31,21 +124,20 @@ overlapping implementation on `main` is not completion evidence.
 | Input | Required evidence | Baseline audit on 2026-09-05 |
 | --- | --- | --- |
 | Candidate | exact SHA; clean `git status --short` | starting `main`: `4e258cb727fd71caa2dd54141c6f082163deadee` |
-| #58 onboarding/journey states | integrated SHA; desktop/mobile and accessibility evidence for critical states | issue open; prerequisite not yet supplied |
-| #40 hostile-upload boundary | integrated SHA; deterministic hostile corpus, resource/isolation and prompt-injection evidence; documented scanner/CDR decisions | issue open; prerequisite not yet supplied |
-| #75 supply-chain verification | integrated SHA; quality coordination, blocking security checks and private intake evidence applicable to Community distribution | issue open; prerequisite not yet supplied |
-| #76 browser response policy | integrated SHA; built-container policy checks for public, authenticated, error, static and API responses | issue open; prerequisite not yet supplied |
-| #60 Community user guide | integrated SHA; guidance verified against the shipped journey and privacy behavior | issue open; prerequisite not yet supplied |
+| #58 onboarding/journey states | integrated SHA; desktop/mobile and accessibility evidence for critical states | integrated; source checks limited and combined runtime blocked |
+| #40 hostile-upload boundary | integrated SHA; deterministic hostile corpus, resource/isolation and prompt-injection evidence; documented scanner/CDR decisions | integrated; decisions/static checks present and combined runtime blocked |
+| #75 supply-chain verification | integrated SHA; quality coordination, blocking security checks and private intake evidence applicable to Community distribution | integrated; source scanner evidence limited and owner gates remain |
+| #76 browser response policy | integrated SHA; built-container policy checks for public, authenticated, error, static and API responses | integrated; built-container/report-only execution blocked |
+| #60 Community user guide | integrated SHA; guidance verified against the shipped journey and privacy behavior | integrated; static checks passed and runtime blocked |
 
 Also record the already-required issue #61 foundations: #54 (deterministic
 import-to-PDF fidelity), #55 (save/reopen), #56 (reviewable contextual AI), and
 #57 (safe source deletion). They are closed on the baseline, but their tests
 must still pass in the integrated candidate.
 
-Do not begin the final decision run until all five pending dependency patches or
-commits have been semantically integrated and their acceptance evidence is
-available. If a dependency is intentionally excluded, record that as a release
-blocker rather than silently narrowing this gate.
+All five dependency patches were semantically integrated for the final execution
+record above. Future reruns must still verify their acceptance behavior together;
+integration alone is not a pass.
 
 ## Phase A — deterministic combined gate
 
@@ -186,5 +278,6 @@ The only final outcomes are:
   its evidence, owner, and required remediation. Do not rerun provider actions
   while waiting for fixes.
 
-Until the integrated dependency commits arrive and this complete checklist is
-executed, the issue #61 verdict is **deferred**, not READY or NOT READY.
+The 5 September 2026 execution record above is **NOT READY**. A later run may
+replace that verdict only after the blockers are resolved and the complete
+checklist is executed again without exceeding the provider budget.
