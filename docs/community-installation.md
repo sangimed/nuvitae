@@ -110,12 +110,16 @@ Sign out action to end its browser session.
 
 ## First use
 
-After owner sign-in, choose **Create a resume manually** for a blank draft, or
-**Import an existing resume**. The import flow contains the Codex connection and
-status entrypoint; it does not mean Codex is connected already. Selecting
-**Connect Codex** opens OpenAI's secure device page and shows a one-time code.
-No localhost URL editing is required. This guide does not perform an upload,
-sign-in, or provider invocation.
+After owner sign-in, choose **Create a resume** for a blank draft, or **Import a
+resume**. The import flow checks Codex connection status before offering the
+appropriate connection action; it does not mean Codex is connected already.
+Selecting **Connect Codex** opens OpenAI's secure device page and shows a
+one-time code. No localhost URL editing is required. This guide does not perform
+an upload, sign-in, or provider invocation.
+
+Continue with the [Community user guide](community-user-guide.md) for importing
+or manually creating a resume, review, editing, saving, privacy controls, and
+PDF export.
 
 Secure cookies are intentionally enabled for `http://localhost:3000`; validate
 that the session survives a page refresh. The cookie remains HttpOnly, Secure,

@@ -28,9 +28,11 @@ GitHub CLI, and the coding agent only.
 
 For a same-machine Community installation, use the generated configuration and
 the loopback-only Compose deployment described in
-[the Community installation guide](docs/community-installation.md). Community
-uses production authentication for one installation owner; Local Play below is
-a separate development-only mode.
+[the Community installation guide](docs/community-installation.md). After setup,
+follow the [Community user guide](docs/community-user-guide.md) from first
+sign-in through creating, reviewing, editing, saving, and exporting a resume.
+Community uses production authentication for one installation owner; Local Play
+below is a separate development-only mode.
 
 Pinned bootstrap versions:
 
