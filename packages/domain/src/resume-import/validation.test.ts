@@ -218,6 +218,16 @@ describe("resume import domain validation", () => {
       error: { code: "draft_expired" },
     });
   });
+
+  it("keeps retention an elapsed duration across the Europe/Paris DST fallback", () => {
+    const uploadedAt = new Date("2026-10-24T22:30:00.000Z");
+    const retentionExpiresAt = calculateRetentionExpiresAt(uploadedAt, 1);
+
+    expect(retentionExpiresAt.toISOString()).toBe("2026-10-25T22:30:00.000Z");
+    expect(validateRetentionDeadline(uploadedAt, retentionExpiresAt, 1).ok).toBe(
+      true,
+    );
+  });
 });
 
 function field(

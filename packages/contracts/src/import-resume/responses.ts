@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { utcInstantSchema } from "../instant.js";
 
 export const importResumeResponseSchemaVersion = "2026-07-28" as const;
 
@@ -64,7 +65,7 @@ const progressStepSchema = z.enum([
 const draftSummarySchema = z
   .object({
     draftId: uuidSchema,
-    retentionExpiresAt: z.string().datetime(),
+    retentionExpiresAt: utcInstantSchema,
     fieldCount: z.number().int().nonnegative(),
     warningCount: z.number().int().nonnegative(),
   })
@@ -75,7 +76,7 @@ export const importInitializationResponseSchema = responseBaseSchema
     status: z.literal("import_initialization"),
     importId: uuidSchema,
     uploadStatus: z.literal("uploaded"),
-    retentionExpiresAt: z.string().datetime(),
+    retentionExpiresAt: utcInstantSchema,
     manualEntryUrl: z.literal("/resumes/new/manual"),
     userMessage: plainMessageSchema,
   })
@@ -257,7 +258,7 @@ export const importExpiryResponseSchema = responseBaseSchema
   .extend({
     status: z.literal("import_expiry"),
     importId: uuidSchema,
-    expiredAt: z.string().datetime(),
+    expiredAt: utcInstantSchema,
     failure: publicFailureSchema,
   })
   .strict();

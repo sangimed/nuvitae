@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { importResumeResponseSchemaVersion } from "./import-resume/responses.js";
+import { utcInstantSchema } from "./instant.js";
 
 const uuidSchema = z.string().uuid();
-const isoDateSchema = z.string().datetime();
 const plainMessageSchema = z.string().min(1).max(500);
 
 export const contextualResumeEditActions = [
@@ -36,7 +36,7 @@ export const contextualResumeEditTargetSchema = z.discriminatedUnion("kind", [
 
 export const createContextualResumeEditProposalRequestSchema = z
   .object({
-    expectedUpdatedAt: isoDateSchema,
+    expectedUpdatedAt: utcInstantSchema,
     action: contextualResumeEditActionSchema,
     target: contextualResumeEditTargetSchema,
   })
@@ -57,7 +57,7 @@ export const contextualResumeEditProposalResponseSchema = responseBaseSchema
     target: contextualResumeEditTargetSchema,
     before: z.string().min(1).max(4_000),
     after: z.string().min(1).max(4_000),
-    generatedAt: isoDateSchema,
+    generatedAt: utcInstantSchema,
     userMessage: plainMessageSchema,
   })
   .strict();
