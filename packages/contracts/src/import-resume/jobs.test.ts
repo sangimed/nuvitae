@@ -111,6 +111,17 @@ describe("import resume job contracts", () => {
     ).toBe(false);
   });
 
+  it("rejects offset-free instants in worker payloads", () => {
+    expect(
+      importResumeJobPayloadSchema.safeParse({
+        ...base,
+        requestedAt: "2026-10-25T02:30:00.000",
+        jobType: "foreground_timeout",
+        foregroundDeadline: "2026-10-25T02:33:00.000Z",
+      }).success,
+    ).toBe(false);
+  });
+
   it("rejects raw content fields and oversized upload metadata", () => {
     expect(
       importResumeJobPayloadSchema.safeParse({

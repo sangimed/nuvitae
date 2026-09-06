@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { utcInstantSchema } from "../instant.js";
 
 export const importResumeJobSchemaVersion = "2026-07-28" as const;
 
@@ -45,7 +46,7 @@ const jobBaseSchema = z
     owner: ownerContextSchema,
     correlationId: correlationIdSchema,
     idempotencyKey: idempotencyKeySchema,
-    requestedAt: z.string().datetime(),
+    requestedAt: utcInstantSchema,
   })
   .strict();
 
@@ -53,7 +54,7 @@ const retryAttemptSchema = z
   .object({
     attemptNumber: z.number().int().min(1).max(5),
     maxAttempts: z.number().int().min(1).max(5),
-    previousAttemptStartedAt: z.string().datetime().optional(),
+    previousAttemptStartedAt: utcInstantSchema.optional(),
     previousFailureCategory: z
       .enum([
         "malformed_document",
@@ -79,8 +80,8 @@ export const documentValidationJobPayloadSchema = jobBaseSchema
     jobType: z.literal("document_validation"),
     documentFormat: z.enum(["pdf", "docx"]),
     sourceStorageKey: storageKeySchema,
-    uploadedAt: z.string().datetime(),
-    foregroundDeadline: z.string().datetime(),
+    uploadedAt: utcInstantSchema,
+    foregroundDeadline: utcInstantSchema,
     sizeBytes: z
       .number()
       .int()
@@ -94,8 +95,8 @@ export const deterministicExtractionJobPayloadSchema = jobBaseSchema
     jobType: z.literal("deterministic_extraction"),
     documentFormat: z.enum(["pdf", "docx"]),
     sourceStorageKey: storageKeySchema,
-    validationCompletedAt: z.string().datetime(),
-    foregroundDeadline: z.string().datetime(),
+    validationCompletedAt: utcInstantSchema,
+    foregroundDeadline: utcInstantSchema,
     abortTokenId: uuidSchema.optional(),
   })
   .strict();
@@ -103,7 +104,7 @@ export const deterministicExtractionJobPayloadSchema = jobBaseSchema
 export const foregroundTimeoutJobPayloadSchema = jobBaseSchema
   .extend({
     jobType: z.literal("foreground_timeout"),
-    foregroundDeadline: z.string().datetime(),
+    foregroundDeadline: utcInstantSchema,
   })
   .strict();
 
@@ -135,7 +136,7 @@ export const retryJobPayloadSchema = jobBaseSchema
       })
       .strict(),
     retry: retryAttemptSchema,
-    cooldownUntil: z.string().datetime().optional(),
+    cooldownUntil: utcInstantSchema.optional(),
   })
   .strict();
 
@@ -160,7 +161,7 @@ export const sourceArtifactDeletionJobPayloadSchema = jobBaseSchema
       "retention_deadline",
       "resource_limit_cleanup",
     ]),
-    deleteNoLaterThan: z.string().datetime(),
+    deleteNoLaterThan: utcInstantSchema,
   })
   .strict();
 

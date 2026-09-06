@@ -1,15 +1,15 @@
 import { z } from "zod";
 import { importResumeResponseSchemaVersion } from "./import-resume/responses.js";
+import { utcInstantSchema } from "./instant.js";
 
 const uuidSchema = z.string().uuid();
-const isoDateSchema = z.string().datetime();
 
 export const resumeWorkspaceItemSchema = z
   .object({
     id: uuidSchema,
     kind: z.enum(["manual_draft", "confirmed_resume"]),
     title: z.string().min(1).max(300),
-    updatedAt: isoDateSchema,
+    updatedAt: utcInstantSchema,
     editUrl: z.string().regex(/^\/resumes\/(drafts\/)?[0-9a-f-]+$/i),
     provenanceLabel: z.enum(["manual_entry", "imported_from_initial_resume"]),
   })

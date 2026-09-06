@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { utcInstantSchema } from "../instant.js";
 import { extractedValueSchema, safeProvenanceSchema } from "./review.js";
 import { importResumeResponseSchemaVersion } from "./responses.js";
 import { resumeDateSchema } from "./resume-date.js";
@@ -8,7 +9,6 @@ import {
 } from "../manual-resume.js";
 
 const uuidSchema = z.string().uuid();
-const isoDateSchema = z.string().datetime();
 const plainMessageSchema = z.string().min(1).max(500);
 
 const responseBaseSchema = z
@@ -34,8 +34,8 @@ export const confirmStructuredResumeResponseSchema = responseBaseSchema
     structuredResumeId: uuidSchema,
     confirmationStatus: z.literal("confirmed"),
     provenanceLabel: z.literal("imported_from_initial_resume"),
-    confirmedAt: isoDateSchema,
-    sourceRetentionExpiresAt: isoDateSchema,
+    confirmedAt: utcInstantSchema,
+    sourceRetentionExpiresAt: utcInstantSchema,
     resumeUrl: z.string().regex(/^\/resumes\/[0-9a-f-]+$/i),
     userMessage: plainMessageSchema,
   })
@@ -78,7 +78,7 @@ export const discardImportResponseSchema = responseBaseSchema
     status: z.literal("import_discarded"),
     importId: uuidSchema,
     draftId: uuidSchema,
-    discardedAt: isoDateSchema,
+    discardedAt: utcInstantSchema,
     deletionJobId: uuidSchema,
     deletionState: z.literal("scheduled"),
     userMessage: plainMessageSchema,
@@ -235,7 +235,7 @@ export const confirmedResumeContentSchema = z
 
 export const updateConfirmedStructuredResumeRequestSchema = z
   .object({
-    expectedUpdatedAt: isoDateSchema,
+    expectedUpdatedAt: utcInstantSchema,
     content: structuredResumeContentSchema,
   })
   .strict();
@@ -247,10 +247,10 @@ export const confirmedStructuredResumeReadResponseSchema = responseBaseSchema
     confirmationStatus: z.literal("confirmed"),
     provenanceLabel: z.literal("imported_from_initial_resume"),
     content: confirmedResumeContentSchema,
-    createdAt: isoDateSchema,
-    updatedAt: isoDateSchema,
+    createdAt: utcInstantSchema,
+    updatedAt: utcInstantSchema,
     sourceAvailability: confirmedResumeSourceAvailabilitySchema,
-    sourceRetentionExpiresAt: isoDateSchema.optional(),
+    sourceRetentionExpiresAt: utcInstantSchema.optional(),
     userMessage: plainMessageSchema,
   })
   .strict();

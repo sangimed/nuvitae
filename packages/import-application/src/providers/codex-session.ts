@@ -1,3 +1,5 @@
+import { parseOffsetAwareInstant } from "@nuvitae/contracts";
+
 /**
  * The only application-level projection of the encrypted Codex session.
  * Callers must keep this value inside the server-side provider boundary. It
@@ -28,8 +30,9 @@ export function parseCodexSessionMaterial(
   }
 
   const expiresAtValue = (parsed as { expiresAt: string | null }).expiresAt;
-  const expiresAt = expiresAtValue === null ? null : new Date(expiresAtValue);
-  if (expiresAt !== null && Number.isNaN(expiresAt.getTime())) {
+  const expiresAt =
+    expiresAtValue === null ? null : parseOffsetAwareInstant(expiresAtValue);
+  if (expiresAtValue !== null && expiresAt === null) {
     throw new Error("invalid_session_expiry");
   }
 

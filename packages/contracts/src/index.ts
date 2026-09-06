@@ -7,6 +7,7 @@ export const bootstrapHealthSchema = z.object({
 
 export type BootstrapHealth = z.infer<typeof bootstrapHealthSchema>;
 
+export * from "./instant.js";
 export * from "./import-resume/jobs.js";
 export * from "./import-resume/responses.js";
 export * from "./import-resume/review.js";

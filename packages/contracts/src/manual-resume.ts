@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { utcInstantSchema } from "./instant.js";
 import { importResumeResponseSchemaVersion } from "./import-resume/responses.js";
 import { resumeDateSchema } from "./import-resume/resume-date.js";
 
@@ -166,7 +167,7 @@ export const createManualDraftRequestSchema = z
 
 export const updateManualDraftRequestSchema = z
   .object({
-    expectedUpdatedAt: z.string().datetime(),
+    expectedUpdatedAt: utcInstantSchema,
     content: structuredResumeContentSchema,
   })
   .strict();
@@ -177,8 +178,8 @@ const manualDraftEnvelopeSchema = z
     source: z.literal("manual_entry"),
     status: z.literal("editing"),
     content: structuredResumeContentSchema,
-    createdAt: z.string().datetime(),
-    updatedAt: z.string().datetime(),
+    createdAt: utcInstantSchema,
+    updatedAt: utcInstantSchema,
   })
   .strict();
 

@@ -1,10 +1,10 @@
 import { z } from "zod";
+import { utcInstantSchema } from "../instant.js";
 import { importResumeResponseSchemaVersion } from "./responses.js";
 import { resumeDateSchema } from "./resume-date.js";
 import { maxSemanticExtractionV2SourceRefs } from "./semantic-extraction-v2.js";
 
 const uuidSchema = z.string().uuid();
-const isoDateSchema = z.string().datetime();
 const plainMessageSchema = z.string().min(1).max(500);
 const fieldPathSchema = z
   .string()
@@ -376,8 +376,8 @@ export const reviewDraftReadResponseSchema = responseBaseSchema
     draftId: uuidSchema,
     draftStatus: z.enum(["review_required", "ready_to_confirm"]),
     reviewRevision: z.number().int().nonnegative(),
-    retentionExpiresAt: isoDateSchema,
-    lastReviewedAt: isoDateSchema.optional(),
+    retentionExpiresAt: utcInstantSchema,
+    lastReviewedAt: utcInstantSchema.optional(),
     sections: z.array(groupedReviewSectionSchema),
     effectiveResume: effectiveResumeContentSchema.optional(),
     activeFieldCount: z.number().int().nonnegative(),
