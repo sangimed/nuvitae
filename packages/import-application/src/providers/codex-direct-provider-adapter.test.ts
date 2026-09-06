@@ -443,7 +443,17 @@ describe("CodexDirectProviderAdapter (semantic-extraction.v2)", () => {
     });
     expect(harness.transport.invoke).toHaveBeenCalledTimes(1);
     const invocation = harness.transport.invoke.mock.calls[0]?.[0] as
-      { readonly instructions: string; readonly inputText: string } | undefined;
+      | {
+          readonly instructions: string;
+          readonly inputText: string;
+          readonly generation: unknown;
+        }
+      | undefined;
+    expect(invocation?.generation).toEqual({
+      model: "gpt-5.6-terra",
+      reasoningEffort: "low",
+      textVerbosity: "low",
+    });
     expect(invocation?.instructions).toContain(
       "nuvitae.semantic-extraction.v2",
     );

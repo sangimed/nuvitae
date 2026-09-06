@@ -24,10 +24,7 @@ import {
   SourceDeletionService,
   type SourceDeletionRepository,
 } from "@nuvitae/import-application";
-import {
-  CodexDirectProviderAdapter,
-  type CodexModelIdentifier,
-} from "@nuvitae/import-application/codex";
+import { CodexDirectProviderAdapter } from "@nuvitae/import-application/codex";
 import type { AIProviderRuntimeConnectionsRepository } from "@nuvitae/import-application";
 import {
   TypeOrmAIProviderRuntimeConnectionsRepository,
@@ -89,12 +86,10 @@ export function createProductionSemanticParserProvider(
   repository: AIProviderRuntimeConnectionsRepository,
   sessionStore: ProviderSessionStore,
   logger?: ImportEventEmitter,
-  model?: CodexModelIdentifier,
 ): ResumeSemanticParserProvider {
   return new CodexDirectProviderAdapter({
     repository,
     sessionStore,
-    ...(model === undefined ? {} : { model }),
     ...(logger === undefined
       ? {}
       : {
@@ -134,6 +129,11 @@ export function createProductionSemanticParserProvider(
               at: new Date(timing.timestampMs),
               durationMs: timing.durationMs,
             }),
+          onEffectiveGenerationConfiguration: (configuration) =>
+            logger.emit(
+              "semantic.provider_effective_generation_configuration",
+              configuration,
+            ),
         }),
   });
 }
@@ -313,6 +313,7 @@ export const workerImportRuntimeProviders: Provider[] = [
       limits: ImportProcessingLimits,
       provider: ResumeSemanticParserProvider | undefined,
       capacity: ImportProcessingCapacityPort,
+      config: WorkerPrivateRuntimeConfig,
     ) => {
       const pdf = new PdfJsPdfAdapter(sourceReader, {
         maximumFileSizeBytes: limits.maxUploadSizeBytes + 1,
@@ -331,6 +332,7 @@ export const workerImportRuntimeProviders: Provider[] = [
         clock: { now: () => new Date() },
         logger,
         capacity,
+        semanticGenerationProfile: config.semanticGenerationProfile,
       });
     },
     inject: [
@@ -339,6 +341,7 @@ export const workerImportRuntimeProviders: Provider[] = [
       WORKER_IMPORT_PROCESSING_LIMITS,
       WORKER_SEMANTIC_PARSER_PROVIDER,
       WORKER_IMPORT_CAPACITY_PORT,
+      WORKER_PRIVATE_RUNTIME_CONFIG,
     ],
   },
 ];

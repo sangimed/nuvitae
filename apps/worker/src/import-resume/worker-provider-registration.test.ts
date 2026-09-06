@@ -47,15 +47,6 @@ describe("semantic provider registration boundaries", () => {
       sessionStore as never,
     );
     expect(provider).toBeInstanceOf(CodexDirectProviderAdapter);
-    expect((provider as CodexDirectProviderAdapter).model).toBe("gpt-5.6-sol");
-    expect(
-      createProductionSemanticParserProvider(
-        repository as never,
-        sessionStore as never,
-        undefined,
-        "gpt-5.6-terra",
-      ),
-    ).toMatchObject({ model: "gpt-5.6-terra" });
     const registration = registrationFor(
       workerImportRuntimeProviders,
       WORKER_SEMANTIC_PARSER_PROVIDER,

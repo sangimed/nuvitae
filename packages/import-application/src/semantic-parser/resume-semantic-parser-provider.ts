@@ -8,6 +8,7 @@ import type {
 import type { V2CanonicalizationResult } from "./semantic-extraction-v2-canonicalizer.js";
 
 import type { PrivacySafeSemanticProviderError } from "./provider-errors.js";
+import type { SemanticGenerationPolicy } from "./semantic-generation-policy.js";
 
 export type SemanticProviderConnectionState =
   | "not_configured"
@@ -68,6 +69,8 @@ export interface ResumeSemanticParserProvider {
 export interface ResumeSemanticParserInvocationOptions {
   readonly timeoutMs: number;
   readonly abortSignal?: AbortSignal;
+  /** Nuvitae-owned generation intent; adapters resolve native controls. */
+  readonly generationPolicy?: SemanticGenerationPolicy;
   /**
    * Trusted owner context supplied by worker orchestration. It is deliberately
    * not part of the provider-neutral request or queue payload.

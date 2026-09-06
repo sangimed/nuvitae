@@ -45,6 +45,7 @@ services:
       NUVITAE_PROVIDER_SESSION_ROOT: /var/lib/nuvitae/private/provider-sessions
       NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET: "local-play-provider-session-encryption-secret-not-for-production"
       NUVITAE_PROVIDER_SESSION_MAX_BYTES: 65536
+      NUVITAE_SEMANTIC_PROFILE: ${NUVITAE_SEMANTIC_PROFILE:-balanced}
 
   workspace:
     environment:

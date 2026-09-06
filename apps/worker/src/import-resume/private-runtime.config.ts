@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  defaultSemanticGenerationProfile,
+  semanticGenerationProfiles,
+  type SemanticGenerationProfile,
+} from "@nuvitae/import-application";
 
 export interface WorkerPrivateRuntimeConfig {
   readonly privateStorageRoot: string;
@@ -7,6 +12,7 @@ export interface WorkerPrivateRuntimeConfig {
   readonly providerSessionRoot: string;
   readonly providerSessionEncryptionSecret: string;
   readonly maxProviderSessionBytes: number;
+  readonly semanticGenerationProfile: SemanticGenerationProfile;
 }
 
 export function readWorkerPrivateRuntimeConfig(
@@ -30,6 +36,9 @@ export function readWorkerPrivateRuntimeConfig(
         .positive()
         .max(16 * 1024 * 1024)
         .default(65_536),
+      NUVITAE_SEMANTIC_PROFILE: z
+        .enum(semanticGenerationProfiles)
+        .default(defaultSemanticGenerationProfile),
     })
     .safeParse(env);
   if (!parsed.success) {
@@ -48,5 +57,6 @@ export function readWorkerPrivateRuntimeConfig(
     providerSessionEncryptionSecret:
       parsed.data.NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET,
     maxProviderSessionBytes: parsed.data.NUVITAE_PROVIDER_SESSION_MAX_BYTES,
+    semanticGenerationProfile: parsed.data.NUVITAE_SEMANTIC_PROFILE,
   };
 }

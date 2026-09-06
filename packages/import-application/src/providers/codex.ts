@@ -7,6 +7,16 @@ export {
   type CodexModelSelectionErrorCode,
 } from "./codex-model-selection.js";
 export {
+  codexDefaultGenerationConfig,
+  codexSemanticGenerationCapabilities,
+  codexSemanticModels,
+  resolveCodexSemanticGenerationConfig,
+  type CodexGenerationConfig,
+  type CodexReasoningEffort,
+  type CodexSemanticModelIdentifier,
+  type CodexTextVerbosity,
+} from "./codex-semantic-generation-config.js";
+export {
   parseCodexSessionMaterial,
   type CodexSessionMaterial,
 } from "./codex-session.js";
