@@ -252,8 +252,8 @@ importers:
         specifier: 3.4.0
         version: 3.4.0
       '@types/yazl':
-        specifier: 2.4.5
-        version: 2.4.5
+        specifier: 3.3.1
+        version: 3.3.1
       pdfkit:
         specifier: 0.17.2
         version: 0.17.2
@@ -311,8 +311,8 @@ importers:
         specifier: 0.17.3
         version: 0.17.3
       '@types/yazl':
-        specifier: 2.4.5
-        version: 2.4.5
+        specifier: 3.3.1
+        version: 3.3.1
       pdfkit:
         specifier: 0.17.2
         version: 0.17.2
@@ -1434,8 +1434,8 @@ packages:
   '@types/yauzl@3.4.0':
     resolution: {integrity: sha512-NRPn5w6h8dhcnmx3YIRQcqMywY/+nND/uOkJessedcrowO3C0AssHp3tMJpxKAwOhFOo0OV1y9VtsC5hbKKBAw==}
 
-  '@types/yazl@2.4.5':
-    resolution: {integrity: sha512-qpmPfx32HS7vlGJf7EsoM9qJnLZhXJBf1KH0hzfdc+D794rljQWh4H0I/UrZy+6Nhqn0l2jdBZXBGZtR1vnHqw==}
+  '@types/yazl@3.3.1':
+    resolution: {integrity: sha512-DIWfCKpsTp6hE5BDBHV3+fIL/bLUF9Bv13iDrWnMlmhQpH67buNvI291ZauQ1xcccxK3FqQ9honnXpq4R8NMuQ==}
 
   '@typescript-eslint/eslint-plugin@8.65.0':
     resolution: {integrity: sha512-IEgob78X12rHpUmtcwFsXhZdVGJtwTVP8FiCLZkR6GlYVrl2PcuB+KhCE5BlVC/eQpQnu8WXRtkHZuPar+gCRA==}
@@ -4972,7 +4972,7 @@ snapshots:
     dependencies:
       '@types/node': 26.1.2
 
-  '@types/yazl@2.4.5':
+  '@types/yazl@3.3.1':
     dependencies:
       '@types/node': 26.1.2
 
