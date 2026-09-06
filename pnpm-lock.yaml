@@ -97,7 +97,7 @@ importers:
         version: 11.4.6(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)
       '@nestjs/typeorm':
         specifier: 11.0.3
-        version: 11.0.3(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.28(ioredis@5.11.1(supports-color@8.1.1))(pg@8.23.0)(supports-color@8.1.1))
+        version: 11.0.3(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.28(ioredis@6.0.0(supports-color@8.1.1))(pg@8.23.0)(supports-color@8.1.1))
       '@nuvitae/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -117,8 +117,8 @@ importers:
         specifier: 5.81.2
         version: 5.81.2(supports-color@8.1.1)
       ioredis:
-        specifier: 5.11.1
-        version: 5.11.1(supports-color@8.1.1)
+        specifier: 6.0.0
+        version: 6.0.0(supports-color@8.1.1)
       pg:
         specifier: 8.23.0
         version: 8.23.0
@@ -130,7 +130,7 @@ importers:
         version: 7.8.2
       typeorm:
         specifier: 0.3.28
-        version: 0.3.28(ioredis@5.11.1(supports-color@8.1.1))(pg@8.23.0)(supports-color@8.1.1)
+        version: 0.3.28(ioredis@6.0.0(supports-color@8.1.1))(pg@8.23.0)(supports-color@8.1.1)
       zod:
         specifier: 4.5.4
         version: 4.5.4
@@ -177,7 +177,7 @@ importers:
         version: 11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/platform-express@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)
       '@nestjs/typeorm':
         specifier: 11.0.3
-        version: 11.0.3(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.28(ioredis@5.11.1(supports-color@8.1.1))(pg@8.23.0)(supports-color@8.1.1))
+        version: 11.0.3(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.28(ioredis@6.0.0(supports-color@8.1.1))(pg@8.23.0)(supports-color@8.1.1))
       '@nuvitae/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -200,8 +200,8 @@ importers:
         specifier: 5.81.2
         version: 5.81.2(supports-color@8.1.1)
       ioredis:
-        specifier: 5.11.1
-        version: 5.11.1(supports-color@8.1.1)
+        specifier: 6.0.0
+        version: 6.0.0(supports-color@8.1.1)
       pg:
         specifier: 8.23.0
         version: 8.23.0
@@ -213,7 +213,7 @@ importers:
         version: 7.8.2
       typeorm:
         specifier: 0.3.28
-        version: 0.3.28(ioredis@5.11.1(supports-color@8.1.1))(pg@8.23.0)(supports-color@8.1.1)
+        version: 0.3.28(ioredis@6.0.0(supports-color@8.1.1))(pg@8.23.0)(supports-color@8.1.1)
       zod:
         specifier: 4.5.4
         version: 4.5.4
@@ -880,6 +880,9 @@ packages:
 
   '@ioredis/commands@1.10.0':
     resolution: {integrity: sha512-UmeW7z4LfctwoQ5wkhVzgq8tXkreED2xZGpX+Bg+zA+WJFZCT6c062AfCK/Dfk81xZnnwdhJCUMkitihRaoC2Q==}
+
+  '@ioredis/commands@2.0.0':
+    resolution: {integrity: sha512-vrx0AE/T0h7cRZwfo1M39Cr+ZhZrkf0V8mQN75wucKCxCLD9l/VX6no3gFvrLqD1IlG/1LtzWovqEw3t0Vr9zg==}
 
   '@isaacs/cliui@8.0.2':
     resolution: {integrity: sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==}
@@ -2417,6 +2420,10 @@ packages:
   ioredis@5.11.1:
     resolution: {integrity: sha512-ehuGcf94bQXhfagULNXrJdfnWO38v070jxSx/qE87Kjzmu2fU7ro5EFAb+OPituLqgfyuQaym5DlrNydW2sJ9A==}
     engines: {node: '>=12.22.0'}
+
+  ioredis@6.0.0:
+    resolution: {integrity: sha512-f+Dtubxfpf6KYFq7WVXJoOLn0bk4TJrMrN9SzeE+jrWrCWj7XX3fA6vkryafhADX+GMymRxgDJDOI33COkJc0w==}
+    engines: {node: '>=20.0.0'}
 
   ipaddr.js@1.9.1:
     resolution: {integrity: sha512-0KI/607xoxSToH7GjN1FfSbLoU0+btTicjsQSWQlh/hZykN8KpmMf7uYwPW3R+akZ6R/w18ZlXSHBYXiYUPO3g==}
@@ -4529,6 +4536,8 @@ snapshots:
 
   '@ioredis/commands@1.10.0': {}
 
+  '@ioredis/commands@2.0.0': {}
+
   '@isaacs/cliui@8.0.2':
     dependencies:
       string-width: 5.1.2
@@ -4771,6 +4780,14 @@ snapshots:
       reflect-metadata: 0.2.2
       rxjs: 7.8.2
       typeorm: 0.3.28(ioredis@5.11.1(supports-color@8.1.1))(pg@8.23.0)(supports-color@8.1.1)
+
+  '@nestjs/typeorm@11.0.3(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/core@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)(typeorm@0.3.28(ioredis@6.0.0(supports-color@8.1.1))(pg@8.23.0)(supports-color@8.1.1))':
+    dependencies:
+      '@nestjs/common': 11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1)
+      '@nestjs/core': 11.1.28(@nestjs/common@11.1.28(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@8.1.1))(@nestjs/platform-express@11.1.28)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      reflect-metadata: 0.2.2
+      rxjs: 7.8.2
+      typeorm: 0.3.28(ioredis@6.0.0(supports-color@8.1.1))(pg@8.23.0)(supports-color@8.1.1)
 
   '@next/env@15.5.22': {}
 
@@ -6054,6 +6071,17 @@ snapshots:
       denque: 2.1.0
       redis-errors: 1.2.0
       redis-parser: 3.0.0
+      standard-as-callback: 2.1.0
+    transitivePeerDependencies:
+      - supports-color
+
+  ioredis@6.0.0(supports-color@8.1.1):
+    dependencies:
+      '@ioredis/commands': 2.0.0
+      cluster-key-slot: 1.1.1
+      debug: 4.4.3(supports-color@8.1.1)
+      denque: 2.1.0
+      redis-errors: 1.2.0
       standard-as-callback: 2.1.0
     transitivePeerDependencies:
       - supports-color
@@ -7441,6 +7469,30 @@ snapshots:
       yargs: 17.7.3
     optionalDependencies:
       ioredis: 5.11.1(supports-color@8.1.1)
+      pg: 8.23.0
+    transitivePeerDependencies:
+      - babel-plugin-macros
+      - supports-color
+
+  typeorm@0.3.28(ioredis@6.0.0(supports-color@8.1.1))(pg@8.23.0)(supports-color@8.1.1):
+    dependencies:
+      '@sqltools/formatter': 1.2.5
+      ansis: 4.3.1
+      app-root-path: 3.1.0
+      buffer: 6.0.3
+      dayjs: 1.11.21
+      debug: 4.4.3(supports-color@8.1.1)
+      dedent: 1.7.2
+      dotenv: 16.6.1
+      glob: 10.5.0
+      reflect-metadata: 0.2.2
+      sha.js: 2.4.12
+      sql-highlight: 6.1.0
+      tslib: 2.8.1
+      uuid: 11.1.1
+      yargs: 17.7.3
+    optionalDependencies:
+      ioredis: 6.0.0(supports-color@8.1.1)
       pg: 8.23.0
     transitivePeerDependencies:
       - babel-plugin-macros
