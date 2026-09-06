@@ -46,7 +46,7 @@ jobs:
       NUVITAE_COMMUNITY_COOKIE_SECURE: "false"
       QUALITY_PNPM_STORE: /tmp/nuvitae-quality-pnpm-store
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Restore the pnpm content-addressable store
         uses: actions/cache@v6
         with:

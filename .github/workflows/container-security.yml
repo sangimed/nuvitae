@@ -17,7 +17,7 @@ jobs:
     name: Dockerfile configuration
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Scan Dockerfiles
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -49,7 +49,7 @@ jobs:
       NUVITAE_COMMUNITY_COOKIE_SECURE: "false"
       QUALITY_PNPM_STORE: /tmp/nuvitae-quality-pnpm-store
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Validate the ${{ matrix.topology }} topology
         run: docker compose ${{ matrix.files }} config --quiet
 
@@ -72,7 +72,7 @@ jobs:
       NUVITAE_COMMUNITY_ACCESS_SECRET: ci-container-community-access-secret
       NUVITAE_COMMUNITY_COOKIE_SECURE: "false"
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Build the Compose ${{ matrix.service }} image
         run: docker compose build ${{ matrix.service }}
       - name: Scan the ${{ matrix.service }} runtime image

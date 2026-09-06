@@ -28,7 +28,7 @@ jobs:
       NUVITAE_COMMUNITY_ACCESS_SECRET: ci-design-lint-community-access-secret
       NUVITAE_COMMUNITY_COOKIE_SECURE: "false"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build the pinned workspace image
         run: docker compose build workspace
       - name: Install locked dependencies
