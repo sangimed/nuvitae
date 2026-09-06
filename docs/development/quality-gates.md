@@ -27,6 +27,13 @@ source of truth, and the repository has no concrete need for another local
 enforcement layer. Hooks can be reconsidered only if commit-time feedback
 becomes a measured problem.
 
+Knip was assessed separately in [the Knip evaluation](knip-evaluation.md). It
+targets repository reachability and manifest hygiene, which ESLint, TypeScript,
+and Prettier do not duplicate. It is intentionally not a quality gate until a
+Docker-run baseline has verified its framework and dynamic entry points against
+the current repository. This prevents CI from failing on an untriaged report or
+from encouraging unsafe automatic deletion.
+
 ## Configuration and rule scope
 
 - [`eslint.config.mjs`](../../eslint.config.mjs) is the canonical shared lint
