@@ -148,6 +148,7 @@ services:
       NUVITAE_PROVIDER_SESSION_ROOT: /var/lib/nuvitae/private/provider-sessions
       NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET: ${NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET:?NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET must be configured}
       NUVITAE_PROVIDER_SESSION_MAX_BYTES: 65536
+      NUVITAE_SEMANTIC_PROFILE: ${NUVITAE_SEMANTIC_PROFILE:-balanced}
     volumes:
       - private-storage:/var/lib/nuvitae/private
     tmpfs:

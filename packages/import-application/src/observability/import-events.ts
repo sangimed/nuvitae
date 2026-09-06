@@ -95,6 +95,13 @@ const languageCategories = [
   "unknown",
   "not_known",
 ] as const;
+const semanticGenerationProfiles = ["fast", "balanced", "quality"] as const;
+const semanticGenerationReasoningClasses = [
+  "minimal",
+  "standard",
+  "deep",
+] as const;
+const semanticGenerationOutputDetails = ["compact", "standard"] as const;
 const fileSizeBuckets = ["under_1_mib", "1_to_5_mib", "5_to_10_mib"] as const;
 const pdfSafetyReasonCodes = [
   "pdf_javascript_action",
@@ -920,6 +927,18 @@ export const importEventSchemas = {
       contractVersion: token(),
       requestContractVersion: token(true),
       responseContractVersion: token(true),
+      semanticGenerationProfile: enumOf(semanticGenerationProfiles),
+      correlationId: id(true),
+    },
+  },
+  "semantic.provider_effective_generation_configuration": {
+    level: "info",
+    fields: {
+      importId: id(),
+      requestedProfile: enumOf(semanticGenerationProfiles),
+      effectiveModel: token(),
+      effectiveReasoningClass: enumOf(semanticGenerationReasoningClasses),
+      effectiveOutputDetail: enumOf(semanticGenerationOutputDetails),
       correlationId: id(true),
     },
   },
@@ -1305,6 +1324,15 @@ export interface ImportEventMetadataMap {
     readonly contractVersion: string;
     readonly requestContractVersion?: string;
     readonly responseContractVersion?: string;
+    readonly semanticGenerationProfile: (typeof semanticGenerationProfiles)[number];
+    readonly correlationId?: string;
+  };
+  "semantic.provider_effective_generation_configuration": {
+    readonly importId: string;
+    readonly requestedProfile: (typeof semanticGenerationProfiles)[number];
+    readonly effectiveModel: string;
+    readonly effectiveReasoningClass: (typeof semanticGenerationReasoningClasses)[number];
+    readonly effectiveOutputDetail: (typeof semanticGenerationOutputDetails)[number];
     readonly correlationId?: string;
   };
   "semantic.provider_transport_timing": {

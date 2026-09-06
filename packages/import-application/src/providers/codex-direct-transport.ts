@@ -3,6 +3,10 @@ import {
   resolveCodexModelSelection,
   type CodexModelIdentifier,
 } from "./codex-model-selection.js";
+import {
+  codexDefaultGenerationConfig,
+  type CodexGenerationConfig,
+} from "./codex-semantic-generation-config.js";
 const CODEX_ENDPOINT = "https://chatgpt.com/backend-api/codex/responses";
 const CODEX_ORIGINATOR = "nuvitae";
 const CODEX_USER_AGENT = "nuvitae-codex-direct-provider/1";
@@ -29,6 +33,8 @@ export interface CodexDirectTransportRequest {
   readonly accountIdentifier: string;
   readonly instructions: string;
   readonly inputText: string;
+  /** Native settings resolved by the Codex adapter, never by orchestration. */
+  readonly generation?: CodexGenerationConfig;
   /** Connection and response-header deadline; it stops when fetch resolves. */
   readonly timeoutMs: number;
   readonly abortSignal?: AbortSignal;
@@ -318,8 +324,10 @@ export class CodexDirectTransport {
     const sessionId = randomUUID();
     const threadId = randomUUID();
     const installationId = randomUUID();
+    const generation =
+      input.generation ?? codexDefaultGenerationConfig(this.model);
     const body = {
-      model: this.model,
+      model: generation.model,
       instructions: input.instructions,
       input: [
         {
@@ -328,12 +336,12 @@ export class CodexDirectTransport {
           content: [{ type: "input_text", text: input.inputText }],
         },
       ],
-      reasoning: { effort: "low" },
+      reasoning: { effort: generation.reasoningEffort },
       store: false,
       stream: true,
       include: [],
       prompt_cache_key: sessionId,
-      text: { verbosity: "low" },
+      text: { verbosity: generation.textVerbosity },
       client_metadata: {
         "x-codex-installation-id": installationId,
         session_id: sessionId,

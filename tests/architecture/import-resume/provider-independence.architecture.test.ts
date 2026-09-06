@@ -33,6 +33,7 @@ const productionProviderEdgeFiles = new Set([
   join(applicationRoot, "providers", "codex-direct-provider-adapter.ts"),
   join(applicationRoot, "providers", "codex-direct-transport.ts"),
   join(applicationRoot, "providers", "codex-model-selection.ts"),
+  join(applicationRoot, "providers", "codex-semantic-generation-config.ts"),
   join(applicationRoot, "providers", "codex-session.ts"),
   join(applicationRoot, "providers", "provider-payload-shape-audit.ts"),
 ]);
@@ -211,6 +212,23 @@ function productionDomainFiles(): string[] {
 }
 
 describe("provider independence architecture boundary", () => {
+  it("keeps native generation settings out of provider-neutral semantic code", () => {
+    const semanticFiles = [
+      join(applicationRoot, "semantic-import-workflow.ts"),
+      join(
+        applicationRoot,
+        "semantic-parser",
+        "resume-semantic-parser-provider.ts",
+      ),
+      join(applicationRoot, "semantic-parser", "semantic-generation-policy.ts"),
+    ];
+    for (const file of semanticFiles) {
+      expect(readFileSync(file, "utf8")).not.toMatch(
+        /gpt-|reasoningEffort|textVerbosity/iu,
+      );
+    }
+  });
+
   it("keeps the application root entry point provider-neutral", () => {
     const violations = collectImportReferences(applicationPublicEntry).filter(
       (reference) => providerSpecificPattern.test(reference.specifier),

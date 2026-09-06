@@ -42,9 +42,10 @@ import {
   type CodexDirectTransportTiming,
 } from "./codex-direct-transport.js";
 import {
-  resolveCodexModelSelection,
-  type CodexModelIdentifier,
-} from "./codex-model-selection.js";
+  resolveCodexSemanticGenerationConfig,
+  type CodexGenerationConfig,
+} from "./codex-semantic-generation-config.js";
+import { semanticGenerationPolicyFor } from "../semantic-parser/semantic-generation-policy.js";
 import { parseCodexSessionMaterial } from "./codex-session.js";
 
 export const codexDirectProviderKind = "codex" as const;
@@ -67,7 +68,6 @@ const capabilities: ResumeSemanticParserCapabilities = {
 export interface CodexDirectProviderAdapterPorts {
   readonly repository: AIProviderRuntimeConnectionsRepository;
   readonly sessionStore: ProviderSessionStore;
-  readonly model?: unknown;
   readonly transport?: Pick<CodexDirectTransport, "invoke"> &
     Partial<Pick<CodexDirectTransport, "model">>;
   readonly now?: () => Date;
@@ -113,6 +113,14 @@ export interface CodexDirectProviderAdapterPorts {
     readonly timestampMs: number;
     readonly durationMs: number;
   }) => void;
+  readonly onEffectiveGenerationConfiguration?: (configuration: {
+    readonly importId: string;
+    readonly correlationId?: string;
+    readonly requestedProfile: "fast" | "balanced" | "quality";
+    readonly effectiveModel: string;
+    readonly effectiveReasoningClass: "minimal" | "standard" | "deep";
+    readonly effectiveOutputDetail: "compact" | "standard";
+  }) => void;
 }
 
 /**
@@ -123,17 +131,11 @@ export interface CodexDirectProviderAdapterPorts {
 export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider {
   readonly providerKind = codexDirectProviderKind;
   readonly capabilities = capabilities;
-  readonly model: CodexModelIdentifier;
   private readonly transport: Pick<CodexDirectTransport, "invoke">;
   private readonly now: () => Date;
 
   constructor(private readonly ports: CodexDirectProviderAdapterPorts) {
-    this.model = resolveCodexModelSelection({
-      configuredModel: ports.model,
-      transportModel: ports.transport?.model,
-    });
-    this.transport =
-      ports.transport ?? new CodexDirectTransport({ model: this.model });
+    this.transport = ports.transport ?? new CodexDirectTransport();
     this.now = ports.now ?? (() => new Date());
   }
 
@@ -216,11 +218,25 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
     if (accountIdentifier === null) return failure("authentication_revoked");
 
     let protocolShape: CodexDirectTransportProtocolShape | undefined;
+    const generationPolicy =
+      options?.generationPolicy ?? semanticGenerationPolicyFor();
+    let generation: CodexGenerationConfig;
+    try {
+      generation = resolveCodexSemanticGenerationConfig(generationPolicy);
+    } catch {
+      return failure("unsupported_capability");
+    }
+    this.emitEffectiveGenerationConfiguration(
+      request,
+      generationPolicy,
+      generation,
+    );
     const transportRequest: CodexDirectTransportRequest = {
       accessToken: session.accessToken,
       accountIdentifier,
       instructions: semanticInstructions,
       inputText: buildSemanticInput(request),
+      generation,
       timeoutMs: boundedTimeout(
         options?.timeoutMs ?? capabilities.maxTimeoutMs,
       ),
@@ -388,6 +404,29 @@ export class CodexDirectProviderAdapter implements ResumeSemanticParserProvider 
       }
     } catch {
       // Timing diagnostics must never change provider behavior.
+    }
+  }
+
+  private emitEffectiveGenerationConfiguration(
+    request: ResumeSemanticParseRequest,
+    policy: ReturnType<typeof semanticGenerationPolicyFor>,
+    generation: CodexGenerationConfig,
+  ): void {
+    if (request.importId === null) return;
+    try {
+      this.ports.onEffectiveGenerationConfiguration?.({
+        importId: request.importId,
+        ...(request.correlationId === null ||
+        request.correlationId === undefined
+          ? {}
+          : { correlationId: request.correlationId }),
+        requestedProfile: policy.profile,
+        effectiveModel: generation.model,
+        effectiveReasoningClass: policy.reasoning,
+        effectiveOutputDetail: policy.outputDetail,
+      });
+    } catch {
+      // Configuration diagnostics must never change provider behavior.
     }
   }
 

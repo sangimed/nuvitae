@@ -13,6 +13,7 @@ export * from "./semantic-parser/provider-errors.js";
 export * from "./semantic-parser/provider-connections.js";
 export * from "./semantic-parser/limited-deterministic-partial-fallback.js";
 export * from "./semantic-parser/resume-semantic-parser-provider.js";
+export * from "./semantic-parser/semantic-generation-policy.js";
 export * from "./semantic-parser/semantic-candidates-to-draft.js";
 export * from "./semantic-parser/semantic-warning-generation.js";
 export * from "./semantic-parser/validate-semantic-response.js";

@@ -40,6 +40,10 @@ import {
   type LimitedDeterministicFallbackProviderTrigger,
 } from "./semantic-parser/limited-deterministic-partial-fallback.js";
 import type { ResumeSemanticParserProvider } from "./semantic-parser/resume-semantic-parser-provider.js";
+import {
+  semanticGenerationPolicyFor,
+  type SemanticGenerationProfile,
+} from "./semantic-parser/semantic-generation-policy.js";
 import { mapSemanticCandidates } from "./semantic-parser/semantic-candidates-to-draft.js";
 import { mapSemanticV2CandidatesToDraft } from "./semantic-parser/semantic-v2-candidates-to-draft.js";
 import {
@@ -57,6 +61,8 @@ export interface SemanticImportWorkflowPorts {
   readonly pdfTextExtractor: PdfSelectableTextExtractor;
   readonly docxTextExtractor: DocxDeterministicTextExtractor;
   readonly provider: ResumeSemanticParserProvider | undefined;
+  /** Deployment-selected logical profile; never a provider model identifier. */
+  readonly semanticGenerationProfile?: SemanticGenerationProfile;
   readonly clock?: { now(): Date };
   readonly logger?: SemanticImportLogger;
   readonly capacity?: ImportProcessingCapacityPort;
@@ -209,6 +215,8 @@ export class SemanticImportWorkflow {
         contractVersion: resumeSemanticParserContractVersion,
         requestContractVersion: resumeSemanticParserContractVersion,
         responseContractVersion: "nuvitae.semantic-extraction.v2",
+        semanticGenerationProfile:
+          this.ports.semanticGenerationProfile ?? "balanced",
         ...(requestResult.data.correlationId === null ||
         requestResult.data.correlationId === undefined
           ? {}
@@ -217,6 +225,9 @@ export class SemanticImportWorkflow {
       const invocationOptions = {
         timeoutMs: this.ports.provider.capabilities.maxTimeoutMs,
         ownerUserId: input.ownerUserId,
+        generationPolicy: semanticGenerationPolicyFor(
+          this.ports.semanticGenerationProfile,
+        ),
         ...(input.abortSignal ? { abortSignal: input.abortSignal } : {}),
       };
       const providerResult =
