@@ -33,7 +33,7 @@
     "@nuvitae/domain": "workspace:*",
     "@nuvitae/import-application": "workspace:*",
     "@nestjs/typeorm": "11.0.3",
-    "pg": "8.22.0",
+    "pg": "8.23.0",
     "reflect-metadata": "0.2.2",
     "typeorm": "0.3.28"
   }
