@@ -29,6 +29,8 @@ describe("AppShell", () => {
     expect(rendered).toContain('aria-current="page"');
     expect(rendered).toContain("Import resume");
     expect(rendered).toContain("Create resume");
+    expect(rendered).toContain('href="#main-content"');
+    expect(rendered).toContain('id="main-content"');
   });
 
   it.each([

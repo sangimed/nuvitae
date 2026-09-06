@@ -36,6 +36,9 @@ export function AppShell({ children, localPlayMode }: AppShellProps) {
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
       <header className="app-header">
         <Link className="brand-link" href="/" aria-label="Nuvitae home">
           <span className="brand-mark" aria-hidden="true">
@@ -69,7 +72,9 @@ export function AppShell({ children, localPlayMode }: AppShellProps) {
           </div>
         ) : null}
       </header>
-      <div className="app-content">{children}</div>
+      <div className="app-content" id="main-content">
+        {children}
+      </div>
     </div>
   );
 }
