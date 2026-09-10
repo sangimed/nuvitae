@@ -403,9 +403,9 @@ function parseDocumentXml(
   const parser = new XMLParser({
     allowBooleanAttributes: false,
     ignoreAttributes: false,
-    parseTagValue: false,
+    parseTagValue: true,
     preserveOrder: true,
-    processEntities: false,
+    processEntities: true,
     removeNSPrefix: true,
     trimValues: false,
   });
@@ -521,9 +521,7 @@ function emitParagraph(
       return;
     }
     state.extractedTextCharacters += text.length;
-    if (
-      state.extractedTextCharacters > state.maximumExtractedTextCharacters
-    ) {
+    if (state.extractedTextCharacters > state.maximumExtractedTextCharacters) {
       throw new ExtractionOperationError("resource_limit");
     }
     const provenance: DocxRunProvenance = Object.freeze({

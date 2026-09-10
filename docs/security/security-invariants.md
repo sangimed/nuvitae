@@ -32,16 +32,16 @@ They apply to human and automated changes.
 
 ## Required negative evidence
 
-| Change | Minimum negative/security tests |
-| --- | --- |
-| Authenticated endpoint/resource | unauthenticated, malformed ID, wrong owner, absent resource with equivalent public response; field allowlist/mass-assignment case |
-| Mutation/state machine | stale/replayed operation, invalid transition, concurrent update, partial-failure rollback/idempotency |
-| Input/parser/upload | empty, malformed, boundary size/count, one over boundary, adversarial structure, timeout/resource limit; #40 supplies upload-specific corpus |
-| Rendering/URL/export | markup rendered inertly, unsafe scheme not executable, external-resource behavior explicit, sensitive response not cached |
-| Credential/session/OAuth | invalid/expired/revoked state, wrong owner, no raw material in persistence/log/error/client, deletion and rotation behavior |
-| AI/provider feature | instruction-like source remains data, schema/evidence violation rejected, unsupported fact/action rejected, timeout/provider failure leaves state unchanged |
-| Background job | malformed payload, mismatched owner/resource, duplicate/replay, poison/final failure, bounded retry and privacy-safe failure payload |
-| Runtime/configuration | missing/weak secret, production insecure fallback, least mounts/credentials, health failure, expected headers/network policy |
+| Change                          | Minimum negative/security tests                                                                                                                             |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authenticated endpoint/resource | unauthenticated, malformed ID, wrong owner, absent resource with equivalent public response; field allowlist/mass-assignment case                           |
+| Mutation/state machine          | stale/replayed operation, invalid transition, concurrent update, partial-failure rollback/idempotency                                                       |
+| Input/parser/upload             | empty, malformed, boundary size/count, one over boundary, adversarial structure, timeout/resource limit; #40 supplies upload-specific corpus                |
+| Rendering/URL/export            | markup rendered inertly, unsafe scheme not executable, external-resource behavior explicit, sensitive response not cached                                   |
+| Credential/session/OAuth        | invalid/expired/revoked state, wrong owner, no raw material in persistence/log/error/client, deletion and rotation behavior                                 |
+| AI/provider feature             | instruction-like source remains data, schema/evidence violation rejected, unsupported fact/action rejected, timeout/provider failure leaves state unchanged |
+| Background job                  | malformed payload, mismatched owner/resource, duplicate/replay, poison/final failure, bounded retry and privacy-safe failure payload                        |
+| Runtime/configuration           | missing/weak secret, production insecure fallback, least mounts/credentials, health failure, expected headers/network policy                                |
 
 ## Security review checklist
 

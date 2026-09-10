@@ -22,7 +22,9 @@ describe("security automation contracts", () => {
     expect(securityWorkflow).toContain("pull_request:");
     expect(securityWorkflow).not.toContain("pull_request_target:");
     expect(securityWorkflow).not.toContain("secrets.");
-    expect(securityWorkflow).toMatch(/permissions:\n  contents: read/u);
+    expect(securityWorkflow).toMatch(
+      /permissions:\n {2}actions: read\n {2}contents: read/u,
+    );
     expect(securityWorkflow).toContain('GITLEAKS_ENABLE_COMMENTS: "false"');
   });
 
@@ -42,9 +44,7 @@ describe("security automation contracts", () => {
       .filter((line) => line.length > 0 && !line.startsWith("#"));
     expect(ignoredFingerprints).toHaveLength(12);
     for (const fingerprint of ignoredFingerprints) {
-      expect(fingerprint).toMatch(
-        /^[0-9a-f]{40}:[^:]+:generic-api-key:\d+$/u,
-      );
+      expect(fingerprint).toMatch(/^[0-9a-f]{40}:[^:]+:generic-api-key:\d+$/u);
     }
   });
 
@@ -69,7 +69,9 @@ describe("security automation contracts", () => {
     }
     expect(containerWorkflow).toContain("scan-ref: docker");
     expect(containerWorkflow).toContain("config --quiet");
-    expect(containerWorkflow.match(/severity: HIGH,CRITICAL/gu)).toHaveLength(2);
+    expect(containerWorkflow.match(/severity: HIGH,CRITICAL/gu)).toHaveLength(
+      2,
+    );
     expect(containerWorkflow.match(/exit-code: "1"/gu)).toHaveLength(2);
   });
 

@@ -76,9 +76,8 @@ test("built web serves the derived browser policy without breaking fonts or prin
   await page.waitForTimeout(100);
   const violations = await page.evaluate(
     () =>
-      (
-        window as Window & { readonly __nuvitaeCspViolations?: string[] }
-      ).__nuvitaeCspViolations ?? [],
+      (window as Window & { readonly __nuvitaeCspViolations?: string[] })
+        .__nuvitaeCspViolations ?? [],
   );
   expect(violations).toEqual([]);
   expect(browserPolicyMessages).toEqual([]);
@@ -119,7 +118,9 @@ test("built production API hides OpenAPI and clears cache at logout", async ({
   const baseURL = process.env.PRODUCTION_POLICY_API_URL;
   const accessSecret = process.env.PRODUCTION_POLICY_ACCESS_SECRET;
   if (baseURL === undefined || accessSecret === undefined) {
-    throw new Error("Production response-policy test configuration is missing.");
+    throw new Error(
+      "Production response-policy test configuration is missing.",
+    );
   }
   const productionApi = await playwright.request.newContext({ baseURL });
 

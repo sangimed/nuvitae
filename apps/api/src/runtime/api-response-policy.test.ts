@@ -1,8 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  noStoreApiResponse,
-  shouldExposeOpenApi,
-} from "./api-response-policy";
+import { noStoreApiResponse, shouldExposeOpenApi } from "./api-response-policy";
 
 describe("API response policy", () => {
   it("marks API success and error paths no-store before routing", () => {

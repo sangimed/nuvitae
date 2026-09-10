@@ -40,12 +40,12 @@ As audited on 31 August 2026:
 
 ## Data classifications
 
-| Class | Examples | Minimum handling |
-| --- | --- | --- |
-| Restricted secrets | session tokens, provider access/refresh tokens, storage/encryption keys, database/queue credentials, CI/deployment credentials | Never log or expose to clients; least-privilege access; authenticated encryption where persisted; rotation and revocation plan |
-| Restricted personal data | source documents, contact details, structured resume content, source fragments/evidence | Owner-scoped; private transport/storage; minimized provider transmission; bounded retention/deletion; excluded from telemetry and test fixtures |
-| Sensitive operational data | import/correlation IDs, provider status, security events, vulnerability reports, backup metadata | Bounded and access-controlled; retention documented; avoid creating an ownership oracle |
-| Public/non-sensitive | health status, public UI assets, anonymous synthetic fixtures | Integrity and availability controls still apply |
+| Class                      | Examples                                                                                                                       | Minimum handling                                                                                                                                |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Restricted secrets         | session tokens, provider access/refresh tokens, storage/encryption keys, database/queue credentials, CI/deployment credentials | Never log or expose to clients; least-privilege access; authenticated encryption where persisted; rotation and revocation plan                  |
+| Restricted personal data   | source documents, contact details, structured resume content, source fragments/evidence                                        | Owner-scoped; private transport/storage; minimized provider transmission; bounded retention/deletion; excluded from telemetry and test fixtures |
+| Sensitive operational data | import/correlation IDs, provider status, security events, vulnerability reports, backup metadata                               | Bounded and access-controlled; retention documented; avoid creating an ownership oracle                                                         |
+| Public/non-sensitive       | health status, public UI assets, anonymous synthetic fixtures                                                                  | Integrity and availability controls still apply                                                                                                 |
 
 ## Implemented strengths
 

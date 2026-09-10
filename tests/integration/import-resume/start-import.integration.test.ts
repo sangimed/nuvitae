@@ -132,7 +132,7 @@ describe("POST /import-resume", () => {
       const harness = await createTrackedHarness(testCase.options);
       const response = await postFile(harness.baseUrl, {
         filename: "Candidate.pdf",
-        content: "source secret",
+        content: "%PDF-1.7\nsource secret",
       });
       const body = await response.json();
       expect(response.status).toBe(503);

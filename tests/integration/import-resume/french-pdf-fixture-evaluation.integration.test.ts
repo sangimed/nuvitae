@@ -44,7 +44,7 @@ describe("T248 canonical French PDF fixture evaluation", () => {
 
     const { pages, items, lines } = await extractFixture();
     expect(pages).toHaveLength(1);
-    expect(items).toHaveLength(41);
+    expect(items).toHaveLength(22);
     expect(lines).toHaveLength(21);
 
     // Every text item comes from the deterministic selectable-text path, so

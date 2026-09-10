@@ -11,12 +11,12 @@ provider, or export sink.
 
 ## Upload-path inventory
 
-| Entry point | Accepted input and limits | Storage, processing, consumers | Retention and controls |
-| --- | --- | --- | --- |
+| Entry point                         | Accepted input and limits                                                                                    | Storage, processing, consumers                                                                                                                                                                                                                                                                                                                                                                  | Retention and controls                                                                                                                                                                                                                        |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Authenticated `POST /import-resume` | Exactly one multipart `file`; PDF or DOCX; 10 MiB; extension, declared MIME, and binary signature must agree | Generated owner/import-scoped object key in the private volume; validation jobs read through the private-storage adapter; PDF.js handles PDF structure/text; bounded OOXML parsing and LibreOffice rendered-page counting handle DOCX; normalized fragments feed the provider-neutral semantic contract; confirmed data feeds owner-scoped persistence, React preview, and browser print-to-PDF | Source and source-reconstructing artifacts are deleted on explicit deletion/discard or the seven-day deadline by owner-scoped idempotent jobs. There is no public source-file route. Validation is fail closed before semantic/provider work. |
-| Avatar/photo upload | Not implemented | No endpoint, storage path, parser, consumer, or lifecycle exists | A future image path is a new trust boundary and requires image decode/resource, metadata, moderation, storage, and export review before implementation. |
-| Template/asset import | Not implemented | No endpoint or consumer exists | Must not reuse resume-document acceptance implicitly. |
-| Admin/internal upload | Not implemented | No endpoint or consumer exists | “Internal” would not make bytes trusted; the same boundary rules apply. |
+| Avatar/photo upload                 | Not implemented                                                                                              | No endpoint, storage path, parser, consumer, or lifecycle exists                                                                                                                                                                                                                                                                                                                                | A future image path is a new trust boundary and requires image decode/resource, metadata, moderation, storage, and export review before implementation.                                                                                       |
+| Template/asset import               | Not implemented                                                                                              | No endpoint or consumer exists                                                                                                                                                                                                                                                                                                                                                                  | Must not reuse resume-document acceptance implicitly.                                                                                                                                                                                         |
+| Admin/internal upload               | Not implemented                                                                                              | No endpoint or consumer exists                                                                                                                                                                                                                                                                                                                                                                  | “Internal” would not make bytes trusted; the same boundary rules apply.                                                                                                                                                                       |
 
 The browser file picker is usability-only. Server checks are authoritative.
 Original filenames are retained only as bounded display metadata; they never
@@ -24,27 +24,27 @@ select a path, subprocess argument, log field, or object key.
 
 ## Enforced limits and failure behavior
 
-| Resource | Community ceiling |
-| --- | --- |
-| Multipart/source bytes | 10 MiB |
-| Rendered pages | 5 |
-| PDF indirect objects | 50,000 |
-| PDF structural syntax tokens | 1,000,000 |
-| PDF extracted text items | 20,000 |
-| DOCX ZIP members | 200 |
-| One DOCX member, uncompressed | 5 MiB |
-| Total DOCX uncompressed bytes | 20 MiB |
-| DOCX member compression ratio | 200:1 |
-| DOCX XML depth | 80 |
-| DOCX paragraphs | 10,000 |
-| DOCX text runs | 20,000 |
-| Extracted text | 120,000 UTF-16 code units |
-| Semantic source fragments | 800 |
-| Semantic request/response JSON | 256,000 bytes each |
-| LibreOffice address space | 512 MiB (`RLIMIT_AS`) |
-| LibreOffice CPU and wall time | 180 seconds each |
-| Parser stdout/stderr | 64 KiB each |
-| Parser temporary filesystem | 768 MiB Compose tmpfs |
+| Resource                       | Community ceiling         |
+| ------------------------------ | ------------------------- |
+| Multipart/source bytes         | 10 MiB                    |
+| Rendered pages                 | 5                         |
+| PDF indirect objects           | 50,000                    |
+| PDF structural syntax tokens   | 1,000,000                 |
+| PDF extracted text items       | 20,000                    |
+| DOCX ZIP members               | 200                       |
+| One DOCX member, uncompressed  | 5 MiB                     |
+| Total DOCX uncompressed bytes  | 20 MiB                    |
+| DOCX member compression ratio  | 200:1                     |
+| DOCX XML depth                 | 80                        |
+| DOCX paragraphs                | 10,000                    |
+| DOCX text runs                 | 20,000                    |
+| Extracted text                 | 120,000 UTF-16 code units |
+| Semantic source fragments      | 800                       |
+| Semantic request/response JSON | 256,000 bytes each        |
+| LibreOffice address space      | 512 MiB (`RLIMIT_AS`)     |
+| LibreOffice CPU and wall time  | 180 seconds each          |
+| Parser stdout/stderr           | 64 KiB each               |
+| Parser temporary filesystem    | 768 MiB Compose tmpfs     |
 
 PDF/DOCX signature mismatch fails before private persistence with the public,
 privacy-safe `file_type_mismatch` reason. Malformed containers, active content,

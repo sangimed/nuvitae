@@ -337,9 +337,12 @@ describe("privacy-safe import logging (T068)", () => {
       const form = new FormData();
       form.append(
         "file",
-        new Blob([new TextEncoder().encode(`%PDF-1.7\n${sentinels.fullResume}`)], {
-          type: "application/pdf",
-        }),
+        new Blob(
+          [new TextEncoder().encode(`%PDF-1.7\n${sentinels.fullResume}`)],
+          {
+            type: "application/pdf",
+          },
+        ),
         sentinels.filename,
       );
       const response = await fetch(`${baseUrl}/import-resume`, {
@@ -398,9 +401,12 @@ describe("privacy-safe import logging (T068)", () => {
       const form = new FormData();
       form.append(
         "file",
-        new Blob([new TextEncoder().encode(`%PDF-1.7\n${sentinels.fullResume}`)], {
-          type: "application/pdf",
-        }),
+        new Blob(
+          [new TextEncoder().encode(`%PDF-1.7\n${sentinels.fullResume}`)],
+          {
+            type: "application/pdf",
+          },
+        ),
         sentinels.filename,
       );
       const response = await fetch(`${baseUrl}/import-resume`, {
@@ -424,9 +430,12 @@ describe("privacy-safe import logging (T068)", () => {
       const form = new FormData();
       form.append(
         "file",
-        new Blob([new TextEncoder().encode(`%PDF-1.7\n${sentinels.fullResume}`)], {
-          type: "application/pdf",
-        }),
+        new Blob(
+          [new TextEncoder().encode(`%PDF-1.7\n${sentinels.fullResume}`)],
+          {
+            type: "application/pdf",
+          },
+        ),
         sentinels.filename,
       );
       const response = await fetch(`${baseUrl}/import-resume`, {
@@ -460,9 +469,12 @@ describe("privacy-safe import logging (T068)", () => {
       const form = new FormData();
       form.append(
         "file",
-        new Blob([new TextEncoder().encode(`%PDF-1.7\n${sentinels.fullResume}`)], {
-          type: "application/pdf",
-        }),
+        new Blob(
+          [new TextEncoder().encode(`%PDF-1.7\n${sentinels.fullResume}`)],
+          {
+            type: "application/pdf",
+          },
+        ),
         sentinels.filename,
       );
       const response = await fetch(`${baseUrl}/import-resume`, {

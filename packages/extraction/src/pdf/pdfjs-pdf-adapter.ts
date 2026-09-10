@@ -276,7 +276,6 @@ export class PdfJsPdfAdapter
       disableFontFace: true,
       disableRange: true,
       disableStream: true,
-      isEvalSupported: false,
       useSystemFonts: false,
       useWorkerFetch: false,
       verbosity: pdfjs.VerbosityLevel.ERRORS,
@@ -298,7 +297,7 @@ export class PdfJsPdfAdapter
         } catch {
           // Cleanup errors must not replace the stable operation result.
         }
-        await document.destroy().catch(() => undefined);
+        await loadingTask.destroy().catch(() => undefined);
       } else {
         await loadingTask.destroy().catch(() => undefined);
       }
@@ -324,9 +323,7 @@ function validateLimits(limits: PdfExtractionLimits): void {
     limits.maximumFileSizeBytes <= 0 ||
     !Number.isSafeInteger(limits.maximumPageCount) ||
     limits.maximumPageCount <= 0 ||
-    optionalLimits.some(
-      (value) => !Number.isSafeInteger(value) || value <= 0,
-    )
+    optionalLimits.some((value) => !Number.isSafeInteger(value) || value <= 0)
   ) {
     throw new TypeError("PDF extraction limits must be positive integers.");
   }

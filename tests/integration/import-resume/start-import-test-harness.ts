@@ -270,7 +270,8 @@ export async function postFile(
   const form = new FormData();
   if (options.includeFile !== false) {
     const filename = options.filename ?? "resume.pdf";
-    const content = options.content ??
+    const content =
+      options.content ??
       (filename.toLowerCase().endsWith(".docx")
         ? new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00])
         : "%PDF-1.7\nsynthetic resume bytes");

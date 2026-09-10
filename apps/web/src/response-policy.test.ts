@@ -14,9 +14,7 @@ describe("web response policy", () => {
     );
 
     expect(policy).toContain("default-src 'self'");
-    expect(policy).toContain(
-      "connect-src 'self' https://api.example.test",
-    );
+    expect(policy).toContain("connect-src 'self' https://api.example.test");
     expect(policy).toContain(
       "script-src 'self' 'nonce-test-nonce' 'strict-dynamic'",
     );
@@ -42,9 +40,7 @@ describe("web response policy", () => {
   });
 
   it("switches explicitly between report-only trial and enforcement", () => {
-    expect(cspHeaderName(true)).toBe(
-      "Content-Security-Policy-Report-Only",
-    );
+    expect(cspHeaderName(true)).toBe("Content-Security-Policy-Report-Only");
     expect(cspHeaderName(false)).toBe("Content-Security-Policy");
   });
 

@@ -7,6 +7,7 @@ import tseslint from "typescript-eslint";
 export default [
   {
     ignores: [
+      ".agents/**",
       "**/.cache/**",
       "**/.next/**",
       "**/.tmp/**",

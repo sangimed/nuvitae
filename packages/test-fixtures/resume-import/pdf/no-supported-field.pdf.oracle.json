@@ -8,7 +8,7 @@
   "complexity": "adversarial",
   "mutation": "none",
   "rendererVersion": "nuvitae-resume-fixtures-v1",
-  "sha256": "1b1f26e72a748107098d94bd6832b451f827f9e973d37d6ccedefc52b842d120",
+  "sha256": "bb5fcab67460cd9370218ba833d0b3bd8ed8e037f5815455140060f1b5c4cfea",
   "oracle": {
     "fixtureId": "pdf-no-supported-field",
     "semantic": {

@@ -8,7 +8,7 @@
   "complexity": "intermediate",
   "mutation": "none",
   "rendererVersion": "nuvitae-resume-fixtures-v1",
-  "sha256": "7e3df1543f745578f855d9361b01da85f376755be80cd4c6e0fd5b6f38157156",
+  "sha256": "fb122bc7094283a3ac906a748411c9c37aa2886777ee10637da815363b9ae2a5",
   "oracle": {
     "fixtureId": "pdf-mixed-resume-unrelated-separable",
     "semantic": {

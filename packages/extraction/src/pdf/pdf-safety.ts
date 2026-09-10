@@ -8,9 +8,7 @@ export type PdfSafetyInspection =
   | {
       readonly safe: false;
       readonly failure:
-        | "malformed_pdf"
-        | "unsafe_active_content"
-        | "resource_limit";
+        "malformed_pdf" | "unsafe_active_content" | "resource_limit";
       readonly reasonCode?: PdfSafetyReasonCode;
     };
 
@@ -324,7 +322,10 @@ function resolveValue(
   return resolveValue(target, objects, seen);
 }
 
-function parsePdfTokens(tokens: readonly Token[], maximumObjectCount: number): {
+function parsePdfTokens(
+  tokens: readonly Token[],
+  maximumObjectCount: number,
+): {
   readonly dictionaries: readonly PdfDictionary[];
   readonly objects: ReadonlyMap<string, PdfValue>;
   readonly malformed: boolean;

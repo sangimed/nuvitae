@@ -48,6 +48,7 @@ export interface DeterministicFixtureProfile {
 
 function buildFragments(
   lines: readonly string[],
+  continuationToNext: "space" | undefined,
 ): readonly DeterministicSourceFragment[] {
   return lines.map((line, index) => {
     const text = normalizeText(line);
@@ -65,6 +66,9 @@ function buildFragments(
         start: 0,
         end: text.length,
       },
+      ...(continuationToNext !== undefined && index < lines.length - 1
+        ? { continuationToNext }
+        : {}),
     };
   });
 }
@@ -124,7 +128,10 @@ function makeProfile(options: {
     fragments: readonly DeterministicSourceFragment[],
   ) => NuvitaeSemanticExtractionResponse;
 }): DeterministicFixtureProfile {
-  const fragments = buildFragments(options.lines);
+  const fragments = buildFragments(
+    options.lines,
+    options.documentFormat === "pdf" ? "space" : undefined,
+  );
   const transcriptText = fragments.map((fragment) => fragment.text).join("\n");
   return {
     profileId: options.profileId,

@@ -7,8 +7,8 @@ const commonResponseHeaders = {
 
 export function contentSecurityPolicy(
   nonce: string,
-  publicApiBaseUrl: string | undefined =
-    process.env.NEXT_PUBLIC_NUVITAE_API_BASE_URL,
+  publicApiBaseUrl: string | undefined = process.env
+    .NEXT_PUBLIC_NUVITAE_API_BASE_URL,
 ): string {
   const connectSources = ["'self'", publicApiOrigin(publicApiBaseUrl)]
     .filter((source): source is string => source !== undefined)

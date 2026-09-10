@@ -25,17 +25,17 @@ does not add or remove an hour.
 
 ## Inventory
 
-| Classification | Fields and boundary | Result |
-| --- | --- | --- |
-| Partial date | Work/education/certification `startDate`, `endDate`, `issuedAt`, `expiresAt`; extracted `date` and `date_range` | `ResumeDate` carries `year`, optional `month`, or `present`; JSONB persistence and UTC display helper preserve precision. |
-| Date-only | None currently modelled independently | No fabricated day/time values found. |
-| Duration | Import retention (7 × 24 h), foreground timeout, pending OAuth/session TTL, rate-limit windows, parser/provider timeout limits | Epoch-millisecond arithmetic; values do not cross a timestamp schema. |
-| Instant | API response/request revisions, imported document/draft/artifact lifecycle, confirmation/review timestamps, source deletion jobs, worker payload times/deadlines, provider connection/session expiry, Community auth sessions, semantic parse/evidence records, audit timing | `Date` internally; `timestamptz` in PostgreSQL; canonical UTC `Z` at HTTP/BullMQ contracts. |
+| Classification | Fields and boundary                                                                                                                                                                                                                                                          | Result                                                                                                                    |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Partial date   | Work/education/certification `startDate`, `endDate`, `issuedAt`, `expiresAt`; extracted `date` and `date_range`                                                                                                                                                              | `ResumeDate` carries `year`, optional `month`, or `present`; JSONB persistence and UTC display helper preserve precision. |
+| Date-only      | None currently modelled independently                                                                                                                                                                                                                                        | No fabricated day/time values found.                                                                                      |
+| Duration       | Import retention (7 × 24 h), foreground timeout, pending OAuth/session TTL, rate-limit windows, parser/provider timeout limits                                                                                                                                               | Epoch-millisecond arithmetic; values do not cross a timestamp schema.                                                     |
+| Instant        | API response/request revisions, imported document/draft/artifact lifecycle, confirmation/review timestamps, source deletion jobs, worker payload times/deadlines, provider connection/session expiry, Community auth sessions, semantic parse/evidence records, audit timing | `Date` internally; `timestamptz` in PostgreSQL; canonical UTC `Z` at HTTP/BullMQ contracts.                               |
 
 ## Boundary findings
 
 - **Persistence:** all inspected operational columns use `timestamptz` / `TIMESTAMP WITH
-  TIME ZONE`; no semantically incorrect `timestamp without time zone` column was found.
+TIME ZONE`; no semantically incorrect `timestamp without time zone` column was found.
   No migration is required.
 - **API and durable jobs:** the prior generic `z.string().datetime()` declarations did
   not state the repository's canonical `Z` rule. Shared `utcInstantSchema` now makes
