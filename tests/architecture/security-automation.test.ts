@@ -42,7 +42,7 @@ describe("security automation contracts", () => {
     const ignoredFingerprints = gitleaksIgnore
       .split("\n")
       .filter((line) => line.length > 0 && !line.startsWith("#"));
-    expect(ignoredFingerprints).toHaveLength(12);
+    expect(ignoredFingerprints).toHaveLength(13);
     for (const fingerprint of ignoredFingerprints) {
       expect(fingerprint).toMatch(/^[0-9a-f]{40}:[^:]+:generic-api-key:\d+$/u);
     }

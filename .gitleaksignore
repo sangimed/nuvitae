@@ -6,6 +6,7 @@
 # SHA-256 fixture checksum (not a credential).
 aad96320f7182a25411403abc84cfa0ae3e0b694:packages/test-fixtures/resume-import/checksums.json:generic-api-key:12
 1c53e85869100c0df2da9c05e4ae360c7847c8ad:packages/test-fixtures/resume-import/checksums.json:generic-api-key:12
+13fb1b5c4b5a84cb0b065c3c77d91c75c9082200:packages/test-fixtures/resume-import/checksums.json:generic-api-key:12
 # Historical authorization evidence containing Dockerfile SHA-256 checksums.
 a3b02ca90fc6468962cd239645954a329325fc21:.codex/import-resume-issue-25-authorizations.json:generic-api-key:36
 306b3bf508e002c53a131af2d5fbc86d0d41bfb3:.codex/import-resume-issue-25-authorizations.json:generic-api-key:102
