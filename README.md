@@ -13,6 +13,19 @@ Its primary experience is:
 Nuvitae is not a "resume as code" product. Technical formats and AI-provider
 configuration must remain outside the standard user journey.
 
+## Developer documentation
+
+Start with the [developer documentation](docs/site/index.md) for the current
+architecture, module boundaries, import pipeline, and authoritative references.
+Use the [Docker-only documentation workflow](docs/site/documentation.md) to
+preview or validate the MkDocs site; no host Python installation is needed.
+
+The detailed bootstrap and implementation-slice notes below include historical
+milestones, not a current feature inventory. In particular, old “not implemented”
+statements about authentication, AI, deletion, editing, and export are superseded
+by the current-system overview and the Community user guide. They remain here
+pending a separately reviewed README consolidation.
+
 The product is intended to support:
 
 - a free self-hosted edition where users can connect their own AI assistant;

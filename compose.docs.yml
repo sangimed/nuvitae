@@ -1,0 +1,21 @@
+name: nuvitae-docs
+
+# Standalone tooling topology: no application secrets, volumes, DB, or queue.
+services:
+  docs:
+    build:
+      context: ./docker/docs
+    working_dir: /workspace
+    volumes:
+      - ./mkdocs.yml:/workspace/mkdocs.yml:ro
+      - ./docs/site:/workspace/docs/site:ro
+    ports:
+      - "127.0.0.1:8000:8000"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    network_mode: bridge
