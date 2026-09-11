@@ -1,10 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   applyCommonResponseHeaders,
   contentSecurityPolicy,
   cspHeaderName,
   isStaticAssetPath,
 } from "./response-policy";
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe("web response policy", () => {
   it("allows only the application resources required by the current runtime", () => {
@@ -42,6 +44,13 @@ describe("web response policy", () => {
   it("switches explicitly between report-only trial and enforcement", () => {
     expect(cspHeaderName(true)).toBe("Content-Security-Policy-Report-Only");
     expect(cspHeaderName(false)).toBe("Content-Security-Policy");
+  });
+
+  it("defaults to report-only until enforcement is explicitly enabled", () => {
+    vi.stubEnv("NUVITAE_CSP_REPORT_ONLY", undefined);
+    expect(cspHeaderName()).toBe("Content-Security-Policy-Report-Only");
+    vi.stubEnv("NUVITAE_CSP_REPORT_ONLY", "false");
+    expect(cspHeaderName()).toBe("Content-Security-Policy");
   });
 
   it("sets common browser protections without claiming HSTS", () => {

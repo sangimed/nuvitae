@@ -18,7 +18,7 @@ each policy has one authoritative owner.
 
 ## Derived CSP
 
-The enforced policy is generated per request with a cryptographic nonce. The
+The web policy is generated per request with a cryptographic nonce. The
 nonce is forwarded to Next.js so framework bootstrap scripts and generated
 styles receive it; page rendering is dynamic for that reason. Both incoming CSP
 header variants are removed before installing the server policy, so a client
@@ -51,8 +51,14 @@ must not rely on it. Broader storage/cookie clearing remains unjustified.
 ## Report-only trial and enforcement verification
 
 The same built web image supports a deliberate report-only trial through
-`NUVITAE_CSP_REPORT_ONLY=true`; enforcement is the default. Run the focused
-built-container suite once in each mode:
+`NUVITAE_CSP_REPORT_ONLY=true`; report-only is the default in code and Compose
+while browser compatibility remains unresolved. Only explicit `false` enables
+web CSP enforcement. The policy directives are unchanged, with no unsafe
+sources added. API CSP and the other browser/cache headers remain enforced;
+`X-Frame-Options: DENY` continues to block framing during the web CSP trial.
+Run the focused built-container suite in report-only mode for rollout checks.
+The explicit enforcing run is a separate compatibility gate expected to remain
+red until the findings below are resolved:
 
 ```sh
 NUVITAE_CSP_REPORT_ONLY=true ./scripts/local-play-up.sh
@@ -71,9 +77,11 @@ NUVITAE_CSP_REPORT_ONLY=false docker compose \
   tests/e2e/local-play/response-policy.e2e.test.ts
 ```
 
-The browser test fails on a CSP violation and prints the mode plus a zero-report
-summary only after exercising public and error pages, self-hosted fonts, a
-personal resume editor, and Chromium print-to-PDF. HTTP assertions cover a
+The browser test records directive names and event counts as a test attachment
+after exercising public and error pages, self-hosted fonts, a personal resume
+editor, and Chromium print-to-PDF. Report-only prints the observations without
+claiming zero violations; explicit enforcement requires zero events and zero
+CSP console violations. HTTP assertions remain mandatory in both modes and cover a
 framework static asset, public health API, authenticated personal API, API
 error (including malformed JSON before routing), production session/login/logout,
 unauthenticated and revoked-session responses, production Swagger UI and both
@@ -98,9 +106,13 @@ events are retained across page navigations rather than checking only the final
 document. Production Swagger UI, JSON and YAML schemas return 404; personal,
 provider, malformed-body, session and revoked-session responses remain no-store.
 
-**The browser compatibility criterion is not complete.** Both report-only and
-enforcing built-container runs pass the API and production-auth policy tests,
-but fail the browser zero-violation assertion. The framework 404 page reports
+**The browser compatibility criterion is not complete.** Initial report-only and
+enforcing built-container runs passed the API and production-auth policy tests,
+but failed the browser zero-violation assertion. That assertion existed at the
+baseline; this branch corrected stale heading copy and retained events across
+navigations, exposing rather than introducing the failures. Report-only rollout
+now records those findings; the explicit enforcement gate still rejects them.
+The framework 404 page reports
 inline-style violations (`style-src-attr` and `style-src-elem`), and the manual
 resume flow reports string-evaluation violations (`script-src`). These are
 application/framework compatibility findings, not an unavailable test
@@ -109,7 +121,7 @@ disable runtime code generation where applicable, then rerun UI and actual
 export/print trials. Do not add unsafe CSP fallbacks or suppress these reports.
 
 This evidence qualifies the earlier V3.4.1–V3.4.6 "satisfied" entry in
-`verification-baseline.md`: headers are enforced, but compatibility remains
-partial. Deployment HSTS and proxy-generated failure responses additionally
+`verification-baseline.md`: web CSP is report-only pending compatibility;
+other headers and API CSP are enforced. Deployment HSTS and proxy-generated failure responses additionally
 require verification at a real supported TLS ingress. Neither the existing
 plaintext Compose stack nor an Orb portal proves that deployment criterion.

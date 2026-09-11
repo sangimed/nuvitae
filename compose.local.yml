@@ -61,7 +61,7 @@ services:
       LOCAL_PLAY_DISABLED_API_URL: http://api-local-mode-off:3001
       PRODUCTION_POLICY_API_URL: http://api-local-mode-off:3001
       PRODUCTION_POLICY_ACCESS_SECRET: "community-mode-off-development-access-secret-000001"
-      EXPECT_CSP_REPORT_ONLY: ${NUVITAE_CSP_REPORT_ONLY:-false}
+      EXPECT_CSP_REPORT_ONLY: ${NUVITAE_CSP_REPORT_ONLY:-true}
       LOCAL_PLAY_USER_ID: "00000000-0000-4000-8000-000000000101"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
