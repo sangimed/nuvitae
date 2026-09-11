@@ -285,8 +285,8 @@ describe("semantic-extraction.v2 realistic structural limits", () => {
       request: {
         normalizedTranscriptCharacterCount: 2946,
         fragmentCount: 181,
-        requestJsonBytes: 26436,
-        instructionBytes: 11932,
+        requestJsonBytes: 27715,
+        instructionBytes: 13208,
         documentPayloadBytes: 12011,
         semanticInputBytes: 12068,
         transportEnvelopeBytes: 530,

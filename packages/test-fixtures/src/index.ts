@@ -10,5 +10,6 @@ export const fixtureBootstrapStatus: FixtureBootstrapStatus = {
 
 export * from "./resume-import/manifest.js";
 export * from "./resume-import/semantic-parser-fixtures.js";
+export * from "./resume-import/multilingual-v2-fixtures.js";
 export * from "./resume-import/expected-semantic-json.js";
 export * from "./resume-import/generator/fixture-spec.js";

@@ -57,7 +57,9 @@ export function buildSemanticParseRequest(
           ? document.detectedLanguage
           : "unknown",
       confidence: null,
-      textDirection: "ltr",
+      // Extraction order is not a detected writing direction. In particular,
+      // Arabic and mixed-script content must not be labelled LTR by default.
+      textDirection: null,
     },
     normalizedTranscript: {
       text,
