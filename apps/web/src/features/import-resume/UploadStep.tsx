@@ -14,6 +14,8 @@ import { ErrorSummary } from "./ErrorSummary";
 import { focusErrorSummary } from "./focus-management";
 import { CodexConnectionScreen } from "../codex-connection/CodexConnectionScreen";
 import { Button } from "../../components/community";
+import { useTranslation } from "../../i18n/LocaleProvider";
+import type { MessageKey } from "../../i18n/messages";
 
 const maximumFileSizeBytes = 10 * 1024 * 1024;
 const allowedExtensions = [".pdf", ".docx"] as const;
@@ -29,6 +31,7 @@ export function UploadStep(props: {
   readonly onFileSelected: (file: File | undefined) => void;
   readonly onSubmit: (file: File) => void;
 }) {
+  const { t } = useTranslation();
   const inputId = useId();
   const guidanceId = useId();
   const errorId = useId();
@@ -53,7 +56,7 @@ export function UploadStep(props: {
     const error = validateLocalFile(file);
     if (error !== undefined) {
       props.onFileSelected(undefined);
-      setLocalError(messageForUploadError(error));
+      setLocalError(t(messageKeyForUploadError(error)));
       return;
     }
     setLocalError(undefined);
@@ -73,7 +76,7 @@ export function UploadStep(props: {
     const file = props.selectedFile;
     const error = validateLocalFile(file);
     if (error !== undefined || file === undefined) {
-      setLocalError(messageForUploadError(error ?? "upload_failed"));
+      setLocalError(t(messageKeyForUploadError(error ?? "upload_failed")));
       return;
     }
     props.onSubmit(file);
@@ -83,25 +86,19 @@ export function UploadStep(props: {
 
   return (
     <section className="import-card" aria-labelledby="upload-title">
-      <p className="eyebrow">Resume import</p>
-      <h1 id="upload-title">Choose the resume file to import</h1>
-      <p className="lead">
-        Your file is used only to prepare a draft. You will review every detail
-        before it is saved as a resume.
-      </p>
+      <p className="eyebrow">{t("import.upload.eyebrow")}</p>
+      <h1 id="upload-title">{t("import.upload.title")}</h1>
+      <p className="lead">{t("import.upload.description")}</p>
 
       <div id={guidanceId} className="guidance-panel">
-        <h2>Before you upload</h2>
+        <h2>{t("import.upload.guidanceTitle")}</h2>
         <ul>
-          <li>PDF and DOCX files only.</li>
-          <li>French, English, or bilingual French-English resumes.</li>
-          <li>10 MB maximum file size.</li>
-          <li>Up to 5 pages.</li>
-          <li>The text must be selectable, not a scan or photo.</li>
-          <li>
-            Your uploaded file and temporary working copies are removed within
-            seven days.
-          </li>
+          <li>{t("import.upload.files")}</li>
+          <li>{t("import.upload.languages")}</li>
+          <li>{t("import.upload.size")}</li>
+          <li>{t("import.upload.pages")}</li>
+          <li>{t("import.upload.selectableText")}</li>
+          <li>{t("import.upload.retention")}</li>
         </ul>
       </div>
 
@@ -112,7 +109,7 @@ export function UploadStep(props: {
         <ErrorSummary
           ref={summaryRef}
           id={errorId}
-          heading="The file could not be uploaded"
+          heading={t("import.upload.errorTitle")}
           errors={
             error === undefined
               ? []
@@ -121,7 +118,7 @@ export function UploadStep(props: {
                     id: "upload-error",
                     message: error,
                     targetId: inputId,
-                    fieldLabel: "Resume file",
+                    fieldLabel: t("import.upload.fileLabel"),
                   },
                 ]
           }
@@ -138,9 +135,11 @@ export function UploadStep(props: {
           onDragLeave={() => setIsDragging(false)}
           onDrop={dropFile}
         >
-          <span className="upload-dropzone-title">Drop your resume here</span>
+          <span className="upload-dropzone-title">
+            {t("import.upload.dropTitle")}
+          </span>
           <span className="upload-dropzone-hint">
-            or choose a PDF or DOCX file from your device
+            {t("import.upload.dropHint")}
           </span>
           <input
             className="upload-file-input"
@@ -157,8 +156,8 @@ export function UploadStep(props: {
         </label>
         <p className="selected-file" aria-live="polite">
           {props.selectedFile === undefined
-            ? "No file selected."
-            : `Selected file: ${props.selectedFile.name}`}
+            ? t("import.upload.noFile")
+            : `${t("import.upload.selectedFile")} ${props.selectedFile.name}`}
         </p>
         <div className="action-row">
           <Button
@@ -167,10 +166,12 @@ export function UploadStep(props: {
             onClick={props.onBack}
             disabled={props.busy}
           >
-            Back
+            {t("import.upload.back")}
           </Button>
           <Button type="submit" disabled={props.busy} loading={props.busy}>
-            {props.busy ? "Uploading…" : "Upload and start import"}
+            {props.busy
+              ? t("import.upload.uploading")
+              : t("import.upload.submit")}
           </Button>
         </div>
       </form>
@@ -191,15 +192,15 @@ export function validateLocalFile(
   return undefined;
 }
 
-function messageForUploadError(error: UploadStepError): string {
+function messageKeyForUploadError(error: UploadStepError): MessageKey {
   switch (error) {
     case "unsupported_extension":
-      return "Choose a PDF or DOCX resume file.";
+      return "import.upload.error.unsupportedExtension";
     case "empty_file":
-      return "Choose a resume file that is not empty.";
+      return "import.upload.error.emptyFile";
     case "too_large":
-      return "Choose a resume file that is 10 MB or smaller.";
+      return "import.upload.error.tooLarge";
     case "upload_failed":
-      return "Choose a resume file before starting the import.";
+      return "import.upload.error.required";
   }
 }

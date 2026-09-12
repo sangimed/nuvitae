@@ -1,44 +1,37 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslation } from "../../i18n/LocaleProvider";
 
 export function CreateResumeEntry(props: {
   readonly onChooseImport: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <section className="import-card" aria-labelledby="import-entry-title">
-      <p className="eyebrow">Recommended</p>
-      <h1 id="import-entry-title">Start from your existing resume</h1>
-      <p className="lead">
-        Upload a PDF or DOCX resume and Nuvitae will prepare a draft for you to
-        review before any structured resume is created.
-      </p>
+      <p className="eyebrow">{t("import.entry.eyebrow")}</p>
+      <h1 id="import-entry-title">{t("import.entry.title")}</h1>
+      <p className="lead">{t("import.entry.description")}</p>
 
-      <div className="choice-grid" aria-label="Resume creation choices">
+      <div className="choice-grid" aria-label={t("import.entry.choices")}>
         <article className="choice-card choice-card-primary">
-          <p className="badge">Recommended path</p>
-          <h2>Import a resume</h2>
-          <p>
-            Best if you already have a resume. You stay in control and review
-            the imported information before using it.
-          </p>
+          <p className="badge">{t("import.entry.recommendedPath")}</p>
+          <h2>{t("import.entry.importTitle")}</h2>
+          <p>{t("import.entry.importDescription")}</p>
           <button
             className="primary-action"
             type="button"
             onClick={props.onChooseImport}
           >
-            Import my resume
+            {t("import.entry.importAction")}
           </button>
         </article>
 
         <article className="choice-card">
-          <h2>Enter it manually</h2>
-          <p>
-            Use this if you prefer to start with a blank resume and fill in each
-            section yourself.
-          </p>
+          <h2>{t("import.entry.manualTitle")}</h2>
+          <p>{t("import.entry.manualDescription")}</p>
           <Link className="secondary-action" href="/resumes/new/manual">
-            Enter manually
+            {t("import.entry.manualAction")}
           </Link>
         </article>
       </div>

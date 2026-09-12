@@ -126,6 +126,20 @@ test("built web and API mark representative API responses no-store", async ({
   assertApiPolicy(apiError);
   assertNoStore(apiError);
 
+  // The public web origin rewrites /api to Nest. Exercise production OpenAPI
+  // suppression through that boundary rather than only against Nest directly.
+  for (const path of [
+    "/api/openapi",
+    "/api/openapi-json",
+    "/api/openapi-yaml",
+  ]) {
+    const openApi = await request.get(path);
+    expect(openApi.status()).toBe(404);
+    expect(openApi.headers()["strict-transport-security"]).toBeUndefined();
+    assertApiPolicy(openApi);
+    assertNoStore(openApi);
+  }
+
   const malformed = await request.post("/api/community-auth/session", {
     headers: { "content-type": "application/json" },
     data: "{",

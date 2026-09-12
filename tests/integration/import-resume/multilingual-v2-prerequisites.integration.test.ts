@@ -375,7 +375,7 @@ describe.each(multilingualV2Fixtures)(
     });
 
     it.each(fixture.localizedDates)(
-      "reports unsupported localized date %s without guessing or dropping unrelated facts",
+      "handles localized date %s without guessing or dropping unrelated facts",
       async (date) => {
         const context = await extractedFixture(fixture, [date]);
         context.response.sections.workExperience[0]!.roles[0]!.startDate =
@@ -383,15 +383,22 @@ describe.each(multilingualV2Fixtures)(
         const result = context.canonicalize();
         expect(result.ok).toBe(true);
         if (!result.ok) return;
-        expect(result.rejected).toContainEqual({
-          path: ["sections", "workExperience", 0, "roles", 0, "startDate"],
-          code: "unsupported_typed_value",
-        });
-        expect(
-          result.candidates.some((item) =>
-            item.fieldPath.endsWith(".startDate"),
-          ),
-        ).toBe(false);
+        const acceptedNormalizedDate = acceptedLocalizedDate(date);
+        const startDate = result.candidates.find((item) =>
+          item.fieldPath.endsWith(".startDate"),
+        );
+        if (acceptedNormalizedDate === undefined) {
+          expect(result.rejected).toContainEqual({
+            path: ["sections", "workExperience", 0, "roles", 0, "startDate"],
+            code: "unsupported_typed_value",
+          });
+          expect(startDate).toBeUndefined();
+        } else {
+          expect(startDate).toMatchObject({
+            value: date.normalize("NFKC"),
+            normalizedValue: acceptedNormalizedDate,
+          });
+        }
         expect(
           result.candidates.find((item) => item.fieldPath === "summary")?.value,
         ).toBe(fixture.summary.normalize("NFKC"));
@@ -399,13 +406,26 @@ describe.each(multilingualV2Fixtures)(
           ...result,
           document: context.document,
         });
-        expect(
-          mapped.warnings.some((warning) => warning.requiresResolution),
-        ).toBe(true);
+        if (acceptedNormalizedDate === undefined) {
+          expect(
+            mapped.warnings.some((warning) => warning.requiresResolution),
+          ).toBe(true);
+        }
       },
     );
   },
 );
+
+function acceptedLocalizedDate(date: string): string | undefined {
+  switch (date.normalize("NFKC")) {
+    case "٢٠٢٠/٠٥":
+      return "2020-05";
+    case "2019年7月":
+      return "2019-07";
+    default:
+      return undefined;
+  }
+}
 
 it("keeps multilingual preservation and untrusted-source instructions provider-neutral", () => {
   expect(semanticParserInstructions).toContain(

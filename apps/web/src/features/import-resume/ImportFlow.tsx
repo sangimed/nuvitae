@@ -23,6 +23,8 @@ import { UploadStep } from "./UploadStep";
 import { pollImportStatus } from "./client";
 import { startImportUpload } from "./client";
 import { recordImportTiming } from "./client";
+import { useTranslation } from "../../i18n/LocaleProvider";
+import { direction } from "../../i18n/locale";
 
 const initialProcessingStatus = (
   importId: string,
@@ -129,6 +131,7 @@ export function UnknownImportRecovery(props: {
 }
 
 export function ImportFlow(props: { readonly importId?: string }) {
+  const { locale } = useTranslation();
   const [state, setState] = useState<ClientImportState>(() =>
     props.importId === undefined
       ? initialImportState
@@ -300,28 +303,34 @@ export function ImportFlow(props: { readonly importId?: string }) {
 
   let content;
   if (state.state === "initial_choice") {
-    content = <CreateResumeEntry onChooseImport={chooseImport} />;
+    content = (
+      <div lang={locale} dir={direction(locale)}>
+        <CreateResumeEntry onChooseImport={chooseImport} />
+      </div>
+    );
   } else if (state.state === "upload_selection") {
     content = (
-      <UploadStep
-        {...(selectedFile === undefined ? {} : { selectedFile })}
-        busy={uploading}
-        serverError={uploadError}
-        onBack={() => setState(initialImportState)}
-        onFileSelected={(file) => {
-          setSelectedFile(file);
-          setUploadError(undefined);
-          if (file !== undefined) {
-            setState(
-              transitionImportState(state, {
-                type: "select_file",
-                fileName: file.name,
-              }) ?? state,
-            );
-          }
-        }}
-        onSubmit={submit}
-      />
+      <div lang={locale} dir={direction(locale)}>
+        <UploadStep
+          {...(selectedFile === undefined ? {} : { selectedFile })}
+          busy={uploading}
+          serverError={uploadError}
+          onBack={() => setState(initialImportState)}
+          onFileSelected={(file) => {
+            setSelectedFile(file);
+            setUploadError(undefined);
+            if (file !== undefined) {
+              setState(
+                transitionImportState(state, {
+                  type: "select_file",
+                  fileName: file.name,
+                }) ?? state,
+              );
+            }
+          }}
+          onSubmit={submit}
+        />
+      </div>
     );
   } else {
     const shownStatus =

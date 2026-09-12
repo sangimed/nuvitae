@@ -85,7 +85,8 @@ CSP console violations. HTTP assertions remain mandatory in both modes and cover
 framework static asset, public health API, authenticated personal API, API
 error (including malformed JSON before routing), production session/login/logout,
 unauthenticated and revoked-session responses, production Swagger UI and both
-JSON/YAML schema not-found responses, no-store,
+JSON/YAML schema not-found responses directly at Nest and through the public
+Next `/api` rewrite, no-store,
 and absence of HSTS on the plaintext local boundary. Existing export fidelity
 and full Local Play suites remain the regression evidence for preview/PDF and
 same-origin behavior.

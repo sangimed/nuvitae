@@ -79,6 +79,27 @@ test("Arabic browser preference renders RTL and fits a narrow viewport", async (
       .click();
     await expect(page).toHaveURL(/\/import-resume$/);
     await expect(page.locator("html")).toHaveAttribute("lang", "ar");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "ابدأ بسيرتك الذاتية الحالية",
+    );
+    await page.getByRole("button", { name: "استيراد سيرتي الذاتية" }).click();
+    const importFlow = page.locator('[lang="ar"][dir="rtl"]');
+    await expect(importFlow.getByRole("heading", { level: 1 })).toHaveText(
+      "اختر ملف السيرة الذاتية لاستيراده",
+    );
+    await expect(
+      importFlow.getByText("قبل التحميل", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      importFlow.getByText("كيف يساعد Codex في استيراد سيرتك الذاتية", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    expect(
+      await importFlow.evaluate(
+        (element) => getComputedStyle(element).direction,
+      ),
+    ).toBe("rtl");
   } finally {
     await context.close();
   }

@@ -2,9 +2,10 @@
 
 ## Implemented boundary
 
-The shell navigation, language selector, home onboarding, and page description
-use one typed translation mechanism in `apps/web/src/i18n`. All keys in this
-slice have English, French, Spanish, Arabic, and Simplified Chinese resources.
+The shell navigation, language selector, home onboarding, resume-import entry
+and upload policy/disclosure, and page description use one typed translation
+mechanism in `apps/web/src/i18n`. All keys in this slice have English, French,
+Spanish, Arabic, and Simplified Chinese resources.
 This is **not completion of issue #31** or a claim of complete application
 translations. Translations still need native-speaker product review.
 
@@ -122,7 +123,7 @@ locale is added to resume API payloads, provider requests, or persistence.
 | Area / current owner                                                                                | Status and next bounded work                                                                                                                                                                           |
 | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `AppShell`, `HomeOnboarding`, root metadata                                                         | Localized in this slice; native-speaker review outstanding                                                                                                                                             |
-| `CreateResumeEntry`, `UploadStep`, `ProviderDisclosure`                                             | English copy including file guidance, privacy, validation, and actions; migrate together without changing upload policy                                                                                |
+| `CreateResumeEntry`, `UploadStep`, `ProviderDisclosure`                                             | Localized entry, file guidance, local validation, accessible file control, actions, and provider disclosure; the connection-status card and server-safe errors remain separate follow-up work          |
 | `ImportFlow`, `ProcessingStep`, `ImportStatusLiveRegion`, `ProviderRecoveryActions`, `ErrorSummary` | Localize stable state/error IDs and recovery copy; preserve safe public messages and live regions                                                                                                      |
 | `ReviewStep`, `ReviewWarning`, `FieldProvenance`, `ConfirmationStep`, `DeleteSourceControl`         | English labels, dialogs, warnings, provenance; keep source values untouched                                                                                                                            |
 | `ManualResumeFlow`, `StructuredResumeSections`, `ResponsiveVisualResumeEditor`                      | English field/section labels, validation, save states and editor controls remain; unsaved edits and explicit save payload preservation now have focused browser coverage                               |

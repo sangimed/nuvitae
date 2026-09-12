@@ -7,8 +7,10 @@ invent facts or silently overwrite saved work.
 
 This is the first developer-documentation foundation for
 [issue #28](https://github.com/sangimed/nuvitae/issues/28), not completion of the
-documentation epic. It describes the implementation inspected at
-[the foundation baseline](https://github.com/sangimed/nuvitae/commit/956528bf6a66b4931967017bb816355638003a3e).
+documentation epic. The foundation was established in
+[`docs: establish MkDocs foundation` (#104)](https://github.com/sangimed/nuvitae/pull/104).
+Current-behavior claims link to their owning source and must be rechecked when
+that source changes.
 
 ## Find your starting point
 
@@ -25,7 +27,7 @@ and [Community user guide](https://github.com/sangimed/nuvitae/blob/main/docs/co
 
 ## How to read status claims
 
-- **Current:** code and runtime configuration exist in the inspected baseline.
+- **Current:** linked code and runtime configuration implement the behavior.
   This is not a claim that every integration has been exercised in your installation.
 - **Intended/future:** a planned capability or release requirement, not something
   contributors can rely on today.

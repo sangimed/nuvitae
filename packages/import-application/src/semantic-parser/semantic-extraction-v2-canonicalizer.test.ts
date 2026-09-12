@@ -719,7 +719,11 @@ describe("semantic-extraction.v2 canonicalization", () => {
     ["year", "2024", "2024"],
     ["month slash year", "03/2024", "2024-03"],
     ["year month", "2024-03", "2024-03"],
+    ["year slash month", "2024/03", "2024-03"],
     ["month name", "March 2024", "2024-03"],
+    ["Arabic-Indic year month", "٢٠٢٠/٠٥", "2020-05"],
+    ["extended Arabic-Indic year month", "۲۰۲۰/۰۵", "2020-05"],
+    ["Chinese year month", "2019年7月", "2019-07"],
     ["present", "Present", "current"],
   ] as const)(
     "normalizes %s without inventing date precision",

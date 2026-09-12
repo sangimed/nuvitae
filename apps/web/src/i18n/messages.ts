@@ -30,6 +30,61 @@ export const en = {
   "home.export": "Preview and export",
   "home.privacy":
     "Your resume is kept private to your workspace. You decide when it is ready to download.",
+  "import.entry.eyebrow": "Recommended",
+  "import.entry.title": "Start from your existing resume",
+  "import.entry.description":
+    "Upload a PDF or DOCX resume and Nuvitae will prepare a draft for you to review before any structured resume is created.",
+  "import.entry.choices": "Resume creation choices",
+  "import.entry.recommendedPath": "Recommended path",
+  "import.entry.importTitle": "Import a resume",
+  "import.entry.importDescription":
+    "Best if you already have a resume. You stay in control and review the imported information before using it.",
+  "import.entry.importAction": "Import my resume",
+  "import.entry.manualTitle": "Enter it manually",
+  "import.entry.manualDescription":
+    "Use this if you prefer to start with a blank resume and fill in each section yourself.",
+  "import.entry.manualAction": "Enter manually",
+  "import.upload.eyebrow": "Resume import",
+  "import.upload.title": "Choose the resume file to import",
+  "import.upload.description":
+    "Your file is used only to prepare a draft. You will review every detail before it is saved as a resume.",
+  "import.upload.guidanceTitle": "Before you upload",
+  "import.upload.files": "PDF and DOCX files only.",
+  "import.upload.languages":
+    "French, English, or bilingual French-English resumes.",
+  "import.upload.size": "10 MB maximum file size.",
+  "import.upload.pages": "Up to 5 pages.",
+  "import.upload.selectableText":
+    "The text must be selectable, not a scan or photo.",
+  "import.upload.retention":
+    "Your uploaded file and temporary working copies are removed within seven days.",
+  "import.upload.errorTitle": "The file could not be uploaded",
+  "import.upload.fileLabel": "Resume file",
+  "import.upload.dropTitle": "Drop your resume here",
+  "import.upload.dropHint": "or choose a PDF or DOCX file from your device",
+  "import.upload.noFile": "No file selected.",
+  "import.upload.selectedFile": "Selected file:",
+  "import.upload.back": "Back",
+  "import.upload.submit": "Upload and start import",
+  "import.upload.uploading": "Uploading…",
+  "import.upload.error.unsupportedExtension":
+    "Choose a PDF or DOCX resume file.",
+  "import.upload.error.emptyFile": "Choose a resume file that is not empty.",
+  "import.upload.error.tooLarge":
+    "Choose a resume file that is 10 MB or smaller.",
+  "import.upload.error.required":
+    "Choose a resume file before starting the import.",
+  "import.provider.title": "How Codex helps with your import",
+  "import.provider.connection":
+    "Codex needs to be connected for the most complete import.",
+  "import.provider.access":
+    "Codex receives only the text from your resume, not access to anything else in Nuvitae.",
+  "import.provider.review":
+    "Nothing is saved to your resume until you review it.",
+  "import.provider.verification":
+    "Nuvitae checks suggestions against your document and leaves out anything that cannot be verified.",
+  "import.provider.fallback":
+    "If Codex is unavailable, you can use a limited import that may miss information, or enter your details manually.",
   "metadata.description":
     "Create and improve your resume with Nuvitae Community",
 } as const;
@@ -71,6 +126,61 @@ const fr: Messages = {
   "home.export": "Prévisualisez et exportez",
   "home.privacy":
     "Votre CV reste privé dans votre espace de travail. Vous décidez quand le télécharger.",
+  "import.entry.eyebrow": "Recommandé",
+  "import.entry.title": "Commencez avec votre CV existant",
+  "import.entry.description":
+    "Importez un CV PDF ou DOCX et Nuvitae préparera un brouillon à vérifier avant la création d’un CV structuré.",
+  "import.entry.choices": "Choix de création du CV",
+  "import.entry.recommendedPath": "Parcours recommandé",
+  "import.entry.importTitle": "Importer un CV",
+  "import.entry.importDescription":
+    "Idéal si vous avez déjà un CV. Vous gardez le contrôle et vérifiez les informations importées avant de les utiliser.",
+  "import.entry.importAction": "Importer mon CV",
+  "import.entry.manualTitle": "Saisir manuellement",
+  "import.entry.manualDescription":
+    "Choisissez cette option pour commencer avec un CV vierge et remplir chaque rubrique vous-même.",
+  "import.entry.manualAction": "Saisir manuellement",
+  "import.upload.eyebrow": "Importation de CV",
+  "import.upload.title": "Choisissez le fichier CV à importer",
+  "import.upload.description":
+    "Votre fichier sert uniquement à préparer un brouillon. Vous vérifierez chaque détail avant son enregistrement comme CV.",
+  "import.upload.guidanceTitle": "Avant l’importation",
+  "import.upload.files": "Fichiers PDF et DOCX uniquement.",
+  "import.upload.languages":
+    "CV en français, anglais ou bilingues français-anglais.",
+  "import.upload.size": "Taille maximale : 10 Mo.",
+  "import.upload.pages": "Jusqu’à 5 pages.",
+  "import.upload.selectableText":
+    "Le texte doit être sélectionnable, pas une numérisation ou une photo.",
+  "import.upload.retention":
+    "Votre fichier importé et ses copies de travail temporaires sont supprimés sous sept jours.",
+  "import.upload.errorTitle": "Le fichier n’a pas pu être importé",
+  "import.upload.fileLabel": "Fichier CV",
+  "import.upload.dropTitle": "Déposez votre CV ici",
+  "import.upload.dropHint":
+    "ou choisissez un fichier PDF ou DOCX sur votre appareil",
+  "import.upload.noFile": "Aucun fichier sélectionné.",
+  "import.upload.selectedFile": "Fichier sélectionné :",
+  "import.upload.back": "Retour",
+  "import.upload.submit": "Importer et démarrer l’analyse",
+  "import.upload.uploading": "Importation…",
+  "import.upload.error.unsupportedExtension":
+    "Choisissez un fichier CV PDF ou DOCX.",
+  "import.upload.error.emptyFile": "Choisissez un fichier CV non vide.",
+  "import.upload.error.tooLarge": "Choisissez un fichier CV de 10 Mo ou moins.",
+  "import.upload.error.required":
+    "Choisissez un fichier CV avant de commencer l’importation.",
+  "import.provider.title": "Comment Codex aide à importer votre CV",
+  "import.provider.connection":
+    "Codex doit être connecté pour une importation la plus complète possible.",
+  "import.provider.access":
+    "Codex reçoit uniquement le texte de votre CV, sans accès au reste de Nuvitae.",
+  "import.provider.review":
+    "Rien n’est enregistré dans votre CV avant votre vérification.",
+  "import.provider.verification":
+    "Nuvitae vérifie les suggestions avec votre document et écarte celles qui ne peuvent pas être vérifiées.",
+  "import.provider.fallback":
+    "Si Codex n’est pas disponible, vous pouvez utiliser une importation limitée qui peut manquer des informations, ou saisir vos données manuellement.",
   "metadata.description": "Créez et améliorez votre CV avec Nuvitae Community",
 };
 
@@ -108,6 +218,62 @@ const es: Messages = {
   "home.export": "Previsualiza y exporta",
   "home.privacy":
     "Tu currículum se mantiene privado en tu espacio de trabajo. Tú decides cuándo descargarlo.",
+  "import.entry.eyebrow": "Recomendado",
+  "import.entry.title": "Empieza con tu currículum actual",
+  "import.entry.description":
+    "Sube un currículum PDF o DOCX y Nuvitae preparará un borrador para que lo revises antes de crear un currículum estructurado.",
+  "import.entry.choices": "Opciones para crear el currículum",
+  "import.entry.recommendedPath": "Opción recomendada",
+  "import.entry.importTitle": "Importar un currículum",
+  "import.entry.importDescription":
+    "La mejor opción si ya tienes un currículum. Mantienes el control y revisas la información importada antes de usarla.",
+  "import.entry.importAction": "Importar mi currículum",
+  "import.entry.manualTitle": "Introducirlo manualmente",
+  "import.entry.manualDescription":
+    "Elige esta opción si prefieres empezar con un currículum en blanco y completar cada sección.",
+  "import.entry.manualAction": "Introducir manualmente",
+  "import.upload.eyebrow": "Importación de currículum",
+  "import.upload.title": "Elige el archivo de currículum que quieres importar",
+  "import.upload.description":
+    "Tu archivo se usa solo para preparar un borrador. Revisarás cada detalle antes de guardarlo como currículum.",
+  "import.upload.guidanceTitle": "Antes de subirlo",
+  "import.upload.files": "Solo archivos PDF y DOCX.",
+  "import.upload.languages":
+    "Currículums en francés, inglés o bilingües francés-inglés.",
+  "import.upload.size": "Tamaño máximo de archivo: 10 MB.",
+  "import.upload.pages": "Hasta 5 páginas.",
+  "import.upload.selectableText":
+    "El texto debe poder seleccionarse; no puede ser un escaneo o una foto.",
+  "import.upload.retention":
+    "El archivo subido y las copias temporales se eliminan en un plazo de siete días.",
+  "import.upload.errorTitle": "No se pudo subir el archivo",
+  "import.upload.fileLabel": "Archivo de currículum",
+  "import.upload.dropTitle": "Suelta aquí tu currículum",
+  "import.upload.dropHint": "o elige un archivo PDF o DOCX de tu dispositivo",
+  "import.upload.noFile": "No se ha seleccionado ningún archivo.",
+  "import.upload.selectedFile": "Archivo seleccionado:",
+  "import.upload.back": "Atrás",
+  "import.upload.submit": "Subir e iniciar la importación",
+  "import.upload.uploading": "Subiendo…",
+  "import.upload.error.unsupportedExtension":
+    "Elige un archivo de currículum PDF o DOCX.",
+  "import.upload.error.emptyFile":
+    "Elige un archivo de currículum que no esté vacío.",
+  "import.upload.error.tooLarge":
+    "Elige un archivo de currículum de 10 MB o menos.",
+  "import.upload.error.required":
+    "Elige un archivo de currículum antes de iniciar la importación.",
+  "import.provider.title": "Cómo ayuda Codex con tu importación",
+  "import.provider.connection":
+    "Codex debe estar conectado para realizar la importación más completa.",
+  "import.provider.access":
+    "Codex recibe solo el texto de tu currículum, no acceso a nada más en Nuvitae.",
+  "import.provider.review":
+    "No se guarda nada en tu currículum hasta que lo revises.",
+  "import.provider.verification":
+    "Nuvitae comprueba las sugerencias con tu documento y omite todo lo que no pueda verificarse.",
+  "import.provider.fallback":
+    "Si Codex no está disponible, puedes usar una importación limitada que podría no incluir toda la información o introducir tus datos manualmente.",
   "metadata.description": "Crea y mejora tu currículum con Nuvitae Community",
 };
 
@@ -143,6 +309,59 @@ const ar: Messages = {
   "home.export": "عاين وصدّر",
   "home.privacy":
     "تبقى سيرتك الذاتية خاصة في مساحة عملك. أنت تقرر متى تصبح جاهزة للتنزيل.",
+  "import.entry.eyebrow": "موصى به",
+  "import.entry.title": "ابدأ بسيرتك الذاتية الحالية",
+  "import.entry.description":
+    "حمّل سيرة ذاتية بصيغة PDF أو DOCX وسيُعد Nuvitae مسودة لمراجعتها قبل إنشاء سيرة ذاتية منظمة.",
+  "import.entry.choices": "خيارات إنشاء السيرة الذاتية",
+  "import.entry.recommendedPath": "المسار الموصى به",
+  "import.entry.importTitle": "استيراد سيرة ذاتية",
+  "import.entry.importDescription":
+    "الخيار الأفضل إذا كانت لديك سيرة ذاتية. تبقى متحكمًا وتراجع المعلومات المستوردة قبل استخدامها.",
+  "import.entry.importAction": "استيراد سيرتي الذاتية",
+  "import.entry.manualTitle": "إدخالها يدويًا",
+  "import.entry.manualDescription":
+    "اختر هذا الخيار إذا كنت تفضل البدء بسيرة ذاتية فارغة وملء كل قسم بنفسك.",
+  "import.entry.manualAction": "إدخال يدويًا",
+  "import.upload.eyebrow": "استيراد السيرة الذاتية",
+  "import.upload.title": "اختر ملف السيرة الذاتية لاستيراده",
+  "import.upload.description":
+    "يُستخدم ملفك لإعداد مسودة فقط. ستراجع كل التفاصيل قبل حفظها كسيرة ذاتية.",
+  "import.upload.guidanceTitle": "قبل التحميل",
+  "import.upload.files": "ملفات PDF وDOCX فقط.",
+  "import.upload.languages":
+    "السير الذاتية بالفرنسية أو الإنجليزية أو باللغتين الفرنسية والإنجليزية.",
+  "import.upload.size": "الحد الأقصى لحجم الملف هو 10 ميغابايت.",
+  "import.upload.pages": "حتى 5 صفحات.",
+  "import.upload.selectableText":
+    "يجب أن يكون النص قابلاً للتحديد، وليس مسحًا ضوئيًا أو صورة.",
+  "import.upload.retention":
+    "يُزال الملف المرفوع والنسخ المؤقتة خلال سبعة أيام.",
+  "import.upload.errorTitle": "تعذر تحميل الملف",
+  "import.upload.fileLabel": "ملف السيرة الذاتية",
+  "import.upload.dropTitle": "أفلت سيرتك الذاتية هنا",
+  "import.upload.dropHint": "أو اختر ملف PDF أو DOCX من جهازك",
+  "import.upload.noFile": "لم يتم اختيار ملف.",
+  "import.upload.selectedFile": "الملف المحدد:",
+  "import.upload.back": "رجوع",
+  "import.upload.submit": "تحميل وبدء الاستيراد",
+  "import.upload.uploading": "جارٍ التحميل…",
+  "import.upload.error.unsupportedExtension":
+    "اختر ملف سيرة ذاتية بصيغة PDF أو DOCX.",
+  "import.upload.error.emptyFile": "اختر ملف سيرة ذاتية غير فارغ.",
+  "import.upload.error.tooLarge":
+    "اختر ملف سيرة ذاتية بحجم 10 ميغابايت أو أقل.",
+  "import.upload.error.required": "اختر ملف سيرة ذاتية قبل بدء الاستيراد.",
+  "import.provider.title": "كيف يساعد Codex في استيراد سيرتك الذاتية",
+  "import.provider.connection":
+    "يجب توصيل Codex لإجراء الاستيراد الأكثر اكتمالاً.",
+  "import.provider.access":
+    "يتلقى Codex نص سيرتك الذاتية فقط، ولا يصل إلى أي شيء آخر في Nuvitae.",
+  "import.provider.review": "لا يُحفظ شيء في سيرتك الذاتية قبل مراجعته.",
+  "import.provider.verification":
+    "يتحقق Nuvitae من الاقتراحات مقابل مستندك ويستبعد ما لا يمكن التحقق منه.",
+  "import.provider.fallback":
+    "إذا لم يكن Codex متاحًا، يمكنك استخدام استيراد محدود قد يفوّت بعض المعلومات أو إدخال التفاصيل يدويًا.",
   "metadata.description":
     "أنشئ سيرتك الذاتية وحسّنها باستخدام Nuvitae Community",
 };
@@ -176,6 +395,54 @@ const zhCN: Messages = {
   "home.review": "检查与完善",
   "home.export": "预览与导出",
   "home.privacy": "您的简历仅在您的工作区内私密保存。您可以自行决定何时下载。",
+  "import.entry.eyebrow": "推荐",
+  "import.entry.title": "从现有简历开始",
+  "import.entry.description":
+    "上传 PDF 或 DOCX 简历，Nuvitae 会准备一份草稿供您审核，然后再创建结构化简历。",
+  "import.entry.choices": "简历创建方式",
+  "import.entry.recommendedPath": "推荐方式",
+  "import.entry.importTitle": "导入简历",
+  "import.entry.importDescription":
+    "适合已有简历的您。您始终掌控内容，并在使用前审核导入的信息。",
+  "import.entry.importAction": "导入我的简历",
+  "import.entry.manualTitle": "手动填写",
+  "import.entry.manualDescription":
+    "如果您想从空白简历开始并自行填写每个部分，请选择此方式。",
+  "import.entry.manualAction": "手动填写",
+  "import.upload.eyebrow": "导入简历",
+  "import.upload.title": "选择要导入的简历文件",
+  "import.upload.description":
+    "您的文件仅用于准备草稿。保存为简历前，您会审核每个细节。",
+  "import.upload.guidanceTitle": "上传前请确认",
+  "import.upload.files": "仅支持 PDF 和 DOCX 文件。",
+  "import.upload.languages": "支持法语、英语或法英双语简历。",
+  "import.upload.size": "文件大小上限为 10 MB。",
+  "import.upload.pages": "最多 5 页。",
+  "import.upload.selectableText": "文字必须可选择，不能是扫描件或照片。",
+  "import.upload.retention": "上传的文件和临时工作副本将在七天内删除。",
+  "import.upload.errorTitle": "无法上传文件",
+  "import.upload.fileLabel": "简历文件",
+  "import.upload.dropTitle": "将简历拖放到这里",
+  "import.upload.dropHint": "或从设备中选择 PDF 或 DOCX 文件",
+  "import.upload.noFile": "尚未选择文件。",
+  "import.upload.selectedFile": "已选文件：",
+  "import.upload.back": "返回",
+  "import.upload.submit": "上传并开始导入",
+  "import.upload.uploading": "正在上传…",
+  "import.upload.error.unsupportedExtension":
+    "请选择 PDF 或 DOCX 格式的简历文件。",
+  "import.upload.error.emptyFile": "请选择非空的简历文件。",
+  "import.upload.error.tooLarge": "请选择不超过 10 MB 的简历文件。",
+  "import.upload.error.required": "开始导入前请选择简历文件。",
+  "import.provider.title": "Codex 如何帮助您导入简历",
+  "import.provider.connection": "需连接 Codex 才能进行最完整的导入。",
+  "import.provider.access":
+    "Codex 只接收您简历中的文本，无法访问 Nuvitae 中的其他内容。",
+  "import.provider.review": "在您审核前，任何内容都不会保存到简历中。",
+  "import.provider.verification":
+    "Nuvitae 会根据您的文档检查建议，并排除无法验证的信息。",
+  "import.provider.fallback":
+    "如果 Codex 暂时不可用，您可以使用可能遗漏信息的有限导入，或手动填写详细信息。",
   "metadata.description": "使用 Nuvitae Community 创建和完善您的简历",
 };
 

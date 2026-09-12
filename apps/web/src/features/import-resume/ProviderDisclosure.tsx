@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "../../i18n/LocaleProvider";
+
 /**
  * T175/T213 - Codex requirement and provider-use disclosure.
  *
@@ -7,24 +9,16 @@
  * processing starts. It never exposes implementation details.
  */
 export function ProviderDisclosure() {
+  const { t } = useTranslation();
   return (
     <div className="guidance-panel" aria-labelledby="provider-disclosure-title">
-      <h2 id="provider-disclosure-title">How Codex helps with your import</h2>
+      <h2 id="provider-disclosure-title">{t("import.provider.title")}</h2>
       <ul>
-        <li>Codex needs to be connected for the most complete import.</li>
-        <li>
-          Codex receives only the text from your resume, not access to anything
-          else in Nuvitae.
-        </li>
-        <li>Nothing is saved to your resume until you review it.</li>
-        <li>
-          Nuvitae checks suggestions against your document and leaves out
-          anything that cannot be verified.
-        </li>
-        <li>
-          If Codex is unavailable, you can use a limited import that may miss
-          information, or enter your details manually.
-        </li>
+        <li>{t("import.provider.connection")}</li>
+        <li>{t("import.provider.access")}</li>
+        <li>{t("import.provider.review")}</li>
+        <li>{t("import.provider.verification")}</li>
+        <li>{t("import.provider.fallback")}</li>
       </ul>
     </div>
   );

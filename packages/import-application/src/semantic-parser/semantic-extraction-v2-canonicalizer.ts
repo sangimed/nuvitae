@@ -1206,14 +1206,31 @@ function normalizePartialDate(
     )
   )
     return { value: "current" };
-  const year = /^(?:19|20)\d{2}$/u.exec(value)?.[0];
+  // This changes only the typed comparison value. `candidate.value` and its
+  // grounded quote retain the source digits and spelling for review.
+  const decimalDigits = normalizeDecimalDigits(value);
+  const year = /^(?:19|20)\d{2}$/u.exec(decimalDigits)?.[0];
   if (year !== undefined) return { value: year };
-  const yearMonth = /^(?:(\d{1,2})[/-](\d{4})|(\d{4})-(\d{1,2}))$/u.exec(value);
+  const yearMonth = /^(?:(\d{1,2})[/-](\d{4})|(\d{4})[/-](\d{1,2}))$/u.exec(
+    decimalDigits,
+  );
   if (yearMonth !== null) {
     const month = Number(yearMonth[1] ?? yearMonth[4]);
     const parsedYear = Number(yearMonth[2] ?? yearMonth[3]);
     if (month >= 1 && month <= 12) {
       return { value: `${parsedYear}-${String(month).padStart(2, "0")}` };
+    }
+    return undefined;
+  }
+  // Year/month ideographs make the ordering explicit, unlike a day/month
+  // numeric date. Accept the structure without translating any source text.
+  const ideographicYearMonth = /^(\d{4})年(\d{1,2})月$/u.exec(decimalDigits);
+  if (ideographicYearMonth !== null) {
+    const month = Number(ideographicYearMonth[2]);
+    if (month >= 1 && month <= 12) {
+      return {
+        value: `${ideographicYearMonth[1]}-${String(month).padStart(2, "0")}`,
+      };
     }
     return undefined;
   }
@@ -1265,6 +1282,14 @@ function normalizePartialDate(
       return { value: `${monthYear[2]}-${String(month).padStart(2, "0")}` };
   }
   return undefined;
+}
+
+function normalizeDecimalDigits(value: string): string {
+  return value.replace(/[٠-٩۰-۹]/gu, (digit) => {
+    const codePoint = digit.codePointAt(0)!;
+    const zero = codePoint >= 0x660 && codePoint <= 0x669 ? 0x660 : 0x6f0;
+    return String(codePoint - zero);
+  });
 }
 
 function isLongFormFieldPath(path: readonly (string | number)[]): boolean {
