@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Inter, Source_Serif_4 } from "next/font/google";
 import type { ReactNode } from "react";
 import { AppShell } from "../components/AppShell";
+import { LocaleProvider } from "../i18n/LocaleProvider";
+import { direction, translate } from "../i18n/locale";
+import { getAppLocale } from "../i18n/server";
 import "./styles.css";
 
 const inter = Inter({
@@ -14,10 +17,13 @@ const sourceSerif = Source_Serif_4({
   variable: "--font-source-serif",
 });
 
-export const metadata: Metadata = {
-  title: "Nuvitae",
-  description: "Create and improve your resume with Nuvitae Community",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getAppLocale();
+  return {
+    title: "Nuvitae",
+    description: translate(locale, "metadata.description"),
+  };
+}
 
 // A per-request render lets Next.js propagate the middleware CSP nonce to its
 // framework bootstrap scripts and styles. Static assets remain independently
@@ -28,13 +34,20 @@ type RootLayoutProps = {
   children: ReactNode;
 };
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
   const localPlayMode = process.env.NUVITAE_LOCAL_PLAY_MODE === "true";
+  const locale = await getAppLocale();
 
   return (
-    <html lang="en" className={`${inter.variable} ${sourceSerif.variable}`}>
+    <html
+      lang={locale}
+      dir={direction(locale)}
+      className={`${inter.variable} ${sourceSerif.variable}`}
+    >
       <body>
-        <AppShell localPlayMode={localPlayMode}>{children}</AppShell>
+        <LocaleProvider initialLocale={locale}>
+          <AppShell localPlayMode={localPlayMode}>{children}</AppShell>
+        </LocaleProvider>
       </body>
     </html>
   );

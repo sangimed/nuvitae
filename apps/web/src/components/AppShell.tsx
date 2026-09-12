@@ -4,24 +4,25 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { CommunityOwnerAccess } from "../features/community-auth/CommunityOwnerAccess";
+import { LanguageSelector, useTranslation } from "../i18n/LocaleProvider";
 
 const navigation = [
-  { href: "/", label: "Home", matches: (path: string) => path === "/" },
+  { href: "/", label: "shell.home", matches: (path: string) => path === "/" },
   {
     href: "/resumes",
-    label: "My resumes",
+    label: "shell.resumes",
     matches: (path: string) =>
       path === "/resumes" ||
       (path.startsWith("/resumes/") && path !== "/resumes/new/manual"),
   },
   {
     href: "/import-resume",
-    label: "Import resume",
+    label: "shell.import",
     matches: (path: string) => path.startsWith("/import-resume"),
   },
   {
     href: "/resumes/new/manual",
-    label: "Create resume",
+    label: "shell.create",
     matches: (path: string) => path === "/resumes/new/manual",
   },
 ] as const;
@@ -33,14 +34,15 @@ type AppShellProps = {
 
 export function AppShell({ children, localPlayMode }: AppShellProps) {
   const pathname = usePathname();
+  const { t } = useTranslation();
 
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
-        Skip to content
+        {t("shell.skip")}
       </a>
       <header className="app-header">
-        <Link className="brand-link" href="/" aria-label="Nuvitae home">
+        <Link className="brand-link" href="/" aria-label={t("shell.brand")}>
           <span className="brand-mark" aria-hidden="true">
             N
           </span>
@@ -50,7 +52,7 @@ export function AppShell({ children, localPlayMode }: AppShellProps) {
           </span>
         </Link>
 
-        <nav className="primary-navigation" aria-label="Primary navigation">
+        <nav className="primary-navigation" aria-label={t("shell.navigation")}>
           {navigation.map((item) => {
             const current = item.matches(pathname);
             return (
@@ -60,19 +62,21 @@ export function AppShell({ children, localPlayMode }: AppShellProps) {
                 key={item.href}
                 aria-current={current ? "page" : undefined}
               >
-                {item.label}
+                {t(item.label)}
               </Link>
             );
           })}
         </nav>
 
+        <LanguageSelector />
         {!localPlayMode ? (
-          <div className="app-owner-access">
+          <div className="app-owner-access" lang="en" dir="ltr">
             <CommunityOwnerAccess />
           </div>
         ) : null}
       </header>
-      <div className="app-content" id="main-content">
+      {/* Unmigrated screens remain explicitly English until their copy is localized. */}
+      <div className="app-content" id="main-content" lang="en" dir="ltr">
         {children}
       </div>
     </div>
