@@ -1,0 +1,31 @@
+site_name: Nuvitae developer documentation
+site_description: Current architecture, contributor workflows, and decision records
+repo_url: https://github.com/sangimed/nuvitae
+edit_uri: edit/main/docs/site/
+docs_dir: docs/site
+site_dir: .tmp/docs-site
+strict: true
+theme:
+  name: mkdocs
+  highlightjs: true
+plugins:
+  - search
+validation:
+  nav:
+    omitted_files: warn
+  links:
+    not_found: warn
+    unrecognized_links: warn
+    anchors: warn
+nav:
+  - Start here: index.md
+  - Contributing:
+      - Developer onboarding: development.md
+      - Documentation workflow: documentation.md
+  - Architecture:
+      - Runtime overview: architecture.md
+      - Repository and module map: repository.md
+      - Import pipeline: import-pipeline.md
+      - Security and privacy: security.md
+  - Decisions and reference: reference.md
+  - Foundation scope and follow-up: coverage.md

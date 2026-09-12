@@ -1,0 +1,33 @@
+name: Documentation
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - "compose.docs.yml"
+      - "docker/docs/**"
+      - ".github/workflows/docs.yml"
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - "compose.docs.yml"
+      - "docker/docs/**"
+      - ".github/workflows/docs.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Validate standalone documentation topology
+        run: docker compose -f compose.docs.yml config --quiet
+      - name: Build locked documentation image
+        run: docker compose -f compose.docs.yml build docs
+      - name: Validate navigation, local links, anchors, and build
+        run: docker compose -f compose.docs.yml run --no-deps docs build --strict --site-dir /tmp/site
