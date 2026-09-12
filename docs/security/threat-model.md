@@ -78,8 +78,11 @@ operator ──▶ Community configuration, TLS/reverse proxy, backups and updat
 | Community ↔ operator         | Operator controls host and configuration                       | Fail invalid production config; document HTTPS, secret generation, backup/update responsibility and unsafe overrides                                                                                             |
 
 The current browser-facing boundary is plaintext loopback Community/Local Play,
-not a verified HTTPS ingress. Next owns browser policy except HSTS; Nest owns
-API no-store and production OpenAPI suppression. A future verified TLS
+not a verified HTTPS ingress. Next owns web page/static browser policy and
+replaces untrusted request CSP headers before nonce selection; Nest owns API
+browser headers, no-store, and production OpenAPI suppression. Next's external
+rewrite must not be relied upon to preserve middleware response headers.
+A future verified TLS
 terminator exclusively owns HSTS. The full non-duplicated policy and trial
 procedure are recorded in [the response-policy decision](response-policy.md).
 

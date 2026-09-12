@@ -56,7 +56,7 @@ services:
       PORT: 3000
       HOSTNAME: 0.0.0.0
       NUVITAE_LOCAL_PLAY_MODE: "false"
-      NUVITAE_CSP_REPORT_ONLY: ${NUVITAE_CSP_REPORT_ONLY:-false}
+      NUVITAE_CSP_REPORT_ONLY: ${NUVITAE_CSP_REPORT_ONLY:-true}
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:
