@@ -75,6 +75,34 @@ docker compose run --rm workspace pnpm lint
 docker compose run --rm workspace pnpm format:check
 ```
 
+The focused browser regression is
+`tests/accessibility/application-locale.a11y.test.ts`. It uses `localhost`
+for the dev-server origin: numeric loopback produced failed Next.js HMR
+WebSocket handshakes in the orb, leaving both the selector and manual editor
+unhydrated. Report-only CSP messages were not the blocker. Changing only the
+test origin made both failures pass; no CSP bypass or policy change is needed.
+
+With the Compose workspace dev server already running on port 3000, the orb
+can run the test container on the host network (as root only for the existing
+root-owned artifact directory):
+
+```sh
+docker compose -f compose.yml -f - run --rm --user 0 playwright-test \
+  pnpm exec playwright test tests/accessibility/application-locale.a11y.test.ts \
+  --output=.local-play/artifacts/i18n-results <<'YAML'
+services:
+  playwright-test:
+    network_mode: host
+YAML
+```
+
+The tests verify French cookie persistence and server/client metadata after
+reload, Arabic SSR and narrow layout, and real manual-editor unsaved text
+through Arabic/French switches. The manual API is stubbed: requests must remain
+unchanged during switching, and an explicit save must carry exactly the
+original synthetic document plus the user's edit. This checks the browser/API
+boundary, not database persistence or the complete import journey.
+
 ## Direction and resume independence
 
 Arabic mirrors the shell and onboarding through inherited CSS grid/flex
@@ -97,7 +125,7 @@ locale is added to resume API payloads, provider requests, or persistence.
 | `CreateResumeEntry`, `UploadStep`, `ProviderDisclosure`                                             | English copy including file guidance, privacy, validation, and actions; migrate together without changing upload policy                                                                                |
 | `ImportFlow`, `ProcessingStep`, `ImportStatusLiveRegion`, `ProviderRecoveryActions`, `ErrorSummary` | Localize stable state/error IDs and recovery copy; preserve safe public messages and live regions                                                                                                      |
 | `ReviewStep`, `ReviewWarning`, `FieldProvenance`, `ConfirmationStep`, `DeleteSourceControl`         | English labels, dialogs, warnings, provenance; keep source values untouched                                                                                                                            |
-| `ManualResumeFlow`, `StructuredResumeSections`, `ResponsiveVisualResumeEditor`                      | English field/section labels, validation, save states and editor controls; test actual unsaved edits through a locale switch                                                                           |
+| `ManualResumeFlow`, `StructuredResumeSections`, `ResponsiveVisualResumeEditor`                      | English field/section labels, validation, save states and editor controls remain; unsaved edits and explicit save payload preservation now have focused browser coverage                               |
 | `ResumeWorkspace`, `ResumeExportView`, `ConfirmedResumeView`                                        | English loading/empty/error/export controls and formatting; separate document labels from UI labels                                                                                                    |
 | `CommunityOwnerAccess`, `CodexConnectionScreen`, contextual AI controls                             | English authentication/provider disclosure, connection and recovery; preserve provider neutrality and credential isolation                                                                             |
 | `components/community`, `AccessibleDialog`                                                          | Default accessible labels and status prose need caller-localized values or shared keys                                                                                                                 |

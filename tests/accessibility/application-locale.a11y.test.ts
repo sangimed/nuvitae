@@ -1,5 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+// The dev HMR handshake fails on the numeric loopback origin in the orb,
+// leaving SSR markup unhydrated. Use localhost without bypassing CSP.
+test.use({ baseURL: "http://localhost:3000" });
+
 test("default locale and French preference survive reload without hydration errors", async ({
   page,
 }) => {
@@ -20,8 +24,19 @@ test("default locale and French preference survive reload without hydration erro
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     "Créez un CV que vous serez fier d’envoyer.",
   );
+  await expect(page.locator("html")).toHaveAttribute("lang", "fr");
+  await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
+  expect(
+    (await page.context().cookies()).find(
+      (cookie) => cookie.name === "nuvitae-app-locale",
+    ),
+  ).toMatchObject({ value: "fr", sameSite: "Lax", path: "/" });
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("lang", "fr");
+  await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Créez un CV que vous serez fier d’envoyer.",
+  );
   await expect(
     page.getByRole("combobox", { name: "Langue de l’application" }),
   ).toHaveValue("fr");
@@ -72,10 +87,45 @@ test("Arabic browser preference renders RTL and fits a narrow viewport", async (
 test("switching application language keeps unsaved resume text and sends no resume write", async ({
   page,
 }) => {
-  const writes: string[] = [];
+  const content = {
+    personal: [
+      {
+        value: "Synthetic Example",
+        sourceStatus: "user_added",
+        confidenceStatus: "not_applicable",
+        inferenceStatus: "not_inferred",
+      },
+    ],
+    contact: [],
+    summary: {
+      value: "原始摘要 — expérience",
+      sourceStatus: "user_added",
+      confidenceStatus: "not_applicable",
+      inferenceStatus: "not_inferred",
+    },
+    workExperiences: [],
+    education: [],
+    skills: [],
+    languages: [],
+    projects: [],
+    certifications: [],
+    professionalLinks: [],
+  };
+  const expectedContent = {
+    ...content,
+    headline: {
+      value: "مهندسة — Paris — 中文",
+      sourceStatus: "user_added",
+      confidenceStatus: "not_applicable",
+      inferenceStatus: "not_inferred",
+    },
+  };
+  const requests: string[] = [];
+  const writes: unknown[] = [];
   await page.route("**/manual-resume-drafts**", async (route) => {
-    if (!["GET", "POST"].includes(route.request().method()))
-      writes.push(route.request().method());
+    const method = route.request().method();
+    requests.push(method);
+    if (method !== "GET") writes.push(route.request().postDataJSON());
     await route.fulfill({
       json: {
         version: "2026-07-28",
@@ -85,17 +135,7 @@ test("switching application language keeps unsaved resume text and sends no resu
           draftId: "11111111-1111-4111-8111-111111111111",
           source: "manual_entry",
           status: "editing",
-          content: {
-            personal: [],
-            contact: [],
-            workExperiences: [],
-            education: [],
-            skills: [],
-            languages: [],
-            projects: [],
-            certifications: [],
-            professionalLinks: [],
-          },
+          content: method === "PATCH" ? expectedContent : content,
           createdAt: "2026-07-29T09:30:00.000Z",
           updatedAt: "2026-07-29T09:30:00.000Z",
         },
@@ -103,17 +143,52 @@ test("switching application language keeps unsaved resume text and sends no resu
       },
     });
   });
-  await page.goto("/resumes/new/manual");
+  await page.goto(
+    "/resumes/new/manual?draftId=11111111-1111-4111-8111-111111111111",
+  );
   const headline = page.getByRole("textbox", { name: "Professional headline" });
   await headline.fill("مهندسة — Paris — 中文");
+  await expect(
+    page.getByText("Unsaved changes", { exact: true }),
+  ).toBeVisible();
   const beforeUrl = page.url();
+  const beforeRequests = [...requests];
   await page
     .getByRole("combobox", { name: "Application language" })
     .selectOption("ar");
   await expect(headline).toHaveValue("مهندسة — Paris — 中文");
+  await expect(page.locator("html")).toHaveAttribute("lang", "ar");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+  const preview = page.locator("[data-resume-template]");
+  await expect(preview).toHaveAttribute("dir", "auto");
+  expect(
+    await preview.evaluate((element) => getComputedStyle(element).direction),
+  ).toBe("ltr");
+  await expect(preview).toContainText("原始摘要 — expérience");
+  expect(
+    (await page.context().cookies()).find(
+      (cookie) => cookie.name === "nuvitae-app-locale",
+    )?.value,
+  ).toBe("ar");
   await page.getByRole("combobox", { name: "لغة التطبيق" }).selectOption("fr");
   await expect(headline).toHaveValue("مهندسة — Paris — 中文");
+  await expect(page.locator("html")).toHaveAttribute("lang", "fr");
+  await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
+  await expect(
+    page.getByText("Unsaved changes", { exact: true }),
+  ).toBeVisible();
   expect(page.url()).toBe(beforeUrl);
+  expect(requests).toEqual(beforeRequests);
   expect(writes).toEqual([]);
+
+  // Saving is explicit and must preserve the entire original document plus
+  // exactly the user's edit, with no application-locale field in the payload.
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  expect(writes).toEqual([
+    { expectedUpdatedAt: "2026-07-29T09:30:00.000Z", content: expectedContent },
+  ]);
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("lang", "fr");
+  await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
 });
