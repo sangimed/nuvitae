@@ -37,10 +37,12 @@ The runtime section inventory is now explicitly unknown (`null`) for summary,
 work and education in every language. The heading vocabulary is removed rather
 than extended. Text headings and provider output cannot prove semantic absence.
 Completeness diagnostics distinguish unknown coverage, reviewed absence, reviewed
-presence with omission, and provider rejection. An unknown section with no
-accepted candidates receives a required review warning, not an absence claim.
-Having one accepted candidate suppresses that missing-section warning but is
-**not** proof of completeness, group recall or field fidelity.
+presence with omission, and provider rejection. Every unknown section receives a
+required review warning, regardless of accepted or rejected candidates. Having
+one or more accepted candidates is **not** proof of completeness, group recall
+or field fidelity and cannot suppress unknown coverage. Field rejection warnings
+remain independent. Runtime imports therefore require coverage review for all
+three sections until independent source inventory is established.
 
 Benchmarks must supply independently reviewed fixture presence/absence and
 independent fidelity observations. Unknown inventory always fails the relevant

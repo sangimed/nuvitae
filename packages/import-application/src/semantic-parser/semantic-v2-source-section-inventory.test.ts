@@ -7,6 +7,7 @@ import {
 } from "./semantic-v2-source-section-inventory.js";
 import { createSourceRegistry } from "./source-registry.js";
 import { mapSemanticV2CandidatesToDraft } from "./semantic-v2-candidates-to-draft.js";
+import { evaluateSemanticBenchmarkGate } from "./semantic-benchmark-gate.js";
 
 const sourceLines = [
   "EDUCATION",
@@ -259,6 +260,70 @@ describe("Semantic V2 source-aware completeness", () => {
       }),
     ]);
   });
+
+  it.each([null, "not-an-atom"])(
+    "requires unknown coverage review with one accepted candidate and omitted source degree (%s)",
+    (degree) => {
+      // The source also contains Master of Engineering. Accepting the institution
+      // cannot prove that the remaining fields or groups were fully imported.
+      const partial = canonical(
+        response([
+          {
+            institution: atom("Example University"),
+            degree,
+            fieldOfStudy: null,
+            startDate: null,
+            endDate: null,
+            location: null,
+          },
+        ]),
+      );
+      expect(
+        partial.candidates.map((candidate) => candidate.fieldPath),
+      ).toEqual(["education.0.institution"]);
+      const sourceInventory = inventorySemanticV2SourceSections(request);
+      const completenessDiagnostics = evaluateSemanticV2Completeness({
+        sourceInventory,
+        canonical: partial,
+      });
+      expect(completenessDiagnostics).toContainEqual({
+        kind: "source_section_unknown",
+        section: "education",
+      });
+      const mapped = mapSemanticV2CandidatesToDraft({
+        ...partial,
+        completenessDiagnostics,
+        document: { id: "synthetic" } as never,
+      });
+      expect(mapped.warnings).toContainEqual(
+        expect.objectContaining({
+          section: "education",
+          warningType: "ambiguous",
+          requiresResolution: true,
+          message:
+            "Source section coverage could not be established and needs review.",
+        }),
+      );
+      const gate = evaluateSemanticBenchmarkGate({
+        responseCompletedReceived: true,
+        semanticV2EnvelopeAccepted: true,
+        deterministicFallbackUsed: false,
+        canonicalDraftProduced: true,
+        sourceSectionInventory: sourceInventory,
+        summaryFidelity: "intact",
+        educationFidelity: "intact",
+        workFidelity: "substantially_present",
+        noMaterialInvention: true,
+        noMaterialTruncation: true,
+      });
+      expect(gate.overall).toBe("FAIL");
+      expect(gate.predicates).toContainEqual({
+        name: "education_fidelity",
+        status: "FAIL",
+        reason: "source_section_unknown",
+      });
+    },
+  );
 
   it("does not prove Education absent from missing recognized headings", () => {
     expect(

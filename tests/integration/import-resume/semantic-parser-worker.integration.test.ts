@@ -166,7 +166,7 @@ describe("semantic parser worker integration", () => {
     );
     expect(draftValueKeys(draft.fields)).not.toContain("present");
     expect(draft.warnings).toEqual(
-      ["summary", "work_experience"].map((section) =>
+      ["summary", "work_experience", "education"].map((section) =>
         expect.objectContaining({
           section,
           warningType: "ambiguous",

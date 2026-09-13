@@ -59,13 +59,17 @@ export function evaluateSemanticV2Completeness(input: {
       diagnostics.push({ kind: "source_section_not_expected", section });
       continue;
     }
+    // Accepted or rejected fields cannot establish coverage of the rest of
+    // the source. Keep uncertainty visible independently of candidate recall.
+    if (input.sourceInventory[section] === null) {
+      diagnostics.push({ kind: "source_section_unknown", section });
+      continue;
+    }
     if (hasAcceptedCandidate(input.canonical, section)) continue;
     diagnostics.push(
       hasRejectedField(input.canonical.rejected, section)
         ? { kind: "provider_section_rejected", section }
-        : input.sourceInventory[section] === true
-          ? { kind: "expected_section_omitted", section }
-          : { kind: "source_section_unknown", section },
+        : { kind: "expected_section_omitted", section },
     );
   }
   return diagnostics;
