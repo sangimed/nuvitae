@@ -21,6 +21,8 @@ const sourceFragments = sourceLines.map((text, order) => ({
 }));
 const sourceRegistry = createSourceRegistry(sourceFragments);
 const request = { sourceFragments } as const;
+// Independent fixture review, not heading recognition or provider output.
+const sourceTruth = { summary: false, education: true, workExperience: true };
 const atom = (value: string, fragmentId = "fragment-2") => ({
   value,
   sourceRefs: [{ fragmentId, quote: value }],
@@ -65,13 +67,13 @@ function canonical(value: unknown) {
 }
 
 describe("Semantic V2 source-aware completeness", () => {
-  it("does not require Summary without recognizable source evidence", () => {
+  it("keeps unreviewed source inventory unknown even with English headings", () => {
     const inventory = inventorySemanticV2SourceSections({ sourceFragments });
 
     expect(inventory).toEqual({
-      summary: false,
-      workExperience: true,
-      education: true,
+      summary: null,
+      workExperience: null,
+      education: null,
     });
     expect(
       evaluateSemanticV2Completeness({
@@ -80,16 +82,16 @@ describe("Semantic V2 source-aware completeness", () => {
       }),
     ).toEqual(
       expect.arrayContaining([
-        { kind: "source_section_not_expected", section: "summary" },
-        { kind: "expected_section_omitted", section: "education" },
-        { kind: "expected_section_omitted", section: "workExperience" },
+        { kind: "source_section_unknown", section: "summary" },
+        { kind: "source_section_unknown", section: "education" },
+        { kind: "source_section_unknown", section: "workExperience" },
       ]),
     );
   });
 
   it("passes expected Education and Work when grounded candidates exist", () => {
     const result = evaluateSemanticV2Completeness({
-      sourceInventory: inventorySemanticV2SourceSections({ sourceFragments }),
+      sourceInventory: sourceTruth,
       canonical: canonical(
         response(
           [
@@ -150,7 +152,7 @@ describe("Semantic V2 source-aware completeness", () => {
   });
 
   it("marks expected Education omitted, but accepts grounded Education", () => {
-    const inventory = inventorySemanticV2SourceSections(request);
+    const inventory = sourceTruth;
     const full = response();
     const compactSections: Record<string, unknown> = { ...full.sections };
     delete compactSections.education;
@@ -194,35 +196,35 @@ describe("Semantic V2 source-aware completeness", () => {
     [
       "Education content stops at Skills",
       ["EDUCATION", "Example University", "SKILLS", "TypeScript"],
-      { education: true },
+      { education: null },
     ],
     [
       "Education heading has no content before Skills",
       ["EDUCATION", "SKILLS", "TypeScript"],
-      { education: false },
+      { education: null },
     ],
     [
       "Summary heading has no content before Work Experience",
       ["SUMMARY", "WORK EXPERIENCE", "Example Corp"],
-      { summary: false, workExperience: true },
+      { summary: null, workExperience: null },
     ],
     [
       "Profile content stops at Experience",
       ["PROFILE", "Experienced engineer", "EXPERIENCE", "Example Corp"],
-      { summary: true, workExperience: true },
+      { summary: null, workExperience: null },
     ],
     [
       "French Education content stops at Competences",
       ["FORMATION", "Université Exemple", "COMPÉTENCES", "TypeScript"],
-      { education: true },
+      { education: null },
     ],
     [
       "French Education heading has no content before Competences",
       ["FORMATION", "COMPÉTENCES", "TypeScript"],
-      { education: false },
+      { education: null },
     ],
   ] as const)(
-    "recognizes bounded section content: %s",
+    "does not infer semantic truth from headings: %s",
     (_label, source, expected) => {
       const inventory = inventorySemanticV2SourceSections({
         sourceFragments: source.map((text, order) => ({
@@ -258,12 +260,12 @@ describe("Semantic V2 source-aware completeness", () => {
     ]);
   });
 
-  it("does not require Education when its source heading and entries are absent", () => {
+  it("does not prove Education absent from missing recognized headings", () => {
     expect(
       inventorySemanticV2SourceSections({
         sourceFragments: [{ order: 0, line: 1, text: "Skills" }],
       }).education,
-    ).toBe(false);
+    ).toBeNull();
   });
 
   it("distinguishes a rejected expected Education section from an omission", () => {
@@ -281,7 +283,7 @@ describe("Semantic V2 source-aware completeness", () => {
     );
     expect(
       evaluateSemanticV2Completeness({
-        sourceInventory: inventorySemanticV2SourceSections({ sourceFragments }),
+        sourceInventory: sourceTruth,
         canonical: rejected,
       }),
     ).toContainEqual({
@@ -299,23 +301,34 @@ describe("Semantic V2 source-aware completeness", () => {
     expect(JSON.stringify(diagnostics)).not.toContain("Master of Engineering");
   });
 
-  it("maps an expected Education omission to a persisted privacy-safe warning", () => {
-    const mapped = mapSemanticV2CandidatesToDraft({
-      candidates: [],
-      rejected: [],
-      signals: [],
-      completenessDiagnostics: [
-        { kind: "expected_section_omitted", section: "education" },
-      ],
-      document: { id: "synthetic" } as never,
-    });
-    expect(mapped.warnings).toContainEqual({
-      warningType: "missing",
-      section: "education",
-      fieldPath: "education",
-      message:
-        "A source-supported resume section was omitted and needs review.",
-      requiresResolution: true,
-    });
-  });
+  it.each([
+    [
+      "expected_section_omitted",
+      "missing",
+      "A source-supported resume section was omitted and needs review.",
+    ],
+    [
+      "source_section_unknown",
+      "ambiguous",
+      "Source section coverage could not be established and needs review.",
+    ],
+  ] as const)(
+    "maps %s to a persisted privacy-safe warning",
+    (kind, warningType, message) => {
+      const mapped = mapSemanticV2CandidatesToDraft({
+        candidates: [],
+        rejected: [],
+        signals: [],
+        completenessDiagnostics: [{ kind, section: "education" }],
+        document: { id: "synthetic" } as never,
+      });
+      expect(mapped.warnings).toContainEqual({
+        warningType,
+        section: "education",
+        fieldPath: "education",
+        message,
+        requiresResolution: true,
+      });
+    },
+  );
 });

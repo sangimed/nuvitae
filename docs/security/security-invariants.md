@@ -32,6 +32,15 @@ They apply to human and automated changes.
 
 ## Required negative evidence
 
+For multilingual Semantic V2 import (#30), grounded text is not proof of source
+section completeness or calendar context. Unreviewed source inventory stays
+unknown, never absent; benchmark N/A requires independently reviewed absence.
+Unknown coverage warnings use fixed codes/section names and require review, with
+no resume text in diagnostic logs. Date normalization changes typed comparison
+values only; evidence and source spelling stay grounded. Unsupported dates remain
+review-required, and upload/domain language admission remains closed pending the
+[multilingual prerequisites](../architecture/issue-30-multilingual-import-prerequisites.md).
+
 | Change                          | Minimum negative/security tests                                                                                                                             |
 | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Authenticated endpoint/resource | unauthenticated, malformed ID, wrong owner, absent resource with equivalent public response; field allowlist/mass-assignment case                           |

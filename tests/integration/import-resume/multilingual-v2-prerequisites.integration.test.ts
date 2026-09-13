@@ -243,12 +243,12 @@ describe.each(multilingualV2Fixtures)(
         kind: "link",
         url: new URL(fixture.link).toString(),
       });
-      // Do not let the FR/EN heading inventory mark all fidelity predicates N/A.
+      // Unreviewed source inventory must not mark fidelity predicates N/A.
       // Fixture truth, not the provider or detector, says these sections exist.
       expect(inventorySemanticV2SourceSections(context.request)).toEqual({
-        summary: false,
-        workExperience: false,
-        education: false,
+        summary: null,
+        workExperience: null,
+        education: null,
       });
       let id = 1;
       const nextId = () =>
@@ -418,6 +418,11 @@ describe.each(multilingualV2Fixtures)(
 
 function acceptedLocalizedDate(date: string): string | undefined {
   switch (date.normalize("NFKC")) {
+    case "enero de 2021":
+      return "2021-01";
+    case "actualidad":
+    case "حتى الآن":
+      return "current";
     case "٢٠٢٠/٠٥":
       return "2020-05";
     case "2019年7月":
@@ -426,6 +431,95 @@ function acceptedLocalizedDate(date: string): string | undefined {
       return undefined;
   }
 }
+
+it.each([
+  ["Enero de 2020", "2020-01", { year: 2020, month: 1, precision: "month" }],
+  ["septiembre 2021", "2021-09", { year: 2021, month: 9, precision: "month" }],
+  ["diciembre ٢٠٢٢", "2022-12", { year: 2022, month: 12, precision: "month" }],
+  ["actualidad", "current", { precision: "present" }],
+  ["presente", "current", { precision: "present" }],
+  ["حتى الآن", "current", { precision: "present" }],
+  ["حاليًا", "current", { precision: "present" }],
+  ["۲۰۲۱/۱۱", "2021-11", { year: 2021, month: 11, precision: "month" }],
+  ["٢٠١٨", "2018", { year: 2018, precision: "year" }],
+  ["2023年2月", "2023-02", { year: 2023, month: 2, precision: "month" }],
+] as const)(
+  "retains localized end date %s through typed draft mapping",
+  async (date, normalizedValue, typed) => {
+    const context = await extractedFixture(multilingualV2Fixtures[0]!, [date]);
+    context.response.sections.workExperience[0]!.roles[0]!.endDate =
+      context.atom(date);
+    const result = context.canonicalize();
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const candidate = result.candidates.find((item) =>
+      item.fieldPath.endsWith(".endDate"),
+    );
+    expect(candidate).toMatchObject({
+      value: date,
+      normalizedValue,
+      reviewStatus: "unreviewed",
+    });
+    const evidence = candidate!.evidence[0]!;
+    expect(
+      context.request.sourceFragments[evidence.line - 1]!.text.slice(
+        evidence.start,
+        evidence.end,
+      ),
+    ).toBe(date);
+    const mapped = mapSemanticV2CandidatesToDraft({
+      ...result,
+      document: context.document,
+    });
+    expect(
+      mapped.fields.find((field) => field.value.kind === "date_range")?.value,
+    ).toMatchObject({
+      endDate: { ...typed, originalText: date },
+      isOngoing: normalizedValue === "current",
+    });
+  },
+);
+
+it.each([
+  "03/04/2020",
+  "٠٣/٠٤/٢٠٢٠",
+  "2020/13",
+  "2020年0月",
+  "١٤٤٥/٠٩",
+  "1445年9月",
+  "2567/01",
+  "令和5年4月",
+  "2020年農暦7月",
+  "มกราคม 2020",
+  "२०२०/०५",
+])(
+  "rejects ambiguous, invalid or unsupported calendar/date %s with required review",
+  async (date) => {
+    const context = await extractedFixture(multilingualV2Fixtures[0]!, [date]);
+    context.response.sections.workExperience[0]!.roles[0]!.endDate =
+      context.atom(date);
+    const result = context.canonicalize();
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.rejected).toContainEqual({
+      path: ["sections", "workExperience", 0, "roles", 0, "endDate"],
+      code: "unsupported_typed_value",
+    });
+    expect(
+      result.candidates.some((item) => item.fieldPath.endsWith(".endDate")),
+    ).toBe(false);
+    const mapped = mapSemanticV2CandidatesToDraft({
+      ...result,
+      document: context.document,
+    });
+    expect(mapped.warnings).toContainEqual(
+      expect.objectContaining({ requiresResolution: true }),
+    );
+    expect(
+      result.candidates.find((item) => item.fieldPath === "summary")?.value,
+    ).toBe(multilingualV2Fixtures[0]!.summary);
+  },
+);
 
 it("keeps multilingual preservation and untrusted-source instructions provider-neutral", () => {
   expect(semanticParserInstructions).toContain(

@@ -29,6 +29,40 @@ const successfulArm: SemanticBenchmarkGateInput = {
 };
 
 describe("canonical Semantic V2 benchmark gate", () => {
+  it("fails unknown source truth even when provider fidelity claims success", () => {
+    const result = evaluateSemanticBenchmarkGate({
+      ...successfulArm,
+      sourceSectionInventory: {
+        summary: null,
+        education: null,
+        workExperience: null,
+      },
+      summaryFidelity: "intact",
+    });
+    expect(result.overall).toBe("FAIL");
+    expect(
+      result.predicates.filter(
+        (item) => item.reason === "source_section_unknown",
+      ),
+    ).toEqual([
+      {
+        name: "summary_fidelity",
+        status: "FAIL",
+        reason: "source_section_unknown",
+      },
+      {
+        name: "education_fidelity",
+        status: "FAIL",
+        reason: "source_section_unknown",
+      },
+      {
+        name: "work_fidelity",
+        status: "FAIL",
+        reason: "source_section_unknown",
+      },
+    ]);
+  });
+
   it("reports every predicate and accepts source-absent Summary", () => {
     const result = evaluateSemanticBenchmarkGate(successfulArm);
 
@@ -163,7 +197,11 @@ describe("canonical Semantic V2 benchmark gate", () => {
     expect(
       evaluateSemanticBenchmarkGate({
         ...successfulArm,
-        sourceSectionInventory: { summary: false, education: true },
+        sourceSectionInventory: {
+          summary: false,
+          education: true,
+          workExperience: true,
+        },
         summaryFidelity: "not_observed",
         educationFidelity: "not_intact",
       }),

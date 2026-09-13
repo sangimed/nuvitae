@@ -232,7 +232,7 @@ describe("SemanticImportProcessor", () => {
     );
   });
 
-  it("creates a review-required partial draft when source Education is omitted", async () => {
+  it("creates a review-required partial draft when section coverage is unknown", async () => {
     const candidate: V2CanonicalSemanticCandidate = {
       fieldPath: "contact.fullName",
       groupPath: "contact",
@@ -284,23 +284,29 @@ describe("SemanticImportProcessor", () => {
 
     expect(harness.repository.saveDraft).toHaveBeenCalledTimes(1);
     expect(harness.repository.saveDraft.mock.calls[0]?.[0]).toMatchObject({
-      warnings: [
+      warnings: ["summary", "work_experience", "education"].map((section) =>
         expect.objectContaining({
-          warningType: "missing",
-          section: "education",
+          warningType: "ambiguous",
+          section,
           requiresResolution: true,
+          message:
+            "Source section coverage could not be established and needs review.",
         }),
-      ],
+      ),
     });
     const diagnostics = harness.logger.emit.mock.calls
       .filter(([event]) => event === "semantic.validation_diagnostics")
       .map(([, metadata]) => metadata);
-    expect(diagnostics).toEqual([
-      expect.objectContaining({
-        code: "expected_section_omitted",
-        requiresReview: true,
-      }),
-    ]);
+    expect(diagnostics).toEqual(
+      ["summary", "workExperience", "education"].map((section) =>
+        expect.objectContaining({
+          category: "review",
+          code: "source_section_unknown",
+          path: ["sections", section],
+          requiresReview: true,
+        }),
+      ),
+    );
     expect(diagnostics).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ code: "source_section_not_expected" }),
