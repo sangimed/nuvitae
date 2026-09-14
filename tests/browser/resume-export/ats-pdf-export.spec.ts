@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../csp-fixture";
 import { PdfJsPdfAdapter } from "../../../packages/extraction/src/pdf/pdfjs-pdf-adapter";
 
 const resumeId = "44444444-4444-4444-8444-444444444444";

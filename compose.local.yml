@@ -60,8 +60,9 @@ services:
       LOCAL_PLAY_API_HEALTH_URL: http://api:3001/health
       LOCAL_PLAY_DISABLED_API_URL: http://api-local-mode-off:3001
       PRODUCTION_POLICY_API_URL: http://api-local-mode-off:3001
+      PRODUCTION_POLICY_WEB_URL: http://web-production-policy:3000
       PRODUCTION_POLICY_ACCESS_SECRET: "community-mode-off-development-access-secret-000001"
-      EXPECT_CSP_REPORT_ONLY: ${NUVITAE_CSP_REPORT_ONLY:-true}
+      EXPECT_CSP_REPORT_ONLY: ${NUVITAE_CSP_REPORT_ONLY:-false}
       LOCAL_PLAY_USER_ID: "00000000-0000-4000-8000-000000000101"
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
@@ -80,6 +81,26 @@ services:
         condition: service_healthy
       api-local-mode-off:
         condition: service_healthy
+      web-production-policy:
+        condition: service_healthy
+
+  web-production-policy:
+    build:
+      context: .
+      dockerfile: docker/web/Dockerfile
+      args:
+        NUVITAE_INTERNAL_API_BASE_URL: http://api-local-mode-off:3001
+    image: nuvitae-web-production-policy:0.1.0
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+      NUVITAE_CSP_REPORT_ONLY: ${NUVITAE_CSP_REPORT_ONLY:-false}
+    depends_on:
+      api-local-mode-off:
+        condition: service_healthy
+    profiles:
+      - test
 
   api-local-mode-off:
     image: nuvitae-api:0.1.0

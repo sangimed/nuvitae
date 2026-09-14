@@ -1,0 +1,31 @@
+.page {
+  font-family: system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  height: 100vh;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.code {
+  display: inline-block;
+  margin: 0 20px 0 0;
+  padding: 0 23px 0 0;
+  border-inline-end: 1px solid var(--color-border);
+  font-size: 24px;
+  font-weight: 500;
+  vertical-align: top;
+  line-height: 49px;
+}
+
+.message {
+  display: inline-block;
+}
+
+.message h2 {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 49px;
+  margin: 0;
+}
