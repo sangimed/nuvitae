@@ -15,7 +15,7 @@
     "@nestjs/bullmq": "12.0.0",
     "@nestjs/common": "11.2.3",
     "@nestjs/core": "11.2.3",
-    "@nestjs/typeorm": "11.0.3",
+    "@nestjs/typeorm": "12.0.1",
     "@nuvitae/contracts": "workspace:*",
     "@nuvitae/persistence": "workspace:*",
     "@nuvitae/storage": "workspace:*",
