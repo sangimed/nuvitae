@@ -29,7 +29,7 @@
     "zod": "4.5.4"
   },
   "devDependencies": {
-    "@nestjs/cli": "12.0.0",
+    "@nestjs/cli": "12.0.1",
     "@nestjs/testing": "11.2.3",
     "@nuvitae/extraction": "workspace:*"
   }
