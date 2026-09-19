@@ -45,7 +45,7 @@
     "prettier": "3.9.6",
     "reflect-metadata": "0.2.2",
     "turbo": "2.10.13",
-    "typeorm": "0.3.28",
+    "typeorm": "1.1.1",
     "typescript": "6.0.3",
     "typescript-eslint": "8.70.0",
     "vitest": "4.1.11"
