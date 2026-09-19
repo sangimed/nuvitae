@@ -22,6 +22,12 @@ fi
 
 cd "$repo_root"
 
+# Match the workspace image user to the checkout owner. This is required on
+# GitHub-hosted runners (UID/GID 1001) and keeps generated TypeScript/build
+# artifacts writable without running the workspace container as root.
+export LOCAL_UID="${LOCAL_UID:-$(id -u)}"
+export LOCAL_GID="${LOCAL_GID:-$(id -g)}"
+
 if ! docker compose version >/dev/null 2>&1; then
   printf 'Docker Compose is required.\n' >&2
   exit 1
