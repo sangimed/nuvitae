@@ -1,0 +1,23 @@
+name: Community alpha install and session gate
+
+on:
+  push:
+    branches:
+      - release/61-community-install-session-gate
+
+concurrency:
+  group: community-alpha-install-session-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  install-session:
+    name: Clean Community install and owner session
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run clean install and session gate
+        run: scripts/community-alpha-install-session-gate.sh
