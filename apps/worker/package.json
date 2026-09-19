@@ -19,13 +19,13 @@
     "@nuvitae/contracts": "workspace:*",
     "@nuvitae/persistence": "workspace:*",
     "@nuvitae/storage": "workspace:*",
-    "bullmq": "6.3.4",
+    "bullmq": "6.3.6",
     "ioredis": "6.0.0",
     "pg": "8.23.0",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "typeorm": "0.3.28",
-    "zod": "4.5.4"
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@nestjs/cli": "12.0.1",
