@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../csp-fixture";
 import { PdfJsPdfAdapter } from "../../../packages/extraction/src/pdf/pdfjs-pdf-adapter";
 
 const runsAgainstLocalStack = process.env.LOCAL_PLAY_BASE_URL !== undefined;
@@ -88,18 +89,16 @@ for (const journey of journeys) {
     await expandReviewSections(page);
 
     for (const value of journey.retainedValues) {
-      await expect(page.getByText(value).first()).toBeVisible();
+      await expect(
+        page.getByRole("main").getByText(value).first(),
+      ).toBeVisible();
     }
 
     await confirmAllWarnings(page);
     await reviewOneImportedField(page);
     await page.getByRole("button", { name: "Create my resume" }).click();
-    await expect(
-      page.getByRole("dialog", { name: "Create your resume" }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Create resume" }).click();
-    await expect(page).toHaveURL(/\/resumes\/[0-9a-f-]+$/i);
     await page.getByRole("link", { name: "Open my resume" }).click();
+    await expect(page).toHaveURL(/\/resumes\/[0-9a-f-]+$/i);
     await expect(
       page.getByRole("heading", { name: "Edit your resume" }),
     ).toBeVisible();

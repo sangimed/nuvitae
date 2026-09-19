@@ -46,7 +46,20 @@ describe("web response policy", () => {
     expect(cspHeaderName(false)).toBe("Content-Security-Policy");
   });
 
-  it("defaults to report-only until enforcement is explicitly enabled", () => {
+  it("enforces production by default and permits explicit report-only trials", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NUVITAE_CSP_REPORT_ONLY", undefined);
+    expect(cspHeaderName()).toBe("Content-Security-Policy");
+    vi.stubEnv("NUVITAE_CSP_REPORT_ONLY", "true");
+    expect(cspHeaderName()).toBe("Content-Security-Policy-Report-Only");
+    vi.stubEnv("NUVITAE_CSP_REPORT_ONLY", "false");
+    expect(cspHeaderName()).toBe("Content-Security-Policy");
+    vi.stubEnv("NUVITAE_CSP_REPORT_ONLY", "invalid");
+    expect(cspHeaderName()).toBe("Content-Security-Policy");
+  });
+
+  it("keeps Next development HMR report-only without adding unsafe sources", () => {
+    vi.stubEnv("NODE_ENV", "development");
     vi.stubEnv("NUVITAE_CSP_REPORT_ONLY", undefined);
     expect(cspHeaderName()).toBe("Content-Security-Policy-Report-Only");
     vi.stubEnv("NUVITAE_CSP_REPORT_ONLY", "false");

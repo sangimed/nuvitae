@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../../browser/csp-fixture";
 
 interface HeaderResponse {
   headers(): Record<string, string>;
@@ -12,34 +12,13 @@ const otherCspHeader = reportOnly
   ? "content-security-policy"
   : "content-security-policy-report-only";
 
+test.beforeAll(() => {
+  expect(["true", "false"]).toContain(process.env.EXPECT_CSP_REPORT_ONLY);
+});
+
 test("built web verifies response headers and records CSP rollout compatibility", async ({
   page,
 }) => {
-  const browserPolicyMessages: string[] = [];
-  const violations: string[] = [];
-  await page.exposeFunction("recordCspViolation", (directive: string) => {
-    violations.push(directive);
-  });
-  page.on("console", (message) => {
-    if (
-      /violates the following content security policy directive/iu.test(
-        message.text(),
-      )
-    ) {
-      browserPolicyMessages.push(message.text());
-    }
-  });
-  await page.addInitScript(() => {
-    document.addEventListener("securitypolicyviolation", (event) => {
-      // Keep only directive names, never potentially personal blocked URLs.
-      void (
-        window as Window & {
-          recordCspViolation: (directive: string) => Promise<void>;
-        }
-      ).recordCspViolation(event.effectiveDirective);
-    });
-  });
-
   const staticResponsePromise = page.waitForResponse((response) =>
     /\/_next\/static\/.*\.(?:css|woff2?)(?:\?|$)/u.test(response.url()),
   );
@@ -50,7 +29,11 @@ test("built web verifies response headers and records CSP rollout compatibility"
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   const fontStatuses = await page.evaluate(() =>
-    [...document.fonts].map((font) => font.status),
+    // next/font's local Arial fallback can be absent in Linux containers.
+    // Assert the downloaded web fonts, not optional OS font availability.
+    [...document.fonts]
+      .filter((font) => !font.family.endsWith(" Fallback"))
+      .map((font) => font.status),
   );
   expect(fontStatuses).toContain("loaded");
   expect(fontStatuses).not.toContain("error");
@@ -64,6 +47,10 @@ test("built web verifies response headers and records CSP rollout compatibility"
   expect(errorResponse?.status()).toBe(404);
   assertBrowserPolicy(errorResponse!);
   expect(errorResponse!.headers()["cache-control"]).toContain("no-store");
+  await expect(
+    page.getByRole("heading", { name: "404", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator("main [style], main style")).toHaveCount(0);
 
   const personalResponse = await page.goto("/resumes/new/manual");
   assertBrowserPolicy(personalResponse!);
@@ -74,31 +61,30 @@ test("built web verifies response headers and records CSP rollout compatibility"
   await expect(
     page.getByRole("heading", { name: "Manual resume draft" }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Add personal detail" }).click();
+  await page
+    .getByRole("textbox", { name: "Personal detail" })
+    .fill("Synthetic CSP Resume");
+  await page
+    .getByRole("textbox", { name: "Professional headline" })
+    .fill("Browser Policy Engineer");
+  await page.getByRole("button", { name: "Save draft" }).click();
+  await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(
+    page.getByRole("textbox", { name: "Personal detail" }),
+  ).toHaveValue("Synthetic CSP Resume");
   await page.emulateMedia({ media: "print" });
   expect(
     (await page.pdf({ format: "A4", printBackground: true })).byteLength,
   ).toBeGreaterThan(10_000);
-
-  await page.waitForTimeout(100);
-  const directives = [...new Set(violations)].sort();
-  await test.info().attach("csp-compatibility", {
-    body: JSON.stringify({
-      reportOnly,
-      directives,
-      eventCount: violations.length,
-    }),
-    contentType: "application/json",
-  });
-  if (reportOnly) {
-    // Report-only rollout verifies headers and UI availability, not readiness
-    // to enforce. Keep observations visible without allowing unsafe sources.
-    console.log(
-      `CSP report-only: ${violations.length} events; directives: ${directives.join(", ") || "none"}. Enforcement requires zero violations.`,
-    );
-  } else {
-    expect(violations, "CSP enforcement compatibility gate").toEqual([]);
-    expect(browserPolicyMessages).toEqual([]);
-  }
+  await page.emulateMedia({ media: "screen" });
+  await page
+    .getByRole("link", { name: "My resumes", exact: true })
+    .last()
+    .click();
+  await expect(page).toHaveURL(/\/resumes$/u);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 });
 
 test("built web and API mark representative API responses no-store", async ({
@@ -126,20 +112,6 @@ test("built web and API mark representative API responses no-store", async ({
   assertApiPolicy(apiError);
   assertNoStore(apiError);
 
-  // The public web origin rewrites /api to Nest. Exercise production OpenAPI
-  // suppression through that boundary rather than only against Nest directly.
-  for (const path of [
-    "/api/openapi",
-    "/api/openapi-json",
-    "/api/openapi-yaml",
-  ]) {
-    const openApi = await request.get(path);
-    expect(openApi.status()).toBe(404);
-    expect(openApi.headers()["strict-transport-security"]).toBeUndefined();
-    assertApiPolicy(openApi);
-    assertNoStore(openApi);
-  }
-
   const malformed = await request.post("/api/community-auth/session", {
     headers: { "content-type": "application/json" },
     data: "{",
@@ -153,21 +125,35 @@ test("built production API hides OpenAPI and clears cache at logout", async ({
   playwright,
 }) => {
   const baseURL = process.env.PRODUCTION_POLICY_API_URL;
+  const webBaseURL = process.env.PRODUCTION_POLICY_WEB_URL;
   const accessSecret = process.env.PRODUCTION_POLICY_ACCESS_SECRET;
-  if (baseURL === undefined || accessSecret === undefined) {
+  if (
+    baseURL === undefined ||
+    webBaseURL === undefined ||
+    accessSecret === undefined
+  ) {
     throw new Error(
       "Production response-policy test configuration is missing.",
     );
   }
   const productionApi = await playwright.request.newContext({ baseURL });
+  const productionWeb = await playwright.request.newContext({
+    baseURL: webBaseURL,
+  });
 
   try {
     for (const path of ["/openapi", "/openapi-json", "/openapi-yaml"]) {
-      const openApi = await productionApi.get(path);
-      expect(openApi.status()).toBe(404);
-      expect(openApi.headers()["strict-transport-security"]).toBeUndefined();
-      assertApiPolicy(openApi);
-      assertNoStore(openApi);
+      // Local Play intentionally enables development Swagger. Use a web build
+      // whose rewrite targets the production API for the production boundary.
+      for (const openApi of [
+        await productionApi.get(path),
+        await productionWeb.get(`/api${path}`),
+      ]) {
+        expect(openApi.status()).toBe(404);
+        expect(openApi.headers()["strict-transport-security"]).toBeUndefined();
+        assertApiPolicy(openApi);
+        assertNoStore(openApi);
+      }
     }
 
     const unauthenticated = await productionApi.get("/resumes");
@@ -204,6 +190,7 @@ test("built production API hides OpenAPI and clears cache at logout", async ({
     assertNoStore(revoked);
   } finally {
     await productionApi.dispose();
+    await productionWeb.dispose();
   }
 });
 

@@ -39,7 +39,9 @@ export function applyCommonResponseHeaders(headers: Headers): void {
 }
 
 export function cspHeaderName(
-  reportOnly = process.env.NUVITAE_CSP_REPORT_ONLY !== "false",
+  reportOnly = process.env.NUVITAE_CSP_REPORT_ONLY === "true" ||
+    (process.env.NUVITAE_CSP_REPORT_ONLY === undefined &&
+      process.env.NODE_ENV !== "production"),
 ): "Content-Security-Policy" | "Content-Security-Policy-Report-Only" {
   return reportOnly
     ? "Content-Security-Policy-Report-Only"

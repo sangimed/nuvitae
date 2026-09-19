@@ -102,7 +102,7 @@ run_phase "install workspace dependencies" \
 run_phase "generate anonymous fixture" \
   compose run --rm workspace node \
     tests/fixtures/resumes/generate-anonymous-selectable-resume.mjs
-run_phase "build runtime images" compose build api web worker
+run_phase "build runtime images" compose --profile test build api web worker web-production-policy
 run_phase "build playwright image" compose --profile test build playwright-test
 run_phase "start dependencies" compose up -d postgres queue
 run_phase "run migrations" compose run --rm workspace pnpm db:migration:run
@@ -125,7 +125,8 @@ run_phase "response policy: enforcement" \
       -e LOCAL_PLAY_ARTIFACT_DIR=/workspace/.local-play/artifacts \
       playwright-test pnpm exec playwright test \
         --config=playwright.local-play.config.ts \
-        tests/e2e/local-play/response-policy.e2e.test.ts
+        tests/e2e/local-play/response-policy.e2e.test.ts \
+        tests/browser/resume-export/ats-pdf-export.spec.ts
 
 run_phase "switch web to CSP report-only trial" \
   env NUVITAE_CSP_REPORT_ONLY=true \
@@ -142,7 +143,8 @@ run_phase "response policy: report-only trial" \
       -e LOCAL_PLAY_ARTIFACT_DIR=/workspace/.local-play/artifacts \
       playwright-test pnpm exec playwright test \
         --config=playwright.local-play.config.ts \
-        tests/e2e/local-play/response-policy.e2e.test.ts
+        tests/e2e/local-play/response-policy.e2e.test.ts \
+        tests/browser/resume-export/ats-pdf-export.spec.ts
 
 run_phase "restore enforced CSP" \
   env NUVITAE_CSP_REPORT_ONLY=false \
