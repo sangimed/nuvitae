@@ -33,6 +33,9 @@ jobs:
           GITLEAKS_ENABLE_COMMENTS: "false"
 
   codeql:
+    # Keep CodeQL configured, but GitHub currently rejects SARIF uploads for
+    # this private repository. It will run automatically if the repo is public.
+    if: ${{ github.event.repository.private == false }}
     name: CodeQL (JavaScript and TypeScript)
     runs-on: ubuntu-latest
     permissions:
