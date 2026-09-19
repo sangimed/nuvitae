@@ -6,7 +6,66 @@ Issue #30 had no comments. Related boundaries: #31 (UI locale), #37 (fictional
 binary corpus), #23 (partial dates), and ADRs 0006/0007 (V2 writes and package
 ownership). Historical multimodal research is not the implemented V2 contract.
 
-## Strategy and shipped boundary
+## Next prerequisite layer (13 September 2026)
+
+Ownership: import-application V2 date canonicalization, source inventory, benchmark
+gate and draft warning mapping; focused unit/integration regressions and this
+architecture note. #76 CSP has no file overlap; #31 application i18n has no UI
+file overlap; #24 observability shares the existing diagnostic contract only
+(`source_section_unknown`, fixed section names, no source text). No telemetry
+transport, browser policy, application locale, provider prompt or detector changes.
+
+Bounded acceptance: grounded Spanish month names and current markers, Arabic
+current markers and both Arabic decimal scripts, Chinese year/month notation,
+and explicit rejection/review for ambiguous numeric and unsupported dates.
+All month/year forms now use the same 1900–2099 bound as year-only dates;
+previous numeric month forms accidentally admitted arbitrary four-digit years.
+This is a supported representation range, **not a calendar detector**. Bare
+dates cannot establish a calendar when its qualifier was omitted by the provider
+or lives elsewhere. Explicit calendar/era qualifiers, Hijri-range years, Thai
+Buddhist-range years, unknown month names and unqualified full day/month dates
+are not converted. Arabic month names, Chinese current markers and additional
+decimal scripts remain unsupported. There is no provider-normalization escape.
+
+Original normalized-source spelling remains in the candidate, evidence quote and
+draft `originalText`; only the typed comparison value changes. Year/month/present
+precision is retained, no day is invented, and candidates remain unreviewed.
+Rejected dates produce required review warnings without discarding unrelated
+facts. The existing NFKC/raw-offset distinction below still applies.
+
+The runtime section inventory is now explicitly unknown (`null`) for summary,
+work and education in every language. The heading vocabulary is removed rather
+than extended. Text headings and provider output cannot prove semantic absence.
+Completeness diagnostics distinguish unknown coverage, reviewed absence, reviewed
+presence with omission, and provider rejection. Every unknown section receives a
+required review warning, regardless of accepted or rejected candidates. Having
+one or more accepted candidates is **not** proof of completeness, group recall
+or field fidelity and cannot suppress unknown coverage. Field rejection warnings
+remain independent. Runtime imports therefore require coverage review for all
+three sections until independent source inventory is established.
+
+Benchmarks must supply independently reviewed fixture presence/absence and
+independent fidelity observations. Unknown inventory always fails the relevant
+fidelity predicate, even when the supplied fidelity observation says intact;
+only explicit reviewed absence permits N/A. The nine predicates, including
+invention, truncation, no-fallback, envelope and canonical draft, remain intact.
+Existing fictional multilingual fixtures already supply independent section
+truth; their normal gate still fails because no canonical draft is admitted.
+
+**Admission stays closed.** Exact blocker: the runtime has no independently
+validated multilingual source coverage/group inventory, calendar-context proof,
+or representative extraction/persistence/RTL/provider fidelity evidence. Language
+detection remains metadata and is not upgraded into proof of import safety.
+Upload and domain gates are unchanged. This layer makes uncertainty visible; it
+does not complete multilingual eligibility or Issue #30.
+
+Intentional deferrals: no browser/PDF/font campaign, persistence/export/RTL
+round-trip, live-provider campaign, native-language qualification, migration,
+dependency, configuration, logging payload or UI change. Next work should qualify
+source coverage and calendar context against independent multilingual truth before
+opening both admission gates together; then follow steps 4–6 below.
+
+## Initial prerequisite slice (PR #107; historical audit below)
 
 Prefer language-agnostic semantic extraction, with language as metadata rather
 than a permanent allowlist. This is the target strategy, **not yet a claim that

@@ -243,10 +243,15 @@ function rejectedWarning(
 function completenessWarning(
   diagnostic: SemanticV2CompletenessDiagnostic,
 ): readonly DeterministicWarningCandidate[] {
-  if (diagnostic.kind !== "expected_section_omitted") return [];
+  if (
+    diagnostic.kind !== "expected_section_omitted" &&
+    diagnostic.kind !== "source_section_unknown"
+  )
+    return [];
   return [
     {
-      warningType: "missing",
+      warningType:
+        diagnostic.kind === "source_section_unknown" ? "ambiguous" : "missing",
       section:
         diagnostic.section === "workExperience"
           ? "work_experience"
@@ -256,7 +261,9 @@ function completenessWarning(
           ? "work_experience"
           : diagnostic.section,
       message:
-        "A source-supported resume section was omitted and needs review.",
+        diagnostic.kind === "source_section_unknown"
+          ? "Source section coverage could not be established and needs review."
+          : "A source-supported resume section was omitted and needs review.",
       requiresResolution: true,
     },
   ];

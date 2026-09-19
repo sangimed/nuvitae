@@ -6,14 +6,14 @@ import type {
 } from "./semantic-extraction-v2-canonicalizer.js";
 
 /**
- * This intentionally recognizes only unambiguous, standalone section
- * headings followed by content. It is an expectation inventory, not another
- * extractor: an unlabelled section is never made mandatory by this module.
+ * Presence/absence must come from independent source review (for example,
+ * fixture truth), never provider output or heading recognition. null means
+ * unknown: text alone cannot prove semantic section coverage in any language.
  */
 export interface SemanticV2SourceSectionInventory {
-  readonly summary: boolean;
-  readonly workExperience: boolean;
-  readonly education: boolean;
+  readonly summary: boolean | null;
+  readonly workExperience: boolean | null;
+  readonly education: boolean | null;
 }
 
 export type SemanticV2CompletenessSection =
@@ -31,76 +31,19 @@ export type SemanticV2CompletenessDiagnostic =
   | {
       readonly kind: "source_section_not_expected";
       readonly section: SemanticV2CompletenessSection;
+    }
+  | {
+      readonly kind: "source_section_unknown";
+      readonly section: SemanticV2CompletenessSection;
     };
 
-const headingLabels: Readonly<
-  Record<SemanticV2CompletenessSection, readonly string[]>
-> = {
-  summary: [
-    "summary",
-    "profile",
-    "profil",
-    "a propos",
-    "professional summary",
-    "career profile",
-    "objectif",
-  ],
-  workExperience: [
-    "work experience",
-    "experience",
-    "experience professionnelle",
-    "professional experience",
-    "employment",
-  ],
-  education: [
-    "education",
-    "formation",
-    "etudes",
-    "academic background",
-    "academic history",
-  ],
-};
-
-const recognizedHeadingLabels = new Set([
-  ...Object.values(headingLabels).flat(),
-  "contact",
-  "contact information",
-  "personal information",
-  "skills",
-  "competences",
-  "technical skills",
-  "core skills",
-  "languages",
-  "langues",
-  "projects",
-  "projets",
-  "certifications",
-  "certificates",
-  "links",
-  "professional links",
-  "interests",
-  "hobbies",
-  "volunteer experience",
-  "volunteering",
-  "publications",
-  "awards",
-  "references",
-  "additional information",
-]);
-
 export function inventorySemanticV2SourceSections(
-  request: Pick<ResumeSemanticParseRequest, "sourceFragments">,
+  _request: Pick<ResumeSemanticParseRequest, "sourceFragments">,
 ): SemanticV2SourceSectionInventory {
-  const lines = request.sourceFragments.flatMap((fragment) =>
-    fragment.text.split(/\r?\n/u).map((line) => normalizeHeading(line)),
-  );
   return {
-    summary: sectionHasHeadingAndContent(lines, headingLabels.summary),
-    workExperience: sectionHasHeadingAndContent(
-      lines,
-      headingLabels.workExperience,
-    ),
-    education: sectionHasHeadingAndContent(lines, headingLabels.education),
+    summary: null,
+    workExperience: null,
+    education: null,
   };
 }
 
@@ -112,8 +55,14 @@ export function evaluateSemanticV2Completeness(input: {
   for (const section of Object.keys(
     input.sourceInventory,
   ) as SemanticV2CompletenessSection[]) {
-    if (!input.sourceInventory[section]) {
+    if (input.sourceInventory[section] === false) {
       diagnostics.push({ kind: "source_section_not_expected", section });
+      continue;
+    }
+    // Accepted or rejected fields cannot establish coverage of the rest of
+    // the source. Keep uncertainty visible independently of candidate recall.
+    if (input.sourceInventory[section] === null) {
+      diagnostics.push({ kind: "source_section_unknown", section });
       continue;
     }
     if (hasAcceptedCandidate(input.canonical, section)) continue;
@@ -124,33 +73,6 @@ export function evaluateSemanticV2Completeness(input: {
     );
   }
   return diagnostics;
-}
-
-function sectionHasHeadingAndContent(
-  lines: readonly string[],
-  labels: readonly string[],
-): boolean {
-  return lines.some((line, headingIndex) => {
-    if (!labels.includes(line)) return false;
-    const nextHeadingIndex = lines.findIndex(
-      (nextLine, index) =>
-        index > headingIndex && recognizedHeadingLabels.has(nextLine),
-    );
-    const sectionEnd = nextHeadingIndex < 0 ? lines.length : nextHeadingIndex;
-    return lines
-      .slice(headingIndex + 1, sectionEnd)
-      .some((content) => content.length > 0);
-  });
-}
-
-function normalizeHeading(value: string): string {
-  return value
-    .normalize("NFKD")
-    .replace(/\p{Diacritic}/gu, "")
-    .toLocaleLowerCase("en-US")
-    .replace(/\s+/gu, " ")
-    .replace(/:$/u, "")
-    .trim();
 }
 
 function hasAcceptedCandidate(

@@ -1201,7 +1201,7 @@ function normalizePartialDate(
 ): { readonly value: string } | undefined {
   const lowered = value.toLocaleLowerCase();
   if (
-    /^(?:present|current|now|ongoing|en cours|présent|present|actuel)$/iu.test(
+    /^(?:present|current|now|ongoing|en cours|présent|actuel|actualidad|presente|en curso|حتى الآن|الآن|حاليًا|حالياً|حاليا)$/iu.test(
       lowered,
     )
   )
@@ -1211,9 +1211,10 @@ function normalizePartialDate(
   const decimalDigits = normalizeDecimalDigits(value);
   const year = /^(?:19|20)\d{2}$/u.exec(decimalDigits)?.[0];
   if (year !== undefined) return { value: year };
-  const yearMonth = /^(?:(\d{1,2})[/-](\d{4})|(\d{4})[/-](\d{1,2}))$/u.exec(
-    decimalDigits,
-  );
+  const yearMonth =
+    /^(?:(\d{1,2})[/-]((?:19|20)\d{2})|((?:19|20)\d{2})[/-](\d{1,2}))$/u.exec(
+      decimalDigits,
+    );
   if (yearMonth !== null) {
     const month = Number(yearMonth[1] ?? yearMonth[4]);
     const parsedYear = Number(yearMonth[2] ?? yearMonth[3]);
@@ -1224,7 +1225,9 @@ function normalizePartialDate(
   }
   // Year/month ideographs make the ordering explicit, unlike a day/month
   // numeric date. Accept the structure without translating any source text.
-  const ideographicYearMonth = /^(\d{4})年(\d{1,2})月$/u.exec(decimalDigits);
+  const ideographicYearMonth = /^((?:19|20)\d{2})年(\d{1,2})月$/u.exec(
+    decimalDigits,
+  );
   if (ideographicYearMonth !== null) {
     const month = Number(ideographicYearMonth[2]);
     if (month >= 1 && month <= 12) {
@@ -1274,8 +1277,23 @@ function normalizePartialDate(
     novembre: 11,
     décembre: 12,
     decembre: 12,
+    enero: 1,
+    febrero: 2,
+    marzo: 3,
+    abril: 4,
+    mayo: 5,
+    junio: 6,
+    julio: 7,
+    agosto: 8,
+    septiembre: 9,
+    setiembre: 9,
+    octubre: 10,
+    noviembre: 11,
+    diciembre: 12,
   };
-  const monthYear = /^([\p{L}.]+)[ ,/-]+((?:19|20)\d{2})$/u.exec(lowered);
+  const monthYear = /^([\p{L}.]+)(?:[ ,/-]+| de )((?:19|20)\d{2})$/u.exec(
+    normalizeDecimalDigits(lowered),
+  );
   if (monthYear !== null) {
     const month = monthNames[monthYear[1]?.replace(/\.$/u, "") ?? ""];
     if (month !== undefined)

@@ -27,6 +27,7 @@ export type SemanticBenchmarkPredicateReason =
   | "fallback_used"
   | "canonical_draft_not_produced"
   | "source_section_not_expected"
+  | "source_section_unknown"
   | "expected_summary_missing_or_not_grounded"
   | "expected_education_missing_or_not_grounded"
   | "expected_work_missing_or_not_substantially_present"
@@ -186,16 +187,19 @@ function booleanPredicate(
 
 function conditionalFidelityPredicate(
   name: "summary_fidelity" | "education_fidelity" | "work_fidelity",
-  expected: boolean,
+  expected: boolean | null,
   passes: boolean,
   failureReason: Exclude<SemanticBenchmarkPredicateReason, "observed">,
 ): SemanticBenchmarkPredicateResult {
-  if (!expected) {
+  if (expected === false) {
     return {
       name,
       status: "not_applicable",
       reason: "source_section_not_expected",
     };
+  }
+  if (expected !== true) {
+    return { name, status: "FAIL", reason: "source_section_unknown" };
   }
   return {
     name,
