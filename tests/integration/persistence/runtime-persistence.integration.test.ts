@@ -7,12 +7,16 @@ import {
   PersistenceConfigError,
   TypeOrmImportWorkflowRepository,
 } from "@nuvitae/persistence";
-import { DataSource } from "typeorm";
+import type { DataSource } from "typeorm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AppModule } from "../../../apps/api/src/app.module.js";
-import { createApiTypeOrmModuleOptions } from "../../../apps/api/src/persistence/api-persistence.module.js";
+import {
+  API_PERSISTENCE_DATA_SOURCE,
+  createApiTypeOrmModuleOptions,
+} from "../../../apps/api/src/persistence/api-persistence.module.js";
 import {
   WORKER_IMPORT_WORKFLOW_REPOSITORY,
+  WORKER_PERSISTENCE_DATA_SOURCE,
   createWorkerTypeOrmModuleOptions,
 } from "../../../apps/worker/src/persistence/worker-persistence.module.js";
 import { startWorkerRuntime } from "../../../apps/worker/src/runtime/worker-runtime.js";
@@ -123,7 +127,9 @@ describe("final API and worker persistence runtime integration", () => {
       expect(live.status).toBe(200);
       expect(await live.json()).toEqual({ service: "api", status: "ok" });
 
-      const managedDataSource = app.get(DataSource);
+      const managedDataSource = app.get<DataSource>(
+        API_PERSISTENCE_DATA_SOURCE,
+      );
       await managedDataSource.destroy();
 
       const unavailable = await fetch(`${baseUrl}/health`);
@@ -193,7 +199,9 @@ describe("final API and worker persistence runtime integration", () => {
       });
 
       const repository = application!.get(WORKER_IMPORT_WORKFLOW_REPOSITORY);
-      const managedDataSource = application!.get(DataSource);
+      const managedDataSource = application!.get<DataSource>(
+        WORKER_PERSISTENCE_DATA_SOURCE,
+      );
 
       expect(repository).toBeInstanceOf(TypeOrmImportWorkflowRepository);
       await repository.transaction(

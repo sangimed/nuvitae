@@ -33,6 +33,9 @@ jobs:
           - name: Tests
             command: pnpm test
             options: ""
+          - name: Persistence integration
+            command: pnpm test:integration:persistence
+            options: ""
           - name: Build
             command: pnpm build
             options: --no-deps

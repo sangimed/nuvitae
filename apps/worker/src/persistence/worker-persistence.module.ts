@@ -13,6 +13,9 @@ export const WORKER_IMPORT_WORKFLOW_REPOSITORY = Symbol(
 export const WORKER_SOURCE_DELETION_REPOSITORY = Symbol(
   "WORKER_SOURCE_DELETION_REPOSITORY",
 );
+export const WORKER_PERSISTENCE_DATA_SOURCE = Symbol(
+  "WORKER_PERSISTENCE_DATA_SOURCE",
+);
 
 /**
  * The runtime factory is the worker's only PostgreSQL environment boundary.
@@ -25,6 +28,10 @@ export function createWorkerTypeOrmModuleOptions(
 }
 
 export const workerPersistenceRepositoryProviders: Provider[] = [
+  {
+    provide: WORKER_PERSISTENCE_DATA_SOURCE,
+    useExisting: DataSource,
+  },
   {
     provide: WORKER_IMPORT_WORKFLOW_REPOSITORY,
     useFactory: (dataSource: DataSource) =>
@@ -49,6 +56,7 @@ export const workerPersistenceRepositoryProviders: Provider[] = [
   exports: [
     WORKER_IMPORT_WORKFLOW_REPOSITORY,
     WORKER_SOURCE_DELETION_REPOSITORY,
+    WORKER_PERSISTENCE_DATA_SOURCE,
   ],
 })
 export class WorkerPersistenceModule {}

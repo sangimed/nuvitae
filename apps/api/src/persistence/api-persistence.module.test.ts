@@ -9,6 +9,7 @@ import { DataSource } from "typeorm";
 import { describe, expect, it, vi } from "vitest";
 import {
   API_IMPORT_RESUME_REPOSITORY,
+  API_PERSISTENCE_DATA_SOURCE,
   API_IMPORT_CONFIRMATION_REPOSITORY,
   API_IMPORT_REVIEW_REPOSITORY,
   API_MANUAL_RESUME_DRAFT_REPOSITORY,
@@ -77,6 +78,7 @@ describe("ApiPersistenceModule", () => {
       ],
     }).compile();
 
+    const exposedDataSource = testingModule.get(API_PERSISTENCE_DATA_SOURCE);
     const repository = testingModule.get(API_IMPORT_RESUME_REPOSITORY);
     const reviewRepository = testingModule.get(API_IMPORT_REVIEW_REPOSITORY);
     const confirmationRepository = testingModule.get(
@@ -90,6 +92,7 @@ describe("ApiPersistenceModule", () => {
       API_MANUAL_RESUME_DRAFT_REPOSITORY,
     );
 
+    expect(exposedDataSource).toBe(managedDataSource);
     expect(repository).toBeInstanceOf(TypeOrmImportResumeRepository);
     expect(reviewRepository).toBeInstanceOf(TypeOrmImportWorkflowRepository);
     expect(confirmationRepository).toBe(reviewRepository);

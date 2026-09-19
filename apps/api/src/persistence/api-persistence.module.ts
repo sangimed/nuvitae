@@ -34,6 +34,9 @@ export const API_MANUAL_RESUME_DRAFT_REPOSITORY = Symbol(
 export const API_RESUME_WORKSPACE_REPOSITORY = Symbol(
   "API_RESUME_WORKSPACE_REPOSITORY",
 );
+export const API_PERSISTENCE_DATA_SOURCE = Symbol(
+  "API_PERSISTENCE_DATA_SOURCE",
+);
 
 /**
  * The runtime factory is the API's only PostgreSQL environment boundary.
@@ -51,6 +54,10 @@ export function createApiTypeOrmModuleOptions(
 }
 
 export const apiPersistenceRepositoryProviders: Provider[] = [
+  {
+    provide: API_PERSISTENCE_DATA_SOURCE,
+    useExisting: DataSource,
+  },
   {
     provide: API_START_IMPORT_REPOSITORY,
     useExisting: API_IMPORT_REVIEW_REPOSITORY,
@@ -111,6 +118,7 @@ export const apiPersistenceRepositoryProviders: Provider[] = [
     API_SOURCE_DELETION_REPOSITORY,
     API_MANUAL_RESUME_DRAFT_REPOSITORY,
     API_RESUME_WORKSPACE_REPOSITORY,
+    API_PERSISTENCE_DATA_SOURCE,
   ],
 })
 export class ApiPersistenceModule {}
