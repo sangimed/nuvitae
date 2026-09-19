@@ -1,0 +1,25 @@
+services:
+  community-alpha-playwright:
+    build:
+      context: .
+      dockerfile: docker/test/Dockerfile
+      args:
+        USER_ID: ${LOCAL_UID:-1000}
+        GROUP_ID: ${LOCAL_GID:-1000}
+        PNPM_VERSION: 11.15.1
+    image: nuvitae-community-alpha-playwright:0.1.0
+    working_dir: /workspace
+    network_mode: host
+    environment:
+      COMMUNITY_BASE_URL: http://localhost:3000
+      COMMUNITY_ACCESS_SECRET: ${NUVITAE_COMMUNITY_ACCESS_SECRET:?NUVITAE_COMMUNITY_ACCESS_SECRET must be configured}
+    volumes:
+      - .:/workspace:ro
+      - root-node-modules:/workspace/node_modules
+      - web-node-modules:/workspace/apps/web/node_modules
+      - contracts-node-modules:/workspace/packages/contracts/node_modules
+      - extraction-node-modules:/workspace/packages/extraction/node_modules
+      - import-application-node-modules:/workspace/packages/import-application/node_modules
+      - persistence-node-modules:/workspace/packages/persistence/node_modules
+    profiles:
+      - test
