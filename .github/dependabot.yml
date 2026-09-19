@@ -11,6 +11,10 @@ updates:
     open-pull-requests-limit: 6
     reviewers:
       - sangimed
+    ignore:
+      - dependency-name: "@nestjs/swagger"
+        update-types:
+          - "version-update:semver-major"
     groups:
       production-minor-and-patch:
         dependency-type: production
