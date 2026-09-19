@@ -1,0 +1,24 @@
+name: Community alpha deterministic gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - release/61-community-alpha-deterministic-gate
+
+concurrency:
+  group: community-alpha-deterministic-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-gate:
+    name: Docker-first deterministic release gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run deterministic Community alpha gate
+        run: scripts/community-alpha-deterministic-gate.sh
