@@ -83,7 +83,8 @@ describe("project-local TypeORM migration workflow", () => {
     const tracking = await database.dataSource.query<{ count: string }[]>(
       `SELECT count(*) FROM "${database.schema}"."typeorm_migrations"`,
     );
-    expect(tracking[0]?.count).toBe("8");
+    const expectedMigrationCount = String(committedMigrationSnapshot.size);
+    expect(tracking[0]?.count).toBe(expectedMigrationCount);
 
     await command("db:migration:revert");
     const reverted = await command("db:migration:show");
@@ -91,15 +92,28 @@ describe("project-local TypeORM migration workflow", () => {
     expect(reverted.stdout).toContain(
       "[X] 4 SemanticImportProcessingStates1722427200000",
     );
-    expect(reverted.stdout).toContain("[ ] CommunityInstanceAuth1785888000000");
+    expect(reverted.stdout).toContain(
+      "[ ] StructuredResumeSectionOrder1785974400000",
+    );
+    expect(reverted.stdout).toContain(
+      "[X] 8 CommunityInstanceAuth1785888000000",
+    );
+
     await command("db:migration:revert");
     const revertedTwice = await command("db:migration:show");
     expect(revertedTwice.stdout).toContain(
-      "[ ] ImportLimitAttempts1785801600000",
+      "[ ] CommunityInstanceAuth1785888000000",
     );
+
     await command("db:migration:revert");
     const revertedThrice = await command("db:migration:show");
     expect(revertedThrice.stdout).toContain(
+      "[ ] ImportLimitAttempts1785801600000",
+    );
+
+    await command("db:migration:revert");
+    const revertedFourTimes = await command("db:migration:show");
+    expect(revertedFourTimes.stdout).toContain(
       "[ ] ProviderRuntimeConnections1722600000000",
     );
     const revertedRuntimeConnectionTables = await database.dataSource.query<
@@ -141,7 +155,7 @@ describe("project-local TypeORM migration workflow", () => {
     const rerun = await database.dataSource.query<{ count: string }[]>(
       `SELECT count(*) FROM "${database.schema}"."typeorm_migrations"`,
     );
-    expect(rerun[0]?.count).toBe("8");
+    expect(rerun[0]?.count).toBe(expectedMigrationCount);
 
     const result = await command("db:migration:create");
     expect(result.stdout).toContain(".tmp/migrations/");
