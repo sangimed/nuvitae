@@ -1,4 +1,4 @@
-name: TypeORM v1 validation
+name: TypeORM baseline validation
 
 on:
   push:
@@ -10,15 +10,17 @@ permissions:
 
 jobs:
   persistence-integration:
-    name: PostgreSQL persistence integration
+    name: Main baseline PostgreSQL persistence integration
     runs-on: ubuntu-latest
     env:
-      NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET: typeorm-v1-validation-storage-secret
-      NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET: typeorm-v1-validation-provider-secret
-      NUVITAE_COMMUNITY_ACCESS_SECRET: typeorm-v1-validation-community-secret
+      NUVITAE_PRIVATE_STORAGE_SIGNING_SECRET: typeorm-baseline-storage-secret
+      NUVITAE_PROVIDER_SESSION_ENCRYPTION_SECRET: typeorm-baseline-provider-secret
+      NUVITAE_COMMUNITY_ACCESS_SECRET: typeorm-baseline-community-secret
       NUVITAE_COMMUNITY_COOKIE_SECURE: "false"
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: main
       - name: Match workspace container to runner user
         run: |
           echo "LOCAL_UID=$(id -u)" >> "$GITHUB_ENV"
