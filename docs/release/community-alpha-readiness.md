@@ -4,6 +4,72 @@ This is the execution record and reproducible checklist for issue #61. It is a
 final integration gate, not a substitute for completing its dependencies. A
 passing subset must never be reported as **READY**.
 
+## Revalidation record — 22 September 2026
+
+**Verdict: NOT READY.** The candidate available in the validation environment
+was `550cc8dcf5c16f02aabce2610938751053dbf471`. The working tree was clean and
+the candidate includes the previously integrated #54–#60, #40, #44, and #45
+work described below. However, this environment had neither a configured Git
+remote/GitHub credential nor a Docker executable. Consequently the validator
+could not prove that the candidate was the latest remote `main`, execute the
+repository-required Docker workflow, inspect hosted branch/security settings,
+or open a real GitHub pull request. No provider credential suitable for a
+Nuvitae device authorization was available.
+
+### Commands and results
+
+| Check | Result | Privacy-safe evidence |
+| --- | --- | --- |
+| Recoverable pre-work snapshot | PASS | A complete filesystem copy was created outside the repository before branch or file changes. |
+| Candidate provenance | BLOCKED | `git rev-parse HEAD` returned the SHA above, but `git fetch origin main` failed because this checkout has no `origin`; remote freshness is unverified. |
+| Working-tree baseline | PASS | `git status --short --branch` contained only the branch header before validation changes. |
+| Dependency review | PASS | Local history and the prior integration record show the import/PDF, persistence, contextual proposal, deletion, onboarding, Community guide, upload-hardening, supply-chain, and response-policy work integrated. |
+| Workflow/gate inspection | PASS | Quality, documentation, design, secret scanning, CodeQL, Compose configuration, Dockerfile, and runtime-image jobs were inspected. CodeQL remains conditional on a public repository. |
+| Deterministic combined gate | BLOCKED | The one permitted execution of `scripts/community-alpha-deterministic-gate.sh` stopped before phase A with `Docker Compose is required.` because `docker` is not installed. It was not retried. |
+| Clean Community installation and readiness | BLOCKED | Docker absence prevented a fresh Compose project, migrations, five-service health, network-exposure checks, and restart persistence. |
+| Owner session and authorization | BLOCKED | No Community runtime was available for signed-out, sign-in, refresh, cookie, logout/revocation, wrong-owner, or response-header checks. |
+| Deterministic import-to-PDF journey | BLOCKED | Unit, integration, persistence, browser, PDF, source-deletion, security, and Local Play suites are present, but repository policy requires executing them through Compose and that was impossible. |
+| Non-technical rendered UX | BLOCKED | Desktop/mobile onboarding, review, editor, preview, persistence, export, recovery, and privacy controls could not be exercised in a browser. |
+| Security scanners | BLOCKED | `actionlint`, `gitleaks`, and `trivy` were unavailable locally; Docker-backed and hosted checks could not run. |
+| Real-provider smoke | NOT RUN | No provider authorization was started and invocation count was zero. No tokens, device codes, prompts, resume data, source fragments, or provider responses were captured. |
+
+Host-installed Node/pnpm commands were deliberately not substituted for the
+documented Docker-only workflow. The existing `node_modules` directory was not
+treated as clean-install or lockfile evidence.
+
+### Current blockers and required closure evidence
+
+1. **Candidate provenance is unverified.** In an authenticated checkout, fetch
+   `origin/main`, create the gate branch from its exact tip, and record both
+   SHAs. This is release-blocking because validation against an unknown local
+   snapshot cannot approve the current product.
+2. **All Docker-backed release evidence remains absent.** On a Docker-capable
+   machine, run `scripts/community-alpha-deterministic-gate.sh` once and retain
+   only phase names, exit codes, aggregate scanner results, and the candidate
+   SHA. Every phase must pass, including locked install, format, lint, types,
+   tests, persistence, audit, build, parser isolation, and browser journeys.
+3. **The clean normal-Community journey remains unverified.** Execute phases B
+   through E below with a previously unused Compose project and without deleting
+   volumes. Verify production owner authentication, recovery, editor/preview,
+   ATS PDF, save/reopen, deletion, privacy-safe logs, security behavior, and the
+   desktop/mobile journey. Local Play alone does not close this blocker.
+4. **The bounded provider demonstration remains unverified.** A maintainer with
+   a Docker-capable environment and valid Codex access must follow phase D
+   exactly: at most one authorization, one upload/semantic attempt, and one
+   contextual proposal, with no retry and content-free evidence. A failure is a
+   recorded failure, not permission to repeat the invocation.
+5. **Hosted controls remain unverified.** An authenticated repository owner must
+   confirm the branch rules, required quality/security checks, CODEOWNERS,
+   private vulnerability intake, and the first applicable hosted scanner runs.
+   If CodeQL cannot run while the repository is private, that limitation must
+   be resolved or explicitly accepted by the release owner without describing
+   the gate as passed.
+
+No new product defect was established: the observed failures are validation
+environment/release-evidence blockers, so no speculative product bug was filed.
+Issue #61 must remain open. The exact manual commands and privacy constraints
+for closing these blockers are the phase A–E procedures below.
+
 ## Final execution record — 5 September 2026
 
 **Verdict: NOT READY.** The integrated implementation is materially more
