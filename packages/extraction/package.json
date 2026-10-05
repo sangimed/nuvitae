@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "fast-xml-parser": "5.11.1",
+    "fast-xml-parser": "5.11.2",
     "pdfjs-dist": "6.3.289",
     "yauzl": "3.4.0"
   },
