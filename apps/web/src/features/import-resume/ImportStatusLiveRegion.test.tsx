@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act } from "react";
+import { act, useState } from "react";
 import type { ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import type { Root } from "react-dom/client";
@@ -13,6 +13,12 @@ import {
   toPublicAnnouncement,
   type ImportLiveRegionState,
 } from "./ImportStatusLiveRegion";
+import { messageKeyForAnnouncement } from "./ImportFlow";
+import {
+  LanguageSelector,
+  LocaleProvider,
+  useTranslation,
+} from "../../i18n/LocaleProvider";
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -43,6 +49,27 @@ function region(): HTMLDivElement {
   return container.querySelector("div")!;
 }
 
+function LocalizedStatus() {
+  const [resumeContent, setResumeContent] = useState("مهندسة — Paris — 中文");
+  const { locale, t } = useTranslation();
+  return (
+    <>
+      <LanguageSelector />
+      <ImportStatusLiveRegion
+        state="review_ready"
+        defaultText={t(messageKeyForAnnouncement("review_ready"))}
+      />
+      <input
+        aria-label="Resume content"
+        dir="auto"
+        value={resumeContent}
+        onChange={(event) => setResumeContent(event.currentTarget.value)}
+      />
+      <output>{locale}</output>
+    </>
+  );
+}
+
 const allStates: readonly ImportLiveRegionState[] = [
   "upload_accepted",
   "validation_started",
@@ -61,6 +88,33 @@ const allStates: readonly ImportLiveRegionState[] = [
 ];
 
 describe("ImportStatusLiveRegion (T061)", () => {
+  it("uses the active locale for stable status text without changing resume content", async () => {
+    render(
+      <LocaleProvider initialLocale="fr">
+        <LocalizedStatus />
+      </LocaleProvider>,
+    );
+    expect(
+      container.querySelector(".import-status-live-region")?.textContent,
+    ).toBe(
+      "Votre brouillon de CV est prêt à être vérifié.",
+    );
+    const input = container.querySelector("input")!;
+    const select = container.querySelector("select")!;
+    await act(async () => {
+      select.value = "ar";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(
+      container.querySelector(".import-status-live-region")?.textContent,
+    ).toBe(
+      "مسودة سيرتك الذاتية جاهزة للمراجعة.",
+    );
+    expect(document.documentElement.dir).toBe("rtl");
+    expect(input.value).toBe("مهندسة — Paris — 中文");
+    expect(input.dir).toBe("auto");
+  });
+
   it("announces deterministic provider-neutral text for every supported state", () => {
     for (const state of allStates) {
       const expected = defaultAnnouncementText[state];

@@ -24,6 +24,7 @@ import { pollImportStatus } from "./client";
 import { startImportUpload } from "./client";
 import { recordImportTiming } from "./client";
 import { useTranslation } from "../../i18n/LocaleProvider";
+import type { MessageKey } from "../../i18n/messages";
 import { direction } from "../../i18n/locale";
 
 const initialProcessingStatus = (
@@ -109,6 +110,41 @@ export function announcementForRecoveryState(
   }
 }
 
+export function messageKeyForAnnouncement(
+  state: ImportLiveRegionState,
+): MessageKey {
+  switch (state) {
+    case "upload_accepted":
+      return "import.status.uploadAccepted";
+    case "validation_started":
+      return "import.status.validationStarted";
+    case "processing_started":
+      return "import.status.processingStarted";
+    case "processing_progress":
+      return "import.status.processingProgress";
+    case "provider_connection_required":
+      return "import.status.providerConnectionRequired";
+    case "provider_unavailable":
+      return "import.status.providerUnavailable";
+    case "limited_deterministic_fallback_started":
+      return "import.status.limitedExtractionStarted";
+    case "partial_draft_ready":
+      return "import.status.partialDraftReady";
+    case "review_ready":
+      return "import.status.reviewReady";
+    case "processing_failed":
+      return "import.status.processingFailed";
+    case "retry_started":
+      return "import.status.retryStarted";
+    case "cancellation_completed":
+      return "import.status.cancellationCompleted";
+    case "source_deletion_completed":
+      return "import.status.sourceDeletionCompleted";
+    case "unknown":
+      return "import.status.unknown";
+  }
+}
+
 /**
  * T063 - generic fail-safe recovery for unknown or malformed frontend import
  * states. It offers only explicitly safe actions (replacement upload and
@@ -131,7 +167,7 @@ export function UnknownImportRecovery(props: {
 }
 
 export function ImportFlow(props: { readonly importId?: string }) {
-  const { locale } = useTranslation();
+  const { locale, t } = useTranslation();
   const [state, setState] = useState<ClientImportState>(() =>
     props.importId === undefined
       ? initialImportState
@@ -363,7 +399,10 @@ export function ImportFlow(props: { readonly importId?: string }) {
   return (
     <>
       {announcement === undefined ? null : (
-        <ImportStatusLiveRegion {...announcement} />
+        <ImportStatusLiveRegion
+          {...announcement}
+          defaultText={t(messageKeyForAnnouncement(announcement.state))}
+        />
       )}
       {content}
     </>

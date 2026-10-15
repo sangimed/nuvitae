@@ -6,6 +6,9 @@ The shell navigation, language selector, home onboarding, resume-import entry
 and upload policy/disclosure, and page description use one typed translation
 mechanism in `apps/web/src/i18n`. All keys in this slice have English, French,
 Spanish, Arabic, and Simplified Chinese resources.
+The stable import-status live-region states are also localized at their display
+boundary. Backend-provided status and error prose remains provider-neutral,
+untranslated public text; it is never treated as a translation key.
 This is **not completion of issue #31** or a claim of complete application
 translations. Translations still need native-speaker product review.
 
@@ -124,7 +127,8 @@ locale is added to resume API payloads, provider requests, or persistence.
 | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `AppShell`, `HomeOnboarding`, root metadata                                                         | Localized in this slice; native-speaker review outstanding                                                                                                                                             |
 | `CreateResumeEntry`, `UploadStep`, `ProviderDisclosure`                                             | Localized entry, file guidance, local validation, accessible file control, actions, and provider disclosure; the connection-status card and server-safe errors remain separate follow-up work          |
-| `ImportFlow`, `ProcessingStep`, `ImportStatusLiveRegion`, `ProviderRecoveryActions`, `ErrorSummary` | Localize stable state/error IDs and recovery copy; preserve safe public messages and live regions                                                                                                      |
+| `ImportFlow`, `ImportStatusLiveRegion`                                                            | Stable normalized live-region states are localized in this slice; progress-step phrasing, processing screen copy, recovery copy, and error-summary labels remain follow-up work while preserving safe public messages |
+| `ProcessingStep`, `ProviderRecoveryActions`, `ErrorSummary`                                       | Localize stable state/error IDs and recovery copy; preserve safe public messages and live regions                                                                                                      |
 | `ReviewStep`, `ReviewWarning`, `FieldProvenance`, `ConfirmationStep`, `DeleteSourceControl`         | English labels, dialogs, warnings, provenance; keep source values untouched                                                                                                                            |
 | `ManualResumeFlow`, `StructuredResumeSections`, `ResponsiveVisualResumeEditor`                      | English field/section labels, validation, save states and editor controls remain; unsaved edits and explicit save payload preservation now have focused browser coverage                               |
 | `ResumeWorkspace`, `ResumeExportView`, `ConfirmedResumeView`                                        | English loading/empty/error/export controls and formatting; separate document labels from UI labels                                                                                                    |
