@@ -169,7 +169,7 @@ describe("ImportFlow live announcements (T063)", () => {
         }),
       );
     });
-    expect(liveRegionText()).toContain("42 percent complete");
+    expect(liveRegionText()).toContain("42% complete");
 
     act(() => {
       emitStatus?.(
