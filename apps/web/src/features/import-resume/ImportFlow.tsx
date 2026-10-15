@@ -17,7 +17,7 @@ import {
   type ClientImportState,
 } from "./state";
 import { CreateResumeEntry } from "./CreateResumeEntry";
-import { labelForStep } from "./ProcessingStep";
+import { labelForStep, messageKeyForStep } from "./ProcessingStep";
 import { ProcessingStep } from "./ProcessingStep";
 import { UploadStep } from "./UploadStep";
 import { pollImportStatus } from "./client";
@@ -25,7 +25,7 @@ import { startImportUpload } from "./client";
 import { recordImportTiming } from "./client";
 import { useTranslation } from "../../i18n/LocaleProvider";
 import type { MessageKey } from "../../i18n/messages";
-import { direction } from "../../i18n/locale";
+import { direction, translate } from "../../i18n/locale";
 
 const initialProcessingStatus = (
   importId: string,
@@ -48,13 +48,14 @@ const initialProcessingStatus = (
 export function announcementForStatus(
   status: PublicImportStatusResponse,
   processingAnnounced: boolean,
+  progressStep = labelForStep(status.currentStep),
 ): ImportStatusAnnouncement {
   switch (status.status) {
     case "processing":
       return processingAnnounced
         ? {
             state: "processing_progress",
-            progressStep: labelForStep(status.currentStep),
+            progressStep,
             progressKnown: status.progressKnown,
             ...(status.progressPercent === undefined
               ? {}
@@ -213,7 +214,13 @@ export function ImportFlow(props: { readonly importId?: string }) {
         setStatus(next);
         const processingAnnounced =
           processingAnnouncedImportRef.current === next.importId;
-        setAnnouncement(announcementForStatus(next, processingAnnounced));
+        setAnnouncement(
+          announcementForStatus(
+            next,
+            processingAnnounced,
+            translate(locale, messageKeyForStep(next.currentStep)),
+          ),
+        );
         if (next.status === "processing") {
           processingAnnouncedImportRef.current = next.importId;
         }
@@ -255,12 +262,20 @@ export function ImportFlow(props: { readonly importId?: string }) {
       },
     });
     return () => controller.abort();
-  }, [activeImportId]);
+  }, [activeImportId, locale]);
 
   const unknownRecovery =
     state.state !== "initial_choice" &&
     state.state !== "upload_selection" &&
     !("importId" in state);
+  const localizedAnnouncement =
+    announcement?.state === "processing_progress" &&
+    status?.status === "processing"
+      ? {
+          ...announcement,
+          progressStep: t(messageKeyForStep(status.currentStep)),
+        }
+      : announcement;
 
   useEffect(() => {
     // Unknown or malformed frontend states fail safely: announce the generic
@@ -398,10 +413,11 @@ export function ImportFlow(props: { readonly importId?: string }) {
 
   return (
     <>
-      {announcement === undefined ? null : (
+      {localizedAnnouncement === undefined ? null : (
         <ImportStatusLiveRegion
-          {...announcement}
-          defaultText={t(messageKeyForAnnouncement(announcement.state))}
+          {...localizedAnnouncement}
+          defaultText={t(messageKeyForAnnouncement(localizedAnnouncement.state))}
+          progressPercentTemplate={t("import.status.progressPercent")}
         />
       )}
       {content}

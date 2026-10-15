@@ -11,6 +11,7 @@ import {
   announcementForRecoveryState,
   announcementForStatus,
 } from "./ImportFlow";
+import { LocaleProvider } from "../../i18n/LocaleProvider";
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -213,6 +214,37 @@ describe("ImportFlow live announcements (T063)", () => {
       );
     });
     expect(liveRegionText()).toBe(first);
+  });
+
+  it("uses Arabic progress labels and percentage text for processing updates", () => {
+    render(
+      <LocaleProvider initialLocale="ar">
+        <ImportFlow importId={importId} />
+      </LocaleProvider>,
+    );
+    act(() => {
+      emitStatus?.(
+        statusResponse("processing", {
+          currentStep: "checking_document",
+          progressKnown: false,
+        }),
+      );
+      emitStatus?.(
+        statusResponse("processing", {
+          currentStep: "reading_content",
+          progressKnown: true,
+          progressPercent: 42,
+        }),
+      );
+    });
+
+    expect(liveRegionText()).toContain(
+      "لا يزال Nuvitae يُعِد سيرتك الذاتية للمراجعة.",
+    );
+    expect(liveRegionText()).toContain("جارٍ قراءة المحتوى");
+    expect(liveRegionText()).toContain("اكتمل 42%");
+    expect(liveRegionText()).not.toContain("percent complete");
+    expect(liveRegionText()).not.toContain("reading the content");
   });
 
   it("maps every public import status to a safe normalized announcement", () => {

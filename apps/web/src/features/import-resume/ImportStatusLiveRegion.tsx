@@ -74,6 +74,8 @@ export interface ImportStatusAnnouncement {
   readonly progressKnown?: boolean;
   /** Reported progress percent; announced only when progress is known. */
   readonly progressPercent?: number;
+  /** Localized template for a known percentage, with a {percent} placeholder. */
+  readonly progressPercentTemplate?: string;
 }
 
 export interface ImportStatusLiveRegionProps extends ImportStatusAnnouncement {
@@ -139,7 +141,12 @@ export function composeAnnouncement(
     input.progressPercent >= 0 &&
     input.progressPercent <= 100
   ) {
-    parts.push(`${input.progressPercent} percent complete`);
+    parts.push(
+      (input.progressPercentTemplate ?? "{percent}% complete").replace(
+        "{percent}",
+        String(input.progressPercent),
+      ),
+    );
   }
   return parts.join(" ");
 }
@@ -156,6 +163,7 @@ export function announcementKey(input: ImportStatusAnnouncement): string {
     input.progressStep ?? "",
     input.progressKnown === true ? "known" : "unknown",
     input.progressPercent ?? "",
+    input.progressPercentTemplate ?? "",
   ].join("\u0000");
 }
 
