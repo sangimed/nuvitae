@@ -7,6 +7,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir --require-hashes -r /tmp/requirements.txt
 
+COPY check-repository-links.py /usr/local/bin/check-repository-links.py
+
 USER 10001:10001
 WORKDIR /workspace
 ENTRYPOINT ["mkdocs"]

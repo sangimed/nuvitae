@@ -32,7 +32,7 @@ acceptance criterion of comprehensive developer documentation.
 | Deployment                            | Document verified Community upgrade/backup/restore/retention operations; label hosted identity/data-plane/billing as future, not implemented                                 |
 | ADR backfill                          | Confirm rationale for async processing, private storage, grounding/fallback and transaction choices; do not fabricate accepted history                                       |
 | Single searchable corpus              | Integrate reviewed specialist docs/ADRs into site navigation/search without duplication; preserve dated research/audit status and validate legacy links                      |
-| Link validation                       | Current gate checks local site links/anchors only; add repository-target and external URL checking with a considered network/failure policy                                  |
+| Link validation                       | Repository-target links from the README and site are checked offline; add external URL checking with a considered network/failure policy                                      |
 | README consolidation                  | Reduce to a concise entry point after the remaining operational material has an authoritative maintained home                                                                |
 
 No automatic hosting/deployment, custom theme, diagram plugin, domain-model
