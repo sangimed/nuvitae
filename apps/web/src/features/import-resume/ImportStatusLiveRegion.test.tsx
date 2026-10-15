@@ -147,14 +147,12 @@ describe("ImportStatusLiveRegion (T061)", () => {
     render(
       <ImportStatusLiveRegion
         state="processing_progress"
-        progressKnown={false}
       />,
     );
     const first = region().textContent;
     render(
       <ImportStatusLiveRegion
         state="processing_progress"
-        progressKnown={false}
       />,
     );
     expect(region().textContent).toBe(first);
