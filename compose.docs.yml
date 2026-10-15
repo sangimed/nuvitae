@@ -10,8 +10,10 @@ services:
     entrypoint: ["python", "/usr/local/bin/check-repository-links.py"]
     command: ["--root", "/workspace", "README.md", "docs/site"]
     volumes:
-      - ./README.md:/workspace/README.md:ro
-      - ./docs:/workspace/docs:ro
+      # The checker resolves GitHub blob/tree links against this checkout. Its
+      # implementation confines every resolved target below /workspace; the
+      # mount stays read-only and the service has no network access.
+      - ./:/workspace:ro
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777

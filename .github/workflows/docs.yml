@@ -3,7 +3,16 @@ name: Documentation
 on:
   pull_request:
     paths:
+      - "README.md"
+      - "CONTEXT.md"
+      - "compose.yml"
+      - "compose.local.yml"
+      - "apps/**"
       - "docs/**"
+      - "packages/**"
+      - "specs/**"
+      - "tests/**"
+      - ".stitch/**"
       - "mkdocs.yml"
       - "compose.docs.yml"
       - "docker/docs/**"
@@ -11,7 +20,16 @@ on:
   push:
     branches: [main]
     paths:
+      - "README.md"
+      - "CONTEXT.md"
+      - "compose.yml"
+      - "compose.local.yml"
+      - "apps/**"
       - "docs/**"
+      - "packages/**"
+      - "specs/**"
+      - "tests/**"
+      - ".stitch/**"
       - "mkdocs.yml"
       - "compose.docs.yml"
       - "docker/docs/**"
