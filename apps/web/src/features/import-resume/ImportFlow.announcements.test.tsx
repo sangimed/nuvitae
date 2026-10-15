@@ -169,7 +169,8 @@ describe("ImportFlow live announcements (T063)", () => {
         }),
       );
     });
-    expect(liveRegionText()).toContain("42% complete");
+    expect(liveRegionText()).toContain("organizing resume sections");
+    expect(liveRegionText()).not.toContain("42");
 
     act(() => {
       emitStatus?.(
@@ -216,7 +217,7 @@ describe("ImportFlow live announcements (T063)", () => {
     expect(liveRegionText()).toBe(first);
   });
 
-  it("uses Arabic progress labels and percentage text for processing updates", () => {
+  it("uses Arabic progress labels without interpolating percentage text", () => {
     render(
       <LocaleProvider initialLocale="ar">
         <ImportFlow importId={importId} />
@@ -242,7 +243,7 @@ describe("ImportFlow live announcements (T063)", () => {
       "لا يزال Nuvitae يُعِد سيرتك الذاتية للمراجعة.",
     );
     expect(liveRegionText()).toContain("جارٍ قراءة المحتوى");
-    expect(liveRegionText()).toContain("اكتمل 42%");
+    expect(liveRegionText()).not.toContain("42");
     expect(liveRegionText()).not.toContain("percent complete");
     expect(liveRegionText()).not.toContain("reading the content");
   });
@@ -266,8 +267,6 @@ describe("ImportFlow live announcements (T063)", () => {
     ).toEqual({
       state: "processing_progress",
       progressStep: "reading the content",
-      progressKnown: true,
-      progressPercent: 42,
     });
     expect(announcementForStatus(statusResponse("draft_ready"), false)).toEqual(
       { state: "review_ready" },

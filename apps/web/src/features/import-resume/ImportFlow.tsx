@@ -56,10 +56,6 @@ export function announcementForStatus(
         ? {
             state: "processing_progress",
             progressStep,
-            progressKnown: status.progressKnown,
-            ...(status.progressPercent === undefined
-              ? {}
-              : { progressPercent: status.progressPercent }),
           }
         : { state: "processing_started" };
     case "draft_ready":
@@ -417,7 +413,6 @@ export function ImportFlow(props: { readonly importId?: string }) {
         <ImportStatusLiveRegion
           {...localizedAnnouncement}
           defaultText={t(messageKeyForAnnouncement(localizedAnnouncement.state))}
-          progressPercentTemplate={t("import.status.progressPercent")}
         />
       )}
       {content}

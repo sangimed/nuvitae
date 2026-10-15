@@ -188,12 +188,11 @@ describe("ImportStatusLiveRegion (T061)", () => {
     expect(region().getAttribute("aria-live")).toBe("polite");
   });
 
-  it("announces progress steps and known percentages but never fabricates them", () => {
+  it("announces a localized processing step without dynamically formatting progress", () => {
     render(
       <ImportStatusLiveRegion
         state="processing_progress"
         progressStep="checking the document"
-        progressKnown={false}
       />,
     );
     expect(region().textContent).toContain("checking the document");
@@ -203,21 +202,12 @@ describe("ImportStatusLiveRegion (T061)", () => {
       <ImportStatusLiveRegion
         state="processing_progress"
         progressStep="reading the content"
-        progressKnown
-        progressPercent={42}
       />,
     );
-    expect(region().textContent).toContain("42% complete");
+    expect(region().textContent).toContain("reading the content");
+    expect(region().textContent).not.toContain("42");
+    expect(region().textContent).not.toContain("percent complete");
 
-    render(
-      <ImportStatusLiveRegion
-        state="processing_progress"
-        progressKnown
-        progressPercent={150}
-      />,
-    );
-    expect(region().textContent).not.toContain("150");
-    expect(region().textContent).not.toContain("percent");
   });
 
   it("never announces technical codes, diagnostics, paths, or private data", () => {

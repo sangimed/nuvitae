@@ -150,7 +150,10 @@ describe("ProcessingStep error summary and recovery (T063)", () => {
         />,
       ),
     );
-    expect(container.textContent).toContain("42% complete");
+    expect(container.textContent).toContain(
+      "Current step: organizing resume sections",
+    );
+    expect(container.textContent).not.toContain("42");
   });
 
   it("removes playful loading content as soon as a failure arrives", () => {

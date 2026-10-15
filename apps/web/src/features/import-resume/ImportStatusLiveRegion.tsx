@@ -70,12 +70,6 @@ export interface ImportStatusAnnouncement {
   readonly message?: string;
   /** Public step label, e.g. "checking the document". */
   readonly progressStep?: string;
-  /** True only when the backend explicitly reports known progress. */
-  readonly progressKnown?: boolean;
-  /** Reported progress percent; announced only when progress is known. */
-  readonly progressPercent?: number;
-  /** Localized template for a known percentage, with a {percent} placeholder. */
-  readonly progressPercentTemplate?: string;
 }
 
 export interface ImportStatusLiveRegionProps extends ImportStatusAnnouncement {
@@ -134,20 +128,6 @@ export function composeAnnouncement(
   if (input.progressStep !== undefined && input.progressStep.trim() !== "") {
     parts.push(input.progressStep.trim());
   }
-  if (
-    input.progressKnown === true &&
-    input.progressPercent !== undefined &&
-    Number.isInteger(input.progressPercent) &&
-    input.progressPercent >= 0 &&
-    input.progressPercent <= 100
-  ) {
-    parts.push(
-      (input.progressPercentTemplate ?? "{percent}% complete").replace(
-        "{percent}",
-        String(input.progressPercent),
-      ),
-    );
-  }
   return parts.join(" ");
 }
 
@@ -161,9 +141,6 @@ export function announcementKey(input: ImportStatusAnnouncement): string {
     normalizeState(input.state),
     input.message ?? "",
     input.progressStep ?? "",
-    input.progressKnown === true ? "known" : "unknown",
-    input.progressPercent ?? "",
-    input.progressPercentTemplate ?? "",
   ].join("\u0000");
 }
 

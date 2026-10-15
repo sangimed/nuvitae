@@ -104,15 +104,7 @@ export function ProcessingStep(props: {
       {status.status === "processing" ? (
         <p className="import-processing-stage">
           <span>{t("import.processingStep.current")} </span>
-          <strong>
-            {t(messageKeyForStep(status.currentStep))}
-            {status.progressKnown && status.progressPercent !== undefined
-              ? ` ${t("import.status.progressPercent").replace(
-                  "{percent}",
-                  String(status.progressPercent),
-                )}`
-              : ""}
-          </strong>
+          <strong>{t(messageKeyForStep(status.currentStep))}</strong>
         </p>
       ) : null}
       {props.connectivityMessage === undefined ? null : (
