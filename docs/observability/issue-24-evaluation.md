@@ -20,8 +20,9 @@ semantic acceptance and deterministic fallback must remain distinct from full
 semantic success. No telemetry endpoint belongs in the end-user resume UI.
 
 This change adds no runtime service, endpoint, database table, dependency, or
-external telemetry destination. Its executable probe checks existing serialization
-and privacy boundaries; it does not implement tracing or fix propagation.
+external telemetry destination. It fixes the existing queue-to-semantic
+correlation handoff using the current strict job contract; it does not implement
+tracing or telemetry export.
 
 ## Audit: what exists and what cannot yet be inferred
 
@@ -33,10 +34,10 @@ text, determines implemented behavior.
 | HTTP / `apps/api/src/main.ts`, `auth/user-context.ts`                                                                                    | Nest API, verified principal context supports optional operational correlation; default Nest bootstrap logger                                                                           | No application-wide request trace established here. The separate `PrivacyLogger` class is not installed globally by bootstrap. Do not export all stdout as if every record passed the import sanitizer.                   |
 | Upload / `apps/api/src/import-resume/use-cases/start-import.ts`                                                                          | Server-generated import ID also becomes correlation ID; upload persistence and enqueue timings; bounded rejection events                                                                | Rejection before ID creation cannot be joined to an import. Upload timing is a use-case timestamp, not proof of full HTTP/network latency.                                                                                |
 | Durable queue / `packages/contracts/src/import-resume/jobs.ts`                                                                           | Strict UUID correlation, owner context, deterministic stage job IDs; validation/extraction/deadline payloads                                                                            | Owner and private storage key are necessary job data, never telemetry. No W3C trace carrier. Stable job ID is not a unique delivery attempt ID.                                                                           |
-| Worker / `apps/worker/src/import-resume/import-processing.processor.ts`, `packages/import-application/src/import-processing-workflow.ts` | Schema validation, owner-scoped lookup, worker-start/queue-wait timing on validation, bounded failure categories; extraction enqueue retains correlation                                | `extract()` passes owner/import/abort signal but **omits correlationId** to extraction. `ImportExtractionUseCase` does not declare it. Validation delivery and extraction delivery do not have equivalent attempt timing. |
+| Worker / `apps/worker/src/import-resume/import-processing.processor.ts`, `packages/import-application/src/import-processing-workflow.ts` | Schema validation, owner-scoped lookup, worker-start/queue-wait timing on validation, bounded failure categories; validation-to-extraction queue payload and extraction-to-semantic use-case handoff preserve the approved correlation ID | Validation delivery and extraction delivery do not have equivalent attempt timing. |
 | PDF/DOCX / `packages/import-application/src/validate-document.ts`, `semantic-import-workflow.ts`                                         | Validation outcomes, parser limits, extraction/normalization timing; document safety reason vocabulary                                                                                  | No general parser subprocess resource dashboard; a missing end event is not evidence of an indefinitely running parser.                                                                                                   |
 | Provider / `apps/worker/src/import-resume/worker-import-runtime.providers.ts`                                                            | Shared emitter receives transport timing, protocol/SSE shape, response-limit, V2 envelope/field diagnostics; provider headers/first output/completion mapped to canonical timing phases | Diagnostics are richer than a single timeout counter. Do not turn protocol success into semantic success or sum overlapping transport timings.                                                                            |
-| Semantic / `packages/import-application/src/semantic-import-workflow.ts`, `build-semantic-parse-request.ts`                              | Provider-neutral result handling; `semantic.outcome`, validation diagnostics, source-fidelity buckets; fallback and review creation; parse request defaults correlation to document ID  | Defaulting masks the delivery gap when correlation equals import ID. Some outcome records join only by import ID. No demonstrated independent request-to-review trace.                                                    |
+| Semantic / `packages/import-application/src/semantic-import-workflow.ts`, `build-semantic-parse-request.ts`                              | Provider-neutral result handling; `semantic.outcome`, validation diagnostics, source-fidelity buckets; fallback and review creation; the approved correlation reaches the provider request and `review.draft_created` | Defaulting masks a missing caller correlation when correlation equals import ID. Some unrelated outcome records still join only by import ID. |
 | Persistence / `packages/persistence/src/typeorm-options.ts`, semantic workflow                                                           | SQL logging defaults off; application `draft_persisted` timing follows repository work                                                                                                  | Draft timing does not attribute individual queries, lock waits, pool saturation, or transaction rollback causes. Do not enable raw SQL logging to fill this gap.                                                          |
 | Review / `apps/api/src/import-resume/use-cases/read-draft.ts`, `transport/http/import-timing.controller.ts`                              | Review API availability and owner-checked client timing; draft-created, corrected, confirm events in canonical schema                                                                   | Browser-reported timing is untrusted observation, not authoritative success. Polling repeats do not count as new imports. Review-ready is not user confirmation.                                                          |
 | Provider connections / `packages/import-application/src/semantic-parser/provider-connections.ts`                                         | `provider_connection.lookup_failed` carries bounded operation/failure categories and opaque connection IDs; optional Community funnel records initiation/ready/failure                  | Not a complete OAuth lifecycle trace. Connection-level incidents are not necessarily attributable to one import. Never export session state or enrich connection IDs with account identity.                               |
@@ -133,12 +134,14 @@ Do not infer a whole image's licence/security from its OTel interface.
    Later review reads and confirmation are separate requests linked by import ID.
    Owner-checked browser timing remains a separately labelled observation.
 
-The first runtime fix should forward correlation at `ImportExtractionUseCase` /
-`ImportProcessingWorkflow.extract()` and verify a **different** import/correlation
-pair through real workflow, provider adapter and draft persistence. Coordinate
-with import-internals work; do not solve it by replacing correlation with import
-ID. Current `review.draft_created` emissions may still require joining by import
-ID rather than expecting every event to have correlation.
+The first runtime fix forwards the approved queue correlation ID at
+`ImportExtractionUseCase` / `ImportProcessingWorkflow.extract()` and uses the
+existing optional field on semantic-provider and `review.draft_created` events.
+Its regressions use a **different** import/correlation pair, so this handoff
+cannot be masked by the current import-ID default. It reuses the existing strict
+UUID job contract and semantic workflow path; it does not add trace context or
+export a new attribute. End-to-end provider-adapter-to-draft-persistence
+evidence remains separate work.
 
 ## Privacy, retention and failure policy for the trial
 
