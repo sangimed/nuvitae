@@ -207,7 +207,7 @@ describe("ImportStatusLiveRegion (T061)", () => {
         progressPercent={42}
       />,
     );
-    expect(region().textContent).toContain("42 percent complete");
+    expect(region().textContent).toContain("42% complete");
 
     render(
       <ImportStatusLiveRegion
