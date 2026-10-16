@@ -23,6 +23,30 @@ services:
       - no-new-privileges:true
     network_mode: none
 
+  repository-link-check-tests:
+    build:
+      context: ./docker/docs
+    image: nuvitae-docs-tools
+    working_dir: /workspace
+    entrypoint:
+      - python
+      - -m
+      - unittest
+      - discover
+      - -s
+      - /usr/local/lib/nuvitae-docs-tests
+      - -v
+    volumes:
+      - ./:/workspace:ro
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    network_mode: none
+
   docs:
     build:
       context: ./docker/docs

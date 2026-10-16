@@ -17,14 +17,14 @@ from urllib.parse import unquote, urlsplit
 
 
 REPOSITORY_PATH = re.compile(
-    r"^/sangimed/nuvitae/(?:blob|tree)/main/(?P<path>[^#?]+)$"
+    r"^/sangimed/nuvitae/(?P<kind>blob|tree)/main/(?P<path>[^#?]+)$"
 )
 MARKDOWN_LINK = re.compile(r"\]\((?P<target>[^\s)]+)(?:\s+[^)]*)?\)")
 
 
-def referenced_repository_paths(markdown: str) -> list[str]:
-    """Return local paths for GitHub blob/tree links owned by this repository."""
-    paths: list[str] = []
+def referenced_repository_paths(markdown: str) -> list[tuple[str, str]]:
+    """Return target kinds and local paths for this repository's GitHub links."""
+    paths: list[tuple[str, str]] = []
     for match in MARKDOWN_LINK.finditer(markdown):
         parsed = urlsplit(match.group("target"))
         if parsed.scheme != "https" or parsed.netloc != "github.com":
@@ -32,7 +32,12 @@ def referenced_repository_paths(markdown: str) -> list[str]:
 
         repository_match = REPOSITORY_PATH.fullmatch(parsed.path)
         if repository_match:
-            paths.append(unquote(repository_match.group("path")))
+            paths.append(
+                (
+                    repository_match.group("kind"),
+                    unquote(repository_match.group("path")),
+                )
+            )
     return paths
 
 
@@ -61,7 +66,9 @@ def main() -> int:
     failures: list[str] = []
     for markdown_file in markdown_files(root, arguments.paths):
         relative_source = markdown_file.relative_to(root)
-        for referenced_path in referenced_repository_paths(markdown_file.read_text(encoding="utf-8")):
+        for kind, referenced_path in referenced_repository_paths(
+            markdown_file.read_text(encoding="utf-8")
+        ):
             target = (root / referenced_path).resolve()
             try:
                 target.relative_to(root)
@@ -70,7 +77,17 @@ def main() -> int:
                 continue
 
             if not target.exists():
-                failures.append(f"{relative_source}: missing repository link target: {referenced_path}")
+                failures.append(
+                    f"{relative_source}: missing repository link target: {referenced_path}"
+                )
+            elif kind == "blob" and not target.is_file():
+                failures.append(
+                    f"{relative_source}: blob repository link target is not a file: {referenced_path}"
+                )
+            elif kind == "tree" and not target.is_dir():
+                failures.append(
+                    f"{relative_source}: tree repository link target is not a directory: {referenced_path}"
+                )
 
     if failures:
         print("Repository documentation link validation failed:", file=sys.stderr)

@@ -8,6 +8,7 @@ COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir --require-hashes -r /tmp/requirements.txt
 
 COPY check-repository-links.py /usr/local/bin/check-repository-links.py
+COPY tests/ /usr/local/lib/nuvitae-docs-tests/
 
 USER 10001:10001
 WORKDIR /workspace
