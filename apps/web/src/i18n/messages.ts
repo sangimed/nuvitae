@@ -86,23 +86,34 @@ export const en = {
   "import.provider.fallback":
     "If Codex is unavailable, you can use a limited import that may miss information, or enter your details manually.",
   "import.status.uploadAccepted": "Your file was accepted for import.",
-  "import.status.validationStarted": "Nuvitae is checking that your document can be imported.",
-  "import.status.processingStarted": "Nuvitae is preparing your resume for review.",
-  "import.status.processingProgress": "Nuvitae is still preparing your resume for review.",
+  "import.status.validationStarted":
+    "Nuvitae is checking that your document can be imported.",
+  "import.status.processingStarted":
+    "Nuvitae is preparing your resume for review.",
+  "import.status.processingProgress":
+    "Nuvitae is still preparing your resume for review.",
   "import.processingStep.checkingDocument": "checking the document",
   "import.processingStep.readingContent": "reading the content",
-  "import.processingStep.organizingResumeSections": "organizing resume sections",
+  "import.processingStep.organizingResumeSections":
+    "organizing resume sections",
   "import.processingStep.preparingReview": "preparing review",
   "import.processingStep.current": "Current step:",
-  "import.status.providerConnectionRequired": "A connected AI provider is needed to analyse your resume.",
-  "import.status.providerUnavailable": "The AI provider is temporarily unavailable. You can try again or continue with limited extraction.",
-  "import.status.limitedExtractionStarted": "Limited automatic extraction has started. It may miss information.",
-  "import.status.partialDraftReady": "A partial draft is ready for review. Some information may be missing.",
+  "import.status.providerConnectionRequired":
+    "A connected AI provider is needed to analyse your resume.",
+  "import.status.providerUnavailable":
+    "The AI provider is temporarily unavailable. You can try again or continue with limited extraction.",
+  "import.status.limitedExtractionStarted":
+    "Limited automatic extraction has started. It may miss information.",
+  "import.status.partialDraftReady":
+    "A partial draft is ready for review. Some information may be missing.",
   "import.status.reviewReady": "Your resume draft is ready for review.",
-  "import.status.processingFailed": "Your resume could not be prepared for review. You can try again or enter the information manually.",
-  "import.status.retryStarted": "Nuvitae is trying to prepare your resume again.",
+  "import.status.processingFailed":
+    "Your resume could not be prepared for review. You can try again or enter the information manually.",
+  "import.status.retryStarted":
+    "Nuvitae is trying to prepare your resume again.",
   "import.status.cancellationCompleted": "The import was cancelled.",
-  "import.status.sourceDeletionCompleted": "The uploaded source has been removed.",
+  "import.status.sourceDeletionCompleted":
+    "The uploaded source has been removed.",
   "import.status.unknown": "The import status changed.",
   "metadata.description":
     "Create and improve your resume with Nuvitae Community",
@@ -200,24 +211,35 @@ const fr: Messages = {
     "Nuvitae vérifie les suggestions avec votre document et écarte celles qui ne peuvent pas être vérifiées.",
   "import.provider.fallback":
     "Si Codex n’est pas disponible, vous pouvez utiliser une importation limitée qui peut manquer des informations, ou saisir vos données manuellement.",
-  "import.status.uploadAccepted": "Votre fichier a été accepté pour l’importation.",
-  "import.status.validationStarted": "Nuvitae vérifie que votre document peut être importé.",
-  "import.status.processingStarted": "Nuvitae prépare votre CV pour la vérification.",
-  "import.status.processingProgress": "Nuvitae continue de préparer votre CV pour la vérification.",
+  "import.status.uploadAccepted":
+    "Votre fichier a été accepté pour l’importation.",
+  "import.status.validationStarted":
+    "Nuvitae vérifie que votre document peut être importé.",
+  "import.status.processingStarted":
+    "Nuvitae prépare votre CV pour la vérification.",
+  "import.status.processingProgress":
+    "Nuvitae continue de préparer votre CV pour la vérification.",
   "import.processingStep.checkingDocument": "vérification du document",
   "import.processingStep.readingContent": "lecture du contenu",
-  "import.processingStep.organizingResumeSections": "organisation des rubriques du CV",
+  "import.processingStep.organizingResumeSections":
+    "organisation des rubriques du CV",
   "import.processingStep.preparingReview": "préparation de la vérification",
   "import.processingStep.current": "Étape en cours :",
-  "import.status.providerConnectionRequired": "Un fournisseur d’IA connecté est nécessaire pour analyser votre CV.",
-  "import.status.providerUnavailable": "Le fournisseur d’IA est temporairement indisponible. Vous pouvez réessayer ou poursuivre avec une extraction limitée.",
-  "import.status.limitedExtractionStarted": "L’extraction automatique limitée a commencé. Des informations peuvent manquer.",
-  "import.status.partialDraftReady": "Un brouillon partiel est prêt à être vérifié. Certaines informations peuvent manquer.",
+  "import.status.providerConnectionRequired":
+    "Un fournisseur d’IA connecté est nécessaire pour analyser votre CV.",
+  "import.status.providerUnavailable":
+    "Le fournisseur d’IA est temporairement indisponible. Vous pouvez réessayer ou poursuivre avec une extraction limitée.",
+  "import.status.limitedExtractionStarted":
+    "L’extraction automatique limitée a commencé. Des informations peuvent manquer.",
+  "import.status.partialDraftReady":
+    "Un brouillon partiel est prêt à être vérifié. Certaines informations peuvent manquer.",
   "import.status.reviewReady": "Votre brouillon de CV est prêt à être vérifié.",
-  "import.status.processingFailed": "Votre CV n’a pas pu être préparé pour vérification. Vous pouvez réessayer ou saisir les informations manuellement.",
+  "import.status.processingFailed":
+    "Votre CV n’a pas pu être préparé pour vérification. Vous pouvez réessayer ou saisir les informations manuellement.",
   "import.status.retryStarted": "Nuvitae réessaie de préparer votre CV.",
   "import.status.cancellationCompleted": "L’importation a été annulée.",
-  "import.status.sourceDeletionCompleted": "Le fichier source importé a été supprimé.",
+  "import.status.sourceDeletionCompleted":
+    "Le fichier source importé a été supprimé.",
   "import.status.unknown": "L’état de l’importation a changé.",
   "metadata.description": "Créez et améliorez votre CV avec Nuvitae Community",
 };
@@ -313,23 +335,35 @@ const es: Messages = {
   "import.provider.fallback":
     "Si Codex no está disponible, puedes usar una importación limitada que podría no incluir toda la información o introducir tus datos manualmente.",
   "import.status.uploadAccepted": "Tu archivo se ha aceptado para importarlo.",
-  "import.status.validationStarted": "Nuvitae está comprobando que tu documento se puede importar.",
-  "import.status.processingStarted": "Nuvitae está preparando tu currículum para revisarlo.",
-  "import.status.processingProgress": "Nuvitae sigue preparando tu currículum para revisarlo.",
+  "import.status.validationStarted":
+    "Nuvitae está comprobando que tu documento se puede importar.",
+  "import.status.processingStarted":
+    "Nuvitae está preparando tu currículum para revisarlo.",
+  "import.status.processingProgress":
+    "Nuvitae sigue preparando tu currículum para revisarlo.",
   "import.processingStep.checkingDocument": "comprobando el documento",
   "import.processingStep.readingContent": "leyendo el contenido",
-  "import.processingStep.organizingResumeSections": "organizando las secciones del currículum",
+  "import.processingStep.organizingResumeSections":
+    "organizando las secciones del currículum",
   "import.processingStep.preparingReview": "preparando la revisión",
   "import.processingStep.current": "Paso actual:",
-  "import.status.providerConnectionRequired": "Se necesita un proveedor de IA conectado para analizar tu currículum.",
-  "import.status.providerUnavailable": "El proveedor de IA no está disponible temporalmente. Puedes volver a intentarlo o continuar con una extracción limitada.",
-  "import.status.limitedExtractionStarted": "La extracción automática limitada ha comenzado. Puede que falte información.",
-  "import.status.partialDraftReady": "Hay un borrador parcial listo para revisar. Puede que falte información.",
-  "import.status.reviewReady": "El borrador de tu currículum está listo para revisar.",
-  "import.status.processingFailed": "No se ha podido preparar tu currículum para revisarlo. Puedes volver a intentarlo o introducir la información manualmente.",
-  "import.status.retryStarted": "Nuvitae está intentando preparar tu currículum de nuevo.",
+  "import.status.providerConnectionRequired":
+    "Se necesita un proveedor de IA conectado para analizar tu currículum.",
+  "import.status.providerUnavailable":
+    "El proveedor de IA no está disponible temporalmente. Puedes volver a intentarlo o continuar con una extracción limitada.",
+  "import.status.limitedExtractionStarted":
+    "La extracción automática limitada ha comenzado. Puede que falte información.",
+  "import.status.partialDraftReady":
+    "Hay un borrador parcial listo para revisar. Puede que falte información.",
+  "import.status.reviewReady":
+    "El borrador de tu currículum está listo para revisar.",
+  "import.status.processingFailed":
+    "No se ha podido preparar tu currículum para revisarlo. Puedes volver a intentarlo o introducir la información manualmente.",
+  "import.status.retryStarted":
+    "Nuvitae está intentando preparar tu currículum de nuevo.",
   "import.status.cancellationCompleted": "Se ha cancelado la importación.",
-  "import.status.sourceDeletionCompleted": "Se ha eliminado el archivo fuente subido.",
+  "import.status.sourceDeletionCompleted":
+    "Se ha eliminado el archivo fuente subido.",
   "import.status.unknown": "El estado de la importación ha cambiado.",
   "metadata.description": "Crea y mejora tu currículum con Nuvitae Community",
 };
@@ -422,21 +456,29 @@ const ar: Messages = {
   "import.status.uploadAccepted": "تم قبول ملفك للاستيراد.",
   "import.status.validationStarted": "يتحقق Nuvitae من إمكانية استيراد مستندك.",
   "import.status.processingStarted": "يُعِد Nuvitae سيرتك الذاتية للمراجعة.",
-  "import.status.processingProgress": "لا يزال Nuvitae يُعِد سيرتك الذاتية للمراجعة.",
+  "import.status.processingProgress":
+    "لا يزال Nuvitae يُعِد سيرتك الذاتية للمراجعة.",
   "import.processingStep.checkingDocument": "جارٍ التحقق من المستند",
   "import.processingStep.readingContent": "جارٍ قراءة المحتوى",
-  "import.processingStep.organizingResumeSections": "جارٍ تنظيم أقسام السيرة الذاتية",
+  "import.processingStep.organizingResumeSections":
+    "جارٍ تنظيم أقسام السيرة الذاتية",
   "import.processingStep.preparingReview": "جارٍ إعداد المراجعة",
   "import.processingStep.current": "الخطوة الحالية:",
-  "import.status.providerConnectionRequired": "يلزم موفر ذكاء اصطناعي متصل لتحليل سيرتك الذاتية.",
-  "import.status.providerUnavailable": "موفر الذكاء الاصطناعي غير متاح مؤقتًا. يمكنك المحاولة مرة أخرى أو المتابعة باستخراج محدود.",
-  "import.status.limitedExtractionStarted": "بدأ الاستخراج التلقائي المحدود. قد تفوت بعض المعلومات.",
-  "import.status.partialDraftReady": "مسودة جزئية جاهزة للمراجعة. قد تكون بعض المعلومات مفقودة.",
+  "import.status.providerConnectionRequired":
+    "يلزم موفر ذكاء اصطناعي متصل لتحليل سيرتك الذاتية.",
+  "import.status.providerUnavailable":
+    "موفر الذكاء الاصطناعي غير متاح مؤقتًا. يمكنك المحاولة مرة أخرى أو المتابعة باستخراج محدود.",
+  "import.status.limitedExtractionStarted":
+    "بدأ الاستخراج التلقائي المحدود. قد تفوت بعض المعلومات.",
+  "import.status.partialDraftReady":
+    "مسودة جزئية جاهزة للمراجعة. قد تكون بعض المعلومات مفقودة.",
   "import.status.reviewReady": "مسودة سيرتك الذاتية جاهزة للمراجعة.",
-  "import.status.processingFailed": "تعذر إعداد سيرتك الذاتية للمراجعة. يمكنك المحاولة مرة أخرى أو إدخال المعلومات يدويًا.",
+  "import.status.processingFailed":
+    "تعذر إعداد سيرتك الذاتية للمراجعة. يمكنك المحاولة مرة أخرى أو إدخال المعلومات يدويًا.",
   "import.status.retryStarted": "يحاول Nuvitae إعداد سيرتك الذاتية مرة أخرى.",
   "import.status.cancellationCompleted": "تم إلغاء الاستيراد.",
-  "import.status.sourceDeletionCompleted": "تمت إزالة الملف المصدر الذي تم تحميله.",
+  "import.status.sourceDeletionCompleted":
+    "تمت إزالة الملف المصدر الذي تم تحميله.",
   "import.status.unknown": "تغيرت حالة الاستيراد.",
   "metadata.description":
     "أنشئ سيرتك الذاتية وحسّنها باستخدام Nuvitae Community",
@@ -528,12 +570,16 @@ const zhCN: Messages = {
   "import.processingStep.organizingResumeSections": "正在整理简历部分",
   "import.processingStep.preparingReview": "正在准备审核",
   "import.processingStep.current": "当前步骤：",
-  "import.status.providerConnectionRequired": "需要连接 AI 提供商才能分析您的简历。",
-  "import.status.providerUnavailable": "AI 提供商暂时不可用。您可以重试或继续进行受限提取。",
-  "import.status.limitedExtractionStarted": "受限自动提取已开始，可能会遗漏信息。",
+  "import.status.providerConnectionRequired":
+    "需要连接 AI 提供商才能分析您的简历。",
+  "import.status.providerUnavailable":
+    "AI 提供商暂时不可用。您可以重试或继续进行受限提取。",
+  "import.status.limitedExtractionStarted":
+    "受限自动提取已开始，可能会遗漏信息。",
   "import.status.partialDraftReady": "部分草稿已可供审核，可能会缺少一些信息。",
   "import.status.reviewReady": "您的简历草稿已可供审核。",
-  "import.status.processingFailed": "无法准备您的简历以供审核。您可以重试或手动输入信息。",
+  "import.status.processingFailed":
+    "无法准备您的简历以供审核。您可以重试或手动输入信息。",
   "import.status.retryStarted": "Nuvitae 正在再次尝试准备您的简历。",
   "import.status.cancellationCompleted": "导入已取消。",
   "import.status.sourceDeletionCompleted": "已删除上传的源文件。",

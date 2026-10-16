@@ -96,9 +96,7 @@ describe("ImportStatusLiveRegion (T061)", () => {
     );
     expect(
       container.querySelector(".import-status-live-region")?.textContent,
-    ).toBe(
-      "Votre brouillon de CV est prêt à être vérifié.",
-    );
+    ).toBe("Votre brouillon de CV est prêt à être vérifié.");
     const input = container.querySelector("input")!;
     const select = container.querySelector("select")!;
     await act(async () => {
@@ -107,9 +105,7 @@ describe("ImportStatusLiveRegion (T061)", () => {
     });
     expect(
       container.querySelector(".import-status-live-region")?.textContent,
-    ).toBe(
-      "مسودة سيرتك الذاتية جاهزة للمراجعة.",
-    );
+    ).toBe("مسودة سيرتك الذاتية جاهزة للمراجعة.");
     expect(document.documentElement.dir).toBe("rtl");
     expect(input.value).toBe("مهندسة — Paris — 中文");
     expect(input.dir).toBe("auto");
@@ -144,17 +140,9 @@ describe("ImportStatusLiveRegion (T061)", () => {
   });
 
   it("suppresses duplicate announcements for repeated identical states", () => {
-    render(
-      <ImportStatusLiveRegion
-        state="processing_progress"
-      />,
-    );
+    render(<ImportStatusLiveRegion state="processing_progress" />);
     const first = region().textContent;
-    render(
-      <ImportStatusLiveRegion
-        state="processing_progress"
-      />,
-    );
+    render(<ImportStatusLiveRegion state="processing_progress" />);
     expect(region().textContent).toBe(first);
     expect(region().textContent).toBe(
       "Nuvitae is still preparing your resume for review.",
@@ -205,7 +193,6 @@ describe("ImportStatusLiveRegion (T061)", () => {
     expect(region().textContent).toContain("reading the content");
     expect(region().textContent).not.toContain("42");
     expect(region().textContent).not.toContain("percent complete");
-
   });
 
   it("never announces technical codes, diagnostics, paths, or private data", () => {

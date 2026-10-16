@@ -412,7 +412,9 @@ export function ImportFlow(props: { readonly importId?: string }) {
       {localizedAnnouncement === undefined ? null : (
         <ImportStatusLiveRegion
           {...localizedAnnouncement}
-          defaultText={t(messageKeyForAnnouncement(localizedAnnouncement.state))}
+          defaultText={t(
+            messageKeyForAnnouncement(localizedAnnouncement.state),
+          )}
         />
       )}
       {content}
