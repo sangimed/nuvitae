@@ -49,6 +49,8 @@ jobs:
         run: docker compose -f compose.docs.yml config --quiet
       - name: Build locked documentation image
         run: docker compose -f compose.docs.yml build docs
+      - name: Run repository documentation link checker regression tests
+        run: docker compose -f compose.docs.yml run --no-deps repository-link-check-tests
       - name: Validate checked-out targets of repository documentation links
         run: docker compose -f compose.docs.yml run --no-deps repository-link-check
       - name: Validate navigation, local links, anchors, and build
