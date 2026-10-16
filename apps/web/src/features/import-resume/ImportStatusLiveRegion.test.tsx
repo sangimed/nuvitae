@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act } from "react";
+import { act, useState } from "react";
 import type { ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import type { Root } from "react-dom/client";
@@ -13,6 +13,12 @@ import {
   toPublicAnnouncement,
   type ImportLiveRegionState,
 } from "./ImportStatusLiveRegion";
+import { messageKeyForAnnouncement } from "./ImportFlow";
+import {
+  LanguageSelector,
+  LocaleProvider,
+  useTranslation,
+} from "../../i18n/LocaleProvider";
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -43,6 +49,27 @@ function region(): HTMLDivElement {
   return container.querySelector("div")!;
 }
 
+function LocalizedStatus() {
+  const [resumeContent, setResumeContent] = useState("مهندسة — Paris — 中文");
+  const { locale, t } = useTranslation();
+  return (
+    <>
+      <LanguageSelector />
+      <ImportStatusLiveRegion
+        state="review_ready"
+        defaultText={t(messageKeyForAnnouncement("review_ready"))}
+      />
+      <input
+        aria-label="Resume content"
+        dir="auto"
+        value={resumeContent}
+        onChange={(event) => setResumeContent(event.currentTarget.value)}
+      />
+      <output>{locale}</output>
+    </>
+  );
+}
+
 const allStates: readonly ImportLiveRegionState[] = [
   "upload_accepted",
   "validation_started",
@@ -61,6 +88,29 @@ const allStates: readonly ImportLiveRegionState[] = [
 ];
 
 describe("ImportStatusLiveRegion (T061)", () => {
+  it("uses the active locale for stable status text without changing resume content", async () => {
+    render(
+      <LocaleProvider initialLocale="fr">
+        <LocalizedStatus />
+      </LocaleProvider>,
+    );
+    expect(
+      container.querySelector(".import-status-live-region")?.textContent,
+    ).toBe("Votre brouillon de CV est prêt à être vérifié.");
+    const input = container.querySelector("input")!;
+    const select = container.querySelector("select")!;
+    await act(async () => {
+      select.value = "ar";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(
+      container.querySelector(".import-status-live-region")?.textContent,
+    ).toBe("مسودة سيرتك الذاتية جاهزة للمراجعة.");
+    expect(document.documentElement.dir).toBe("rtl");
+    expect(input.value).toBe("مهندسة — Paris — 中文");
+    expect(input.dir).toBe("auto");
+  });
+
   it("announces deterministic provider-neutral text for every supported state", () => {
     for (const state of allStates) {
       const expected = defaultAnnouncementText[state];
@@ -90,19 +140,9 @@ describe("ImportStatusLiveRegion (T061)", () => {
   });
 
   it("suppresses duplicate announcements for repeated identical states", () => {
-    render(
-      <ImportStatusLiveRegion
-        state="processing_progress"
-        progressKnown={false}
-      />,
-    );
+    render(<ImportStatusLiveRegion state="processing_progress" />);
     const first = region().textContent;
-    render(
-      <ImportStatusLiveRegion
-        state="processing_progress"
-        progressKnown={false}
-      />,
-    );
+    render(<ImportStatusLiveRegion state="processing_progress" />);
     expect(region().textContent).toBe(first);
     expect(region().textContent).toBe(
       "Nuvitae is still preparing your resume for review.",
@@ -134,12 +174,11 @@ describe("ImportStatusLiveRegion (T061)", () => {
     expect(region().getAttribute("aria-live")).toBe("polite");
   });
 
-  it("announces progress steps and known percentages but never fabricates them", () => {
+  it("announces a localized processing step without dynamically formatting progress", () => {
     render(
       <ImportStatusLiveRegion
         state="processing_progress"
         progressStep="checking the document"
-        progressKnown={false}
       />,
     );
     expect(region().textContent).toContain("checking the document");
@@ -149,21 +188,11 @@ describe("ImportStatusLiveRegion (T061)", () => {
       <ImportStatusLiveRegion
         state="processing_progress"
         progressStep="reading the content"
-        progressKnown
-        progressPercent={42}
       />,
     );
-    expect(region().textContent).toContain("42 percent complete");
-
-    render(
-      <ImportStatusLiveRegion
-        state="processing_progress"
-        progressKnown
-        progressPercent={150}
-      />,
-    );
-    expect(region().textContent).not.toContain("150");
-    expect(region().textContent).not.toContain("percent");
+    expect(region().textContent).toContain("reading the content");
+    expect(region().textContent).not.toContain("42");
+    expect(region().textContent).not.toContain("percent complete");
   });
 
   it("never announces technical codes, diagnostics, paths, or private data", () => {

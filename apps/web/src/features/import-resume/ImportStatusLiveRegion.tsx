@@ -70,15 +70,16 @@ export interface ImportStatusAnnouncement {
   readonly message?: string;
   /** Public step label, e.g. "checking the document". */
   readonly progressStep?: string;
-  /** True only when the backend explicitly reports known progress. */
-  readonly progressKnown?: boolean;
-  /** Reported progress percent; announced only when progress is known. */
-  readonly progressPercent?: number;
 }
 
 export interface ImportStatusLiveRegionProps extends ImportStatusAnnouncement {
   readonly assertive?: boolean;
   readonly id?: string;
+  /**
+   * Localized safe default for the normalized state. Caller-provided messages
+   * remain subject to the public-text guard and are never translated here.
+   */
+  readonly defaultText?: string;
 }
 
 const publicAnnouncementTextPattern = /^[\p{L}\p{N}\s.,!?'’"()\-—%]+$/u;
@@ -112,25 +113,20 @@ export function normalizeState(
   return state in defaultAnnouncementText ? state : "unknown";
 }
 
-export function composeAnnouncement(input: ImportStatusAnnouncement): string {
+export function composeAnnouncement(
+  input: ImportStatusAnnouncement,
+  defaultText?: string,
+): string {
   const state = normalizeState(input.state);
   const base =
     toPublicAnnouncement(state, input.message) ??
+    defaultText ??
     defaultAnnouncementText[state];
   if (state !== "processing_progress") return base;
 
   const parts = [base];
   if (input.progressStep !== undefined && input.progressStep.trim() !== "") {
     parts.push(input.progressStep.trim());
-  }
-  if (
-    input.progressKnown === true &&
-    input.progressPercent !== undefined &&
-    Number.isInteger(input.progressPercent) &&
-    input.progressPercent >= 0 &&
-    input.progressPercent <= 100
-  ) {
-    parts.push(`${input.progressPercent} percent complete`);
   }
   return parts.join(" ");
 }
@@ -145,26 +141,24 @@ export function announcementKey(input: ImportStatusAnnouncement): string {
     normalizeState(input.state),
     input.message ?? "",
     input.progressStep ?? "",
-    input.progressKnown === true ? "known" : "unknown",
-    input.progressPercent ?? "",
   ].join("\u0000");
 }
 
 export function ImportStatusLiveRegion(props: ImportStatusLiveRegionProps) {
-  const { assertive, id, ...announcement } = props;
+  const { assertive, defaultText, id, ...announcement } = props;
   const state = normalizeState(announcement.state);
-  const key = announcementKey(announcement);
+  const key = `${announcementKey(announcement)}\u0000${defaultText ?? ""}`;
   const [displayText, setDisplayText] = useState(() =>
-    composeAnnouncement(announcement),
+    composeAnnouncement(announcement, defaultText),
   );
   const lastKeyRef = useRef(key);
 
   useEffect(() => {
-    const nextKey = announcementKey(announcement);
+    const nextKey = `${announcementKey(announcement)}\u0000${defaultText ?? ""}`;
     if (lastKeyRef.current === nextKey) return;
     lastKeyRef.current = nextKey;
-    setDisplayText(composeAnnouncement(announcement));
-  }, [announcement]);
+    setDisplayText(composeAnnouncement(announcement, defaultText));
+  }, [announcement, defaultText]);
 
   const urgent = assertive ?? assertiveAnnouncementStates.has(state);
   const role = urgent ? "alert" : "status";

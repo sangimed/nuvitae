@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import type { PublicImportStatusResponse } from "@nuvitae/contracts";
+import type { MessageKey } from "../../i18n/messages";
+import { useTranslation } from "../../i18n/LocaleProvider";
 import { RotatingLoadingMessage } from "../../components/community/RotatingLoadingMessage";
 import { ErrorSummary } from "./ErrorSummary";
 import { focusErrorSummary, focusNextLogicalHeading } from "./focus-management";
@@ -44,6 +46,7 @@ export function ProcessingStep(props: {
   readonly onReview?: (importId: string) => void;
 }) {
   const status = props.status;
+  const { t } = useTranslation();
   const sectionRef = useRef<HTMLElement | null>(null);
   const summaryRef = useRef<HTMLDivElement | null>(null);
   const previousStatusRef = useRef<string | undefined>(undefined);
@@ -100,13 +103,8 @@ export function ProcessingStep(props: {
       )}
       {status.status === "processing" ? (
         <p className="import-processing-stage">
-          <span>Current step: </span>
-          <strong>
-            {labelForStep(status.currentStep)}
-            {status.progressKnown && status.progressPercent !== undefined
-              ? `, ${status.progressPercent}% complete`
-              : ""}
-          </strong>
+          <span>{t("import.processingStep.current")} </span>
+          <strong>{t(messageKeyForStep(status.currentStep))}</strong>
         </p>
       ) : null}
       {props.connectivityMessage === undefined ? null : (
@@ -252,5 +250,22 @@ export function labelForStep(
       return "preparing review";
     default:
       return "checking the document";
+  }
+}
+
+export function messageKeyForStep(
+  step: PublicImportStatusResponse["currentStep"],
+): MessageKey {
+  switch (step) {
+    case "checking_document":
+      return "import.processingStep.checkingDocument";
+    case "reading_content":
+      return "import.processingStep.readingContent";
+    case "organizing_resume_sections":
+      return "import.processingStep.organizingResumeSections";
+    case "preparing_review":
+      return "import.processingStep.preparingReview";
+    default:
+      return "import.processingStep.checkingDocument";
   }
 }

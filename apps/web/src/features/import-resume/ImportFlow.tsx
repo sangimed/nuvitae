@@ -17,14 +17,15 @@ import {
   type ClientImportState,
 } from "./state";
 import { CreateResumeEntry } from "./CreateResumeEntry";
-import { labelForStep } from "./ProcessingStep";
+import { labelForStep, messageKeyForStep } from "./ProcessingStep";
 import { ProcessingStep } from "./ProcessingStep";
 import { UploadStep } from "./UploadStep";
 import { pollImportStatus } from "./client";
 import { startImportUpload } from "./client";
 import { recordImportTiming } from "./client";
 import { useTranslation } from "../../i18n/LocaleProvider";
-import { direction } from "../../i18n/locale";
+import type { MessageKey } from "../../i18n/messages";
+import { direction, translate } from "../../i18n/locale";
 
 const initialProcessingStatus = (
   importId: string,
@@ -47,17 +48,14 @@ const initialProcessingStatus = (
 export function announcementForStatus(
   status: PublicImportStatusResponse,
   processingAnnounced: boolean,
+  progressStep = labelForStep(status.currentStep),
 ): ImportStatusAnnouncement {
   switch (status.status) {
     case "processing":
       return processingAnnounced
         ? {
             state: "processing_progress",
-            progressStep: labelForStep(status.currentStep),
-            progressKnown: status.progressKnown,
-            ...(status.progressPercent === undefined
-              ? {}
-              : { progressPercent: status.progressPercent }),
+            progressStep,
           }
         : { state: "processing_started" };
     case "draft_ready":
@@ -109,6 +107,41 @@ export function announcementForRecoveryState(
   }
 }
 
+export function messageKeyForAnnouncement(
+  state: ImportLiveRegionState,
+): MessageKey {
+  switch (state) {
+    case "upload_accepted":
+      return "import.status.uploadAccepted";
+    case "validation_started":
+      return "import.status.validationStarted";
+    case "processing_started":
+      return "import.status.processingStarted";
+    case "processing_progress":
+      return "import.status.processingProgress";
+    case "provider_connection_required":
+      return "import.status.providerConnectionRequired";
+    case "provider_unavailable":
+      return "import.status.providerUnavailable";
+    case "limited_deterministic_fallback_started":
+      return "import.status.limitedExtractionStarted";
+    case "partial_draft_ready":
+      return "import.status.partialDraftReady";
+    case "review_ready":
+      return "import.status.reviewReady";
+    case "processing_failed":
+      return "import.status.processingFailed";
+    case "retry_started":
+      return "import.status.retryStarted";
+    case "cancellation_completed":
+      return "import.status.cancellationCompleted";
+    case "source_deletion_completed":
+      return "import.status.sourceDeletionCompleted";
+    case "unknown":
+      return "import.status.unknown";
+  }
+}
+
 /**
  * T063 - generic fail-safe recovery for unknown or malformed frontend import
  * states. It offers only explicitly safe actions (replacement upload and
@@ -131,7 +164,7 @@ export function UnknownImportRecovery(props: {
 }
 
 export function ImportFlow(props: { readonly importId?: string }) {
-  const { locale } = useTranslation();
+  const { locale, t } = useTranslation();
   const [state, setState] = useState<ClientImportState>(() =>
     props.importId === undefined
       ? initialImportState
@@ -177,7 +210,13 @@ export function ImportFlow(props: { readonly importId?: string }) {
         setStatus(next);
         const processingAnnounced =
           processingAnnouncedImportRef.current === next.importId;
-        setAnnouncement(announcementForStatus(next, processingAnnounced));
+        setAnnouncement(
+          announcementForStatus(
+            next,
+            processingAnnounced,
+            translate(locale, messageKeyForStep(next.currentStep)),
+          ),
+        );
         if (next.status === "processing") {
           processingAnnouncedImportRef.current = next.importId;
         }
@@ -219,12 +258,20 @@ export function ImportFlow(props: { readonly importId?: string }) {
       },
     });
     return () => controller.abort();
-  }, [activeImportId]);
+  }, [activeImportId, locale]);
 
   const unknownRecovery =
     state.state !== "initial_choice" &&
     state.state !== "upload_selection" &&
     !("importId" in state);
+  const localizedAnnouncement =
+    announcement?.state === "processing_progress" &&
+    status?.status === "processing"
+      ? {
+          ...announcement,
+          progressStep: t(messageKeyForStep(status.currentStep)),
+        }
+      : announcement;
 
   useEffect(() => {
     // Unknown or malformed frontend states fail safely: announce the generic
@@ -362,8 +409,13 @@ export function ImportFlow(props: { readonly importId?: string }) {
 
   return (
     <>
-      {announcement === undefined ? null : (
-        <ImportStatusLiveRegion {...announcement} />
+      {localizedAnnouncement === undefined ? null : (
+        <ImportStatusLiveRegion
+          {...localizedAnnouncement}
+          defaultText={t(
+            messageKeyForAnnouncement(localizedAnnouncement.state),
+          )}
+        />
       )}
       {content}
     </>

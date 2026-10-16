@@ -11,6 +11,7 @@ import {
   announcementForRecoveryState,
   announcementForStatus,
 } from "./ImportFlow";
+import { LocaleProvider } from "../../i18n/LocaleProvider";
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -168,7 +169,8 @@ describe("ImportFlow live announcements (T063)", () => {
         }),
       );
     });
-    expect(liveRegionText()).toContain("42 percent complete");
+    expect(liveRegionText()).toContain("organizing resume sections");
+    expect(liveRegionText()).not.toContain("42");
 
     act(() => {
       emitStatus?.(
@@ -215,6 +217,37 @@ describe("ImportFlow live announcements (T063)", () => {
     expect(liveRegionText()).toBe(first);
   });
 
+  it("uses Arabic progress labels without interpolating percentage text", () => {
+    render(
+      <LocaleProvider initialLocale="ar">
+        <ImportFlow importId={importId} />
+      </LocaleProvider>,
+    );
+    act(() => {
+      emitStatus?.(
+        statusResponse("processing", {
+          currentStep: "checking_document",
+          progressKnown: false,
+        }),
+      );
+      emitStatus?.(
+        statusResponse("processing", {
+          currentStep: "reading_content",
+          progressKnown: true,
+          progressPercent: 42,
+        }),
+      );
+    });
+
+    expect(liveRegionText()).toContain(
+      "لا يزال Nuvitae يُعِد سيرتك الذاتية للمراجعة.",
+    );
+    expect(liveRegionText()).toContain("جارٍ قراءة المحتوى");
+    expect(liveRegionText()).not.toContain("42");
+    expect(liveRegionText()).not.toContain("percent complete");
+    expect(liveRegionText()).not.toContain("reading the content");
+  });
+
   it("maps every public import status to a safe normalized announcement", () => {
     expect(
       announcementForStatus(
@@ -234,8 +267,6 @@ describe("ImportFlow live announcements (T063)", () => {
     ).toEqual({
       state: "processing_progress",
       progressStep: "reading the content",
-      progressKnown: true,
-      progressPercent: 42,
     });
     expect(announcementForStatus(statusResponse("draft_ready"), false)).toEqual(
       { state: "review_ready" },
