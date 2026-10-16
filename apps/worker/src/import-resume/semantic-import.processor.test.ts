@@ -232,6 +232,34 @@ describe("SemanticImportProcessor", () => {
     );
   });
 
+  it("preserves correlation from semantic provider invocation to review creation", async () => {
+    const correlationId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    const correlationProvider = {
+      ...provider,
+      parse: vi.fn(
+        async (request: { normalizedTranscript: { text: string } }) => ({
+          ok: true as const,
+          response: response(request.normalizedTranscript.text),
+        }),
+      ),
+    } satisfies ResumeSemanticParserProvider;
+    const { processor, logger } = setup(correlationProvider);
+
+    await processor.process({
+      ownerUserId,
+      importedDocumentId: importId,
+      correlationId,
+    });
+
+    expect(correlationProvider.parse.mock.calls[0]?.[0]).toMatchObject({
+      correlationId,
+    });
+    expect(logger.emit).toHaveBeenCalledWith(
+      "review.draft_created",
+      expect.objectContaining({ correlationId }),
+    );
+  });
+
   it("creates a review-required partial draft when section coverage is unknown", async () => {
     const candidate: V2CanonicalSemanticCandidate = {
       fieldPath: "contact.fullName",

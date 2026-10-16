@@ -489,6 +489,9 @@ export class SemanticImportWorkflow {
                 : "review_required",
             fieldCountBucket: bucket(draftResult.draft!.fields.length),
             warningCountBucket: bucket(draftResult.draft!.warnings.length),
+            ...(input.correlationId === undefined
+              ? {}
+              : { correlationId: input.correlationId }),
           });
         });
         emitImportTiming(this.logger, {
@@ -606,6 +609,9 @@ export class SemanticImportWorkflow {
               : "review_required",
           fieldCountBucket: bucket(draftResult.draft!.fields.length),
           warningCountBucket: bucket(draftResult.draft!.warnings.length),
+          ...(input.correlationId === undefined
+            ? {}
+            : { correlationId: input.correlationId }),
         });
       });
       emitImportTiming(this.logger, {
@@ -751,6 +757,9 @@ export class SemanticImportWorkflow {
         status: "review_required",
         fieldCountBucket: bucket(draftResult.draft!.fields.length),
         warningCountBucket: bucket(draftResult.draft!.warnings.length),
+        ...(input.correlationId === undefined
+          ? {}
+          : { correlationId: input.correlationId }),
       });
     });
     emitImportTiming(this.logger, {

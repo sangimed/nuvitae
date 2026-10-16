@@ -245,6 +245,28 @@ describe("ImportProcessingProcessor", () => {
     );
   });
 
+  it("forwards the extraction job correlation id to semantic processing", async () => {
+    const { processor, extraction } = setup({
+      doc: document({ validationStatus: "accepted" }),
+    });
+    const correlationId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+
+    await processor.process(
+      job(IMPORT_RESUME_JOB_NAMES.extraction, {
+        ...payload("deterministic_extraction"),
+        correlationId,
+      }),
+    );
+
+    expect(extraction.process).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ownerUserId,
+        importedDocumentId: importId,
+        correlationId,
+      }),
+    );
+  });
+
   it("does not repeat extraction after a review draft is durable", async () => {
     const { processor, extraction } = setup({
       doc: document({

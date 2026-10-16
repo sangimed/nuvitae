@@ -43,6 +43,7 @@ export interface ImportExtractionUseCase {
   process(input: {
     ownerUserId: string;
     importedDocumentId: string;
+    correlationId?: string;
     abortSignal?: AbortSignal;
   }): Promise<unknown>;
 }
@@ -179,6 +180,7 @@ export class ImportProcessingWorkflow {
       await this.ports.extraction.process({
         ownerUserId: document.ownerUserId,
         importedDocumentId: document.id,
+        correlationId: payload.correlationId,
         abortSignal: context.signal,
       });
     } catch (error) {
