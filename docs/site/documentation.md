@@ -30,12 +30,17 @@ The Documentation workflow uses the same Compose build command on relevant
 pull requests and pushes to `main`. It has read-only repository permission,
 no deployment credentials, and does not publish a site. MkDocs strict mode turns
 warnings into failures: missing nav pages, omitted site pages, broken local page
-links and missing anchors are errors. Do not downgrade warnings to make CI green.
+links and missing anchors are errors. A separate network-disabled check maps this
+repository's GitHub `blob/main` and `tree/main` links from `README.md` and
+`docs/site/` to the checkout and fails if their file or directory target is
+missing. Do not downgrade warnings or link checks to make CI green.
 
-This gate covers `docs/site/`. Existing specialist docs remain linked on GitHub,
-not copied into the build/search index. MkDocs does not fetch external URLs or
-validate their remote anchors. Review those references against the checkout;
-full legacy-doc ingestion and external-link checking are explicit follow-ups.
+This gate covers `docs/site/`, plus repository targets referenced from the
+README and site pages. Existing specialist docs remain linked on GitHub, not
+copied into the build/search index. The target check deliberately makes no
+network requests and does not validate remote URLs or anchors. Review external
+references separately; full legacy-doc ingestion and external-link checking are
+explicit follow-ups.
 
 Run the existing containerized Prettier on changed Markdown/YAML:
 
