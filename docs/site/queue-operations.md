@@ -120,14 +120,15 @@ snapshot. Prefer restarting an unhealthy service through the documented
 Compose workflow, then use the product's supported recovery actions or
 escalate with redacted event categories and service health.
 
-The API schedules `source_artifact_deletion` at the retention deadline and a
-worker handler exists, but source-deletion execution is listed as unsupported
-in the Local Play support matrix and incomplete in the security audit. Do not
-promise deletion because a delayed job was enqueued or mark a retention request
-complete based on queue state. The separate deletion lifecycle and verified
-backup/restore operations remain follow-up work. Normal `docker compose down`
-preserves named volumes; never add `-v` to recover a queue problem or erase
-important PostgreSQL/private-storage data.
+The API schedules `source_artifact_deletion` at the retention deadline and the
+worker dispatches it to a deletion service. The README and security audit still
+list source-deletion execution and retention workers as unsupported/incomplete:
+the registered path is not evidence of a supported end-to-end deletion
+guarantee. Do not promise deletion because a delayed job was enqueued or mark a
+retention request complete based on queue state. The complete deletion lifecycle
+and verified backup/restore operations remain follow-up work. Normal
+`docker compose down` preserves named volumes; never add `-v` to recover a
+queue problem or erase important PostgreSQL/private-storage data.
 
 Before escalating, include the Compose service status, a narrow time window,
 safe event identifiers/categories, and the import's public lifecycle status.
