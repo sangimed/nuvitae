@@ -9,8 +9,9 @@ source linked here to diagnose queue-backed work.
 ## Queue and job catalog
 
 The API and worker register one queue, `resume-import-processing`, over the
-internal authenticated Valkey service (`queue`). Only the API publishes new
-import work. The worker processor handles these names:
+internal authenticated Valkey service (`queue`). The API publishes initial
+import jobs; after accepted validation, the worker publishes the extraction
+job. The worker processor handles these names:
 
 | Job name                   | Purpose                                                         | ID suffix       | Initial queue options                                                      |
 | -------------------------- | --------------------------------------------------------------- | --------------- | -------------------------------------------------------------------------- |
