@@ -679,6 +679,9 @@ export const importEventSchemas = {
       timestampMs: int(0, 9_000_000_000_000_000),
       durationMs: int(0, 86_400_000, true),
       elapsedSinceUploadMs: int(0, 86_400_000, true),
+      queueJobId: id(true),
+      deliveryId: id(true),
+      retryOrdinal: int(0, 2, true),
     },
   },
   "import.created": {
@@ -810,6 +813,9 @@ export const importEventSchemas = {
       errorCategory: enumOf(workerFailureCategories),
       retryable: bool(),
       correlationId: id(true),
+      queueJobId: id(true),
+      deliveryId: id(true),
+      retryOrdinal: int(0, 2, true),
     },
   },
   "import.unexpected_failure": {
@@ -1244,6 +1250,9 @@ export interface ImportEventMetadataMap {
     readonly errorCategory: (typeof workerFailureCategories)[number];
     readonly retryable: boolean;
     readonly correlationId?: string;
+    readonly queueJobId?: string;
+    readonly deliveryId?: string;
+    readonly retryOrdinal?: number;
   };
   "import.unexpected_failure": {
     readonly importId: string;
@@ -1512,6 +1521,9 @@ export interface ImportTimingPoint {
   readonly at: Date;
   readonly durationMs?: number | undefined;
   readonly uploadReceivedAt?: Date | undefined;
+  readonly queueJobId?: string | undefined;
+  readonly deliveryId?: string | undefined;
+  readonly retryOrdinal?: number | undefined;
 }
 
 /**
@@ -1542,6 +1554,11 @@ export function emitImportTiming(
     ...(point.durationMs === undefined
       ? {}
       : { durationMs: boundedDuration(point.durationMs) }),
+    ...(point.queueJobId === undefined ? {} : { queueJobId: point.queueJobId }),
+    ...(point.deliveryId === undefined ? {} : { deliveryId: point.deliveryId }),
+    ...(point.retryOrdinal === undefined
+      ? {}
+      : { retryOrdinal: point.retryOrdinal }),
     ...(elapsedSinceUploadMs === undefined ? {} : { elapsedSinceUploadMs }),
   });
 }

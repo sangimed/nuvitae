@@ -75,7 +75,13 @@ export interface ImportProcessingWorkflowPorts {
   readonly isUnrecoverableError?: (error: unknown) => boolean;
 }
 
-export interface ImportJobExecutionContext {
+export interface ImportJobDeliveryMetadata {
+  readonly queueJobId?: string;
+  readonly deliveryId?: string;
+  readonly retryOrdinal?: number;
+}
+
+export interface ImportJobExecutionContext extends ImportJobDeliveryMetadata {
   readonly signal: AbortSignal;
   readonly queuedAt?: number;
   readonly progress: (value: ImportProgress) => Promise<void>;
@@ -106,6 +112,7 @@ export class ImportProcessingWorkflow {
             ? undefined
             : workerStartedAt.getTime() - context.queuedAt,
         uploadReceivedAt: new Date(payload.requestedAt),
+        ...deliveryMetadata(context),
       });
     }
     const document = await this.findOwnedDocument(
@@ -152,7 +159,13 @@ export class ImportProcessingWorkflow {
         },
       );
     } catch (error) {
-      this.emitFailure(document.id, payload.correlationId, "validation", error);
+      this.emitFailure(
+        document.id,
+        payload.correlationId,
+        "validation",
+        error,
+        context,
+      );
       throw error;
     }
   }
@@ -169,6 +182,7 @@ export class ImportProcessingWorkflow {
         phase: "worker_started",
         jobType: "extraction",
         source: "worker",
+        ...deliveryMetadata(context),
         at: workerStartedAt,
         durationMs:
           context.queuedAt === undefined
@@ -209,13 +223,17 @@ export class ImportProcessingWorkflow {
           payload.correlationId,
           "extraction",
           error,
+          context,
         );
       }
       throw error;
     }
   }
 
-  async timeOut(payload: ForegroundTimeoutJobPayload): Promise<void> {
+  async timeOut(
+    payload: ForegroundTimeoutJobPayload,
+    context?: ImportJobDeliveryMetadata,
+  ): Promise<void> {
     if (
       new Date(payload.foregroundDeadline).getTime() >
       this.clock.now().getTime()
@@ -261,6 +279,7 @@ export class ImportProcessingWorkflow {
         payload.correlationId,
         "foreground_timeout",
         error,
+        context,
       );
       throw error;
     }
@@ -271,6 +290,7 @@ export class ImportProcessingWorkflow {
     correlationId: string,
     jobType: "validation" | "extraction" | "foreground_timeout",
     error: unknown,
+    context?: ImportJobDeliveryMetadata,
   ): void {
     this.ports.events?.emit("import.worker_failed", {
       importId,
@@ -278,6 +298,7 @@ export class ImportProcessingWorkflow {
       jobType,
       errorCategory: "unexpected_failure",
       retryable: !(this.ports.isUnrecoverableError?.(error) ?? false),
+      ...(context === undefined ? {} : deliveryMetadata(context)),
     });
   }
 
@@ -291,6 +312,22 @@ export class ImportProcessingWorkflow {
     );
     return aggregate?.document ?? null;
   }
+}
+
+function deliveryMetadata(
+  context: ImportJobDeliveryMetadata,
+): ImportJobDeliveryMetadata {
+  return {
+    ...(context.queueJobId === undefined
+      ? {}
+      : { queueJobId: context.queueJobId }),
+    ...(context.deliveryId === undefined
+      ? {}
+      : { deliveryId: context.deliveryId }),
+    ...(context.retryOrdinal === undefined
+      ? {}
+      : { retryOrdinal: context.retryOrdinal }),
+  };
 }
 
 function eligibleForValidation(document: ImportedDocument): boolean {

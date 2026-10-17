@@ -258,6 +258,13 @@ describe("StartImportService", () => {
     expect(harness.queuePublisher.addBulk).toHaveBeenCalledOnce();
     const jobs = harness.queuePublisher.addBulk.mock.calls[0]?.[0];
     expect(jobs).toHaveLength(3);
+    expect(harness.logRecords).toContainEqual({
+      event: "import.timing",
+      metadata: expect.objectContaining({
+        phase: "queue_enqueued",
+        queueJobId: `import-${importId}-validation-v1`,
+      }),
+    });
     expect(jobs?.[2]).toMatchObject({
       name: "source_artifact_deletion",
       jobId: `import-${importId}-retention-v1`,

@@ -19,6 +19,7 @@ import {
   type SourceDeletionService,
 } from "@nuvitae/import-application";
 import { Queue, UnrecoverableError, type Job } from "bullmq";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { WORKER_IMPORT_WORKFLOW_REPOSITORY } from "../persistence/worker-persistence.module.js";
 
@@ -114,6 +115,7 @@ export class ImportProcessingProcessor extends WorkerHost {
     try {
       await this.workflow.validate(payload, {
         signal,
+        ...deliveryMetadata(job),
         ...(typeof job.timestamp === "number"
           ? { queuedAt: job.timestamp }
           : {}),
@@ -134,6 +136,7 @@ export class ImportProcessingProcessor extends WorkerHost {
     try {
       await this.workflow.extract(payload, {
         signal,
+        ...deliveryMetadata(job),
         ...(typeof job.timestamp === "number"
           ? { queuedAt: job.timestamp }
           : {}),
@@ -146,7 +149,7 @@ export class ImportProcessingProcessor extends WorkerHost {
 
   private async processForegroundTimeout(job: Job<unknown>): Promise<void> {
     const payload = parsePayload(foregroundTimeoutJobPayloadSchema, job.data);
-    await this.workflow.timeOut(payload);
+    await this.workflow.timeOut(payload, deliveryMetadata(job));
   }
 
   private async processSourceDeletion(job: Job<unknown>): Promise<void> {
@@ -176,6 +179,29 @@ export class ImportProcessingProcessor extends WorkerHost {
   ): Promise<void> {
     await job.updateProgress(value);
   }
+}
+
+function deliveryMetadata(job: Job<unknown>): {
+  queueJobId?: string;
+  deliveryId: string;
+  retryOrdinal?: number;
+} {
+  const queueJobId =
+    typeof job.id === "string" &&
+    /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/u.test(job.id)
+      ? job.id
+      : undefined;
+  const retryOrdinal =
+    Number.isSafeInteger(job.attemptsMade) &&
+    job.attemptsMade >= 0 &&
+    job.attemptsMade <= 2
+      ? job.attemptsMade
+      : undefined;
+  return {
+    ...(queueJobId === undefined ? {} : { queueJobId }),
+    deliveryId: randomUUID(),
+    ...(retryOrdinal === undefined ? {} : { retryOrdinal }),
+  };
 }
 
 const unavailableValidation: ImportValidationUseCase = {
