@@ -675,6 +675,7 @@ export const importEventSchemas = {
       correlationId: id(true),
       phase: enumOf(importTimingPhases),
       source: enumOf(importTimingSources),
+      jobType: enumOf(["validation", "extraction"], true),
       timestampMs: int(0, 9_000_000_000_000_000),
       durationMs: int(0, 86_400_000, true),
       elapsedSinceUploadMs: int(0, 86_400_000, true),
@@ -1160,6 +1161,7 @@ export interface ImportEventMetadataMap {
     readonly correlationId?: string;
     readonly phase: (typeof importTimingPhases)[number];
     readonly source: (typeof importTimingSources)[number];
+    readonly jobType?: "validation" | "extraction";
     readonly timestampMs: number;
     readonly durationMs?: number;
     readonly elapsedSinceUploadMs?: number;
@@ -1506,6 +1508,7 @@ export interface ImportTimingPoint {
   readonly correlationId?: string | undefined;
   readonly phase: ImportTimingPhase;
   readonly source: ImportTimingSource;
+  readonly jobType?: "validation" | "extraction";
   readonly at: Date;
   readonly durationMs?: number | undefined;
   readonly uploadReceivedAt?: Date | undefined;
@@ -1532,6 +1535,7 @@ export function emitImportTiming(
     phase: point.phase,
     source: point.source,
     timestampMs: timestamp,
+    ...(point.jobType === undefined ? {} : { jobType: point.jobType }),
     ...(point.correlationId === undefined
       ? {}
       : { correlationId: point.correlationId }),

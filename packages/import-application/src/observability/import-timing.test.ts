@@ -2,10 +2,27 @@ import { describe, expect, it } from "vitest";
 import {
   createImportEventEmitter,
   emitImportTiming,
+  emitImportEvent,
   type ImportEventRecord,
 } from "./import-events.js";
 
 describe("canonical import timing", () => {
+  it("rejects arbitrary worker job labels at the event boundary", () => {
+    const records: ImportEventRecord[] = [];
+    emitImportEvent(
+      { write: (record) => records.push(record) },
+      "import.timing",
+      {
+        importId: "11111111-1111-4111-8111-111111111111",
+        phase: "worker_started",
+        source: "worker",
+        timestampMs: 1,
+        jobType: "synthetic-private-stage",
+      },
+    );
+    expect(records).toEqual([]);
+  });
+
   it("emits a reconstructable timestamp and bounded elapsed duration from a fake clock", () => {
     const records: ImportEventRecord[] = [];
     const emitter = createImportEventEmitter({

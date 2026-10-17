@@ -98,6 +98,7 @@ export class ImportProcessingWorkflow {
         importId: payload.importId,
         correlationId: payload.correlationId,
         phase: "worker_started",
+        jobType: "validation",
         source: "worker",
         at: workerStartedAt,
         durationMs:
@@ -151,7 +152,7 @@ export class ImportProcessingWorkflow {
         },
       );
     } catch (error) {
-      this.emitFailure(document.id, "validation", error);
+      this.emitFailure(document.id, payload.correlationId, "validation", error);
       throw error;
     }
   }
@@ -160,6 +161,21 @@ export class ImportProcessingWorkflow {
     payload: DeterministicExtractionJobPayload,
     context: ImportJobExecutionContext,
   ): Promise<void> {
+    const workerStartedAt = this.clock.now();
+    if (this.ports.events !== undefined) {
+      emitImportTiming(this.ports.events, {
+        importId: payload.importId,
+        correlationId: payload.correlationId,
+        phase: "worker_started",
+        jobType: "extraction",
+        source: "worker",
+        at: workerStartedAt,
+        durationMs:
+          context.queuedAt === undefined
+            ? undefined
+            : workerStartedAt.getTime() - context.queuedAt,
+      });
+    }
     const document = await this.findOwnedDocument(
       payload.importId,
       payload.owner.ownerUserId,
@@ -188,7 +204,12 @@ export class ImportProcessingWorkflow {
         this.ports.events?.emit("import.active_limit_reached", {});
         this.ports.events?.emit("import.processing_start_denied", {});
       } else {
-        this.emitFailure(document.id, "extraction", error);
+        this.emitFailure(
+          document.id,
+          payload.correlationId,
+          "extraction",
+          error,
+        );
       }
       throw error;
     }
@@ -235,18 +256,25 @@ export class ImportProcessingWorkflow {
         this.clock.now(),
       );
     } catch (error) {
-      this.emitFailure(payload.importId, "foreground_timeout", error);
+      this.emitFailure(
+        payload.importId,
+        payload.correlationId,
+        "foreground_timeout",
+        error,
+      );
       throw error;
     }
   }
 
   private emitFailure(
     importId: string,
+    correlationId: string,
     jobType: "validation" | "extraction" | "foreground_timeout",
     error: unknown,
   ): void {
     this.ports.events?.emit("import.worker_failed", {
       importId,
+      correlationId,
       jobType,
       errorCategory: "unexpected_failure",
       retryable: !(this.ports.isUnrecoverableError?.(error) ?? false),

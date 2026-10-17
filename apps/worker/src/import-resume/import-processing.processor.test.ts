@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { UnrecoverableError } from "bullmq";
 import type { ImportedDocument } from "@nuvitae/domain";
 import { IMPORT_RESUME_JOB_NAMES } from "@nuvitae/contracts";
-import { ProcessingStartDeniedError } from "@nuvitae/import-application";
+import {
+  ProcessingStartDeniedError,
+  createImportEventEmitter,
+  type ImportEventRecord,
+} from "@nuvitae/import-application";
 import { ImportProcessingProcessor } from "./import-processing.processor.js";
 
 const ownerUserId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -81,10 +85,11 @@ function payload(
   };
 }
 
-function job(name: string, data: unknown) {
+function job(name: string, data: unknown, timestamp?: number) {
   return {
     name,
     data,
+    ...(timestamp === undefined ? {} : { timestamp }),
     updateProgress: vi.fn(async () => undefined),
   } as never;
 }
@@ -94,6 +99,7 @@ function setup(
     doc?: ImportedDocument | null;
     accepted?: boolean;
     existingDraft?: boolean;
+    records?: ImportEventRecord[];
   } = {},
 ) {
   const repository = {
@@ -124,7 +130,11 @@ function setup(
     validation,
     extraction,
     queue as never,
-    undefined,
+    overrides.records === undefined
+      ? undefined
+      : createImportEventEmitter({
+          write: (record) => overrides.records!.push(record),
+        }),
     undefined,
     { now: () => now },
     sourceDeletion as never,
@@ -140,6 +150,166 @@ function setup(
 }
 
 describe("ImportProcessingProcessor", () => {
+  it.each([
+    ["validation", "document_validation"],
+    ["extraction", "deterministic_extraction"],
+  ] as const)(
+    "records bounded queue wait for each %s delivery",
+    async (stage, jobType) => {
+      const records: ImportEventRecord[] = [];
+      const correlationId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+      const { processor } = setup({
+        doc: document({
+          validationStatus: stage === "validation" ? "not_started" : "accepted",
+        }),
+        records,
+      });
+      for (const queuedAt of [
+        now.getTime() - 125,
+        now.getTime() + 25,
+        now.getTime() - 90_000_000,
+        undefined,
+      ]) {
+        await processor.process(
+          job(
+            IMPORT_RESUME_JOB_NAMES[stage],
+            {
+              ...payload(jobType),
+              correlationId,
+            },
+            queuedAt,
+          ),
+        );
+      }
+      expect(records.map((record) => record.metadata)).toEqual(
+        [125, 0, 86_400_000, undefined].map((durationMs) => ({
+          importId,
+          correlationId,
+          phase: "worker_started",
+          jobType: stage,
+          source: "worker",
+          timestampMs: now.getTime(),
+          ...(stage === "validation" ? { elapsedSinceUploadMs: 0 } : {}),
+          ...(durationMs === undefined ? {} : { durationMs }),
+        })),
+      );
+      expect(JSON.stringify(records)).not.toMatch(
+        /owner|storageKey|sourceStorageKey|resume.pdf/,
+      );
+    },
+  );
+
+  it.each([
+    ["validation", "document_validation"],
+    ["extraction", "deterministic_extraction"],
+  ] as const)(
+    "keeps explicit correlation on %s failure without exception text",
+    async (stage, jobType) => {
+      const records: ImportEventRecord[] = [];
+      const correlationId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+      const { processor, validation, extraction } = setup({
+        doc: document({
+          validationStatus: stage === "validation" ? "not_started" : "accepted",
+        }),
+        records,
+      });
+      const error = new Error("synthetic-private-diagnostic");
+      if (stage === "validation")
+        validation.validate.mockRejectedValueOnce(error);
+      else extraction.process.mockRejectedValueOnce(error);
+      await expect(
+        processor.process(
+          job(IMPORT_RESUME_JOB_NAMES[stage], {
+            ...payload(jobType),
+            correlationId,
+          }),
+        ),
+      ).rejects.toBe(error);
+      expect(
+        records.find((record) => record.event === "import.worker_failed")
+          ?.metadata,
+      ).toEqual({
+        importId,
+        correlationId,
+        jobType: stage,
+        errorCategory: "unexpected_failure",
+        retryable: true,
+      });
+      expect(JSON.stringify(records)).not.toContain(error.message);
+    },
+  );
+
+  it("emits no timing for malformed extraction payloads", async () => {
+    const records: ImportEventRecord[] = [];
+    const { processor } = setup({ records });
+    await expect(
+      processor.process(
+        job(IMPORT_RESUME_JOB_NAMES.extraction, {
+          ...payload("deterministic_extraction"),
+          correlationId: "untrusted\nvalue",
+        }),
+      ),
+    ).rejects.toBeInstanceOf(UnrecoverableError);
+    expect(records).toEqual([]);
+  });
+
+  it("correlates timeout failures and preserves unrecoverable retry policy", async () => {
+    const records: ImportEventRecord[] = [];
+    const correlationId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    const { processor, repository } = setup({ records });
+    const error = new UnrecoverableError("synthetic-private-diagnostic");
+    repository.transaction.mockRejectedValueOnce(error);
+    await expect(
+      processor.process(
+        job(IMPORT_RESUME_JOB_NAMES.foregroundTimeout, {
+          ...payload("foreground_timeout"),
+          correlationId,
+        }),
+      ),
+    ).rejects.toBe(error);
+    expect(records).toEqual([
+      {
+        level: "warn",
+        event: "import.worker_failed",
+        metadata: {
+          importId,
+          correlationId,
+          jobType: "foreground_timeout",
+          errorCategory: "unexpected_failure",
+          retryable: false,
+        },
+      },
+    ]);
+  });
+
+  it.each([
+    null,
+    document({
+      validationStatus: "accepted",
+      processingStatus: "ready_for_review",
+    }),
+  ])(
+    "records extraction delivery without claiming progress for absent or terminal imports",
+    async (doc) => {
+      const records: ImportEventRecord[] = [];
+      const { processor, repository, extraction } = setup({ doc, records });
+      const value = job(
+        IMPORT_RESUME_JOB_NAMES.extraction,
+        payload("deterministic_extraction"),
+      );
+      await processor.process(value);
+      expect(repository.findImportByOwner).toHaveBeenCalledWith(
+        importId,
+        ownerUserId,
+      );
+      expect(extraction.process).not.toHaveBeenCalled();
+      expect(value.updateProgress).not.toHaveBeenCalled();
+      expect(records.map((record) => record.metadata.phase)).toEqual([
+        "worker_started",
+      ]);
+    },
+  );
+
   it("fails closed for invalid payloads", async () => {
     const { processor } = setup();
     await expect(
