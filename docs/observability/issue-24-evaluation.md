@@ -165,6 +165,17 @@ This closes the asymmetric delivery timing gap using the current event sink.
 Request/attempt IDs, HTTP traces, exporter integration and backend measurements
 remain proposed work.
 
+### Provider-to-durable-draft correlation follow-up
+
+The semantic workflow carries the approved correlation ID into the provider
+request, `review.draft_created`, and the `draft_persisted` timing. Draft events
+are emitted only after the transaction commits successfully, and only when
+that transaction actually saves the draft and moves the import to
+`ready_for_review`. A concurrent terminal/ready state or existing draft emits
+no new persistence milestone. These events describe the durable review outcome;
+they do not imply user confirmation. This remains local structured-event
+correlation and does not add exporter or trace infrastructure.
+
 ## Privacy, retention and failure policy for the trial
 
 These are proposed requirements, not current retention guarantees. They preserve
