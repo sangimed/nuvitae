@@ -20,12 +20,19 @@ For a development-only instance, follow the
 [README Local Play recipe](https://github.com/sangimed/nuvitae/blob/main/README.md#local-playable-stack):
 
 ```bash
+. ./scripts/local-play-env.sh
+docker compose -f compose.yml -f compose.local.yml build workspace
+docker compose -f compose.yml -f compose.local.yml run --rm --no-deps workspace pnpm install --frozen-lockfile
 ./scripts/local-play-up.sh
 docker compose -f compose.yml -f compose.local.yml ps
 ```
 
-The launcher prepares the local environment, installs dependencies and runs
-migrations through Docker before starting services. These steps mutate local
+These examples use Bash, available through Git Bash on Windows. Source the
+environment helper in each new shell before running Local Play Compose commands;
+the launcher sources it internally, which cannot configure the parent shell.
+The helper supplies development-only interpolation values, not Community secrets.
+Dependency installation is an explicit step above; the launcher builds runtime
+images and runs migrations through Docker before starting services. These steps mutate local
 application data: use a new development installation or explicitly approved
 local state, not an important existing database. In an Amp Orb, use the current
 web portal URL supplied by the agent; sandbox-local addresses are not reachable
@@ -107,6 +114,10 @@ agree. `synchronize` stays disabled. A schema iteration is not automatically a
 new migration, but preserving an important existing database requires a reviewed
 forward migration rather than editing its applied history. Generated migrations
 are review inputs, not automatically safe changes.
+
+The [persistence chapter](persistence.md) maps stored state, transaction boundaries,
+owner constraints, replay behavior and the different revision/timestamp checks.
+Use the [API chapter](api.md) when changing an endpoint or its shared contract.
 
 This foundation links the existing operational recipes rather than moving them.
 The complete troubleshooting and test-layer catalog remains [follow-up work](coverage.md).

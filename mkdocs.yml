@@ -26,6 +26,8 @@ nav:
       - Runtime overview: architecture.md
       - Repository and module map: repository.md
       - Import pipeline: import-pipeline.md
+      - Persistence and consistency: persistence.md
+      - API architecture and contracts: api.md
       - Security and privacy: security.md
   - Decisions and reference: reference.md
   - Foundation scope and follow-up: coverage.md
