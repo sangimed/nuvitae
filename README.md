@@ -53,7 +53,7 @@ Pinned bootstrap versions:
 - pnpm package manager: `pnpm@11.15.1`
 - PostgreSQL image: `postgres:17.10-alpine3.24`
 - Redis-compatible queue image: `valkey/valkey:8.1.9-alpine3.24`
-- Playwright test image: `mcr.microsoft.com/playwright:v1.62.0-noble`
+- Playwright test image: `mcr.microsoft.com/playwright:v1.63.0-noble`
 - Next.js: `15.5.22`
 - React: `19.2.8`
 - NestJS: `11.1.28`

@@ -1,4 +1,41 @@
 export const en = {
+  "import.processing.eyebrow": "Import status",
+  "import.processing.problem": "There is a problem",
+  "import.processing.loading.experience":
+    "Giving your experience section a quick once-over…",
+  "import.processing.loading.bullets": "Making sure your bullet points behave…",
+  "import.processing.loading.surprises":
+    "Checking whether your document has any surprises…",
+  "import.processing.loading.dates":
+    "Looking for dates that travelled through time…",
+  "import.processing.loading.sections":
+    "Untangling the document, one section at a time…",
+  "import.processing.loading.polishing":
+    "Polishing things without inventing a promotion…",
+  "import.processing.longWait":
+    "This is taking a little longer. We’ll keep showing the latest processing step.",
+  "import.processing.draftFields": "Draft fields",
+  "import.processing.needsAttention": "Needs attention",
+  "import.processing.review": "Review imported resume",
+  "import.processing.openReview": "Open review page",
+  "import.processing.replacementNotice":
+    "If you upload a replacement, the previous import is not deleted here and remains subject to its original retention deadline.",
+  "import.processing.replaceUpload": "Upload a different file",
+  "import.processing.heading.processing": "Preparing your resume for review",
+  "import.processing.heading.draft_ready": "Your resume draft is ready",
+  "import.processing.heading.partial_extraction":
+    "Your resume draft is ready with notes",
+  "import.processing.heading.recoverable_timeout":
+    "This is taking longer than expected",
+  "import.processing.heading.validation_failure":
+    "This file cannot be imported",
+  "import.processing.heading.terminal_processing_failure":
+    "This resume could not be prepared",
+  "import.processing.heading.authentication_required": "Sign in required",
+  "import.processing.heading.connectivity_lost": "Connection temporarily lost",
+  "import.processing.heading.not_found": "Import unavailable",
+  "import.processing.heading.expired": "Import expired",
+  "import.processing.heading.cancelled": "Import stopped",
   "shell.home": "Home",
   "shell.resumes": "My resumes",
   "shell.import": "Import resume",
@@ -123,6 +160,46 @@ export type MessageKey = keyof typeof en;
 export type Messages = Record<MessageKey, string>;
 
 const fr: Messages = {
+  "import.processing.eyebrow": "État de l’importation",
+  "import.processing.problem": "Un problème est survenu",
+  "import.processing.loading.experience":
+    "Un dernier regard sur votre expérience…",
+  "import.processing.loading.bullets":
+    "Nous vérifions que vos listes à puces se tiennent bien…",
+  "import.processing.loading.surprises":
+    "Nous cherchons les surprises dans votre document…",
+  "import.processing.loading.dates":
+    "Nous repérons les dates qui ont voyagé dans le temps…",
+  "import.processing.loading.sections":
+    "Nous démêlons le document, rubrique par rubrique…",
+  "import.processing.loading.polishing":
+    "Nous peaufinons le tout sans inventer de promotion…",
+  "import.processing.longWait":
+    "Cela prend un peu plus de temps. Nous continuons à afficher la dernière étape du traitement.",
+  "import.processing.draftFields": "Champs du brouillon",
+  "import.processing.needsAttention": "À vérifier",
+  "import.processing.review": "Vérifier le CV importé",
+  "import.processing.openReview": "Ouvrir la page de vérification",
+  "import.processing.replacementNotice":
+    "Si vous importez un autre fichier, l’importation précédente n’est pas supprimée ici et conserve son échéance de conservation initiale.",
+  "import.processing.replaceUpload": "Importer un autre fichier",
+  "import.processing.heading.processing":
+    "Préparation de votre CV pour la vérification",
+  "import.processing.heading.draft_ready": "Votre brouillon de CV est prêt",
+  "import.processing.heading.partial_extraction":
+    "Votre brouillon de CV est prêt avec des remarques",
+  "import.processing.heading.recoverable_timeout":
+    "Cela prend plus de temps que prévu",
+  "import.processing.heading.validation_failure":
+    "Ce fichier ne peut pas être importé",
+  "import.processing.heading.terminal_processing_failure":
+    "Ce CV n’a pas pu être préparé",
+  "import.processing.heading.authentication_required": "Connexion requise",
+  "import.processing.heading.connectivity_lost":
+    "Connexion temporairement perdue",
+  "import.processing.heading.not_found": "Importation indisponible",
+  "import.processing.heading.expired": "Importation expirée",
+  "import.processing.heading.cancelled": "Importation arrêtée",
   "shell.home": "Accueil",
   "shell.resumes": "Mes CV",
   "shell.import": "Importer un CV",
@@ -245,6 +322,45 @@ const fr: Messages = {
 };
 
 const es: Messages = {
+  "import.processing.eyebrow": "Estado de la importación",
+  "import.processing.problem": "Se ha producido un problema",
+  "import.processing.loading.experience": "Un último vistazo a tu experiencia…",
+  "import.processing.loading.bullets":
+    "Comprobando que las viñetas se porten bien…",
+  "import.processing.loading.surprises": "Buscando sorpresas en tu documento…",
+  "import.processing.loading.dates":
+    "Buscando fechas que hayan viajado en el tiempo…",
+  "import.processing.loading.sections":
+    "Desenredando el documento, sección por sección…",
+  "import.processing.loading.polishing":
+    "Puliendo los detalles sin inventar un ascenso…",
+  "import.processing.longWait":
+    "Está tardando un poco más. Seguiremos mostrando el último paso del procesamiento.",
+  "import.processing.draftFields": "Campos del borrador",
+  "import.processing.needsAttention": "Requiere atención",
+  "import.processing.review": "Revisar el currículum importado",
+  "import.processing.openReview": "Abrir la página de revisión",
+  "import.processing.replacementNotice":
+    "Si subes otro archivo, la importación anterior no se elimina aquí y mantiene su plazo de conservación original.",
+  "import.processing.replaceUpload": "Subir otro archivo",
+  "import.processing.heading.processing":
+    "Preparando tu currículum para la revisión",
+  "import.processing.heading.draft_ready":
+    "El borrador de tu currículum está listo",
+  "import.processing.heading.partial_extraction":
+    "El borrador de tu currículum está listo con observaciones",
+  "import.processing.heading.recoverable_timeout":
+    "Está tardando más de lo esperado",
+  "import.processing.heading.validation_failure":
+    "No se puede importar este archivo",
+  "import.processing.heading.terminal_processing_failure":
+    "No se pudo preparar este currículum",
+  "import.processing.heading.authentication_required": "Debes iniciar sesión",
+  "import.processing.heading.connectivity_lost":
+    "Conexión perdida temporalmente",
+  "import.processing.heading.not_found": "Importación no disponible",
+  "import.processing.heading.expired": "Importación caducada",
+  "import.processing.heading.cancelled": "Importación detenida",
   "shell.home": "Inicio",
   "shell.resumes": "Mis currículums",
   "shell.import": "Importar currículum",
@@ -369,6 +485,38 @@ const es: Messages = {
 };
 
 const ar: Messages = {
+  "import.processing.eyebrow": "حالة الاستيراد",
+  "import.processing.problem": "حدثت مشكلة",
+  "import.processing.loading.experience": "نلقي نظرة أخيرة على خبراتك…",
+  "import.processing.loading.bullets": "نتأكد من ترتيب النقاط في سيرتك…",
+  "import.processing.loading.surprises": "نبحث عن أي مفاجآت في مستندك…",
+  "import.processing.loading.dates":
+    "نتحقق من التواريخ التي ربما سافرت عبر الزمن…",
+  "import.processing.loading.sections": "نرتب المستند قسمًا تلو الآخر…",
+  "import.processing.loading.polishing": "نحسّن التفاصيل دون اختراع ترقية…",
+  "import.processing.longWait":
+    "يستغرق هذا وقتًا أطول قليلًا. سنواصل عرض أحدث خطوة في المعالجة.",
+  "import.processing.draftFields": "حقول المسودة",
+  "import.processing.needsAttention": "تحتاج إلى مراجعة",
+  "import.processing.review": "مراجعة السيرة الذاتية المستوردة",
+  "import.processing.openReview": "فتح صفحة المراجعة",
+  "import.processing.replacementNotice":
+    "إذا رفعت ملفًا بديلًا، فلن يُحذف الاستيراد السابق هنا وسيبقى خاضعًا لموعد الاحتفاظ الأصلي.",
+  "import.processing.replaceUpload": "رفع ملف آخر",
+  "import.processing.heading.processing": "جارٍ تحضير سيرتك الذاتية للمراجعة",
+  "import.processing.heading.draft_ready": "مسودة سيرتك الذاتية جاهزة",
+  "import.processing.heading.partial_extraction":
+    "مسودة سيرتك الذاتية جاهزة مع ملاحظات",
+  "import.processing.heading.recoverable_timeout":
+    "يستغرق هذا وقتًا أطول من المتوقع",
+  "import.processing.heading.validation_failure": "لا يمكن استيراد هذا الملف",
+  "import.processing.heading.terminal_processing_failure":
+    "تعذّر تحضير هذه السيرة الذاتية",
+  "import.processing.heading.authentication_required": "يجب تسجيل الدخول",
+  "import.processing.heading.connectivity_lost": "انقطع الاتصال مؤقتًا",
+  "import.processing.heading.not_found": "الاستيراد غير متاح",
+  "import.processing.heading.expired": "انتهت صلاحية الاستيراد",
+  "import.processing.heading.cancelled": "توقف الاستيراد",
   "shell.home": "الرئيسية",
   "shell.resumes": "سيري الذاتية",
   "shell.import": "استيراد سيرة ذاتية",
@@ -485,6 +633,34 @@ const ar: Messages = {
 };
 
 const zhCN: Messages = {
+  "import.processing.eyebrow": "导入状态",
+  "import.processing.problem": "出现问题",
+  "import.processing.loading.experience": "正在快速检查您的工作经历…",
+  "import.processing.loading.bullets": "正在整理您的项目符号…",
+  "import.processing.loading.surprises": "正在检查文档中是否有意外情况…",
+  "import.processing.loading.dates": "正在查找可能穿越时空的日期…",
+  "import.processing.loading.sections": "正在逐节理顺文档…",
+  "import.processing.loading.polishing": "正在润色细节，不会编造晋升经历…",
+  "import.processing.longWait": "处理时间稍长。我们会继续显示最新的处理步骤。",
+  "import.processing.draftFields": "草稿字段",
+  "import.processing.needsAttention": "需要关注",
+  "import.processing.review": "审核导入的简历",
+  "import.processing.openReview": "打开审核页面",
+  "import.processing.replacementNotice":
+    "如果您上传其他文件，此前的导入不会在此删除，仍遵循原定的保留期限。",
+  "import.processing.replaceUpload": "上传其他文件",
+  "import.processing.heading.processing": "正在准备您的简历以供审核",
+  "import.processing.heading.draft_ready": "您的简历草稿已准备好",
+  "import.processing.heading.partial_extraction":
+    "您的简历草稿已准备好，并附有备注",
+  "import.processing.heading.recoverable_timeout": "处理时间超出预期",
+  "import.processing.heading.validation_failure": "无法导入此文件",
+  "import.processing.heading.terminal_processing_failure": "无法准备此简历",
+  "import.processing.heading.authentication_required": "需要登录",
+  "import.processing.heading.connectivity_lost": "连接暂时中断",
+  "import.processing.heading.not_found": "导入不可用",
+  "import.processing.heading.expired": "导入已过期",
+  "import.processing.heading.cancelled": "导入已停止",
   "shell.home": "首页",
   "shell.resumes": "我的简历",
   "shell.import": "导入简历",

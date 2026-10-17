@@ -1,25 +1,23 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { PublicImportStatusResponse } from "@nuvitae/contracts";
 import type { MessageKey } from "../../i18n/messages";
 import { useTranslation } from "../../i18n/LocaleProvider";
+import { direction, translate } from "../../i18n/locale";
 import { RotatingLoadingMessage } from "../../components/community/RotatingLoadingMessage";
 import { ErrorSummary } from "./ErrorSummary";
 import { focusErrorSummary, focusNextLogicalHeading } from "./focus-management";
 import { ProviderRecoveryActions } from "./ProviderRecoveryActions";
 
-const importLoadingMessages = [
-  "Giving your experience section a quick once-over…",
-  "Making sure your bullet points behave…",
-  "Checking whether your document has any surprises…",
-  "Looking for dates that travelled through time…",
-  "Untangling the document, one section at a time…",
-  "Polishing things without inventing a promotion…",
-] as const;
-
-const importLongWaitMessage =
-  "This is taking a little longer. We’ll keep showing the latest processing step.";
+const importLoadingMessageKeys = [
+  "import.processing.loading.experience",
+  "import.processing.loading.bullets",
+  "import.processing.loading.surprises",
+  "import.processing.loading.dates",
+  "import.processing.loading.sections",
+  "import.processing.loading.polishing",
+] as const satisfies readonly MessageKey[];
 
 const failureStatuses = new Set<PublicImportStatusResponse["status"]>([
   "recoverable_timeout",
@@ -46,11 +44,16 @@ export function ProcessingStep(props: {
   readonly onReview?: (importId: string) => void;
 }) {
   const status = props.status;
-  const { t } = useTranslation();
+  const { locale, t } = useTranslation();
+  const importLoadingMessages = useMemo(
+    () => importLoadingMessageKeys.map((key) => translate(locale, key)),
+    [locale],
+  );
+  const numberFormat = new Intl.NumberFormat(locale);
   const sectionRef = useRef<HTMLElement | null>(null);
   const summaryRef = useRef<HTMLDivElement | null>(null);
   const previousStatusRef = useRef<string | undefined>(undefined);
-  const heading = headingFor(status);
+  const heading = t(`import.processing.heading.${status.status}`);
   const body = bodyFor(status);
 
   useEffect(() => {
@@ -71,15 +74,19 @@ export function ProcessingStep(props: {
       className={`import-card${status.status === "processing" ? " import-processing-card" : ""}`}
       aria-labelledby="processing-title"
       aria-busy={status.status === "processing" || undefined}
+      lang={locale}
+      dir={direction(locale)}
       ref={sectionRef}
     >
-      <p className="eyebrow">Import status</p>
+      <p className="eyebrow">{t("import.processing.eyebrow")}</p>
       {status.status === "processing" ? <ImportLoadingVisual /> : null}
       <h1 id="processing-title">{heading}</h1>
       {failureStatuses.has(status.status) ? (
         <ErrorSummary
           ref={summaryRef}
-          heading="There is a problem"
+          heading={t("import.processing.problem")}
+          messagesLang="en"
+          messagesDir="ltr"
           errors={
             [
               {
@@ -94,12 +101,16 @@ export function ProcessingStep(props: {
           <RotatingLoadingMessage
             className="import-loading-message"
             messages={importLoadingMessages}
-            longWaitMessage={importLongWaitMessage}
+            longWaitMessage={t("import.processing.longWait")}
           />
-          <p className="import-processing-detail">{body}</p>
+          <p className="import-processing-detail" lang="en" dir="ltr">
+            {body}
+          </p>
         </>
       ) : (
-        <p>{body}</p>
+        <p lang="en" dir="ltr">
+          {body}
+        </p>
       )}
       {status.status === "processing" ? (
         <p className="import-processing-stage">
@@ -108,18 +119,20 @@ export function ProcessingStep(props: {
         </p>
       ) : null}
       {props.connectivityMessage === undefined ? null : (
-        <p className="message">{props.connectivityMessage}</p>
+        <p className="message" lang="en" dir="ltr">
+          {props.connectivityMessage}
+        </p>
       )}
 
       {status.draftSummary === undefined ? null : (
         <dl className="status-list compact">
           <div>
-            <dt>Draft fields</dt>
-            <dd>{status.draftSummary.fieldCount}</dd>
+            <dt>{t("import.processing.draftFields")}</dt>
+            <dd>{numberFormat.format(status.draftSummary.fieldCount)}</dd>
           </div>
           <div>
-            <dt>Needs attention</dt>
-            <dd>{status.draftSummary.warningCount}</dd>
+            <dt>{t("import.processing.needsAttention")}</dt>
+            <dd>{numberFormat.format(status.draftSummary.warningCount)}</dd>
           </div>
         </dl>
       )}
@@ -132,10 +145,10 @@ export function ProcessingStep(props: {
             className="primary-action"
             onClick={() => props.onReview?.(status.importId)}
           >
-            Review imported resume
+            {t("import.processing.review")}
           </button>
           <a href={`/import-resume/${status.importId}/review`}>
-            Open review page
+            {t("import.processing.openReview")}
           </a>
         </div>
       ) : null}
@@ -148,17 +161,18 @@ export function ProcessingStep(props: {
       status.status === "not_found" ? (
         <>
           {status.failure?.code === "provider_unavailable" ? (
-            <ProviderRecoveryActions
-              state="provider_unavailable"
-              recoveryActions={["manual_entry"]}
-              alternativeProviderAvailable={false}
-              onManualEntry={props.onManualEntry}
-            />
+            <div lang="en" dir="ltr">
+              <ProviderRecoveryActions
+                state="provider_unavailable"
+                recoveryActions={["manual_entry"]}
+                alternativeProviderAvailable={false}
+                onManualEntry={props.onManualEntry}
+              />
+            </div>
           ) : null}
           {status.allowedRecoveryActions.includes("replace_upload") ? (
             <p className="message">
-              If you upload a replacement, the previous import is not deleted
-              here and remains subject to its original retention deadline.
+              {t("import.processing.replacementNotice")}
             </p>
           ) : null}
           {status.failure?.code === "provider_unavailable" ? null : (
@@ -169,7 +183,7 @@ export function ProcessingStep(props: {
                   className="primary-action"
                   onClick={props.onReplaceUpload}
                 >
-                  Upload a different file
+                  {t("import.processing.replaceUpload")}
                 </button>
               ) : null}
               {status.allowedRecoveryActions.includes("manual_entry") ? (
@@ -178,7 +192,7 @@ export function ProcessingStep(props: {
                   className="secondary-button"
                   onClick={props.onManualEntry}
                 >
-                  Enter manually
+                  {t("import.entry.manualAction")}
                 </button>
               ) : null}
             </div>
@@ -202,33 +216,6 @@ function ImportLoadingVisual() {
       <span className="import-loading-orbit" />
     </div>
   );
-}
-
-function headingFor(status: PublicImportStatusResponse): string {
-  switch (status.status) {
-    case "processing":
-      return "Preparing your resume for review";
-    case "draft_ready":
-      return "Your resume draft is ready";
-    case "partial_extraction":
-      return "Your resume draft is ready with notes";
-    case "recoverable_timeout":
-      return "This is taking longer than expected";
-    case "validation_failure":
-      return "This file cannot be imported";
-    case "terminal_processing_failure":
-      return "This resume could not be prepared";
-    case "authentication_required":
-      return "Sign in required";
-    case "connectivity_lost":
-      return "Connection temporarily lost";
-    case "not_found":
-      return "Import unavailable";
-    case "expired":
-      return "Import expired";
-    case "cancelled":
-      return "Import stopped";
-  }
 }
 
 function bodyFor(status: PublicImportStatusResponse): string {

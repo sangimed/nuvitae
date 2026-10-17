@@ -73,17 +73,14 @@ test("Arabic browser preference renders RTL and fits a narrow viewport", async (
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
-    await page
-      .getByRole("main")
-      .getByRole("link", { name: "استيراد سيرة ذاتية" })
-      .click();
+    await page.goto("/import-resume");
     await expect(page).toHaveURL(/\/import-resume$/);
     await expect(page.locator("html")).toHaveAttribute("lang", "ar");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
       "ابدأ بسيرتك الذاتية الحالية",
     );
     await page.getByRole("button", { name: "استيراد سيرتي الذاتية" }).click();
-    const importFlow = page.locator('[lang="ar"][dir="rtl"]');
+    const importFlow = page.getByRole("main").locator('[lang="ar"][dir="rtl"]');
     await expect(importFlow.getByRole("heading", { level: 1 })).toHaveText(
       "اختر ملف السيرة الذاتية لاستيراده",
     );
@@ -212,4 +209,94 @@ test("switching application language keeps unsaved resume text and sends no resu
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("lang", "fr");
   await expect(page.locator("html")).toHaveAttribute("dir", "ltr");
+});
+
+test("processing and recovery switch from French to Arabic without losing keyboard focus", async ({
+  page,
+}) => {
+  const importId = "22222222-2222-4222-8222-222222222222";
+  let failed = false;
+  await page.route(`**/import-resume/${importId}/status`, (route) =>
+    route.fulfill({
+      json: {
+        version: "2026-07-28",
+        requestId: "11111111-1111-4111-8111-111111111111",
+        importId,
+        status: failed ? "validation_failure" : "processing",
+        ...(failed
+          ? {
+              failure: {
+                code: "malformed_or_corrupted",
+                retryable: true,
+                recoveryActions: ["replace_upload", "manual_entry"],
+                userMessage: "This file could not be accepted.",
+              },
+            }
+          : { currentStep: "reading_content" }),
+        progressKnown: false,
+        allowedRecoveryActions: ["replace_upload", "manual_entry"],
+        userMessage: "Preparing your resume for review.",
+      },
+    }),
+  );
+  await page.context().addCookies([
+    {
+      name: "nuvitae-app-locale",
+      value: "fr",
+      url: "http://localhost:3000",
+    },
+  ]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`/import-resume/${importId}`);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Préparation de votre CV pour la vérification",
+  );
+  await expect(page.locator(".import-processing-stage")).toContainText(
+    "lecture du contenu",
+  );
+  const selector = page.locator(".application-language select");
+  await selector.focus();
+  await selector.selectOption("ar");
+  await expect(selector).toBeFocused();
+  const processing = page.locator('[aria-labelledby="processing-title"]');
+  await expect(processing).toHaveAttribute("lang", "ar");
+  await expect(processing).toHaveAttribute("dir", "rtl");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "جارٍ تحضير سيرتك الذاتية للمراجعة",
+  );
+  await expect(processing.locator(".import-processing-detail")).toHaveAttribute(
+    "lang",
+    "en",
+  );
+  await expect(processing.locator("[data-loading-message]")).toHaveAttribute(
+    "aria-live",
+    "off",
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+
+  failed = true;
+  const summary = page.locator("[data-error-summary]");
+  await expect(summary).toBeFocused();
+  await expect(summary.getByRole("heading")).toHaveText("حدثت مشكلة");
+  await expect(summary.locator("ul")).toHaveAttribute("lang", "en");
+  await expect(summary.locator("ul")).toHaveAttribute("dir", "ltr");
+  await expect(summary).toContainText("This file could not be accepted.");
+  await expect(
+    page.getByRole("button", { name: "رفع ملف آخر", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "إدخال يدويًا", exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("button", { name: "رفع ملف آخر", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "اختر ملف السيرة الذاتية لاستيراده",
+  );
 });
