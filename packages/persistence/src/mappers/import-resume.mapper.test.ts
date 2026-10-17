@@ -56,7 +56,7 @@ describe("import resume persistence mappers", () => {
       workExperienceId: "00000000-0000-4000-8000-000000000011",
       structuredResumeId: resume.id,
       position: 0,
-      title: "Engineer",
+      title: "高级数据分析师",
       location: null,
       startDate: { year: 2024, precision: "year" },
       endDate: null,
@@ -74,7 +74,7 @@ describe("import resume persistence mappers", () => {
           structuredResumeId: resume.id,
           ownerUserId: resume.ownerUserId,
           position: 0,
-          employerName: "Synthetic Employer",
+          employerName: "مؤسسة المثال للتقنية",
           employerLocation: null,
           reviewStatus: "confirmed",
           inferenceStatus: "not_inferred",
@@ -87,6 +87,12 @@ describe("import resume persistence mappers", () => {
     expect(mapped.content.workExperiences[0]?.roles[0]).toMatchObject({
       isOngoing: true,
     });
+    expect(mapped.content.workExperiences[0]?.employerName).toBe(
+      "مؤسسة المثال للتقنية",
+    );
+    expect(mapped.content.workExperiences[0]?.roles[0]?.title).toBe(
+      "高级数据分析师",
+    );
     expect(mapped.content.workExperiences[0]?.roles[0]).not.toHaveProperty(
       "endDate",
     );
