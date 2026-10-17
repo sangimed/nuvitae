@@ -69,6 +69,8 @@ export interface AccessibleDialogProps {
    * distinction never relies on color alone.
    */
   readonly destructive?: boolean;
+  /** Optional localized visible warning for destructive dialogs. */
+  readonly destructiveLabel?: string;
   readonly children: ReactNode;
 }
 
@@ -123,6 +125,7 @@ export const AccessibleDialog = forwardRef<
     initialFocus,
     restoreFocus,
     destructive = false,
+    destructiveLabel = "Destructive action",
     children,
   } = props;
 
@@ -280,7 +283,7 @@ export const AccessibleDialog = forwardRef<
       >
         {destructive ? (
           <p className="dialog-warning-marker" data-destructive-marker="">
-            <span aria-hidden="true">⚠</span> Destructive action
+            <span aria-hidden="true">⚠</span> {destructiveLabel}
           </p>
         ) : null}
         {children}

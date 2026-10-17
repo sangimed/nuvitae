@@ -4,6 +4,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DeleteSourceControl } from "./DeleteSourceControl";
+import { LocaleProvider } from "../../i18n/LocaleProvider";
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -72,7 +73,7 @@ describe("DeleteSourceControl", () => {
     mocks.deleteConfirmedResumeSource.mockResolvedValue({
       ok: false,
       category: "temporarily_unavailable",
-      message: "The uploaded source could not be deleted. Try again later.",
+      message: "<script>unsafe provider details</script>",
     });
     render();
     act(() => button("Delete uploaded source file").click());
@@ -82,6 +83,83 @@ describe("DeleteSourceControl", () => {
     expect(container.querySelector('[role="alert"]')?.textContent).toBe(
       "The uploaded source could not be deleted. Try again later.",
     );
+    expect(container.textContent).not.toContain("unsafe provider details");
+  });
+
+  it.each([
+    {
+      locale: "fr" as const,
+      action: "Supprimer le fichier source téléversé",
+      confirm: "Supprimer uniquement la source",
+      cancel: "Conserver la source",
+      destructiveMarker: "Action destructive",
+    },
+    {
+      locale: "ar" as const,
+      action: "حذف الملف المصدر الذي تم تحميله",
+      confirm: "حذف المصدر فقط",
+      cancel: "الاحتفاظ بالمصدر",
+      destructiveMarker: "إجراء حذف",
+    },
+  ])(
+    "localizes $locale and preserves dialog accessibility and focus",
+    ({ locale, action, confirm, cancel, destructiveMarker }) => {
+      renderWithLocale(locale);
+      const trigger = button(action);
+      act(() => trigger.focus());
+      act(() => trigger.click());
+
+      const dialog = container.querySelector('[role="dialog"]');
+      expect(dialog?.getAttribute("aria-label")).toBe(action);
+      expect(dialog?.getAttribute("aria-describedby")).toBe(
+        "delete-source-description",
+      );
+      expect(button(confirm)).toBe(document.activeElement);
+      expect(container.textContent).toContain(cancel);
+      expect(
+        container.querySelector("[data-destructive-marker]")?.textContent,
+      ).toContain(destructiveMarker);
+      act(() =>
+        button(confirm).dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Tab", bubbles: true }),
+        ),
+      );
+      expect(button(cancel)).toBe(document.activeElement);
+      act(() =>
+        button(cancel).dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Tab", bubbles: true }),
+        ),
+      );
+      expect(button(confirm)).toBe(document.activeElement);
+      if (locale === "ar") {
+        expect(document.documentElement.dir).toBe("rtl");
+        expect(document.documentElement.lang).toBe("ar");
+      }
+
+      act(() =>
+        dialog?.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+        ),
+      );
+      expect(container.querySelector('[role="dialog"]')).toBeNull();
+      expect(trigger).toBe(document.activeElement);
+    },
+  );
+
+  it("keeps the response message and resume identity at the callback boundary", async () => {
+    const message = "The uploaded source was deleted. Your edits were kept.";
+    const onDeleted = vi.fn(async () => undefined);
+    mocks.deleteConfirmedResumeSource.mockResolvedValue({
+      ok: true,
+      response: { userMessage: message },
+    });
+    render(onDeleted);
+    act(() => button("Delete uploaded source file").click());
+    await act(async () => button("Delete source only").click());
+    expect(mocks.deleteConfirmedResumeSource).toHaveBeenCalledWith({
+      resumeId,
+    });
+    expect(onDeleted).toHaveBeenCalledWith(message);
   });
 });
 
@@ -94,6 +172,23 @@ function render(onDeleted = vi.fn(async () => undefined)) {
         disabled={false}
         onDeleted={onDeleted}
       />,
+    ),
+  );
+}
+
+function renderWithLocale(locale: "fr" | "ar") {
+  document.documentElement.lang = locale;
+  document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
+  root = createRoot(container);
+  act(() =>
+    root?.render(
+      <LocaleProvider initialLocale={locale}>
+        <DeleteSourceControl
+          resumeId={resumeId}
+          disabled={false}
+          onDeleted={vi.fn(async () => undefined)}
+        />
+      </LocaleProvider>,
     ),
   );
 }
