@@ -26,6 +26,7 @@ nav:
       - Runtime overview: architecture.md
       - Repository and module map: repository.md
       - Import pipeline: import-pipeline.md
+      - Queue and worker operations: queue-operations.md
       - Persistence and consistency: persistence.md
       - API architecture and contracts: api.md
       - Security and privacy: security.md
