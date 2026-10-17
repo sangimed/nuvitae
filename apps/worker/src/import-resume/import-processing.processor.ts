@@ -164,6 +164,7 @@ export class ImportProcessingProcessor extends WorkerHost {
       importId: payload.importId,
       ownerUserId: payload.owner.ownerUserId,
       now: this.clock.now(),
+      ...deliveryMetadata(job),
     });
     if (result.kind === "not_found") {
       throw new UnrecoverableError("Import source is unavailable.");

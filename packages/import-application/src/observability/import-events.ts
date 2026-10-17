@@ -745,6 +745,9 @@ export const importEventSchemas = {
       importId: id(),
       retryable: bool(),
       correlationId: id(true),
+      queueJobId: id(true),
+      deliveryId: id(true),
+      retryOrdinal: int(0, 2, true),
     },
   },
   "import.limit_release_failed": {
@@ -1206,6 +1209,9 @@ export interface ImportEventMetadataMap {
     readonly importId: string;
     readonly retryable: boolean;
     readonly correlationId?: string;
+    readonly queueJobId?: string;
+    readonly deliveryId?: string;
+    readonly retryOrdinal?: number;
   };
   "import.limit_release_failed": {
     readonly importId: string;

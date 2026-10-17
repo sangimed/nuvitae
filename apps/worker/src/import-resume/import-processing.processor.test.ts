@@ -377,11 +377,18 @@ describe("ImportProcessingProcessor", () => {
         payload("source_artifact_deletion"),
       ),
     );
-    expect(sourceDeletion.delete).toHaveBeenCalledWith({
-      importId,
-      ownerUserId,
-      now,
-    });
+    expect(sourceDeletion.delete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        importId,
+        ownerUserId,
+        now,
+        queueJobId: "queue-source_artifact_deletion",
+        retryOrdinal: 0,
+      }),
+    );
+    expect(sourceDeletion.delete.mock.calls[0]?.[0].deliveryId).toMatch(
+      /^[0-9a-f-]{36}$/u,
+    );
   });
 
   it("treats a missing owner-scoped import as a no-op", async () => {
