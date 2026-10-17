@@ -167,6 +167,66 @@ export const en = {
   "import.status.unknown": "The import status changed.",
   "metadata.description":
     "Create and improve your resume with Nuvitae Community",
+  "review.warning.unsafe.title": "Information not included",
+  "review.warning.missing.title": "Information to add or leave out",
+  "review.warning.ambiguous.title": "Please choose how to use this information",
+  "review.warning.default.title": "A quick review is needed",
+  "review.warning.unsafe.message":
+    "Nuvitae could not safely use some information from your resume. It was left out; you can add it yourself if you want it included.",
+  "review.warning.missing.message":
+    "This information was not added automatically. You can add it, or leave it out for now.",
+  "review.warning.context":
+    "This relates to imported information in this section.",
+  "review.warning.state": "This item is",
+  "review.warning.status.needsReview": "waiting for your review",
+  "review.warning.status.confirmed": "confirmed",
+  "review.warning.status.edited": "edited",
+  "review.warning.status.excluded": "excluded",
+  "review.warning.status.intentionallyLeft": "left out for now",
+  "review.warning.leaveOut": "Leave out for now",
+  "review.warning.confirm": "Confirm",
+  "review.warning.edit": "Edit information",
+  "review.warning.exclude": "Exclude",
+  "review.provenance.inferred":
+    "Found in your resume — your confirmation is needed",
+  "review.provenance.pdf": "Imported from page",
+  "review.provenance.docxBody": "Imported from the document body",
+  "review.provenance.docxPart": "Imported from the document",
+  "review.provenance.added": "Added by you",
+  "review.provenance.edited": "Edited by you",
+  "review.provenance.editedPdf": "Edited by you; originally imported from page",
+  "review.provenance.initial": "Imported from initial resume",
+  "review.provenance.found": "Found in your resume",
+  "review.confirm.title.ready": "Your review is complete",
+  "review.confirm.title.remaining": "Finish your review",
+  "review.confirm.status.creating": "Creating your resume.",
+  "review.confirm.status.ready": "Your resume is ready.",
+  "review.confirm.status.discarding": "Scheduling source cleanup.",
+  "review.confirm.error.heading": "The action could not be completed",
+  "review.confirm.ready.description":
+    "All review details are complete. Continue to create your editable resume from the information you have kept and edited.",
+  "review.confirm.create": "Create my resume",
+  "review.confirm.creating": "Creating your resume…",
+  "review.confirm.remaining.heading": "Review remaining details",
+  "review.confirm.remaining.one": "1 detail still needs your attention.",
+  "review.confirm.remaining.many": "details still need your attention.",
+  "review.confirm.remaining.instruction":
+    "Review these items before creating your resume.",
+  "review.confirm.discard": "Discard import",
+  "review.confirm.dialog.description":
+    "Nuvitae will discard this unconfirmed draft and schedule source cleanup. Deletion is not complete immediately, and an already confirmed resume would not be deleted by this action.",
+  "review.confirm.working": "Working",
+  "review.confirm.cancel": "Cancel",
+  "review.confirm.destructive": "Destructive action",
+  "review.minimum.loading": "Loading import review",
+  "review.minimum.eyebrow": "Resume review",
+  "review.minimum.loadingStatus": "Loading your resume information.",
+  "review.minimum.unavailable": "Review unavailable",
+  "review.minimum.title": "Check the information Nuvitae needs you to confirm",
+  "review.minimum.sourceNote":
+    "You are reviewing a structured draft. Your uploaded file stays unchanged.",
+  "review.error.stale":
+    "Your review has changed. We reloaded the latest information.",
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -346,6 +406,72 @@ const fr: Messages = {
     "Le fichier source importé a été supprimé.",
   "import.status.unknown": "L’état de l’importation a changé.",
   "metadata.description": "Créez et améliorez votre CV avec Nuvitae Community",
+  "review.warning.unsafe.title": "Informations non incluses",
+  "review.warning.missing.title": "Informations à ajouter ou à exclure",
+  "review.warning.ambiguous.title":
+    "Choisissez comment utiliser ces informations",
+  "review.warning.default.title": "Une vérification rapide est nécessaire",
+  "review.warning.unsafe.message":
+    "Nuvitae n’a pas pu utiliser certaines informations de votre CV en toute sécurité. Elles ont été exclues ; vous pouvez les ajouter vous-même si vous souhaitez les inclure.",
+  "review.warning.missing.message":
+    "Ces informations n’ont pas été ajoutées automatiquement. Vous pouvez les ajouter ou les exclure pour le moment.",
+  "review.warning.context":
+    "Cela concerne les informations importées dans cette rubrique.",
+  "review.warning.state": "Cet élément est",
+  "review.warning.status.needsReview": "en attente de votre vérification",
+  "review.warning.status.confirmed": "confirmé",
+  "review.warning.status.edited": "modifié",
+  "review.warning.status.excluded": "exclu",
+  "review.warning.status.intentionallyLeft": "exclu pour le moment",
+  "review.warning.leaveOut": "Exclure pour le moment",
+  "review.warning.confirm": "Confirmer",
+  "review.warning.edit": "Modifier les informations",
+  "review.warning.exclude": "Exclure",
+  "review.provenance.inferred":
+    "Information trouvée dans votre CV — votre confirmation est nécessaire",
+  "review.provenance.pdf": "Importé de la page",
+  "review.provenance.docxBody": "Importé du corps du document",
+  "review.provenance.docxPart": "Importé de la partie du document",
+  "review.provenance.added": "Ajouté par vous",
+  "review.provenance.edited": "Modifié par vous",
+  "review.provenance.editedPdf":
+    "Modifié par vous ; importé à l’origine de la page",
+  "review.provenance.initial": "Importé du CV initial",
+  "review.provenance.found": "Information trouvée dans votre CV",
+  "review.confirm.title.ready": "Votre vérification est terminée",
+  "review.confirm.title.remaining": "Terminez votre vérification",
+  "review.confirm.status.creating": "Création de votre CV.",
+  "review.confirm.status.ready": "Votre CV est prêt.",
+  "review.confirm.status.discarding":
+    "Planification du nettoyage de la source.",
+  "review.confirm.error.heading": "L’action n’a pas pu aboutir",
+  "review.confirm.ready.description":
+    "Toutes les informations ont été vérifiées. Vous pouvez créer votre CV modifiable à partir des informations conservées et modifiées.",
+  "review.confirm.create": "Créer mon CV",
+  "review.confirm.creating": "Création de votre CV…",
+  "review.confirm.remaining.heading": "Vérifiez les informations restantes",
+  "review.confirm.remaining.one":
+    "Un élément nécessite encore votre attention.",
+  "review.confirm.remaining.many":
+    "éléments nécessitent encore votre attention.",
+  "review.confirm.remaining.instruction":
+    "Vérifiez ces éléments avant de créer votre CV.",
+  "review.confirm.discard": "Abandonner l’importation",
+  "review.confirm.dialog.description":
+    "Nuvitae abandonnera ce brouillon non confirmé et planifiera le nettoyage de la source. La suppression ne sera pas immédiate et cette action ne supprimera pas un CV déjà confirmé.",
+  "review.confirm.working": "En cours",
+  "review.confirm.cancel": "Annuler",
+  "review.confirm.destructive": "Action destructive",
+  "review.minimum.loading": "Chargement de la vérification",
+  "review.minimum.eyebrow": "Vérification du CV",
+  "review.minimum.loadingStatus": "Chargement des informations de votre CV.",
+  "review.minimum.unavailable": "Vérification indisponible",
+  "review.minimum.title":
+    "Vérifiez les informations que Nuvitae vous demande de confirmer",
+  "review.minimum.sourceNote":
+    "Vous vérifiez un brouillon structuré. Votre fichier importé reste inchangé.",
+  "review.error.stale":
+    "Votre vérification a changé. Nous avons rechargé les dernières informations.",
 };
 
 const es: Messages = {
@@ -522,6 +648,69 @@ const es: Messages = {
     "Se ha eliminado el archivo fuente subido.",
   "import.status.unknown": "El estado de la importación ha cambiado.",
   "metadata.description": "Crea y mejora tu currículum con Nuvitae Community",
+  "review.warning.unsafe.title": "Información no incluida",
+  "review.warning.missing.title": "Información para añadir o excluir",
+  "review.warning.ambiguous.title": "Elige cómo usar esta información",
+  "review.warning.default.title": "Se necesita una revisión rápida",
+  "review.warning.unsafe.message":
+    "Nuvitae no pudo usar de forma segura cierta información de tu currículum. Se excluyó; puedes añadirla tú si quieres incluirla.",
+  "review.warning.missing.message":
+    "Esta información no se añadió automáticamente. Puedes añadirla o excluirla por ahora.",
+  "review.warning.context":
+    "Esto se refiere a información importada en esta sección.",
+  "review.warning.state": "Este elemento está",
+  "review.warning.status.needsReview": "pendiente de revisión",
+  "review.warning.status.confirmed": "confirmado",
+  "review.warning.status.edited": "editado",
+  "review.warning.status.excluded": "excluido",
+  "review.warning.status.intentionallyLeft": "excluido por ahora",
+  "review.warning.leaveOut": "Excluir por ahora",
+  "review.warning.confirm": "Confirmar",
+  "review.warning.edit": "Editar información",
+  "review.warning.exclude": "Excluir",
+  "review.provenance.inferred":
+    "Encontrado en tu currículum — debes confirmarlo",
+  "review.provenance.pdf": "Importado de la página",
+  "review.provenance.docxBody": "Importado del cuerpo del documento",
+  "review.provenance.docxPart": "Importado de la parte del documento",
+  "review.provenance.added": "Añadido por ti",
+  "review.provenance.edited": "Editado por ti",
+  "review.provenance.editedPdf":
+    "Editado por ti; importado originalmente de la página",
+  "review.provenance.initial": "Importado del currículum inicial",
+  "review.provenance.found": "Encontrado en tu currículum",
+  "review.confirm.title.ready": "Has terminado la revisión",
+  "review.confirm.title.remaining": "Termina la revisión",
+  "review.confirm.status.creating": "Creando tu currículum.",
+  "review.confirm.status.ready": "Tu currículum está listo.",
+  "review.confirm.status.discarding":
+    "Programando la limpieza del archivo fuente.",
+  "review.confirm.error.heading": "No se pudo completar la acción",
+  "review.confirm.ready.description":
+    "Has revisado todos los detalles. Continúa para crear tu currículum editable con la información que conservaste y modificaste.",
+  "review.confirm.create": "Crear mi currículum",
+  "review.confirm.creating": "Creando tu currículum…",
+  "review.confirm.remaining.heading": "Revisa los detalles pendientes",
+  "review.confirm.remaining.one": "1 detalle todavía requiere tu atención.",
+  "review.confirm.remaining.many": "detalles todavía requieren tu atención.",
+  "review.confirm.remaining.instruction":
+    "Revisa estos elementos antes de crear tu currículum.",
+  "review.confirm.discard": "Descartar importación",
+  "review.confirm.dialog.description":
+    "Nuvitae descartará este borrador sin confirmar y programará la limpieza del archivo fuente. La eliminación no será inmediata y esta acción no eliminará un currículum ya confirmado.",
+  "review.confirm.working": "En curso",
+  "review.confirm.cancel": "Cancelar",
+  "review.confirm.destructive": "Acción destructiva",
+  "review.minimum.loading": "Cargando la revisión de la importación",
+  "review.minimum.eyebrow": "Revisión del currículum",
+  "review.minimum.loadingStatus": "Cargando la información de tu currículum.",
+  "review.minimum.unavailable": "Revisión no disponible",
+  "review.minimum.title":
+    "Revisa la información que Nuvitae necesita que confirmes",
+  "review.minimum.sourceNote":
+    "Estás revisando un borrador estructurado. El archivo que subiste no cambia.",
+  "review.error.stale":
+    "Tu revisión ha cambiado. Hemos vuelto a cargar la información más reciente.",
 };
 
 const ar: Messages = {
@@ -684,6 +873,64 @@ const ar: Messages = {
   "import.status.unknown": "تغيرت حالة الاستيراد.",
   "metadata.description":
     "أنشئ سيرتك الذاتية وحسّنها باستخدام Nuvitae Community",
+  "review.warning.unsafe.title": "معلومات غير مُدرجة",
+  "review.warning.missing.title": "معلومات لإضافتها أو استبعادها",
+  "review.warning.ambiguous.title": "اختر كيفية استخدام هذه المعلومات",
+  "review.warning.default.title": "تلزم مراجعة سريعة",
+  "review.warning.unsafe.message":
+    "لم يتمكن Nuvitae من استخدام بعض المعلومات من سيرتك الذاتية بأمان. تم استبعادها؛ ويمكنك إضافتها بنفسك إذا أردت إدراجها.",
+  "review.warning.missing.message":
+    "لم تتم إضافة هذه المعلومات تلقائيًا. يمكنك إضافتها أو استبعادها الآن.",
+  "review.warning.context": "يتعلق هذا بمعلومات مستوردة في هذا القسم.",
+  "review.warning.state": "هذه المعلومة",
+  "review.warning.status.needsReview": "بانتظار مراجعتك",
+  "review.warning.status.confirmed": "مؤكدة",
+  "review.warning.status.edited": "معدّلة",
+  "review.warning.status.excluded": "مستبعدة",
+  "review.warning.status.intentionallyLeft": "متروكة الآن",
+  "review.warning.leaveOut": "استبعاد الآن",
+  "review.warning.confirm": "تأكيد",
+  "review.warning.edit": "تعديل المعلومات",
+  "review.warning.exclude": "استبعاد",
+  "review.provenance.inferred": "وُجدت في سيرتك الذاتية — يلزم تأكيدك",
+  "review.provenance.pdf": "مستورد من الصفحة",
+  "review.provenance.docxBody": "مستورد من متن المستند",
+  "review.provenance.docxPart": "مستورد من جزء المستند",
+  "review.provenance.added": "أُضيفت بواسطتك",
+  "review.provenance.edited": "عدّلتها أنت",
+  "review.provenance.editedPdf": "عدّلتها أنت؛ واستُوردت أصلًا من الصفحة",
+  "review.provenance.initial": "مستورد من السيرة الذاتية الأصلية",
+  "review.provenance.found": "وُجدت في سيرتك الذاتية",
+  "review.confirm.title.ready": "اكتملت مراجعتك",
+  "review.confirm.title.remaining": "أكمل مراجعتك",
+  "review.confirm.status.creating": "جارٍ إنشاء سيرتك الذاتية.",
+  "review.confirm.status.ready": "سيرتك الذاتية جاهزة.",
+  "review.confirm.status.discarding": "جارٍ جدولة تنظيف المصدر.",
+  "review.confirm.error.heading": "تعذر إكمال الإجراء",
+  "review.confirm.ready.description":
+    "اكتملت مراجعة كل التفاصيل. تابع لإنشاء سيرتك الذاتية القابلة للتعديل باستخدام المعلومات التي أبقيتها وعدّلتها.",
+  "review.confirm.create": "إنشاء سيرتي الذاتية",
+  "review.confirm.creating": "جارٍ إنشاء سيرتك الذاتية…",
+  "review.confirm.remaining.heading": "راجع التفاصيل المتبقية",
+  "review.confirm.remaining.one":
+    "لا تزال هناك معلومة واحدة تحتاج إلى انتباهك.",
+  "review.confirm.remaining.many": "معلومات لا تزال تحتاج إلى انتباهك.",
+  "review.confirm.remaining.instruction":
+    "راجع هذه العناصر قبل إنشاء سيرتك الذاتية.",
+  "review.confirm.discard": "تجاهل الاستيراد",
+  "review.confirm.dialog.description":
+    "سيتجاهل Nuvitae هذه المسودة غير المؤكدة ويجدول تنظيف المصدر. لن يكتمل الحذف فورًا، ولن يحذف هذا الإجراء سيرة ذاتية تم تأكيدها بالفعل.",
+  "review.confirm.working": "جارٍ العمل",
+  "review.confirm.cancel": "إلغاء",
+  "review.confirm.destructive": "إجراء إتلاف",
+  "review.minimum.loading": "جارٍ تحميل مراجعة الاستيراد",
+  "review.minimum.eyebrow": "مراجعة السيرة الذاتية",
+  "review.minimum.loadingStatus": "جارٍ تحميل معلومات سيرتك الذاتية.",
+  "review.minimum.unavailable": "المراجعة غير متاحة",
+  "review.minimum.title": "راجع المعلومات التي يطلب منك Nuvitae تأكيدها",
+  "review.minimum.sourceNote":
+    "أنت تراجع مسودة منظمة. يظل الملف الذي رفعته دون تغيير.",
+  "review.error.stale": "تغيّرت مراجعتك. أعدنا تحميل أحدث المعلومات.",
 };
 
 const zhCN: Messages = {
@@ -827,6 +1074,61 @@ const zhCN: Messages = {
   "import.status.sourceDeletionCompleted": "已删除上传的源文件。",
   "import.status.unknown": "导入状态已更改。",
   "metadata.description": "使用 Nuvitae Community 创建和完善您的简历",
+  "review.warning.unsafe.title": "未纳入的信息",
+  "review.warning.missing.title": "要添加或排除的信息",
+  "review.warning.ambiguous.title": "请选择如何使用此信息",
+  "review.warning.default.title": "需要快速审核",
+  "review.warning.unsafe.message":
+    "Nuvitae 无法安全使用您简历中的部分信息，因此已将其排除；如果您希望纳入，可以自行添加。",
+  "review.warning.missing.message":
+    "此信息未自动添加。您可以添加，或暂时排除。",
+  "review.warning.context": "这与本部分导入的信息有关。",
+  "review.warning.state": "此项目状态：",
+  "review.warning.status.needsReview": "等待您审核",
+  "review.warning.status.confirmed": "已确认",
+  "review.warning.status.edited": "已编辑",
+  "review.warning.status.excluded": "已排除",
+  "review.warning.status.intentionallyLeft": "暂时排除",
+  "review.warning.leaveOut": "暂时排除",
+  "review.warning.confirm": "确认",
+  "review.warning.edit": "编辑信息",
+  "review.warning.exclude": "排除",
+  "review.provenance.inferred": "在您的简历中找到 — 需要您确认",
+  "review.provenance.pdf": "简历页面：",
+  "review.provenance.docxBody": "导入自文档正文",
+  "review.provenance.docxPart": "导入自文档部分",
+  "review.provenance.added": "由您添加",
+  "review.provenance.edited": "由您编辑",
+  "review.provenance.editedPdf": "由您编辑；最初导入自简历页面：",
+  "review.provenance.initial": "导入自初始简历",
+  "review.provenance.found": "在您的简历中找到",
+  "review.confirm.title.ready": "审核已完成",
+  "review.confirm.title.remaining": "完成审核",
+  "review.confirm.status.creating": "正在创建您的简历。",
+  "review.confirm.status.ready": "您的简历已准备好。",
+  "review.confirm.status.discarding": "正在安排清理源文件。",
+  "review.confirm.error.heading": "无法完成此操作",
+  "review.confirm.ready.description":
+    "所有审核细节均已完成。继续使用您保留和修改的信息创建可编辑简历。",
+  "review.confirm.create": "创建我的简历",
+  "review.confirm.creating": "正在创建您的简历…",
+  "review.confirm.remaining.heading": "审核剩余信息",
+  "review.confirm.remaining.one": "还有 1 项需要您处理。",
+  "review.confirm.remaining.many": "项仍需要您处理。",
+  "review.confirm.remaining.instruction": "创建简历前请先审核这些项目。",
+  "review.confirm.discard": "放弃导入",
+  "review.confirm.dialog.description":
+    "Nuvitae 将放弃这份未确认的草稿，并安排清理源文件。删除不会立即完成，此操作也不会删除已确认的简历。",
+  "review.confirm.working": "处理中",
+  "review.confirm.cancel": "取消",
+  "review.confirm.destructive": "破坏性操作",
+  "review.minimum.loading": "正在加载导入审核",
+  "review.minimum.eyebrow": "简历审核",
+  "review.minimum.loadingStatus": "正在加载您的简历信息。",
+  "review.minimum.unavailable": "审核不可用",
+  "review.minimum.title": "检查 Nuvitae 需要您确认的信息",
+  "review.minimum.sourceNote": "您正在审核结构化草稿。您上传的文件保持不变。",
+  "review.error.stale": "您的审核已更改。我们已重新加载最新信息。",
 };
 
 export const catalogs = { en, fr, es, ar, "zh-CN": zhCN };

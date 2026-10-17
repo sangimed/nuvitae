@@ -1,14 +1,16 @@
 "use client";
 
 import type { ReviewField } from "@nuvitae/contracts";
+import { useTranslation } from "../../i18n/LocaleProvider";
 
 export function FieldProvenance(props: {
   readonly provenance: ReviewField["provenance"];
   readonly inferenceStatus: ReviewField["inferenceStatus"];
 }) {
+  const { t } = useTranslation();
   return (
     <span className="field-provenance">
-      {label(props.provenance, props.inferenceStatus)}
+      {label(props.provenance, props.inferenceStatus, t)}
     </span>
   );
 }
@@ -16,28 +18,29 @@ export function FieldProvenance(props: {
 function label(
   provenance: ReviewField["provenance"],
   inferenceStatus: ReviewField["inferenceStatus"],
+  t: ReturnType<typeof useTranslation>["t"],
 ): string {
   if (inferenceStatus === "inferred_needs_review") {
-    return "Found in your resume — your confirmation is needed";
+    return t("review.provenance.inferred");
   }
   switch (provenance.kind) {
     case "pdf":
-      return `Imported from page ${provenance.pageNumber}`;
+      return `${t("review.provenance.pdf")} ${provenance.pageNumber}`;
     case "docx":
       return provenance.documentPart === "body"
-        ? "Imported from the document body"
-        : `Imported from the document ${provenance.documentPart}`;
+        ? t("review.provenance.docxBody")
+        : `${t("review.provenance.docxPart")} ${provenance.documentPart}`;
     case "user_added":
-      return "Added by you";
+      return t("review.provenance.added");
     case "user_edited":
       return provenance.original?.kind === "pdf"
-        ? `Edited by you; originally imported from page ${provenance.original.pageNumber}`
-        : "Edited by you";
+        ? `${t("review.provenance.editedPdf")} ${provenance.original.pageNumber}`
+        : t("review.provenance.edited");
     case "inferred":
-      return "Found in your resume — your confirmation is needed";
+      return t("review.provenance.inferred");
     case "minimal":
-      return "Imported from initial resume";
+      return t("review.provenance.initial");
     case "semantic":
-      return "Found in your resume";
+      return t("review.provenance.found");
   }
 }

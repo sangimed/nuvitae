@@ -24,8 +24,10 @@ import { ReviewWarning } from "./ReviewWarning";
 import { formatReviewDate, formatReviewDateRange } from "./review-date";
 import { reviewFieldLabel, reviewSectionLabel } from "./review-labels";
 import { recordImportTiming } from "./client";
+import { useTranslation } from "../../i18n/LocaleProvider";
 
 export function ReviewStep(props: { readonly importId: string }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState<ReviewDraftReadResponse | undefined>();
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
@@ -208,8 +210,8 @@ export function ReviewStep(props: { readonly importId: string }) {
   if (loading) {
     return (
       <section className="import-card" aria-busy="true">
-        <h1>Loading import review</h1>
-        <p role="status">Loading your resume information.</p>
+        <h1>{t("review.minimum.loading")}</h1>
+        <p role="status">{t("review.minimum.loadingStatus")}</p>
       </section>
     );
   }
@@ -217,7 +219,7 @@ export function ReviewStep(props: { readonly importId: string }) {
   if (draft === undefined) {
     return (
       <section className="import-card" aria-labelledby="review-error-title">
-        <h1 id="review-error-title">Review unavailable</h1>
+        <h1 id="review-error-title">{t("review.minimum.unavailable")}</h1>
         <ErrorSummary
           ref={summaryRef}
           errors={[
@@ -235,14 +237,9 @@ export function ReviewStep(props: { readonly importId: string }) {
 
   return (
     <section className="review-shell" aria-labelledby="review-title">
-      <p className="eyebrow">Resume review</p>
-      <h1 id="review-title">
-        Check the information Nuvitae needs you to confirm
-      </h1>
-      <p className="review-source-note">
-        You are reviewing a structured draft. Your uploaded file stays
-        unchanged.
-      </p>
+      <p className="eyebrow">{t("review.minimum.eyebrow")}</p>
+      <h1 id="review-title">{t("review.minimum.title")}</h1>
+      <p className="review-source-note">{t("review.minimum.sourceNote")}</p>
       <div
         ref={liveRef}
         tabIndex={-1}

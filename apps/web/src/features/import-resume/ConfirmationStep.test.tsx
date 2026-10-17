@@ -11,6 +11,7 @@ import type {
 } from "@nuvitae/contracts";
 import { actionableReviewItems } from "./actionable-review-items";
 import { ConfirmationStep } from "./ConfirmationStep";
+import { LanguageSelector, LocaleProvider } from "../../i18n/LocaleProvider";
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -70,20 +71,29 @@ afterEach(() => {
   root = undefined;
 });
 
-function renderStep(currentDraft = draft) {
+function renderStep(
+  currentDraft = draft,
+  initialLocale: "en" | "fr" | "ar" = "en",
+) {
   if (root === undefined) {
     root = createRoot(container);
   }
   act(() =>
     root.render(
-      <ConfirmationStep
-        importId={importId}
-        draft={currentDraft}
-        disabled={false}
-        onConfirmed={onConfirmed}
-        onDiscarded={onDiscarded}
-        onStaleReview={onStaleReview}
-      />,
+      <LocaleProvider initialLocale={initialLocale}>
+        <LanguageSelector />
+        <p data-resume-content dir="auto">
+          Développeuse — Paris — 中文
+        </p>
+        <ConfirmationStep
+          importId={importId}
+          draft={currentDraft}
+          disabled={false}
+          onConfirmed={onConfirmed}
+          onDiscarded={onDiscarded}
+          onStaleReview={onStaleReview}
+        />
+      </LocaleProvider>,
     ),
   );
 }
@@ -122,6 +132,30 @@ function pressKey(element: Element, key: string, shiftKey = false) {
 }
 
 describe("ConfirmationStep accessible dialogs (T063)", () => {
+  it("localizes confirmation copy in French and Arabic without changing resume text or focus behavior", () => {
+    renderStep(draft, "fr");
+    expect(container.textContent).toContain("Votre vérification est terminée");
+    const resumeText = container.querySelector("[data-resume-content]")!;
+    const exactContent = resumeText.textContent;
+    const selector = container.querySelector("select")!;
+    act(() => {
+      selector.value = "ar";
+      selector.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(document.documentElement.dir).toBe("rtl");
+    expect(container.textContent).toContain("اكتملت مراجعتك");
+    expect(resumeText.textContent).toBe(exactContent);
+    expect(resumeText.getAttribute("dir")).toBe("auto");
+    const trigger = button("تجاهل الاستيراد");
+    act(() => {
+      trigger.focus();
+      trigger.click();
+    });
+    expect(dialog()?.getAttribute("aria-label")).toBe("تجاهل الاستيراد");
+    expect(document.activeElement).toBe(dialogButton("تجاهل الاستيراد"));
+    pressKey(document.activeElement, "Escape");
+    expect(document.activeElement).toBe(trigger);
+  });
   it("creates the resume directly without a redundant confirmation dialog", async () => {
     mocks.confirmStructuredResume.mockResolvedValue({
       ok: true,

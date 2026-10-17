@@ -37,6 +37,18 @@ describe("application locale", () => {
     }
   });
 
+  it("provides localized review and confirmation copy in all five catalogs", () => {
+    const keys = Object.keys(en).filter((key) =>
+      key.startsWith("review."),
+    ) as (keyof typeof en)[];
+    for (const key of keys) {
+      expect(catalogs.fr[key]).not.toBe(en[key]);
+      expect(catalogs.es[key]).not.toBe(en[key]);
+      expect(catalogs.ar[key]).not.toBe(en[key]);
+      expect(catalogs["zh-CN"][key]).not.toBe(en[key]);
+    }
+  });
+
   it("detects missing keys in test and falls back in production", () => {
     const key = "missing.key" as MessageKey;
     expect(() => translate("fr", key)).toThrow(

@@ -7,9 +7,9 @@ describe("FieldProvenance source contract", () => {
       "apps/web/src/features/import-resume/FieldProvenance.tsx",
       "utf8",
     );
-    expect(source).toContain("Imported from page");
-    expect(source).toContain("Added by you");
-    expect(source).toContain("Edited by you");
+    expect(source).toContain('t("review.provenance.pdf")');
+    expect(source).toContain('t("review.provenance.added")');
+    expect(source).toContain('t("review.provenance.edited")');
     expect(source).not.toContain("bounding");
     expect(source).not.toContain("characterOffset");
     expect(source).not.toContain("storage");
