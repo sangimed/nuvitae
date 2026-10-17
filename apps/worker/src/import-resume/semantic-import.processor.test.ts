@@ -243,7 +243,26 @@ describe("SemanticImportProcessor", () => {
         }),
       ),
     } satisfies ResumeSemanticParserProvider;
-    const { processor, logger } = setup(correlationProvider);
+    const { processor, logger, repository } = setup(correlationProvider);
+    let transactionCommitted = false;
+    const persistenceEventsBeforeCommit: string[] = [];
+    repository.transaction.mockImplementation(
+      async (work: (repository: unknown) => Promise<unknown>) => {
+        const result = await work(repository);
+        transactionCommitted = true;
+        return result;
+      },
+    );
+    logger.emit.mockImplementation((event, metadata) => {
+      if (
+        (event === "review.draft_created" ||
+          (event === "import.timing" &&
+            metadata.phase === "draft_persisted")) &&
+        !transactionCommitted
+      ) {
+        persistenceEventsBeforeCommit.push(event);
+      }
+    });
 
     await processor.process({
       ownerUserId,
@@ -255,9 +274,41 @@ describe("SemanticImportProcessor", () => {
       correlationId,
     });
     expect(logger.emit).toHaveBeenCalledWith(
+      "semantic.provider_invocation_started",
+      expect.objectContaining({ correlationId }),
+    );
+    expect(logger.emit).toHaveBeenCalledWith(
       "review.draft_created",
       expect.objectContaining({ correlationId }),
     );
+    expect(logger.emit).toHaveBeenCalledWith(
+      "import.timing",
+      expect.objectContaining({ phase: "draft_persisted", correlationId }),
+    );
+    expect(persistenceEventsBeforeCommit).toEqual([]);
+    expect(repository.saveDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not emit persisted draft milestones when a concurrent ready state wins", async () => {
+    const readyDocument = document({ processingStatus: "ready_for_review" });
+    const { processor, logger, repository } = setup(provider);
+    let lookupCount = 0;
+    repository.findImportByOwner.mockImplementation(async () => ({
+      document: lookupCount++ === 0 ? document() : readyDocument,
+      artifacts: [],
+    }));
+
+    await processor.process({ ownerUserId, importedDocumentId: importId });
+
+    expect(repository.saveDraft).not.toHaveBeenCalled();
+    expect(logger.emit).not.toHaveBeenCalledWith(
+      "review.draft_created",
+      expect.anything(),
+    );
+    expect(logger.emit.mock.calls).not.toContainEqual([
+      "import.timing",
+      expect.objectContaining({ phase: "draft_persisted" }),
+    ]);
   });
 
   it("creates a review-required partial draft when section coverage is unknown", async () => {
