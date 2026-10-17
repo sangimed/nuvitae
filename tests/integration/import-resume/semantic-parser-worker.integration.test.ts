@@ -179,6 +179,52 @@ describe("semantic parser worker integration", () => {
     );
   });
 
+  it("correlates provider handling to the committed TypeORM draft without sending the ID to the provider", async () => {
+    const codex = codexFixtureProvider();
+    const harness = createHarness(dataSource, { provider: codex.provider });
+    const importId = nextImportId();
+    const correlationId = "20000000-0000-4000-8000-000000000099";
+    expect(correlationId).not.toBe(importId);
+    await seedAnonymousImport(harness.repository, importId);
+
+    await harness.processor.process({
+      ownerUserId,
+      importedDocumentId: importId,
+      correlationId,
+    });
+
+    expect(codex.invoke).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(codex.invoke.mock.calls)).not.toContain(
+      correlationId,
+    );
+    await expectStatus(importId, "ready_for_review");
+    const draft = await harness.repository.findDraftByImportAndOwner(
+      importId,
+      ownerUserId,
+    );
+    expect(draft).not.toBeNull();
+    expect(harness.logs).toContainEqual({
+      event: "semantic.provider_invocation_started",
+      metadata: expect.objectContaining({ importId, correlationId }),
+    });
+    expect(harness.logs).toContainEqual({
+      event: "review.draft_created",
+      metadata: expect.objectContaining({
+        importId,
+        correlationId,
+        draftId: draft?.id,
+      }),
+    });
+    expect(harness.logs).toContainEqual({
+      event: "import.timing",
+      metadata: expect.objectContaining({
+        importId,
+        correlationId,
+        phase: "draft_persisted",
+      }),
+    });
+  });
+
   it("keeps unrelated V2 fields when only the headline is corrupt", async () => {
     const codex = codexFixtureProvider({ corruptHeadline: true });
     const harness = createHarness(dataSource, { provider: codex.provider });

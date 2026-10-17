@@ -461,47 +461,35 @@ export class SemanticImportWorkflow {
           await this.transition(document, "semantic_validation_failed");
           return;
         }
-        await this.ports.repository.transaction(async (repository) => {
-          const current = await repository.findImportByOwner(
-            document.id,
-            document.ownerUserId,
-          );
-          if (
-            !current ||
-            current.document.processingStatus === "ready_for_review" ||
-            (await repository.findDraftByImportAndOwner(
+        const persisted = await this.ports.repository.transaction(
+          async (repository) => {
+            const current = await repository.findImportByOwner(
               document.id,
               document.ownerUserId,
-            ))
-          )
-            return;
-          await repository.saveDraft(draftResult.draft!);
-          await repository.saveImportLifecycle({
-            ...current.document,
-            processingStatus: "ready_for_review",
-          });
-          this.logger.emit("review.draft_created", {
-            importId: document.id,
-            draftId: draftResult.draft!.id,
-            status:
-              draftResult.draft!.status === "ready_to_confirm"
-                ? "ready_to_confirm"
-                : "review_required",
-            fieldCountBucket: bucket(draftResult.draft!.fields.length),
-            warningCountBucket: bucket(draftResult.draft!.warnings.length),
-            ...(input.correlationId === undefined
-              ? {}
-              : { correlationId: input.correlationId }),
-          });
-        });
-        emitImportTiming(this.logger, {
-          importId: document.id,
-          correlationId: input.correlationId,
-          phase: "draft_persisted",
-          source: "worker",
-          at: this.clock.now(),
-          uploadReceivedAt: document.createdAt,
-        });
+            );
+            if (
+              !current ||
+              current.document.processingStatus === "ready_for_review" ||
+              (await repository.findDraftByImportAndOwner(
+                document.id,
+                document.ownerUserId,
+              ))
+            )
+              return false;
+            await repository.saveDraft(draftResult.draft!);
+            await repository.saveImportLifecycle({
+              ...current.document,
+              processingStatus: "ready_for_review",
+            });
+            return true;
+          },
+        );
+        if (persisted)
+          this.emitDraftPersisted(
+            document,
+            draftResult.draft!,
+            input.correlationId,
+          );
         await this.releaseCapacity(document.id, document.ownerUserId);
         return;
       }
@@ -578,50 +566,38 @@ export class SemanticImportWorkflow {
         await this.transition(document, "semantic_validation_failed");
         return;
       }
-      await this.ports.repository.transaction(async (repository) => {
-        const current = await repository.findImportByOwner(
-          document.id,
-          document.ownerUserId,
-        );
-        if (
-          !current ||
-          current.document.processingStatus === "ready_for_review"
-        )
-          return;
-        if (
-          await repository.findDraftByImportAndOwner(
+      const persisted = await this.ports.repository.transaction(
+        async (repository) => {
+          const current = await repository.findImportByOwner(
             document.id,
             document.ownerUserId,
+          );
+          if (
+            !current ||
+            current.document.processingStatus === "ready_for_review"
           )
-        )
-          return;
-        await repository.saveDraft(draftResult.draft!);
-        await repository.saveImportLifecycle({
-          ...current.document,
-          processingStatus: "ready_for_review",
-        });
-        this.logger.emit("review.draft_created", {
-          importId: document.id,
-          draftId: draftResult.draft!.id,
-          status:
-            draftResult.draft!.status === "ready_to_confirm"
-              ? "ready_to_confirm"
-              : "review_required",
-          fieldCountBucket: bucket(draftResult.draft!.fields.length),
-          warningCountBucket: bucket(draftResult.draft!.warnings.length),
-          ...(input.correlationId === undefined
-            ? {}
-            : { correlationId: input.correlationId }),
-        });
-      });
-      emitImportTiming(this.logger, {
-        importId: document.id,
-        correlationId: input.correlationId,
-        phase: "draft_persisted",
-        source: "worker",
-        at: this.clock.now(),
-        uploadReceivedAt: document.createdAt,
-      });
+            return false;
+          if (
+            await repository.findDraftByImportAndOwner(
+              document.id,
+              document.ownerUserId,
+            )
+          )
+            return false;
+          await repository.saveDraft(draftResult.draft!);
+          await repository.saveImportLifecycle({
+            ...current.document,
+            processingStatus: "ready_for_review",
+          });
+          return true;
+        },
+      );
+      if (persisted)
+        this.emitDraftPersisted(
+          document,
+          draftResult.draft!,
+          input.correlationId,
+        );
       await this.releaseCapacity(document.id, document.ownerUserId);
     } catch (error) {
       const cancelled = input.abortSignal?.aborted === true;
@@ -732,44 +708,35 @@ export class SemanticImportWorkflow {
       return;
     }
 
-    await this.ports.repository.transaction(async (repository) => {
-      const current = await repository.findImportByOwner(
-        document.id,
-        document.ownerUserId,
-      );
-      if (
-        !current ||
-        current.document.processingStatus === "ready_for_review" ||
-        (await repository.findDraftByImportAndOwner(
+    const persisted = await this.ports.repository.transaction(
+      async (repository) => {
+        const current = await repository.findImportByOwner(
           document.id,
           document.ownerUserId,
-        )) !== null
-      )
-        return;
-      await repository.saveDraft(draftResult.draft!);
-      await repository.saveImportLifecycle({
-        ...current.document,
-        processingStatus: "ready_for_review",
-      });
-      this.logger.emit("review.draft_created", {
-        importId: document.id,
-        draftId: draftResult.draft!.id,
-        status: "review_required",
-        fieldCountBucket: bucket(draftResult.draft!.fields.length),
-        warningCountBucket: bucket(draftResult.draft!.warnings.length),
-        ...(input.correlationId === undefined
-          ? {}
-          : { correlationId: input.correlationId }),
-      });
-    });
-    emitImportTiming(this.logger, {
-      importId: document.id,
-      correlationId: input.correlationId,
-      phase: "draft_persisted",
-      source: "worker",
-      at: this.clock.now(),
-      uploadReceivedAt: document.createdAt,
-    });
+        );
+        if (
+          !current ||
+          current.document.processingStatus === "ready_for_review" ||
+          (await repository.findDraftByImportAndOwner(
+            document.id,
+            document.ownerUserId,
+          )) !== null
+        )
+          return false;
+        await repository.saveDraft(draftResult.draft!);
+        await repository.saveImportLifecycle({
+          ...current.document,
+          processingStatus: "ready_for_review",
+        });
+        return true;
+      },
+    );
+    if (persisted)
+      this.emitDraftPersisted(
+        document,
+        draftResult.draft!,
+        input.correlationId,
+      );
     await this.releaseCapacity(document.id, document.ownerUserId);
     this.emitSemanticOutcome(
       document,
@@ -780,6 +747,32 @@ export class SemanticImportWorkflow {
       outcome.rejectedCandidateCount,
       input.correlationId,
     );
+  }
+
+  private emitDraftPersisted(
+    document: ImportedDocument,
+    draft: NonNullable<ReturnType<typeof buildExtractionDraft>["draft"]>,
+    correlationId?: string,
+  ): void {
+    this.logger.emit("review.draft_created", {
+      importId: document.id,
+      draftId: draft.id,
+      status:
+        draft.status === "ready_to_confirm"
+          ? "ready_to_confirm"
+          : "review_required",
+      fieldCountBucket: bucket(draft.fields.length),
+      warningCountBucket: bucket(draft.warnings.length),
+      ...(correlationId === undefined ? {} : { correlationId }),
+    });
+    emitImportTiming(this.logger, {
+      importId: document.id,
+      correlationId,
+      phase: "draft_persisted",
+      source: "worker",
+      at: this.clock.now(),
+      uploadReceivedAt: document.createdAt,
+    });
   }
 
   private async readAndNormalize(

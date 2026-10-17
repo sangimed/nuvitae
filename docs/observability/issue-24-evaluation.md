@@ -162,8 +162,22 @@ the explicit job correlation in the existing sanitized `import.worker_failed`
 event; exception text and job contents remain excluded.
 
 This closes the asymmetric delivery timing gap using the current event sink.
-Request/attempt IDs, HTTP traces, exporter integration and backend measurements
-remain proposed work.
+The current event still has no unique delivery/attempt identifier or retry
+ordinal; attempt-level retry accounting remains proposed work. Request IDs,
+HTTP traces, exporter integration and backend measurements also remain proposed.
+
+### Provider-to-durable-draft correlation follow-up
+
+The semantic workflow carries the approved correlation ID into the provider
+request, `review.draft_created`, and the `draft_persisted` timing. Draft events
+are emitted only after the transaction commits successfully, and only when
+that transaction actually saves the draft and moves the import to
+`ready_for_review`. A concurrent terminal/ready state or existing draft emits
+no new persistence milestone. These events describe the durable review outcome;
+they do not imply user confirmation. The adapter uses correlation locally for
+sanitized diagnostics; it is not included in the outbound provider input or
+metric labels. This remains local structured-event correlation and does not
+add exporter or trace infrastructure.
 
 ## Privacy, retention and failure policy for the trial
 
