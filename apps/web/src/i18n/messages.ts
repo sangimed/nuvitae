@@ -36,6 +36,19 @@ export const en = {
   "import.processing.heading.not_found": "Import unavailable",
   "import.processing.heading.expired": "Import expired",
   "import.processing.heading.cancelled": "Import stopped",
+  "import.sourceDeletion.heading": "Uploaded source file",
+  "import.sourceDeletion.summary":
+    "Your uploaded file is temporary and separate from your structured resume. Deleting it keeps this resume and all edits.",
+  "import.sourceDeletion.action": "Delete uploaded source file",
+  "import.sourceDeletion.dialogTitle": "Delete uploaded source file?",
+  "import.sourceDeletion.dialogDescription":
+    "This permanently deletes the uploaded file and source-only artifacts. It does not delete your structured resume or your edits.",
+  "import.sourceDeletion.confirm": "Delete source only",
+  "import.sourceDeletion.pending": "Deleting source",
+  "import.sourceDeletion.destructiveMarker": "Destructive action",
+  "import.sourceDeletion.cancel": "Keep source",
+  "import.sourceDeletion.error":
+    "The uploaded source could not be deleted. Try again later.",
   "shell.home": "Home",
   "shell.resumes": "My resumes",
   "shell.import": "Import resume",
@@ -200,6 +213,20 @@ const fr: Messages = {
   "import.processing.heading.not_found": "Importation indisponible",
   "import.processing.heading.expired": "Importation expirée",
   "import.processing.heading.cancelled": "Importation arrêtée",
+  "import.sourceDeletion.heading": "Fichier source téléversé",
+  "import.sourceDeletion.summary":
+    "Votre fichier téléversé est temporaire et distinct de votre CV structuré. Sa suppression conserve ce CV et toutes vos modifications.",
+  "import.sourceDeletion.action": "Supprimer le fichier source téléversé",
+  "import.sourceDeletion.dialogTitle":
+    "Supprimer le fichier source téléversé ?",
+  "import.sourceDeletion.dialogDescription":
+    "Cette action supprime définitivement le fichier téléversé et les éléments associés à la source. Elle ne supprime ni votre CV structuré ni vos modifications.",
+  "import.sourceDeletion.confirm": "Supprimer uniquement la source",
+  "import.sourceDeletion.pending": "Suppression de la source",
+  "import.sourceDeletion.destructiveMarker": "Action destructive",
+  "import.sourceDeletion.cancel": "Conserver la source",
+  "import.sourceDeletion.error":
+    "Le fichier source téléversé n’a pas pu être supprimé. Réessayez plus tard.",
   "shell.home": "Accueil",
   "shell.resumes": "Mes CV",
   "shell.import": "Importer un CV",
@@ -361,6 +388,19 @@ const es: Messages = {
   "import.processing.heading.not_found": "Importación no disponible",
   "import.processing.heading.expired": "Importación caducada",
   "import.processing.heading.cancelled": "Importación detenida",
+  "import.sourceDeletion.heading": "Archivo fuente cargado",
+  "import.sourceDeletion.summary":
+    "El archivo que has cargado es temporal y está separado de tu currículum estructurado. Al eliminarlo, se conservan este currículum y todos tus cambios.",
+  "import.sourceDeletion.action": "Eliminar el archivo fuente cargado",
+  "import.sourceDeletion.dialogTitle": "¿Eliminar el archivo fuente cargado?",
+  "import.sourceDeletion.dialogDescription":
+    "Esta acción elimina permanentemente el archivo cargado y los elementos asociados a la fuente. No elimina tu currículum estructurado ni tus cambios.",
+  "import.sourceDeletion.confirm": "Eliminar solo la fuente",
+  "import.sourceDeletion.pending": "Eliminando la fuente",
+  "import.sourceDeletion.destructiveMarker": "Acción destructiva",
+  "import.sourceDeletion.cancel": "Conservar la fuente",
+  "import.sourceDeletion.error":
+    "No se pudo eliminar el archivo fuente cargado. Inténtalo de nuevo más tarde.",
   "shell.home": "Inicio",
   "shell.resumes": "Mis currículums",
   "shell.import": "Importar currículum",
@@ -517,6 +557,20 @@ const ar: Messages = {
   "import.processing.heading.not_found": "الاستيراد غير متاح",
   "import.processing.heading.expired": "انتهت صلاحية الاستيراد",
   "import.processing.heading.cancelled": "توقف الاستيراد",
+  "import.sourceDeletion.heading": "الملف المصدر الذي تم تحميله",
+  "import.sourceDeletion.summary":
+    "ملفك الذي تم تحميله مؤقت ومنفصل عن سيرتك الذاتية المنظمة. حذفه يُبقي هذه السيرة الذاتية وكل تعديلاتك.",
+  "import.sourceDeletion.action": "حذف الملف المصدر الذي تم تحميله",
+  "import.sourceDeletion.dialogTitle":
+    "هل تريد حذف الملف المصدر الذي تم تحميله؟",
+  "import.sourceDeletion.dialogDescription":
+    "سيؤدي ذلك نهائيًا إلى حذف الملف الذي تم تحميله والعناصر المرتبطة بالمصدر فقط. ولن يحذف سيرتك الذاتية المنظمة أو تعديلاتك.",
+  "import.sourceDeletion.confirm": "حذف المصدر فقط",
+  "import.sourceDeletion.pending": "جارٍ حذف المصدر",
+  "import.sourceDeletion.destructiveMarker": "إجراء حذف",
+  "import.sourceDeletion.cancel": "الاحتفاظ بالمصدر",
+  "import.sourceDeletion.error":
+    "تعذر حذف الملف المصدر الذي تم تحميله. حاول مرة أخرى لاحقًا.",
   "shell.home": "الرئيسية",
   "shell.resumes": "سيري الذاتية",
   "shell.import": "استيراد سيرة ذاتية",
@@ -661,6 +715,18 @@ const zhCN: Messages = {
   "import.processing.heading.not_found": "导入不可用",
   "import.processing.heading.expired": "导入已过期",
   "import.processing.heading.cancelled": "导入已停止",
+  "import.sourceDeletion.heading": "已上传的源文件",
+  "import.sourceDeletion.summary":
+    "您上传的文件是临时文件，与结构化简历分开保存。删除该文件会保留这份简历及所有修改。",
+  "import.sourceDeletion.action": "删除已上传的源文件",
+  "import.sourceDeletion.dialogTitle": "删除已上传的源文件？",
+  "import.sourceDeletion.dialogDescription":
+    "这将永久删除已上传的文件及仅与源文件有关的内容，不会删除结构化简历或您的修改。",
+  "import.sourceDeletion.confirm": "仅删除源文件",
+  "import.sourceDeletion.pending": "正在删除源文件",
+  "import.sourceDeletion.destructiveMarker": "破坏性操作",
+  "import.sourceDeletion.cancel": "保留源文件",
+  "import.sourceDeletion.error": "无法删除已上传的源文件，请稍后重试。",
   "shell.home": "首页",
   "shell.resumes": "我的简历",
   "shell.import": "导入简历",
