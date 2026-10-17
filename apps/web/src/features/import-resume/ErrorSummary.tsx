@@ -28,6 +28,9 @@ export interface ErrorSummaryProps {
   readonly errors: readonly ErrorSummaryItem[];
   readonly heading?: string;
   readonly id?: string;
+  /** Language of error prose when it differs from the localized heading. */
+  readonly messagesLang?: string;
+  readonly messagesDir?: "ltr" | "rtl" | "auto";
   /** Optional handler invoked when a field-level error link is activated. */
   readonly onNavigateToTarget?: (targetId: string) => void;
 }
@@ -113,7 +116,7 @@ export const ErrorSummary = forwardRef<HTMLDivElement, ErrorSummaryProps>(
         data-error-summary=""
       >
         <h2 id={titleId}>{heading}</h2>
-        <ul>
+        <ul lang={props.messagesLang} dir={props.messagesDir}>
           {items.map((item) => {
             const targetId = item.targetId;
             if (targetId === undefined) {
