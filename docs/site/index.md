@@ -17,6 +17,8 @@ that source changes.
 1. [Run and test the project](development.md).
 2. [Understand the runtime](architecture.md) and [find the owning module](repository.md).
 3. [Trace an import](import-pipeline.md).
+   Read [persistence and consistency](persistence.md) and
+   [API architecture and contracts](api.md) before changing a write boundary.
 4. [Preserve security and privacy](security.md).
 5. [Read decisions and authoritative references](reference.md).
 6. [Change and preview these docs](documentation.md).

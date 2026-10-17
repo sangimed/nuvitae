@@ -28,7 +28,6 @@ const payload = {
 };
 
 // A serialization/privacy contract probe, not an HTTP/BullMQ/provider trace.
-// Actual extraction delivery currently omits correlationId; see the evaluation.
 describe("observability evaluation boundary probe", () => {
   it("preserves distinct correlation through job serialization and safe stage records", () => {
     const job = deterministicExtractionJobPayloadSchema.parse(
@@ -78,6 +77,7 @@ describe("observability evaluation boundary probe", () => {
       "import.timing",
       {
         ...payload,
+        jobType: "extraction",
         phase: "provider_started",
         source: "worker",
         timestampMs: 123,
@@ -100,6 +100,7 @@ describe("observability evaluation boundary probe", () => {
           correlationId,
           phase: "provider_started",
           source: "worker",
+          jobType: "extraction",
           timestampMs: 123,
         },
       },

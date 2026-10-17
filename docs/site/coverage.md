@@ -15,6 +15,10 @@ acceptance criterion of comprehensive developer documentation.
 - Import sequence, trust stages, review/confirmation and failure boundaries.
 - Dedicated security/privacy reading guide linking existing authoritative docs.
 - Existing ADR inventory, lightweight template and unknown-rationale policy.
+- Dedicated persistence and API chapters: constraint/transaction map,
+  review/confirmation replay, edit concurrency mechanisms, request/response
+  validation, error recovery and endpoint-authoring conventions (`c2e44a4` baseline).
+- Corrected explicit Local Play dependency installation and shell environment setup.
 
 ## Deferred acceptance criteria and concrete next slices
 
@@ -23,9 +27,9 @@ acceptance criterion of comprehensive developer documentation.
 | Complete onboarding                   | Consolidate historical README material into a tested zero-to-productive guide; reconcile old versions and absent-feature claims rather than copying them                     |
 | Core domain and glossary              | Incorporate reviewed issue #39 outputs; document complete import/artifact/draft/resume/provider/retention lifecycles and terminal states without preempting domain decisions |
 | Detailed import/semantic architecture | Document exact stage contracts, canonicalization and partial-acceptance rules, fallback eligibility/budgets and provider request minimization with targeted examples         |
-| Persistence                           | Dedicated data-model/constraint map, transaction boundaries, revision/idempotency and concurrency examples, migration scenarios with verified commands                       |
+| Persistence                           | Core map and write mechanisms now documented; verify operational migration scenarios against important existing data and document recovery evidence                          |
 | Queue and operations                  | Exact job catalog, IDs, retries/backoff, timeouts, poison/stuck-job recovery and safe deletion/retention runbook; no blanket delivery/retention guarantees                   |
-| API                                   | Endpoint-authoring recipe, error taxonomy, request/response conventions and generated-reference integration consistent with OpenAPI exposure policy                          |
+| API                                   | Core conventions and authoring recipe now documented; complete endpoint inventory and generated-reference integration remain, including Zod/OpenAPI schema completeness      |
 | Web                                   | Route/client/state ownership, editor/review behavior, responsive/a11y conventions and canonical preview-to-export architecture in depth                                      |
 | Testing                               | Full unit/domain/contract/parser/persistence/queue/security/browser/a11y matrix, real-vs-mocked boundaries and bounded live-provider validation policy                       |
 | Troubleshooting                       | Tested runbooks for database/queue/readiness/parser/provider/envelope/timeout/review/migration/browser failures, beyond the initial safe triage advice                       |
