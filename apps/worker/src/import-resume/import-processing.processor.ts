@@ -134,6 +134,9 @@ export class ImportProcessingProcessor extends WorkerHost {
     try {
       await this.workflow.extract(payload, {
         signal,
+        ...(typeof job.timestamp === "number"
+          ? { queuedAt: job.timestamp }
+          : {}),
         progress: (value) => this.progress(job, value),
       });
     } finally {

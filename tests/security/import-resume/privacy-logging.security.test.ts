@@ -910,12 +910,13 @@ describe("privacy-safe import logging (T068)", () => {
 
     it("logs worker job failures without provider or internal diagnostics", async () => {
       const harness = workerFailureHarness();
+      const correlationId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
       await expect(
         harness.processor.process(
-          job(
-            IMPORT_RESUME_JOB_NAMES.validation,
-            validationPayload(docA, ownerA),
-          ),
+          job(IMPORT_RESUME_JOB_NAMES.validation, {
+            ...validationPayload(docA, ownerA),
+            correlationId,
+          }),
         ),
       ).rejects.toThrow();
 
@@ -924,6 +925,7 @@ describe("privacy-safe import logging (T068)", () => {
       );
       expect(failed?.metadata).toEqual({
         importId: docA,
+        correlationId,
         jobType: "validation",
         errorCategory: "unexpected_failure",
         retryable: true,

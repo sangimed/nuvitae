@@ -32,6 +32,14 @@ They apply to human and automated changes.
 
 ## Required negative evidence
 
+Worker delivery telemetry (#24) projects only validated import/correlation IDs,
+closed stage labels and bounded timing into the existing local event sink.
+Queue owners, private storage references and exception text are excluded. A
+`worker_started` record describes delivery before owner-scoped lookup; it must
+never be interpreted as authorization, successful processing or a new import.
+Repeated deliveries retain the workflow correlation and remain separate
+observations. No new destination or external export is enabled by this metadata.
+
 For multilingual Semantic V2 import (#30), grounded text is not proof of source
 section completeness or calendar context. Unreviewed source inventory stays
 unknown, never absent; benchmark N/A requires independently reviewed absence.
