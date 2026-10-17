@@ -7,11 +7,13 @@ import {
   confirmStructuredResume,
   createConfirmationOperationId,
   createConfirmationRequest,
+  type ConfirmationClientErrorCategory,
 } from "./client";
 import {
   createDiscardOperationId,
   createDiscardRequest,
   discardImportDraft,
+  type DraftLifecycleErrorCategory,
 } from "./client";
 import { actionableReviewItems } from "./actionable-review-items";
 import { ErrorSummary } from "./ErrorSummary";
@@ -72,7 +74,7 @@ export function ConfirmationStep(props: {
       await props.onStaleReview();
       setError(t("review.error.stale"));
     } else {
-      setError(outcome.message);
+      setError(confirmationErrorMessage(outcome.category, t));
     }
   }
 
@@ -91,10 +93,10 @@ export function ConfirmationStep(props: {
     setPending(false);
     if (outcome.ok) {
       setDiscardDialogOpen(false);
-      props.onDiscarded(outcome.response.userMessage);
+      props.onDiscarded(t("review.confirm.discarded"));
       return;
     }
-    setError(outcome.message);
+    setError(discardErrorMessage(outcome.category, t));
   }
 
   function closeDialog() {
@@ -203,4 +205,58 @@ export function ConfirmationStep(props: {
       </AccessibleDialog>
     </section>
   );
+}
+
+function confirmationErrorMessage(
+  category: ConfirmationClientErrorCategory,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  switch (category) {
+    case "authentication_required":
+      return t("review.confirm.error.authentication");
+    case "not_found":
+      return t("review.confirm.error.notFound");
+    case "draft_not_ready":
+      return t("review.confirm.error.notReady");
+    case "unresolved_warnings":
+      return t("review.confirm.error.unresolved");
+    case "no_user_confirmed_field":
+      return t("review.confirm.error.noConfirmedField");
+    case "reviewed_content_not_mappable":
+      return t("review.confirm.error.content");
+    case "stale_update":
+      return t("review.confirm.error.staleUpdate");
+    case "expired":
+      return t("review.confirm.error.expired");
+    case "concurrent_confirmation":
+      return t("review.confirm.error.concurrent");
+    case "temporarily_unavailable":
+      return t("review.confirm.error.unavailable");
+    case "cancelled":
+      return t("review.confirm.error.cancelled");
+    default:
+      return t("review.confirm.error.generic");
+  }
+}
+
+function discardErrorMessage(
+  category: DraftLifecycleErrorCategory,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  switch (category) {
+    case "authentication_required":
+      return t("review.confirm.error.authentication");
+    case "not_found":
+      return t("review.confirm.error.notFound");
+    case "stale_review":
+      return t("review.error.stale");
+    case "expired":
+      return t("review.confirm.error.expired");
+    case "temporarily_unavailable":
+      return t("review.confirm.error.unavailable");
+    case "cancelled":
+      return t("review.confirm.error.cancelled");
+    default:
+      return t("review.confirm.error.generic");
+  }
 }

@@ -104,13 +104,31 @@ function warningMessage(
   warning: ReviewWarningContract,
   t: ReturnType<typeof useTranslation>["t"],
 ): string {
-  if (isUnsafeExtraction(warning)) {
-    return t("review.warning.unsafe.message");
+  switch (warning.warningType) {
+    case "missing":
+      return t("review.warning.missing.message");
+    case "ambiguous":
+      return t("review.warning.message.ambiguous");
+    case "conflicting":
+      return t("review.warning.message.conflicting");
+    case "duplicate":
+      return t("review.warning.message.duplicate");
+    case "low_confidence":
+      return t("review.warning.message.lowConfidence");
+    case "inferred":
+      return t("review.warning.message.inferred");
+    case "mixed_content":
+      return t("review.warning.message.mixedContent");
+    case "expired_source":
+      return t("review.warning.message.expiredSource");
+    case "unsupported":
+    case "unsafe":
+    case "incomplete":
+    case "partial":
+      return t("review.warning.unsafe.message");
+    default:
+      return t("review.warning.message.default");
   }
-  if (warning.warningType === "missing") {
-    return t("review.warning.missing.message");
-  }
-  return warning.message;
 }
 
 function warningTone(warning: ReviewWarningContract): string {

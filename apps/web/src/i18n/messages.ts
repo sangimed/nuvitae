@@ -175,6 +175,22 @@ export const en = {
     "Nuvitae could not safely use some information from your resume. It was left out; you can add it yourself if you want it included.",
   "review.warning.missing.message":
     "This information was not added automatically. You can add it, or leave it out for now.",
+  "review.warning.message.ambiguous":
+    "This information may have more than one meaning. Review it and choose what belongs in your resume.",
+  "review.warning.message.conflicting":
+    "Some information does not match. Review the details before deciding what to keep.",
+  "review.warning.message.duplicate":
+    "This information may already appear elsewhere in your resume.",
+  "review.warning.message.lowConfidence":
+    "This information could not be identified with confidence. Please check it before using it.",
+  "review.warning.message.inferred":
+    "This suggestion was inferred from your resume. Confirm it before it is used.",
+  "review.warning.message.mixedContent":
+    "This section contains different kinds of information that need your review.",
+  "review.warning.message.expiredSource":
+    "The temporary source file is no longer available. You can still review the information shown here.",
+  "review.warning.message.default":
+    "This information needs your review before you continue.",
   "review.warning.context":
     "This relates to imported information in this section.",
   "review.warning.state": "This item is",
@@ -217,6 +233,29 @@ export const en = {
     "Nuvitae will discard this unconfirmed draft and schedule source cleanup. Deletion is not complete immediately, and an already confirmed resume would not be deleted by this action.",
   "review.confirm.working": "Working",
   "review.confirm.cancel": "Cancel",
+  "review.confirm.discarded":
+    "The import was discarded. Source cleanup has been scheduled.",
+  "review.confirm.error.authentication":
+    "Your session could not be verified. Sign in again and retry.",
+  "review.confirm.error.notFound": "This import is no longer available.",
+  "review.confirm.error.notReady":
+    "This import is not ready to create a resume yet.",
+  "review.confirm.error.unresolved":
+    "Review the remaining information before creating your resume.",
+  "review.confirm.error.noConfirmedField":
+    "Confirm at least one detail before creating your resume.",
+  "review.confirm.error.content":
+    "Some reviewed information could not be used to create the resume. Please review it and try again.",
+  "review.confirm.error.staleUpdate":
+    "Your resume changed while the update was being saved. Reload it and try again.",
+  "review.confirm.error.expired": "This import has expired.",
+  "review.confirm.error.concurrent":
+    "This resume is already being created. Wait a moment and check again.",
+  "review.confirm.error.unavailable":
+    "This action is temporarily unavailable. Please try again later.",
+  "review.confirm.error.cancelled": "The request was stopped.",
+  "review.confirm.error.generic":
+    "We could not complete this action. Please try again later.",
   "review.confirm.destructive": "Destructive action",
   "review.minimum.loading": "Loading import review",
   "review.minimum.eyebrow": "Resume review",
@@ -415,6 +454,22 @@ const fr: Messages = {
     "Nuvitae n’a pas pu utiliser certaines informations de votre CV en toute sécurité. Elles ont été exclues ; vous pouvez les ajouter vous-même si vous souhaitez les inclure.",
   "review.warning.missing.message":
     "Ces informations n’ont pas été ajoutées automatiquement. Vous pouvez les ajouter ou les exclure pour le moment.",
+  "review.warning.message.ambiguous":
+    "Ces informations peuvent avoir plusieurs sens. Vérifiez-les et choisissez celles à conserver dans votre CV.",
+  "review.warning.message.conflicting":
+    "Certaines informations ne concordent pas. Vérifiez-les avant de choisir ce que vous souhaitez conserver.",
+  "review.warning.message.duplicate":
+    "Ces informations figurent peut-être déjà ailleurs dans votre CV.",
+  "review.warning.message.lowConfidence":
+    "Ces informations n’ont pas pu être identifiées avec certitude. Vérifiez-les avant de les utiliser.",
+  "review.warning.message.inferred":
+    "Cette suggestion a été déduite de votre CV. Confirmez-la avant de l’utiliser.",
+  "review.warning.message.mixedContent":
+    "Cette rubrique contient différents types d’informations à vérifier.",
+  "review.warning.message.expiredSource":
+    "Le fichier source temporaire n’est plus disponible. Vous pouvez toujours vérifier les informations affichées ici.",
+  "review.warning.message.default":
+    "Ces informations doivent être vérifiées avant de continuer.",
   "review.warning.context":
     "Cela concerne les informations importées dans cette rubrique.",
   "review.warning.state": "Cet élément est",
@@ -461,6 +516,29 @@ const fr: Messages = {
     "Nuvitae abandonnera ce brouillon non confirmé et planifiera le nettoyage de la source. La suppression ne sera pas immédiate et cette action ne supprimera pas un CV déjà confirmé.",
   "review.confirm.working": "En cours",
   "review.confirm.cancel": "Annuler",
+  "review.confirm.discarded":
+    "L’importation a été abandonnée. Le nettoyage de la source a été planifié.",
+  "review.confirm.error.authentication":
+    "Votre session n’a pas pu être vérifiée. Reconnectez-vous et réessayez.",
+  "review.confirm.error.notFound": "Cette importation n’est plus disponible.",
+  "review.confirm.error.notReady":
+    "Cette importation n’est pas encore prête à créer un CV.",
+  "review.confirm.error.unresolved":
+    "Vérifiez les informations restantes avant de créer votre CV.",
+  "review.confirm.error.noConfirmedField":
+    "Confirmez au moins une information avant de créer votre CV.",
+  "review.confirm.error.content":
+    "Certaines informations vérifiées n’ont pas pu servir à créer le CV. Vérifiez-les et réessayez.",
+  "review.confirm.error.staleUpdate":
+    "Votre CV a changé pendant l’enregistrement. Rechargez-le et réessayez.",
+  "review.confirm.error.expired": "Cette importation a expiré.",
+  "review.confirm.error.concurrent":
+    "La création de ce CV est déjà en cours. Patientez un instant et vérifiez à nouveau.",
+  "review.confirm.error.unavailable":
+    "Cette action est temporairement indisponible. Réessayez plus tard.",
+  "review.confirm.error.cancelled": "La demande a été arrêtée.",
+  "review.confirm.error.generic":
+    "L’action n’a pas pu aboutir. Réessayez plus tard.",
   "review.confirm.destructive": "Action destructive",
   "review.minimum.loading": "Chargement de la vérification",
   "review.minimum.eyebrow": "Vérification du CV",
@@ -656,6 +734,22 @@ const es: Messages = {
     "Nuvitae no pudo usar de forma segura cierta información de tu currículum. Se excluyó; puedes añadirla tú si quieres incluirla.",
   "review.warning.missing.message":
     "Esta información no se añadió automáticamente. Puedes añadirla o excluirla por ahora.",
+  "review.warning.message.ambiguous":
+    "Esta información puede tener más de un significado. Revísala y elige qué incluir en tu currículum.",
+  "review.warning.message.conflicting":
+    "Parte de la información no coincide. Revísala antes de decidir qué conservar.",
+  "review.warning.message.duplicate":
+    "Es posible que esta información ya aparezca en otra parte de tu currículum.",
+  "review.warning.message.lowConfidence":
+    "No se pudo identificar esta información con seguridad. Compruébala antes de usarla.",
+  "review.warning.message.inferred":
+    "Esta sugerencia se dedujo de tu currículum. Confírmala antes de usarla.",
+  "review.warning.message.mixedContent":
+    "Esta sección contiene distintos tipos de información que debes revisar.",
+  "review.warning.message.expiredSource":
+    "El archivo fuente temporal ya no está disponible. Aun así, puedes revisar la información que aparece aquí.",
+  "review.warning.message.default":
+    "Debes revisar esta información antes de continuar.",
   "review.warning.context":
     "Esto se refiere a información importada en esta sección.",
   "review.warning.state": "Este elemento está",
@@ -700,6 +794,29 @@ const es: Messages = {
     "Nuvitae descartará este borrador sin confirmar y programará la limpieza del archivo fuente. La eliminación no será inmediata y esta acción no eliminará un currículum ya confirmado.",
   "review.confirm.working": "En curso",
   "review.confirm.cancel": "Cancelar",
+  "review.confirm.discarded":
+    "Se descartó la importación. Se programó la limpieza del archivo fuente.",
+  "review.confirm.error.authentication":
+    "No se pudo verificar tu sesión. Inicia sesión de nuevo e inténtalo otra vez.",
+  "review.confirm.error.notFound": "Esta importación ya no está disponible.",
+  "review.confirm.error.notReady":
+    "Esta importación aún no está lista para crear un currículum.",
+  "review.confirm.error.unresolved":
+    "Revisa la información pendiente antes de crear el currículum.",
+  "review.confirm.error.noConfirmedField":
+    "Confirma al menos un detalle antes de crear el currículum.",
+  "review.confirm.error.content":
+    "No se pudo usar parte de la información revisada para crear el currículum. Revísala e inténtalo de nuevo.",
+  "review.confirm.error.staleUpdate":
+    "Tu currículum cambió mientras se guardaba la actualización. Recárgalo e inténtalo de nuevo.",
+  "review.confirm.error.expired": "Esta importación ha caducado.",
+  "review.confirm.error.concurrent":
+    "Ya se está creando este currículum. Espera un momento y vuelve a comprobarlo.",
+  "review.confirm.error.unavailable":
+    "Esta acción no está disponible temporalmente. Inténtalo más tarde.",
+  "review.confirm.error.cancelled": "Se detuvo la solicitud.",
+  "review.confirm.error.generic":
+    "No se pudo completar la acción. Inténtalo más tarde.",
   "review.confirm.destructive": "Acción destructiva",
   "review.minimum.loading": "Cargando la revisión de la importación",
   "review.minimum.eyebrow": "Revisión del currículum",
@@ -881,6 +998,22 @@ const ar: Messages = {
     "لم يتمكن Nuvitae من استخدام بعض المعلومات من سيرتك الذاتية بأمان. تم استبعادها؛ ويمكنك إضافتها بنفسك إذا أردت إدراجها.",
   "review.warning.missing.message":
     "لم تتم إضافة هذه المعلومات تلقائيًا. يمكنك إضافتها أو استبعادها الآن.",
+  "review.warning.message.ambiguous":
+    "قد تحتمل هذه المعلومات أكثر من معنى. راجعها واختر ما تريد إدراجه في سيرتك الذاتية.",
+  "review.warning.message.conflicting":
+    "بعض المعلومات غير متطابقة. راجع التفاصيل قبل اختيار ما تريد الاحتفاظ به.",
+  "review.warning.message.duplicate":
+    "قد تكون هذه المعلومات موجودة بالفعل في موضع آخر من سيرتك الذاتية.",
+  "review.warning.message.lowConfidence":
+    "تعذّر تحديد هذه المعلومات بثقة. يُرجى التحقق منها قبل استخدامها.",
+  "review.warning.message.inferred":
+    "تم استنتاج هذا الاقتراح من سيرتك الذاتية. أكّده قبل استخدامه.",
+  "review.warning.message.mixedContent":
+    "يحتوي هذا القسم على أنواع مختلفة من المعلومات التي تحتاج إلى مراجعتك.",
+  "review.warning.message.expiredSource":
+    "لم يعد الملف المصدر المؤقت متاحًا. لا يزال بإمكانك مراجعة المعلومات المعروضة هنا.",
+  "review.warning.message.default":
+    "تحتاج هذه المعلومات إلى مراجعتك قبل المتابعة.",
   "review.warning.context": "يتعلق هذا بمعلومات مستوردة في هذا القسم.",
   "review.warning.state": "هذه المعلومة",
   "review.warning.status.needsReview": "بانتظار مراجعتك",
@@ -922,6 +1055,27 @@ const ar: Messages = {
     "سيتجاهل Nuvitae هذه المسودة غير المؤكدة ويجدول تنظيف المصدر. لن يكتمل الحذف فورًا، ولن يحذف هذا الإجراء سيرة ذاتية تم تأكيدها بالفعل.",
   "review.confirm.working": "جارٍ العمل",
   "review.confirm.cancel": "إلغاء",
+  "review.confirm.discarded": "تم تجاهل الاستيراد. تمت جدولة تنظيف المصدر.",
+  "review.confirm.error.authentication":
+    "تعذّر التحقق من جلستك. سجّل الدخول مرة أخرى ثم حاول مجددًا.",
+  "review.confirm.error.notFound": "لم يعد هذا الاستيراد متاحًا.",
+  "review.confirm.error.notReady":
+    "هذا الاستيراد غير جاهز بعد لإنشاء سيرة ذاتية.",
+  "review.confirm.error.unresolved":
+    "راجع المعلومات المتبقية قبل إنشاء سيرتك الذاتية.",
+  "review.confirm.error.noConfirmedField":
+    "أكّد معلومة واحدة على الأقل قبل إنشاء سيرتك الذاتية.",
+  "review.confirm.error.content":
+    "تعذّر استخدام بعض المعلومات التي راجعتها لإنشاء السيرة الذاتية. راجعها ثم حاول مجددًا.",
+  "review.confirm.error.staleUpdate":
+    "تغيّرت سيرتك الذاتية أثناء حفظ التحديث. أعد تحميلها ثم حاول مجددًا.",
+  "review.confirm.error.expired": "انتهت صلاحية هذا الاستيراد.",
+  "review.confirm.error.concurrent":
+    "يجري إنشاء هذه السيرة الذاتية بالفعل. انتظر قليلًا ثم تحقق مرة أخرى.",
+  "review.confirm.error.unavailable":
+    "هذا الإجراء غير متاح مؤقتًا. حاول مرة أخرى لاحقًا.",
+  "review.confirm.error.cancelled": "تم إيقاف الطلب.",
+  "review.confirm.error.generic": "تعذّر إكمال الإجراء. حاول مرة أخرى لاحقًا.",
   "review.confirm.destructive": "إجراء إتلاف",
   "review.minimum.loading": "جارٍ تحميل مراجعة الاستيراد",
   "review.minimum.eyebrow": "مراجعة السيرة الذاتية",
@@ -1082,6 +1236,20 @@ const zhCN: Messages = {
     "Nuvitae 无法安全使用您简历中的部分信息，因此已将其排除；如果您希望纳入，可以自行添加。",
   "review.warning.missing.message":
     "此信息未自动添加。您可以添加，或暂时排除。",
+  "review.warning.message.ambiguous":
+    "此信息可能有多种含义。请检查并选择要在简历中使用的内容。",
+  "review.warning.message.conflicting":
+    "部分信息不一致。请先检查，再决定保留哪些内容。",
+  "review.warning.message.duplicate": "此信息可能已出现在简历的其他位置。",
+  "review.warning.message.lowConfidence":
+    "无法确信地识别此信息。使用前请检查。",
+  "review.warning.message.inferred":
+    "此建议是根据您的简历推断得出的。使用前请确认。",
+  "review.warning.message.mixedContent":
+    "此部分包含不同类型的信息，需要您审核。",
+  "review.warning.message.expiredSource":
+    "临时源文件已不可用。您仍可审核此处显示的信息。",
+  "review.warning.message.default": "继续前需要审核此信息。",
   "review.warning.context": "这与本部分导入的信息有关。",
   "review.warning.state": "此项目状态：",
   "review.warning.status.needsReview": "等待您审核",
@@ -1121,6 +1289,21 @@ const zhCN: Messages = {
     "Nuvitae 将放弃这份未确认的草稿，并安排清理源文件。删除不会立即完成，此操作也不会删除已确认的简历。",
   "review.confirm.working": "处理中",
   "review.confirm.cancel": "取消",
+  "review.confirm.discarded": "已放弃导入，并已安排清理源文件。",
+  "review.confirm.error.authentication": "无法验证您的会话。请重新登录后重试。",
+  "review.confirm.error.notFound": "此导入已不可用。",
+  "review.confirm.error.notReady": "此导入尚未准备好创建简历。",
+  "review.confirm.error.unresolved": "创建简历前，请先审核剩余信息。",
+  "review.confirm.error.noConfirmedField": "创建简历前，请至少确认一项信息。",
+  "review.confirm.error.content":
+    "部分已审核信息无法用于创建简历。请检查后重试。",
+  "review.confirm.error.staleUpdate":
+    "保存更新时您的简历已更改。请重新加载后重试。",
+  "review.confirm.error.expired": "此导入已过期。",
+  "review.confirm.error.concurrent": "此简历正在创建中。请稍候再检查。",
+  "review.confirm.error.unavailable": "此操作暂时不可用，请稍后重试。",
+  "review.confirm.error.cancelled": "请求已停止。",
+  "review.confirm.error.generic": "无法完成此操作，请稍后重试。",
   "review.confirm.destructive": "破坏性操作",
   "review.minimum.loading": "正在加载导入审核",
   "review.minimum.eyebrow": "简历审核",

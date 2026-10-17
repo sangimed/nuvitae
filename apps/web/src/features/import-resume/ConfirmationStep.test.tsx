@@ -132,6 +132,41 @@ function pressKey(element: Element, key: string, shiftKey = false) {
 }
 
 describe("ConfirmationStep accessible dialogs (T063)", () => {
+  it("maps confirmation failures to localized safe copy without rendering server prose", async () => {
+    mocks.confirmStructuredResume.mockResolvedValue({
+      ok: false,
+      category: "temporarily_unavailable",
+      message: "Raw server error must not appear.",
+    });
+    renderStep(draft, "fr");
+    await act(async () => button("Créer mon CV").click());
+    expect(container.textContent).toContain(
+      "Cette action est temporairement indisponible.",
+    );
+    expect(container.textContent).not.toContain("Raw server error");
+    expect(
+      document.activeElement?.closest("[data-error-summary]"),
+    ).not.toBeNull();
+  });
+
+  it("localizes discard success and ignores server prose while preserving dialog focus", async () => {
+    mocks.discardImportDraft.mockResolvedValue({
+      ok: true,
+      response: { userMessage: "Raw discard response must not appear." },
+    });
+    renderStep(draft, "ar");
+    const trigger = button("تجاهل الاستيراد");
+    act(() => {
+      trigger.focus();
+      trigger.click();
+    });
+    await act(async () => dialogButton("تجاهل الاستيراد").click());
+    expect(onDiscarded).toHaveBeenCalledWith(
+      "تم تجاهل الاستيراد. تمت جدولة تنظيف المصدر.",
+    );
+    expect(container.textContent).not.toContain("Raw discard response");
+  });
+
   it("localizes confirmation copy in French and Arabic without changing resume text or focus behavior", () => {
     renderStep(draft, "fr");
     expect(container.textContent).toContain("Votre vérification est terminée");
@@ -234,6 +269,9 @@ describe("ConfirmationStep accessible dialogs (T063)", () => {
     const summary = container.querySelector("[data-error-summary]");
     expect(summary).not.toBeNull();
     expect(summary?.textContent).toContain(
+      "This action is temporarily unavailable.",
+    );
+    expect(summary?.textContent).not.toContain(
       "Resume creation is temporarily unavailable.",
     );
     expect(document.activeElement).toBe(summary);

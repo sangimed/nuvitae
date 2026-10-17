@@ -13,7 +13,7 @@ const warning: WarningContract = {
   warningId: "11111111-1111-4111-8111-111111111111",
   warningType: "ambiguous",
   section: "summary",
-  message: "Source message: keep this byte-for-byte.",
+  message: "Untrusted API prose must not render.",
   severity: "needs_attention",
   reviewStatus: "needs_review",
   requiresResolution: true,
@@ -40,7 +40,10 @@ it("switches warning controls between French and Arabic while preserving API tex
   expect(container.textContent).toContain(
     "Choisissez comment utiliser ces informations",
   );
-  expect(container.textContent).toContain(warning.message);
+  expect(container.textContent).toContain(
+    "Ces informations peuvent avoir plusieurs sens.",
+  );
+  expect(container.textContent).not.toContain(warning.message);
   const selector = container.querySelector("select")!;
   act(() => {
     selector.value = "ar";
@@ -48,7 +51,10 @@ it("switches warning controls between French and Arabic while preserving API tex
   });
   expect(document.documentElement.dir).toBe("rtl");
   expect(container.textContent).toContain("اختر كيفية استخدام هذه المعلومات");
-  expect(container.textContent).toContain(warning.message);
+  expect(container.textContent).toContain(
+    "قد تحتمل هذه المعلومات أكثر من معنى",
+  );
+  expect(container.textContent).not.toContain(warning.message);
   const confirm = Array.from(container.querySelectorAll("button")).find(
     (button) => button.textContent === "تأكيد",
   )!;
