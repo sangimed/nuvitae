@@ -85,6 +85,9 @@ public identifier to publish by default.
   deletion; inspect tests and approved operational evidence rather than assuming
   that an expiry timestamp proves removal.
 
+For the exact job catalog, retry/deadline behavior and safe queue triage, see
+[queue and worker operations](queue-operations.md).
+
 ## Source and test entry points
 
 - [API import use cases](https://github.com/sangimed/nuvitae/tree/main/apps/api/src/import-resume/use-cases)
