@@ -167,6 +167,43 @@ describe("professional resume renderer", () => {
     ]);
   });
 
+  it("renders synthetic Spanish, Arabic, and Simplified Chinese wording unchanged", () => {
+    const source = {
+      name: "Lucía Ejemplo",
+      headline: "مهندسة برمجيات — أنظمة الرعاية",
+      summary: "专注于制造业库存分析与需求预测。",
+      employer: "مؤسسة المثال للتقنية",
+      role: "高级数据分析师",
+    };
+    const model = createResumeRenderingModel({
+      ...blankResume(),
+      personal: [value(source.name)],
+      headline: value(source.headline),
+      summary: value(source.summary),
+      workExperiences: [
+        {
+          id: "work-unicode",
+          employerName: source.employer,
+          roles: [
+            {
+              id: "role-unicode",
+              title: source.role,
+              isOngoing: false,
+              responsibilities: [],
+              achievements: [],
+            },
+          ],
+        },
+      ],
+    });
+
+    const markup = renderToStaticMarkup(<ProfessionalResume model={model} />);
+
+    for (const text of Object.values(source)) expect(markup).toContain(text);
+    expect(markup).not.toContain("Lucia Ejemplo");
+    expect(markup).not.toContain("software engineer");
+  });
+
   it("renders a fully empty resume safely without invented resume data", () => {
     const markup = renderToStaticMarkup(
       <ProfessionalResume model={createResumeRenderingModel(blankResume())} />,
