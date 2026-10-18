@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReviewDraftReadResponse } from "@nuvitae/contracts";
 import { ReviewStep } from "./ReviewStep";
+import { LocaleProvider } from "../../i18n/LocaleProvider";
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -44,11 +45,15 @@ afterEach(() => {
   root = undefined;
 });
 
-async function render(draft = syntheticDraft()) {
+async function render(draft = syntheticDraft(), locale: "en" | "es" = "en") {
   mocks.readReviewDraft.mockResolvedValue({ ok: true, response: draft });
   root = createRoot(container);
   await act(async () => {
-    root?.render(<ReviewStep importId={importId} />);
+    root?.render(
+      <LocaleProvider initialLocale={locale}>
+        <ReviewStep importId={importId} />
+      </LocaleProvider>,
+    );
   });
 }
 
@@ -153,7 +158,48 @@ describe("T221 simplified review", () => {
     expect(container.textContent).not.toContain(
       "Accept all 3 suggested details",
     );
-    expect(container.textContent).toContain("Suggestions accepted.");
+    expect(container.textContent).toContain("Changes saved.");
+  });
+
+  it("localizes review status and ignores server-provided prose", async () => {
+    mocks.readReviewDraft.mockResolvedValue({
+      ok: true,
+      response: {
+        ...syntheticDraft(),
+        userMessage: "UNTRUSTED_SERVER_REVIEW_MESSAGE",
+      },
+    });
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(
+        <LocaleProvider initialLocale="es">
+          <ReviewStep importId={importId} />
+        </LocaleProvider>,
+      );
+    });
+
+    expect(container.textContent).toContain("Revisión cargada.");
+    expect(container.textContent).not.toContain(
+      "UNTRUSTED_SERVER_REVIEW_MESSAGE",
+    );
+  });
+
+  it("localizes categorized review errors and ignores server error prose", async () => {
+    await render(syntheticDraft(), "es");
+    mocks.sendReviewMutation.mockResolvedValue({
+      ok: false,
+      category: "temporarily_unavailable",
+      message: "UNTRUSTED_SERVER_ERROR_MESSAGE",
+    });
+
+    await act(async () => button("Confirm this information").click());
+
+    expect(container.textContent).toContain(
+      "La revisión no está disponible temporalmente. Inténtalo más tarde.",
+    );
+    expect(container.textContent).not.toContain(
+      "UNTRUSTED_SERVER_ERROR_MESSAGE",
+    );
   });
 
   it("confirms a review-required field through the canonical field and linked-warning commands, then renders the persisted state", async () => {

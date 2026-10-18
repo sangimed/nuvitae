@@ -266,6 +266,28 @@ export const en = {
     "You are reviewing a structured draft. Your uploaded file stays unchanged.",
   "review.error.stale":
     "Your review has changed. We reloaded the latest information.",
+  "review.minimum.loaded": "Review loaded.",
+  "review.update.saving": "Saving your review…",
+  "review.update.saved": "Changes saved.",
+  "review.update.linkedWarningFailed":
+    "Your confirmation was saved, but one related review item still needs attention.",
+  "review.update.error.heading": "The review change could not be saved",
+  "review.update.error.authentication": "Sign in to continue reviewing this import.",
+  "review.update.error.notFound": "This import is unavailable or no longer accessible.",
+  "review.update.error.notReady": "This import is not ready for review yet.",
+  "review.update.error.expired": "This import has expired.",
+  "review.update.error.rateLimited":
+    "Too many review actions were sent. Wait and try again.",
+  "review.update.error.unavailable":
+    "Review is temporarily unavailable. Try again later.",
+  "review.update.error.malformed":
+    "The review response could not be read safely. Try again later.",
+  "review.update.error.cancelled": "The review request was stopped.",
+  "review.update.error.generic":
+    "The review request could not be completed. Try again later.",
+  "review.finalized.openResume": "Open my resume",
+  "review.finalized.newImport": "Start a new import",
+  "review.finalized.manual": "Continue manually",
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -550,6 +572,31 @@ const fr: Messages = {
     "Vous vérifiez un brouillon structuré. Votre fichier importé reste inchangé.",
   "review.error.stale":
     "Votre vérification a changé. Nous avons rechargé les dernières informations.",
+  "review.minimum.loaded": "Vérification chargée.",
+  "review.update.saving": "Enregistrement de votre vérification…",
+  "review.update.saved": "Modifications enregistrées.",
+  "review.update.linkedWarningFailed":
+    "Votre confirmation a été enregistrée, mais un élément associé nécessite encore votre attention.",
+  "review.update.error.heading": "La modification n’a pas pu être enregistrée",
+  "review.update.error.authentication":
+    "Connectez-vous pour continuer la vérification de cette importation.",
+  "review.update.error.notFound":
+    "Cette importation n’est pas disponible ou n’est plus accessible.",
+  "review.update.error.notReady":
+    "Cette importation n’est pas encore prête à être vérifiée.",
+  "review.update.error.expired": "Cette importation a expiré.",
+  "review.update.error.rateLimited":
+    "Trop de modifications ont été envoyées. Patientez puis réessayez.",
+  "review.update.error.unavailable":
+    "La vérification est temporairement indisponible. Réessayez plus tard.",
+  "review.update.error.malformed":
+    "La réponse de vérification n’a pas pu être lue en toute sécurité. Réessayez plus tard.",
+  "review.update.error.cancelled": "La demande de vérification a été arrêtée.",
+  "review.update.error.generic":
+    "La demande de vérification n’a pas abouti. Réessayez plus tard.",
+  "review.finalized.openResume": "Ouvrir mon CV",
+  "review.finalized.newImport": "Démarrer une nouvelle importation",
+  "review.finalized.manual": "Continuer manuellement",
 };
 
 const es: Messages = {
@@ -828,6 +875,31 @@ const es: Messages = {
     "Estás revisando un borrador estructurado. El archivo que subiste no cambia.",
   "review.error.stale":
     "Tu revisión ha cambiado. Hemos vuelto a cargar la información más reciente.",
+  "review.minimum.loaded": "Revisión cargada.",
+  "review.update.saving": "Guardando la revisión…",
+  "review.update.saved": "Cambios guardados.",
+  "review.update.linkedWarningFailed":
+    "Se guardó tu confirmación, pero otro elemento relacionado aún requiere tu atención.",
+  "review.update.error.heading": "No se pudo guardar el cambio",
+  "review.update.error.authentication":
+    "Inicia sesión para seguir revisando esta importación.",
+  "review.update.error.notFound":
+    "Esta importación no está disponible o ya no se puede consultar.",
+  "review.update.error.notReady":
+    "Esta importación aún no está lista para revisarse.",
+  "review.update.error.expired": "Esta importación ha caducado.",
+  "review.update.error.rateLimited":
+    "Se enviaron demasiados cambios. Espera e inténtalo de nuevo.",
+  "review.update.error.unavailable":
+    "La revisión no está disponible temporalmente. Inténtalo más tarde.",
+  "review.update.error.malformed":
+    "No se pudo leer la respuesta de revisión de forma segura. Inténtalo más tarde.",
+  "review.update.error.cancelled": "Se detuvo la solicitud de revisión.",
+  "review.update.error.generic":
+    "No se pudo completar la solicitud de revisión. Inténtalo más tarde.",
+  "review.finalized.openResume": "Abrir mi currículum",
+  "review.finalized.newImport": "Iniciar una nueva importación",
+  "review.finalized.manual": "Continuar manualmente",
 };
 
 const ar: Messages = {
@@ -1085,6 +1157,28 @@ const ar: Messages = {
   "review.minimum.sourceNote":
     "أنت تراجع مسودة منظمة. يظل الملف الذي رفعته دون تغيير.",
   "review.error.stale": "تغيّرت مراجعتك. أعدنا تحميل أحدث المعلومات.",
+  "review.minimum.loaded": "اكتملت مراجعة الاستيراد.",
+  "review.update.saving": "جارٍ حفظ المراجعة…",
+  "review.update.saved": "تم حفظ التغييرات.",
+  "review.update.linkedWarningFailed":
+    "تم حفظ تأكيدك، لكن لا يزال هناك عنصر مراجعة مرتبط يحتاج إلى انتباهك.",
+  "review.update.error.heading": "تعذّر حفظ التغيير",
+  "review.update.error.authentication":
+    "سجّل الدخول لمتابعة مراجعة هذا الاستيراد.",
+  "review.update.error.notFound": "هذا الاستيراد غير متاح أو لم يعد الوصول إليه ممكنًا.",
+  "review.update.error.notReady": "هذا الاستيراد غير جاهز للمراجعة بعد.",
+  "review.update.error.expired": "انتهت صلاحية هذا الاستيراد.",
+  "review.update.error.rateLimited":
+    "تم إرسال تغييرات كثيرة. انتظر ثم حاول مجددًا.",
+  "review.update.error.unavailable":
+    "المراجعة غير متاحة مؤقتًا. حاول مجددًا لاحقًا.",
+  "review.update.error.malformed":
+    "تعذّرت قراءة استجابة المراجعة بأمان. حاول مجددًا لاحقًا.",
+  "review.update.error.cancelled": "تم إيقاف طلب المراجعة.",
+  "review.update.error.generic": "تعذّر إكمال طلب المراجعة. حاول مجددًا لاحقًا.",
+  "review.finalized.openResume": "افتح سيرتي الذاتية",
+  "review.finalized.newImport": "ابدأ استيرادًا جديدًا",
+  "review.finalized.manual": "تابع يدويًا",
 };
 
 const zhCN: Messages = {
@@ -1312,6 +1406,24 @@ const zhCN: Messages = {
   "review.minimum.title": "检查 Nuvitae 需要您确认的信息",
   "review.minimum.sourceNote": "您正在审核结构化草稿。您上传的文件保持不变。",
   "review.error.stale": "您的审核已更改。我们已重新加载最新信息。",
+  "review.minimum.loaded": "审核已加载。",
+  "review.update.saving": "正在保存审核…",
+  "review.update.saved": "更改已保存。",
+  "review.update.linkedWarningFailed":
+    "您的确认已保存，但仍有一个相关审核项目需要处理。",
+  "review.update.error.heading": "无法保存此更改",
+  "review.update.error.authentication": "请登录后继续审核此导入内容。",
+  "review.update.error.notFound": "此导入内容不可用或已无法访问。",
+  "review.update.error.notReady": "此导入内容尚未准备好审核。",
+  "review.update.error.expired": "此导入内容已过期。",
+  "review.update.error.rateLimited": "审核操作过多，请稍候再试。",
+  "review.update.error.unavailable": "审核暂时不可用，请稍后重试。",
+  "review.update.error.malformed": "无法安全读取审核响应，请稍后重试。",
+  "review.update.error.cancelled": "审核请求已停止。",
+  "review.update.error.generic": "无法完成审核请求，请稍后重试。",
+  "review.finalized.openResume": "打开我的简历",
+  "review.finalized.newImport": "开始新的导入",
+  "review.finalized.manual": "继续手动填写",
 };
 
 export const catalogs = { en, fr, es, ar, "zh-CN": zhCN };
