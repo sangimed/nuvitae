@@ -105,7 +105,9 @@ export function ResumeExportView(props: { readonly resumeId: string }) {
           >
             {t("resume.export.retry")}
           </button>
-          <Link href={`/resumes/${props.resumeId}`}>{t("resume.export.back")}</Link>
+          <Link href={`/resumes/${props.resumeId}`}>
+            {t("resume.export.back")}
+          </Link>
         </div>
       </section>
     );
@@ -153,7 +155,9 @@ export function ResumeExportView(props: { readonly resumeId: string }) {
               ? t("resume.export.opening")
               : t("resume.export.save")}
           </button>
-          <Link href={`/resumes/${props.resumeId}`}>{t("resume.export.back")}</Link>
+          <Link href={`/resumes/${props.resumeId}`}>
+            {t("resume.export.back")}
+          </Link>
         </div>
         <p role="status" aria-live="polite">
           {state.printStatus === "idle"
