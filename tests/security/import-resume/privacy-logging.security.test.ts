@@ -929,6 +929,7 @@ describe("privacy-safe import logging (T068)", () => {
         jobType: "validation",
         errorCategory: "unexpected_failure",
         retryable: true,
+        deliveryId: expect.any(String),
       });
       expect(serialized(harness.logs)).not.toContain(sentinels.providerError);
       expect(serialized(harness.logs)).not.toContain(sentinels.stackTrace);
