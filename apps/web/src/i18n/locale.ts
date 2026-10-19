@@ -52,5 +52,9 @@ export function translate(locale: AppLocale, key: MessageKey): string {
   if (process.env.NODE_ENV !== "production") {
     throw new Error(`Missing application translation: ${locale}:${key}`);
   }
-  return en[key as keyof typeof en] ?? key;
+  return (
+    (key in exportMessages.en
+      ? exportMessages.en[key as keyof typeof exportMessages.en]
+      : en[key as keyof typeof en]) ?? key
+  );
 }
