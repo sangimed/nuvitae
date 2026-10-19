@@ -83,6 +83,33 @@ describe("buildExtractionDraft", () => {
     expect(result.category).toBe("no_supported_field");
   });
 
+  it("preserves an unsupported language as a typed draft-admission failure", () => {
+    const result = buildExtractionDraft({
+      importedDocument: { ...document, detectedLanguage: "unknown" },
+      fields: [
+        {
+          section: "summary",
+          fieldPath: "summary",
+          value: { kind: "text", value: "نص محفوظ مع دليل المصدر" },
+          sourceLocation: location,
+          confidence: "high",
+          inferenceStatus: "not_inferred",
+          sourceOrder: 0,
+        },
+      ],
+      warnings: [],
+      missingOrUnprocessedSections: [],
+      ids,
+      now: new Date("2026-07-02T00:00:00.000Z"),
+    });
+
+    expect(result).toMatchObject({
+      category: "no_supported_field",
+      failureCode: "unsupported_language",
+    });
+    expect(result).not.toHaveProperty("draft");
+  });
+
   it("preserves a provenance-bearing inferred-only candidate for review", () => {
     const value = "Designs durable delivery systems.";
     const result = buildExtractionDraft({

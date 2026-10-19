@@ -54,15 +54,24 @@ truth; their normal gate still fails because no canonical draft is admitted.
 
 **Admission stays closed.** Exact blocker: the runtime has no independently
 validated multilingual source coverage/group inventory, calendar-context proof,
-or representative extraction/persistence/RTL/provider fidelity evidence. Language
-detection remains metadata and is not upgraded into proof of import safety.
-Upload and domain gates are unchanged. This layer makes uncertainty visible; it
-does not complete multilingual eligibility or Issue #30.
+or representative PDF/DOCX extraction, browser RTL, export, and live-provider
+fidelity evidence. Language detection remains metadata and is not upgraded into
+proof of import safety. Upload and domain gates are unchanged. This layer makes
+uncertainty visible; it does not complete multilingual eligibility or Issue #30.
 
-Intentional deferrals: no browser/PDF/font campaign, persistence/export/RTL
-round-trip, live-provider campaign, native-language qualification, migration,
-dependency, configuration, logging payload or UI change. Next work should qualify
-source coverage and calendar context against independent multilingual truth before
+The domain draft result preserves the typed threshold failure (`unsupported_language`,
+`no_explicitly_sourced_supported_field`, or `source_location_required`) instead
+of reducing a closed gate to an untyped category. This makes the closed-gate
+reason available to application callers while keeping automatic multilingual
+admission closed. A PostgreSQL confirmation regression round-trips a deliberately
+reviewed Arabic/LTR-mixed headline with exact JavaScript UTF-16 code-unit order and
+proves wrong-owner reads remain empty; this is persistence evidence only, not
+browser rendering, font, export, or live-provider evidence.
+
+Intentional deferrals: no browser/PDF/font campaign, export round-trip,
+live-provider campaign, native-language qualification, migration, dependency,
+configuration, logging payload or UI change. Next work should qualify source
+coverage and calendar context against independent multilingual truth before
 opening both admission gates together; then follow steps 4–6 below.
 
 ## Initial prerequisite slice (PR #107; historical audit below)

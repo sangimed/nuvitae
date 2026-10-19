@@ -112,6 +112,49 @@ describe("confirm structured resume PostgreSQL integration", () => {
     await expectSourceAndArtifactRetentionUnchanged();
   });
 
+  it("round-trips reviewed RTL resume content without changing its code-unit order", async () => {
+    const rtlHeadline = "مهندسة برمجيات — API ٢٣";
+    const base = withoutWarning(importDraft().fields[0]!);
+    await seedImportDraft(
+      importDraft({
+        status: "ready_to_confirm",
+        reviewRevision: 4,
+        warnings: [],
+        fields: [
+          {
+            ...base,
+            section: "headline",
+            fieldPath: "headline",
+            value: { kind: "text", value: rtlHeadline },
+            reviewStatus: "confirmed",
+            confidenceStatus: "high",
+          },
+        ],
+      }),
+    );
+
+    const result = await service.confirm({
+      ownerUserId: ids.ownerA,
+      importId: ids.document,
+      body: confirmBody(4, "80000000-0000-4000-8000-000000000110"),
+      requestId: "90000000-0000-4000-8000-000000000110",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const stored = await repository.findStructuredResumeByOwner(
+      result.response.structuredResumeId,
+      ids.ownerA,
+    );
+    expect(stored?.content.headline?.value).toBe(rtlHeadline);
+    await expect(
+      repository.findStructuredResumeByOwner(
+        result.response.structuredResumeId,
+        ids.ownerB,
+      ),
+    ).resolves.toBeNull();
+  });
+
   it("retains valid unreviewed Work Experience and Education fields on confirmation", async () => {
     const base = withoutWarning(importDraft().fields[0]!);
     await seedImportDraft(
