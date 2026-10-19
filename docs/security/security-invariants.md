@@ -38,7 +38,11 @@ Queue owners, private storage references and exception text are excluded. A
 `worker_started` record describes delivery before owner-scoped lookup; it must
 never be interpreted as authorization, successful processing or a new import.
 Repeated deliveries retain the workflow correlation and remain separate
-observations. No new destination or external export is enabled by this metadata.
+observations. The optional durable trace carrier accepts only a syntactically
+valid W3C `traceparent`; it rejects baggage, vendor state, and all-zero IDs, and
+is forwarded only between validated queue stages. The opt-in adapter projects
+only fixed timing attributes and no identifiers; it creates no exporter,
+listener, or external destination.
 
 For multilingual Semantic V2 import (#30), grounded text is not proof of source
 section completeness or calendar context. Unreviewed source inventory stays

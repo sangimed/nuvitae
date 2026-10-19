@@ -31,6 +31,25 @@ const storageKeySchema = z
   .max(512)
   .regex(/^[A-Za-z0-9/._=-]+$/);
 const correlationIdSchema = uuidSchema;
+const traceparentSchema = z
+  .string()
+  .regex(/^00-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$/u)
+  .refine(
+    (value) =>
+      !value.startsWith("00-00000000000000000000000000000000-") &&
+      !value.includes("-0000000000000000-"),
+    "traceparent trace and span identifiers must not be all zeroes",
+  );
+
+/**
+ * The queue is allowed to carry only this W3C trace carrier. Baggage and
+ * arbitrary vendor state are excluded because job payloads are durable and
+ * must not become a route for identities, credentials, or resume content.
+ */
+export const importTraceContextSchema = z
+  .object({ traceparent: traceparentSchema })
+  .strict();
+export type ImportTraceContext = z.infer<typeof importTraceContextSchema>;
 
 const ownerContextSchema = z
   .object({
@@ -78,6 +97,7 @@ const retryAttemptSchema = z
 export const documentValidationJobPayloadSchema = jobBaseSchema
   .extend({
     jobType: z.literal("document_validation"),
+    traceContext: importTraceContextSchema.optional(),
     documentFormat: z.enum(["pdf", "docx"]),
     sourceStorageKey: storageKeySchema,
     uploadedAt: utcInstantSchema,
@@ -93,6 +113,7 @@ export const documentValidationJobPayloadSchema = jobBaseSchema
 export const deterministicExtractionJobPayloadSchema = jobBaseSchema
   .extend({
     jobType: z.literal("deterministic_extraction"),
+    traceContext: importTraceContextSchema.optional(),
     documentFormat: z.enum(["pdf", "docx"]),
     sourceStorageKey: storageKeySchema,
     validationCompletedAt: utcInstantSchema,

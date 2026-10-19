@@ -8,6 +8,7 @@ export * from "./build-semantic-parse-request.js";
 export * from "./semantic-import-workflow.js";
 export * from "./repository-backed-import-limit-store.js";
 export * from "./observability/import-events.js";
+export * from "./observability/telemetry-adapter.js";
 export * from "./process-extraction.js";
 export * from "./semantic-parser/provider-errors.js";
 export * from "./semantic-parser/provider-connections.js";
