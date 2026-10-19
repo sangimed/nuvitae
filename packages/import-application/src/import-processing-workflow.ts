@@ -141,6 +141,9 @@ export class ImportProcessingWorkflow {
         importId: document.id,
         owner: { ownerUserId: document.ownerUserId },
         correlationId: payload.correlationId,
+        ...(payload.traceContext === undefined
+          ? {}
+          : { traceContext: payload.traceContext }),
         idempotencyKey: importResumeJobId(document.id, "extraction"),
         requestedAt: acceptedAt,
         documentFormat: document.fileExtension as "pdf" | "docx",

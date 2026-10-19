@@ -145,4 +145,51 @@ describe("import resume job contracts", () => {
       }).success,
     ).toBe(false);
   });
+
+  it("accepts only a bounded W3C trace carrier and rejects baggage", () => {
+    const validTraceContext = {
+      traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+    };
+    const payload = {
+      ...base,
+      jobType: "document_validation",
+      documentFormat: "pdf",
+      sourceStorageKey: "source.pdf",
+      uploadedAt: "2026-07-28T10:00:00.000Z",
+      foregroundDeadline: "2026-07-28T10:03:00.000Z",
+      sizeBytes: 1024,
+    };
+
+    expect(
+      importResumeJobPayloadSchema.safeParse({
+        ...payload,
+        traceContext: validTraceContext,
+      }).success,
+    ).toBe(true);
+    expect(
+      importResumeJobPayloadSchema.safeParse({
+        ...payload,
+        traceContext: {
+          ...validTraceContext,
+          baggage: "ownerId=33333333-3333-4333-8333-333333333333",
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      importResumeJobPayloadSchema.safeParse({
+        ...payload,
+        traceContext: {
+          traceparent: "00-00000000000000000000000000000000-0000000000000001-01",
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      importResumeJobPayloadSchema.safeParse({
+        ...base,
+        jobType: "foreground_timeout",
+        foregroundDeadline: "2026-07-28T10:03:00.000Z",
+        traceContext: validTraceContext,
+      }).success,
+    ).toBe(false);
+  });
 });

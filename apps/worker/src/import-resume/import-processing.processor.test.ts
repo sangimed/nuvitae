@@ -152,6 +152,27 @@ function setup(
 }
 
 describe("ImportProcessingProcessor", () => {
+  it("forwards only the validated trace carrier from validation to extraction", async () => {
+    const { processor, queue } = setup();
+    const traceContext = {
+      traceparent:
+        "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+    };
+
+    await processor.process(
+      job(IMPORT_RESUME_JOB_NAMES.validation, {
+        ...payload("document_validation"),
+        traceContext,
+      }),
+    );
+
+    expect(queue.add).toHaveBeenCalledWith(
+      IMPORT_RESUME_JOB_NAMES.extraction,
+      expect.objectContaining({ traceContext }),
+      expect.any(Object),
+    );
+  });
+
   it.each([
     ["validation", "document_validation"],
     ["extraction", "deterministic_extraction"],
