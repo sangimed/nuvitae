@@ -50,6 +50,9 @@ export class SourceDeletionService {
     readonly importId: string;
     readonly ownerUserId: string;
     readonly now: Date;
+    readonly queueJobId?: string;
+    readonly deliveryId?: string;
+    readonly retryOrdinal?: number;
   }): Promise<SourceDeletionResult> {
     const claim = await this.repository.transaction((repository) =>
       repository.claimSourceDeletion(input.importId, input.ownerUserId),
@@ -75,6 +78,15 @@ export class SourceDeletionService {
       this.events?.emit("import.storage_delete_failed", {
         importId: input.importId,
         retryable: true,
+        ...(input.queueJobId === undefined
+          ? {}
+          : { queueJobId: input.queueJobId }),
+        ...(input.deliveryId === undefined
+          ? {}
+          : { deliveryId: input.deliveryId }),
+        ...(input.retryOrdinal === undefined
+          ? {}
+          : { retryOrdinal: input.retryOrdinal }),
       });
       await this.repository
         .transaction((repository) =>

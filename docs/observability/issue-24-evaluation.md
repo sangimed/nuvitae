@@ -161,10 +161,18 @@ upload receipt. Validation, extraction and foreground-timeout failures preserve
 the explicit job correlation in the existing sanitized `import.worker_failed`
 event; exception text and job contents remain excluded.
 
-This closes the asymmetric delivery timing gap using the current event sink.
-The current event still has no unique delivery/attempt identifier or retry
-ordinal; attempt-level retry accounting remains proposed work. Request IDs,
-HTTP traces, exporter integration and backend measurements also remain proposed.
+Worker timing and failure events now carry three distinct fields: `queueJobId`
+is BullMQ's stable queue job ID (the API already assigns it deterministically),
+`deliveryId` is a fresh opaque UUID for each worker invocation, and
+`retryOrdinal` is BullMQ `attemptsMade` for the current execution (0 for the
+first attempt, 1–2 for the configured retries). Replayed deliveries retain the
+same queue ID and retry ordinal when BullMQ reports the same attempt, while
+receiving a new delivery ID. Invalid or out-of-range attempt metadata omits
+the ordinal; invalid queue IDs are omitted. The strict event schema caps the
+ordinal at 2. API enqueue timing includes the validation queue job ID.
+
+Request IDs, HTTP traces, exporter integration and backend measurements remain
+proposed work.
 
 ### Provider-to-durable-draft correlation follow-up
 

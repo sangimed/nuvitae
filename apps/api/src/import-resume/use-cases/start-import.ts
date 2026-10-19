@@ -291,6 +291,7 @@ export class StartImportService {
           correlationId: importId,
           phase: "queue_enqueued",
           source: "api",
+          queueJobId: importResumeJobId(importId, "validation"),
           at: enqueuedAt,
           durationMs: enqueuedAt.getTime() - persistedAt.getTime(),
           uploadReceivedAt: createdAt,

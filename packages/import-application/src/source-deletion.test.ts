@@ -4,6 +4,7 @@ import {
   sourceReconstructingStorageKeys,
   type SourceDeletionClaim,
 } from "./source-deletion.js";
+import type { ImportEventEmitter } from "./observability/import-events.js";
 
 const importId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const ownerUserId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -42,19 +43,37 @@ describe("SourceDeletionService", () => {
   });
 
   it("fails closed and leaves the lifecycle retryable when storage fails", async () => {
-    const harness = setup({ kind: "claimed", storageKeys: ["source-key"] });
+    const events: ImportEventEmitter = { emit: vi.fn() };
+    const harness = setup(
+      { kind: "claimed", storageKeys: ["source-key"] },
+      events,
+    );
     harness.storage.deleteObject.mockRejectedValueOnce(
       new Error("private path"),
     );
 
     await expect(
-      harness.service.delete({ importId, ownerUserId, now }),
+      harness.service.delete({
+        importId,
+        ownerUserId,
+        now,
+        queueJobId: "delete-source-job",
+        deliveryId: "delivery-id",
+        retryOrdinal: 1,
+      }),
     ).resolves.toEqual({ kind: "failed" });
     expect(harness.repository.completeSourceDeletion).not.toHaveBeenCalled();
     expect(harness.repository.failSourceDeletion).toHaveBeenCalledWith(
       importId,
       ownerUserId,
     );
+    expect(events.emit).toHaveBeenCalledWith("import.storage_delete_failed", {
+      importId,
+      retryable: true,
+      queueJobId: "delete-source-job",
+      deliveryId: "delivery-id",
+      retryOrdinal: 1,
+    });
   });
 });
 
@@ -70,7 +89,7 @@ describe("sourceReconstructingStorageKeys", () => {
   });
 });
 
-function setup(claim: SourceDeletionClaim) {
+function setup(claim: SourceDeletionClaim, events?: ImportEventEmitter) {
   const repository = {
     transaction: vi.fn(
       async (work: (repository: typeof repository) => Promise<unknown>) =>
@@ -87,7 +106,7 @@ function setup(claim: SourceDeletionClaim) {
   return {
     repository,
     storage,
-    service: new SourceDeletionService(repository, storage),
+    service: new SourceDeletionService(repository, storage, events),
   };
 }
 

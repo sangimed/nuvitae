@@ -89,6 +89,8 @@ function job(name: string, data: unknown, timestamp?: number) {
   return {
     name,
     data,
+    id: `queue-${name}`,
+    attemptsMade: 0,
     ...(timestamp === undefined ? {} : { timestamp }),
     updateProgress: vi.fn(async () => undefined),
   } as never;
@@ -182,17 +184,24 @@ describe("ImportProcessingProcessor", () => {
         );
       }
       expect(records.map((record) => record.metadata)).toEqual(
-        [125, 0, 86_400_000, undefined].map((durationMs) => ({
-          importId,
-          correlationId,
-          phase: "worker_started",
-          jobType: stage,
-          source: "worker",
-          timestampMs: now.getTime(),
-          ...(stage === "validation" ? { elapsedSinceUploadMs: 0 } : {}),
-          ...(durationMs === undefined ? {} : { durationMs }),
-        })),
+        [125, 0, 86_400_000, undefined].map((durationMs) =>
+          expect.objectContaining({
+            importId,
+            correlationId,
+            phase: "worker_started",
+            jobType: stage,
+            source: "worker",
+            timestampMs: now.getTime(),
+            ...(stage === "validation" ? { elapsedSinceUploadMs: 0 } : {}),
+            ...(durationMs === undefined ? {} : { durationMs }),
+            queueJobId: `queue-${IMPORT_RESUME_JOB_NAMES[stage]}`,
+            retryOrdinal: 0,
+          }),
+        ),
       );
+      expect(
+        new Set(records.map((record) => record.metadata.deliveryId)).size,
+      ).toBe(4);
       expect(JSON.stringify(records)).not.toMatch(
         /owner|storageKey|sourceStorageKey|resume.pdf/,
       );
@@ -228,12 +237,14 @@ describe("ImportProcessingProcessor", () => {
       expect(
         records.find((record) => record.event === "import.worker_failed")
           ?.metadata,
-      ).toEqual({
+      ).toMatchObject({
         importId,
         correlationId,
         jobType: stage,
         errorCategory: "unexpected_failure",
         retryable: true,
+        queueJobId: `queue-${IMPORT_RESUME_JOB_NAMES[stage]}`,
+        retryOrdinal: 0,
       });
       expect(JSON.stringify(records)).not.toContain(error.message);
     },
@@ -251,6 +262,47 @@ describe("ImportProcessingProcessor", () => {
       ),
     ).rejects.toBeInstanceOf(UnrecoverableError);
     expect(records).toEqual([]);
+  });
+
+  it("records distinct delivery identity and bounded BullMQ retry ordinals", async () => {
+    const records: ImportEventRecord[] = [];
+    const { processor } = setup({ records });
+    const first = job(
+      IMPORT_RESUME_JOB_NAMES.validation,
+      payload("document_validation"),
+    ) as { id: string; attemptsMade: number };
+    await processor.process(first as never);
+    await processor.process({ ...first, attemptsMade: 1 } as never);
+    await processor.process({ ...first, attemptsMade: 2 } as never);
+    await processor.process({ ...first, attemptsMade: 1 } as never);
+    await processor.process({ ...first, attemptsMade: 99 } as never);
+    await processor.process({
+      ...first,
+      id: "bad\njob-id",
+      attemptsMade: undefined,
+    } as never);
+
+    const timings = records.filter(
+      (record) => record.event === "import.timing",
+    );
+    expect(timings).toHaveLength(6);
+    expect(timings.map(({ metadata }) => metadata.retryOrdinal)).toEqual([
+      0,
+      1,
+      2,
+      1,
+      undefined,
+      undefined,
+    ]);
+    expect(
+      timings
+        .slice(0, 5)
+        .every(({ metadata }) => metadata.queueJobId === first.id),
+    ).toBe(true);
+    expect(timings[5]?.metadata).not.toHaveProperty("queueJobId");
+    const deliveryIds = timings.map(({ metadata }) => metadata.deliveryId);
+    expect(new Set(deliveryIds).size).toBe(6);
+    expect(deliveryIds.every((value) => typeof value === "string")).toBe(true);
   });
 
   it("correlates timeout failures and preserves unrecoverable retry policy", async () => {
@@ -271,13 +323,13 @@ describe("ImportProcessingProcessor", () => {
       {
         level: "warn",
         event: "import.worker_failed",
-        metadata: {
+        metadata: expect.objectContaining({
           importId,
           correlationId,
           jobType: "foreground_timeout",
           errorCategory: "unexpected_failure",
           retryable: false,
-        },
+        }),
       },
     ]);
   });
@@ -325,11 +377,18 @@ describe("ImportProcessingProcessor", () => {
         payload("source_artifact_deletion"),
       ),
     );
-    expect(sourceDeletion.delete).toHaveBeenCalledWith({
-      importId,
-      ownerUserId,
-      now,
-    });
+    expect(sourceDeletion.delete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        importId,
+        ownerUserId,
+        now,
+        queueJobId: "queue-source_artifact_deletion",
+        retryOrdinal: 0,
+      }),
+    );
+    expect(sourceDeletion.delete.mock.calls[0]?.[0].deliveryId).toMatch(
+      /^[0-9a-f-]{36}$/u,
+    );
   });
 
   it("treats a missing owner-scoped import as a no-op", async () => {
