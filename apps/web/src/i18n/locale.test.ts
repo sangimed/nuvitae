@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { catalogs, en, type MessageKey } from "./messages";
+import { catalogs, en, exportMessages, type MessageKey } from "./messages";
 import { direction, isAppLocale, resolveAppLocale, translate } from "./locale";
 
 afterEach(() => vi.unstubAllEnvs());
@@ -37,6 +37,16 @@ describe("application locale", () => {
     }
   });
 
+  it("requires exactly the English export keys and nonempty copy in every export catalog", () => {
+    for (const messages of Object.values(exportMessages)) {
+      expect(Object.keys(messages).sort()).toEqual(
+        Object.keys(exportMessages.en).sort(),
+      );
+      for (const value of Object.values(messages))
+        expect(value.trim()).not.toBe("");
+    }
+  });
+
   it("provides localized review and confirmation copy in all five catalogs", () => {
     const keys = Object.keys(en).filter((key) =>
       key.startsWith("review."),
@@ -62,6 +72,18 @@ describe("application locale", () => {
       expect(translate("fr", "shell.home")).toBe("Home");
     } finally {
       catalogs.fr["shell.home"] = original;
+    }
+  });
+
+  it("falls back to English when an export translation is missing in production", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const key = "resume.export.save";
+    const original = exportMessages.fr[key];
+    try {
+      (exportMessages.fr as Record<typeof key, string>)[key] = "";
+      expect(translate("fr", key)).toBe(exportMessages.en[key]);
+    } finally {
+      (exportMessages.fr as Record<typeof key, string>)[key] = original;
     }
   });
 });

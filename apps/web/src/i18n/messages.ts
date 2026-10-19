@@ -1,3 +1,5 @@
+export type AppLocale = "en" | "fr" | "es" | "ar" | "zh-CN";
+
 export const en = {
   "import.processing.eyebrow": "Import status",
   "import.processing.problem": "There is a problem",
@@ -292,8 +294,124 @@ export const en = {
   "review.finalized.manual": "Continue manually",
 } as const;
 
-export type MessageKey = keyof typeof en;
-export type Messages = Record<MessageKey, string>;
+export type ExportMessageKey =
+  | "resume.export.loading.title"
+  | "resume.export.loading.status"
+  | "resume.export.error.title"
+  | "resume.export.error.safe"
+  | "resume.export.retry"
+  | "resume.export.back"
+  | "resume.export.eyebrow"
+  | "resume.export.title"
+  | "resume.export.instructions"
+  | "resume.export.opening"
+  | "resume.export.save"
+  | "resume.export.status.ready"
+  | "resume.export.status.opening"
+  | "resume.export.status.complete";
+export type ExportMessages = Record<ExportMessageKey, string>;
+
+export const exportMessages: Record<AppLocale, ExportMessages> = {
+  en: {
+    "resume.export.loading.title": "Preparing your PDF",
+    "resume.export.loading.status": "Loading your resume for PDF export.",
+    "resume.export.error.title": "PDF export unavailable",
+    "resume.export.error.safe":
+      "PDF export is temporarily unavailable. Please try again.",
+    "resume.export.retry": "Try again",
+    "resume.export.back": "Back to resume",
+    "resume.export.eyebrow": "PDF export",
+    "resume.export.title": "Your PDF is ready to save",
+    "resume.export.instructions":
+      "Choose Save as PDF in the print dialog. Text remains selectable and follows the preview’s reading order.",
+    "resume.export.opening": "Opening…",
+    "resume.export.save": "Save as PDF",
+    "resume.export.status.ready": "PDF export is ready.",
+    "resume.export.status.opening": "Opening the print dialog.",
+    "resume.export.status.complete":
+      "The print dialog closed. Your resume remains unchanged.",
+  },
+  fr: {
+    "resume.export.loading.title": "Préparation de votre PDF",
+    "resume.export.loading.status": "Chargement de votre CV pour l’export PDF.",
+    "resume.export.error.title": "Export PDF indisponible",
+    "resume.export.error.safe":
+      "L’export PDF est temporairement indisponible. Réessayez.",
+    "resume.export.retry": "Réessayer",
+    "resume.export.back": "Retour au CV",
+    "resume.export.eyebrow": "Export PDF",
+    "resume.export.title": "Votre PDF est prêt à être enregistré",
+    "resume.export.instructions":
+      "Choisissez Enregistrer au format PDF dans la boîte de dialogue d’impression. Le texte reste sélectionnable et suit l’ordre de lecture de l’aperçu.",
+    "resume.export.opening": "Ouverture…",
+    "resume.export.save": "Enregistrer au format PDF",
+    "resume.export.status.ready": "L’export PDF est prêt.",
+    "resume.export.status.opening":
+      "Ouverture de la boîte de dialogue d’impression.",
+    "resume.export.status.complete":
+      "La boîte de dialogue d’impression est fermée. Votre CV reste inchangé.",
+  },
+  es: {
+    "resume.export.loading.title": "Preparando tu PDF",
+    "resume.export.loading.status":
+      "Cargando tu currículum para exportarlo a PDF.",
+    "resume.export.error.title": "La exportación a PDF no está disponible",
+    "resume.export.error.safe":
+      "La exportación a PDF no está disponible temporalmente. Inténtalo de nuevo.",
+    "resume.export.retry": "Intentar de nuevo",
+    "resume.export.back": "Volver al currículum",
+    "resume.export.eyebrow": "Exportación a PDF",
+    "resume.export.title": "Tu PDF está listo para guardarse",
+    "resume.export.instructions":
+      "Elige Guardar como PDF en el cuadro de impresión. El texto sigue siendo seleccionable y conserva el orden de lectura de la vista previa.",
+    "resume.export.opening": "Abriendo…",
+    "resume.export.save": "Guardar como PDF",
+    "resume.export.status.ready": "La exportación a PDF está lista.",
+    "resume.export.status.opening": "Abriendo el cuadro de impresión.",
+    "resume.export.status.complete":
+      "El cuadro de impresión se cerró. Tu currículum no cambió.",
+  },
+  ar: {
+    "resume.export.loading.title": "جارٍ تجهيز ملف PDF",
+    "resume.export.loading.status":
+      "جارٍ تحميل سيرتك الذاتية لتصديرها كملف PDF.",
+    "resume.export.error.title": "تصدير PDF غير متاح",
+    "resume.export.error.safe": "تصدير PDF غير متاح مؤقتًا. حاول مرة أخرى.",
+    "resume.export.retry": "حاول مرة أخرى",
+    "resume.export.back": "العودة إلى السيرة الذاتية",
+    "resume.export.eyebrow": "تصدير PDF",
+    "resume.export.title": "ملف PDF جاهز للحفظ",
+    "resume.export.instructions":
+      "اختر حفظ كملف PDF في مربع حوار الطباعة. يبقى النص قابلاً للتحديد ويتبع ترتيب القراءة في المعاينة.",
+    "resume.export.opening": "جارٍ الفتح…",
+    "resume.export.save": "حفظ كملف PDF",
+    "resume.export.status.ready": "تصدير PDF جاهز.",
+    "resume.export.status.opening": "جارٍ فتح مربع حوار الطباعة.",
+    "resume.export.status.complete":
+      "أُغلق مربع حوار الطباعة. لم تتغير سيرتك الذاتية.",
+  },
+  "zh-CN": {
+    "resume.export.loading.title": "正在准备 PDF",
+    "resume.export.loading.status": "正在加载您的简历以导出 PDF。",
+    "resume.export.error.title": "PDF 导出不可用",
+    "resume.export.error.safe": "PDF 导出暂时不可用，请稍后重试。",
+    "resume.export.retry": "重试",
+    "resume.export.back": "返回简历",
+    "resume.export.eyebrow": "PDF 导出",
+    "resume.export.title": "您的 PDF 已可保存",
+    "resume.export.instructions":
+      "请在打印对话框中选择“另存为 PDF”。文本仍可选择，并遵循预览中的阅读顺序。",
+    "resume.export.opening": "正在打开…",
+    "resume.export.save": "另存为 PDF",
+    "resume.export.status.ready": "PDF 导出已准备就绪。",
+    "resume.export.status.opening": "正在打开打印对话框。",
+    "resume.export.status.complete": "打印对话框已关闭。您的简历未发生变化。",
+  },
+} as const;
+
+export type BaseMessageKey = keyof typeof en;
+export type MessageKey = BaseMessageKey | ExportMessageKey;
+export type Messages = Record<BaseMessageKey, string>;
 
 const fr: Messages = {
   "import.processing.eyebrow": "État de l’importation",
@@ -1430,8 +1548,13 @@ const zhCN: Messages = {
   "review.finalized.manual": "继续手动填写",
 };
 
-export const catalogs = { en, fr, es, ar, "zh-CN": zhCN };
-export type AppLocale = keyof typeof catalogs;
+export const catalogs: Record<AppLocale, Messages> = {
+  en,
+  fr,
+  es,
+  ar,
+  "zh-CN": zhCN,
+};
 export const localeNames: Record<AppLocale, string> = {
   en: "English",
   fr: "Français",
