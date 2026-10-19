@@ -17,7 +17,7 @@
     "@types/pdfkit": "0.17.6",
     "@types/yazl": "3.3.1",
     "pdfkit": "0.20.2",
-    "prettier": "3.9.8",
+    "prettier": "3.9.10",
     "yazl": "3.3.1"
   }
 }
