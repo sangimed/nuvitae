@@ -79,6 +79,7 @@ export interface UploadEligibilityInput {
 export interface PartialExtractionSummary {
   readonly category: "complete" | "partial" | "no_supported_field";
   readonly mayCreateDraft: boolean;
+  readonly failureCode?: DraftThresholdFailureCode;
   readonly missingOrUnprocessedSections: readonly string[];
 }
 
@@ -230,6 +231,7 @@ export function summarizeExtractionThreshold(
     return {
       category: "no_supported_field",
       mayCreateDraft: false,
+      failureCode: draftThreshold.error.code,
       missingOrUnprocessedSections,
     };
   }

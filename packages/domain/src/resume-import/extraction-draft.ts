@@ -6,7 +6,10 @@ import type {
   ImportedDocument,
   SourceLocation,
 } from "./types.js";
-import { summarizeExtractionThreshold } from "./validation.js";
+import {
+  summarizeExtractionThreshold,
+  type DraftThresholdFailureCode,
+} from "./validation.js";
 
 export type DeterministicResumeSection =
   | "personal"
@@ -63,6 +66,11 @@ export interface ExtractionDraftBuildInput {
 export interface ExtractionDraftBuildResult {
   readonly category: "complete" | "partial" | "no_supported_field";
   readonly draft?: ImportDraft;
+  /**
+   * Stable reason for a closed admission gate. Consumers must keep recovery
+   * provider-neutral and must not turn a detected language into eligibility.
+   */
+  readonly failureCode?: DraftThresholdFailureCode;
   readonly missingOrUnprocessedSections: readonly string[];
 }
 
@@ -88,6 +96,9 @@ export function buildExtractionDraft(
   if (!threshold.mayCreateDraft)
     return {
       category: "no_supported_field",
+      ...(threshold.failureCode === undefined
+        ? {}
+        : { failureCode: threshold.failureCode }),
       missingOrUnprocessedSections: threshold.missingOrUnprocessedSections,
     };
   const draftId = input.ids.draftId();
