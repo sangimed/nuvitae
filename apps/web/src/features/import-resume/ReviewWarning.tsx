@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReviewWarning as ReviewWarningContract } from "@nuvitae/contracts";
+import { useTranslation } from "../../i18n/LocaleProvider";
 
 export function ReviewWarning(props: {
   readonly warning: ReviewWarningContract;
@@ -10,22 +11,23 @@ export function ReviewWarning(props: {
   ) => void;
 }) {
   const warning = props.warning;
+  const { t } = useTranslation();
   return (
     <article
       className={warningTone(warning)}
       aria-labelledby={`${warning.warningId}-title`}
     >
-      <h3 id={`${warning.warningId}-title`}>{warningTitle(warning)}</h3>
-      <p>{warningMessage(warning)}</p>
+      <h3 id={`${warning.warningId}-title`}>{warningTitle(warning, t)}</h3>
+      <p>{warningMessage(warning, t)}</p>
       {warning.fieldPath === undefined ? null : (
-        <p className="review-warning-context">
-          This relates to imported information in this section.
-        </p>
+        <p className="review-warning-context">{t("review.warning.context")}</p>
       )}
       {warning.reviewStatus === "needs_review" ? (
         <WarningActions {...props} />
       ) : (
-        <p>This item is {stateLabel(warning.reviewStatus)}.</p>
+        <p>
+          {t("review.warning.state")} {stateLabel(warning.reviewStatus, t)}
+        </p>
       )}
     </article>
   );
@@ -38,6 +40,7 @@ function WarningActions(props: {
     resolution: "confirmed" | "edited" | "excluded" | "intentionally_left",
   ) => void;
 }) {
+  const { t } = useTranslation();
   if (isUnsafeExtraction(props.warning)) {
     return (
       <div className="action-row">
@@ -46,7 +49,7 @@ function WarningActions(props: {
           disabled={props.pending}
           onClick={() => props.onResolve("intentionally_left")}
         >
-          Leave out for now
+          {t("review.warning.leaveOut")}
         </button>
       </div>
     );
@@ -58,50 +61,74 @@ function WarningActions(props: {
         disabled={props.pending}
         onClick={() => props.onResolve("confirmed")}
       >
-        Confirm
+        {t("review.warning.confirm")}
       </button>
       <button
         type="button"
         disabled={props.pending}
         onClick={() => props.onResolve("edited")}
       >
-        Edit information
+        {t("review.warning.edit")}
       </button>
       <button
         type="button"
         disabled={props.pending}
         onClick={() => props.onResolve("excluded")}
       >
-        Exclude
+        {t("review.warning.exclude")}
       </button>
       <button
         type="button"
         disabled={props.pending}
         onClick={() => props.onResolve("intentionally_left")}
       >
-        Leave out for now
+        {t("review.warning.leaveOut")}
       </button>
     </div>
   );
 }
 
-function warningTitle(warning: ReviewWarningContract): string {
-  if (isUnsafeExtraction(warning)) return "Information not included";
+function warningTitle(
+  warning: ReviewWarningContract,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  if (isUnsafeExtraction(warning)) return t("review.warning.unsafe.title");
   if (warning.warningType === "missing")
-    return "Information to add or leave out";
+    return t("review.warning.missing.title");
   if (warning.warningType === "ambiguous")
-    return "Please choose how to use this information";
-  return "A quick review is needed";
+    return t("review.warning.ambiguous.title");
+  return t("review.warning.default.title");
 }
 
-function warningMessage(warning: ReviewWarningContract): string {
-  if (isUnsafeExtraction(warning)) {
-    return "Nuvitae could not safely use some information from your resume. It was left out; you can add it yourself if you want it included.";
+function warningMessage(
+  warning: ReviewWarningContract,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  switch (warning.warningType) {
+    case "missing":
+      return t("review.warning.missing.message");
+    case "ambiguous":
+      return t("review.warning.message.ambiguous");
+    case "conflicting":
+      return t("review.warning.message.conflicting");
+    case "duplicate":
+      return t("review.warning.message.duplicate");
+    case "low_confidence":
+      return t("review.warning.message.lowConfidence");
+    case "inferred":
+      return t("review.warning.message.inferred");
+    case "mixed_content":
+      return t("review.warning.message.mixedContent");
+    case "expired_source":
+      return t("review.warning.message.expiredSource");
+    case "unsupported":
+    case "unsafe":
+    case "incomplete":
+    case "partial":
+      return t("review.warning.unsafe.message");
+    default:
+      return t("review.warning.message.default");
   }
-  if (warning.warningType === "missing") {
-    return "This information was not added automatically. You can add it, or leave it out for now.";
-  }
-  return warning.message;
 }
 
 function warningTone(warning: ReviewWarningContract): string {
@@ -119,6 +146,20 @@ function isUnsafeExtraction(warning: ReviewWarningContract): boolean {
   );
 }
 
-function stateLabel(state: ReviewWarningContract["reviewStatus"]): string {
-  return state.replaceAll("_", " ");
+function stateLabel(
+  state: ReviewWarningContract["reviewStatus"],
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  switch (state) {
+    case "needs_review":
+      return t("review.warning.status.needsReview");
+    case "confirmed":
+      return t("review.warning.status.confirmed");
+    case "edited":
+      return t("review.warning.status.edited");
+    case "excluded":
+      return t("review.warning.status.excluded");
+    case "intentionally_left":
+      return t("review.warning.status.intentionallyLeft");
+  }
 }

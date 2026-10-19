@@ -7,15 +7,18 @@ import {
   confirmStructuredResume,
   createConfirmationOperationId,
   createConfirmationRequest,
+  type ConfirmationClientErrorCategory,
 } from "./client";
 import {
   createDiscardOperationId,
   createDiscardRequest,
   discardImportDraft,
+  type DraftLifecycleErrorCategory,
 } from "./client";
 import { actionableReviewItems } from "./actionable-review-items";
 import { ErrorSummary } from "./ErrorSummary";
 import { focusErrorSummary } from "./focus-management";
+import { useTranslation } from "../../i18n/LocaleProvider";
 
 export function ConfirmationStep(props: {
   readonly importId: string;
@@ -25,6 +28,7 @@ export function ConfirmationStep(props: {
   readonly onStaleReview: () => Promise<void>;
   readonly disabled: boolean;
 }) {
+  const { t } = useTranslation();
   const [discardDialogOpen, setDiscardDialogOpen] = useState(false);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | undefined>();
@@ -49,7 +53,7 @@ export function ConfirmationStep(props: {
     if (pending) return;
     setPending(true);
     setError(undefined);
-    setMessage("Creating your resume.");
+    setMessage(t("review.confirm.status.creating"));
     const outcome = await confirmStructuredResume({
       importId: props.importId,
       request: createConfirmationRequest({
@@ -59,15 +63,18 @@ export function ConfirmationStep(props: {
     });
     setPending(false);
     if (outcome.ok) {
-      setMessage("Your resume is ready.");
-      props.onConfirmed(outcome.response.resumeUrl, "Your resume is ready.");
+      setMessage(t("review.confirm.status.ready"));
+      props.onConfirmed(
+        outcome.response.resumeUrl,
+        t("review.confirm.status.ready"),
+      );
       return;
     }
     if (outcome.category === "stale_review") {
       await props.onStaleReview();
-      setError("Your review has changed. We reloaded the latest information.");
+      setError(t("review.error.stale"));
     } else {
-      setError(outcome.message);
+      setError(confirmationErrorMessage(outcome.category, t));
     }
   }
 
@@ -75,7 +82,7 @@ export function ConfirmationStep(props: {
     if (pending) return;
     setPending(true);
     setError(undefined);
-    setMessage("Scheduling source cleanup.");
+    setMessage(t("review.confirm.status.discarding"));
     const outcome = await discardImportDraft({
       importId: props.importId,
       request: createDiscardRequest({
@@ -86,10 +93,10 @@ export function ConfirmationStep(props: {
     setPending(false);
     if (outcome.ok) {
       setDiscardDialogOpen(false);
-      props.onDiscarded(outcome.response.userMessage);
+      props.onDiscarded(t("review.confirm.discarded"));
       return;
     }
-    setError(outcome.message);
+    setError(discardErrorMessage(outcome.category, t));
   }
 
   function closeDialog() {
@@ -104,8 +111,8 @@ export function ConfirmationStep(props: {
     >
       <h2 id="confirmation-title">
         {readyForConfirmation
-          ? "Your review is complete"
-          : "Finish your review"}
+          ? t("review.confirm.title.ready")
+          : t("review.confirm.title.remaining")}
       </h2>
       <div role="status" aria-live="polite" aria-atomic="true">
         {pending ? message : message}
@@ -113,16 +120,13 @@ export function ConfirmationStep(props: {
       {error === undefined ? null : (
         <ErrorSummary
           ref={errorRef}
-          heading="The action could not be completed"
+          heading={t("review.confirm.error.heading")}
           errors={[{ id: "confirmation-error", message: error }]}
         />
       )}
       {readyForConfirmation ? (
         <div className="message message-success">
-          <p>
-            All review details are complete. Continue to create your editable
-            resume from the information you have kept and edited.
-          </p>
+          <p>{t("review.confirm.ready.description")}</p>
           <button
             ref={actionRef}
             type="button"
@@ -130,17 +134,21 @@ export function ConfirmationStep(props: {
             disabled={props.disabled || pending}
             onClick={runConfirmation}
           >
-            {pending ? "Creating your resume…" : "Create my resume"}
+            {pending
+              ? t("review.confirm.creating")
+              : t("review.confirm.create")}
           </button>
         </div>
       ) : (
         <div className="message" aria-labelledby="blocked-confirmation-title">
-          <h3 id="blocked-confirmation-title">Review remaining details</h3>
+          <h3 id="blocked-confirmation-title">
+            {t("review.confirm.remaining.heading")}
+          </h3>
           <p>
             {actionableItems.length === 1
-              ? "1 detail still needs your attention."
-              : `${actionableItems.length} details still need your attention.`}{" "}
-            Review these items before creating your resume.
+              ? t("review.confirm.remaining.one")
+              : `${actionableItems.length} ${t("review.confirm.remaining.many")}`}{" "}
+            {t("review.confirm.remaining.instruction")}
           </p>
         </div>
       )}
@@ -151,26 +159,25 @@ export function ConfirmationStep(props: {
           disabled={props.disabled || pending}
           onClick={() => setDiscardDialogOpen(true)}
         >
-          Discard import
+          {t("review.confirm.discard")}
         </button>
       </div>
       <AccessibleDialog
         open={discardDialogOpen}
-        label="Discard import"
+        label={t("review.confirm.discard")}
         describedBy="discard-dialog-description"
         closeOnEscape
         closeOnBackdropClick={false}
         destructive
+        destructiveLabel={t("review.confirm.destructive")}
         initialFocus={discardPrimaryRef}
         onClose={closeDialog}
       >
         {!discardDialogOpen ? null : (
           <>
-            <h3 id="discard-dialog-title">Discard import</h3>
+            <h3 id="discard-dialog-title">{t("review.confirm.discard")}</h3>
             <p id="discard-dialog-description">
-              Nuvitae will discard this unconfirmed draft and schedule source
-              cleanup. Deletion is not complete immediately, and an already
-              confirmed resume would not be deleted by this action.
+              {t("review.confirm.dialog.description")}
             </p>
             <div className="action-row">
               <button
@@ -180,7 +187,9 @@ export function ConfirmationStep(props: {
                 disabled={pending}
                 onClick={runDiscard}
               >
-                {pending ? "Working" : "Discard import"}
+                {pending
+                  ? t("review.confirm.working")
+                  : t("review.confirm.discard")}
               </button>
               <button
                 type="button"
@@ -188,7 +197,7 @@ export function ConfirmationStep(props: {
                 disabled={pending}
                 onClick={closeDialog}
               >
-                Cancel
+                {t("review.confirm.cancel")}
               </button>
             </div>
           </>
@@ -196,4 +205,58 @@ export function ConfirmationStep(props: {
       </AccessibleDialog>
     </section>
   );
+}
+
+function confirmationErrorMessage(
+  category: ConfirmationClientErrorCategory,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  switch (category) {
+    case "authentication_required":
+      return t("review.confirm.error.authentication");
+    case "not_found":
+      return t("review.confirm.error.notFound");
+    case "draft_not_ready":
+      return t("review.confirm.error.notReady");
+    case "unresolved_warnings":
+      return t("review.confirm.error.unresolved");
+    case "no_user_confirmed_field":
+      return t("review.confirm.error.noConfirmedField");
+    case "reviewed_content_not_mappable":
+      return t("review.confirm.error.content");
+    case "stale_update":
+      return t("review.confirm.error.staleUpdate");
+    case "expired":
+      return t("review.confirm.error.expired");
+    case "concurrent_confirmation":
+      return t("review.confirm.error.concurrent");
+    case "temporarily_unavailable":
+      return t("review.confirm.error.unavailable");
+    case "cancelled":
+      return t("review.confirm.error.cancelled");
+    default:
+      return t("review.confirm.error.generic");
+  }
+}
+
+function discardErrorMessage(
+  category: DraftLifecycleErrorCategory,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  switch (category) {
+    case "authentication_required":
+      return t("review.confirm.error.authentication");
+    case "not_found":
+      return t("review.confirm.error.notFound");
+    case "stale_review":
+      return t("review.error.stale");
+    case "expired":
+      return t("review.confirm.error.expired");
+    case "temporarily_unavailable":
+      return t("review.confirm.error.unavailable");
+    case "cancelled":
+      return t("review.confirm.error.cancelled");
+    default:
+      return t("review.confirm.error.generic");
+  }
 }

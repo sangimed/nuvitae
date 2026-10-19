@@ -11,6 +11,7 @@ import {
   createReviewOperationId,
   readReviewDraft,
   sendReviewMutation,
+  type ReviewClientErrorCategory,
 } from "./client";
 import { ConfirmationStep } from "./ConfirmationStep";
 import {
@@ -24,8 +25,10 @@ import { ReviewWarning } from "./ReviewWarning";
 import { formatReviewDate, formatReviewDateRange } from "./review-date";
 import { reviewFieldLabel, reviewSectionLabel } from "./review-labels";
 import { recordImportTiming } from "./client";
+import { useTranslation } from "../../i18n/LocaleProvider";
 
 export function ReviewStep(props: { readonly importId: string }) {
+  const { t } = useTranslation();
   const [draft, setDraft] = useState<ReviewDraftReadResponse | undefined>();
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState(false);
@@ -81,10 +84,10 @@ export function ReviewStep(props: { readonly importId: string }) {
       setLoading(false);
       if (outcome.ok) {
         setDraft(outcome.response);
-        setMessage(outcome.response.userMessage);
+        setMessage(t("review.minimum.loaded"));
         setError(undefined);
       } else if (outcome.category !== "cancelled") {
-        setError(outcome.message);
+        setError(reviewErrorMessage(outcome.category, t));
       }
     });
     return () => controller.abort();
@@ -106,7 +109,7 @@ export function ReviewStep(props: { readonly importId: string }) {
   ) {
     setPending(true);
     setError(undefined);
-    setMessage("Saving review change.");
+    setMessage(t("review.update.saving"));
     const request = createReviewMutationRequest({
       operationId: createReviewOperationId(),
       expectedReviewRevision: currentDraft.reviewRevision,
@@ -118,7 +121,7 @@ export function ReviewStep(props: { readonly importId: string }) {
     });
     if (outcome.ok) {
       setDraft(outcome.response.draft);
-      setMessage(outcome.response.userMessage);
+      setMessage(t("review.update.saved"));
       setPending(false);
       if (focusAfterSave) focusNextReviewItem(outcome.response.draft);
       return outcome.response.draft;
@@ -126,9 +129,9 @@ export function ReviewStep(props: { readonly importId: string }) {
     if (outcome.category === "stale_review") {
       const refreshed = await readReviewDraft({ importId: props.importId });
       if (refreshed.ok) setDraft(refreshed.response);
-      setError("Your review has changed. We reloaded the latest information.");
+      setError(t("review.error.stale"));
     } else {
-      setError(outcome.message);
+      setError(reviewErrorMessage(outcome.category, t));
     }
     setPending(false);
     return undefined;
@@ -172,9 +175,7 @@ export function ReviewStep(props: { readonly importId: string }) {
         false,
       );
       if (current === undefined) {
-        setError(
-          "Your confirmation was saved, but one related review item still needs attention.",
-        );
+        setError(t("review.update.linkedWarningFailed"));
         return;
       }
       updated = current;
@@ -208,8 +209,8 @@ export function ReviewStep(props: { readonly importId: string }) {
   if (loading) {
     return (
       <section className="import-card" aria-busy="true">
-        <h1>Loading import review</h1>
-        <p role="status">Loading your resume information.</p>
+        <h1>{t("review.minimum.loading")}</h1>
+        <p role="status">{t("review.minimum.loadingStatus")}</p>
       </section>
     );
   }
@@ -217,13 +218,13 @@ export function ReviewStep(props: { readonly importId: string }) {
   if (draft === undefined) {
     return (
       <section className="import-card" aria-labelledby="review-error-title">
-        <h1 id="review-error-title">Review unavailable</h1>
+        <h1 id="review-error-title">{t("review.minimum.unavailable")}</h1>
         <ErrorSummary
           ref={summaryRef}
           errors={[
             {
               id: "review-load-error",
-              message: error ?? "This import is not ready for review yet.",
+              message: error ?? t("review.update.error.notReady"),
             },
           ]}
         />
@@ -235,14 +236,9 @@ export function ReviewStep(props: { readonly importId: string }) {
 
   return (
     <section className="review-shell" aria-labelledby="review-title">
-      <p className="eyebrow">Resume review</p>
-      <h1 id="review-title">
-        Check the information Nuvitae needs you to confirm
-      </h1>
-      <p className="review-source-note">
-        You are reviewing a structured draft. Your uploaded file stays
-        unchanged.
-      </p>
+      <p className="eyebrow">{t("review.minimum.eyebrow")}</p>
+      <h1 id="review-title">{t("review.minimum.title")}</h1>
+      <p className="review-source-note">{t("review.minimum.sourceNote")}</p>
       <div
         ref={liveRef}
         tabIndex={-1}
@@ -251,7 +247,7 @@ export function ReviewStep(props: { readonly importId: string }) {
         aria-live="polite"
         aria-atomic="true"
       >
-        {pending ? "Saving review change." : message}
+        {pending ? t("review.update.saving") : message}
       </div>
       {finalized === undefined ? null : finalized.kind === "confirmed" ? (
         <div
@@ -260,7 +256,8 @@ export function ReviewStep(props: { readonly importId: string }) {
           role="status"
           tabIndex={-1}
         >
-          {finalized.message} <a href={finalized.resumeUrl}>Open my resume</a>
+          {finalized.message}{" "}
+          <a href={finalized.resumeUrl}>{t("review.finalized.openResume")}</a>
         </div>
       ) : (
         <div
@@ -271,15 +268,15 @@ export function ReviewStep(props: { readonly importId: string }) {
         >
           <p>{finalized.message}</p>
           <div className="action-row">
-            <a href="/import-resume">Start a new import</a>
-            <a href="/resumes/new/manual">Continue manually</a>
+            <a href="/import-resume">{t("review.finalized.newImport")}</a>
+            <a href="/resumes/new/manual">{t("review.finalized.manual")}</a>
           </div>
         </div>
       )}
       {error === undefined ? null : (
         <ErrorSummary
           ref={summaryRef}
-          heading="The review change could not be saved"
+          heading={t("review.update.error.heading")}
           errors={[
             {
               id: "review-error",
@@ -423,6 +420,34 @@ export function ReviewStep(props: { readonly importId: string }) {
       />
     </section>
   );
+}
+
+function reviewErrorMessage(
+  category: ReviewClientErrorCategory,
+  t: ReturnType<typeof useTranslation>["t"],
+): string {
+  switch (category) {
+    case "authentication_required":
+      return t("review.update.error.authentication");
+    case "not_found":
+      return t("review.update.error.notFound");
+    case "not_ready":
+      return t("review.update.error.notReady");
+    case "stale_review":
+      return t("review.error.stale");
+    case "expired":
+      return t("review.update.error.expired");
+    case "rate_limited":
+      return t("review.update.error.rateLimited");
+    case "temporarily_unavailable":
+      return t("review.update.error.unavailable");
+    case "malformed_response":
+      return t("review.update.error.malformed");
+    case "cancelled":
+      return t("review.update.error.cancelled");
+    case "unexpected_failure":
+      return t("review.update.error.generic");
+  }
 }
 
 function focusReviewTarget(target: HTMLElement | null) {
