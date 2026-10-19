@@ -106,8 +106,8 @@ describe("buildExtractionDraft", () => {
     expect(result).toMatchObject({
       category: "no_supported_field",
       failureCode: "unsupported_language",
-      draft: undefined,
     });
+    expect(result).not.toHaveProperty("draft");
   });
 
   it("preserves a provenance-bearing inferred-only candidate for review", () => {
