@@ -33,9 +33,7 @@ const storageKeySchema = z
 const correlationIdSchema = uuidSchema;
 const traceparentSchema = z
   .string()
-  .regex(
-    /^00-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$/u,
-  )
+  .regex(/^00-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$/u)
   .refine(
     (value) =>
       !value.startsWith("00-00000000000000000000000000000000-") &&

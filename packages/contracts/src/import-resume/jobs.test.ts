@@ -179,7 +179,8 @@ describe("import resume job contracts", () => {
       importResumeJobPayloadSchema.safeParse({
         ...payload,
         traceContext: {
-          traceparent: "00-00000000000000000000000000000000-0000000000000001-01",
+          traceparent:
+            "00-00000000000000000000000000000000-0000000000000001-01",
         },
       }).success,
     ).toBe(false);
