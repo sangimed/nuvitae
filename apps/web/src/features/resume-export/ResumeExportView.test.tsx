@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ConfirmedStructuredResumeReadResponse } from "@nuvitae/contracts";
 import { ResumeExportView } from "./ResumeExportView";
+import { LocaleProvider } from "../../i18n/LocaleProvider";
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -36,10 +37,14 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-async function renderView() {
+async function renderView(initialLocale: "en" | "fr" | "ar" = "en") {
   root = createRoot(container);
   await act(async () => {
-    root?.render(<ResumeExportView resumeId={resumeId} />);
+    root?.render(
+      <LocaleProvider initialLocale={initialLocale}>
+        <ResumeExportView resumeId={resumeId} />
+      </LocaleProvider>,
+    );
   });
 }
 
@@ -52,6 +57,25 @@ function button(name: string): HTMLButtonElement {
 }
 
 describe("ResumeExportView", () => {
+  it("localizes export controls for French and Arabic without changing resume content", async () => {
+    mocks.readConfirmedStructuredResume.mockResolvedValue({
+      ok: true,
+      response: confirmedResume(),
+    });
+
+    await renderView("fr");
+    expect(container.textContent).toContain("Votre PDF est prêt à être enregistré");
+    expect(container.textContent).toContain("Jordan Avery");
+
+    await act(async () => root?.unmount());
+    root = undefined;
+    container.replaceChildren();
+    await renderView("ar");
+    expect(container.textContent).toContain("ملف PDF جاهز للحفظ");
+    expect(container.textContent).toContain("Jordan Avery");
+    expect(container.querySelector("article")?.getAttribute("dir")).toBe("auto");
+  });
+
   it("uses the canonical semantic renderer and reports native PDF export success", async () => {
     mocks.readConfirmedStructuredResume.mockResolvedValue({
       ok: true,
@@ -95,8 +119,9 @@ describe("ResumeExportView", () => {
     await renderView();
 
     expect(container.querySelector('[role="alert"]')?.textContent).toBe(
-      "Connection temporarily lost.",
+      "PDF export is temporarily unavailable. Please try again.",
     );
+    expect(container.textContent).not.toContain("Connection temporarily lost.");
     expect(container.textContent).not.toContain("Jordan Avery");
     expect(print).not.toHaveBeenCalled();
 
@@ -118,8 +143,8 @@ describe("ResumeExportView", () => {
 
     await act(async () => vi.advanceTimersByTime(15_000));
 
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain(
-      "PDF preparation took too long",
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+      "PDF export is temporarily unavailable. Please try again.",
     );
     expect(button("Try again")).toBeDefined();
     const request = mocks.readConfirmedStructuredResume.mock.calls[0]?.[0] as

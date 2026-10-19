@@ -9,6 +9,7 @@ import {
 } from "../resume-renderer";
 import { readConfirmedStructuredResume } from "../import-resume/client";
 import { recordCommunityFunnelEvent } from "../../services/community-funnel";
+import { useTranslation } from "../../i18n/LocaleProvider";
 
 const exportPreparationTimeoutMs = 15_000;
 
@@ -22,6 +23,7 @@ type ExportState =
   | { readonly kind: "error"; readonly message: string };
 
 export function ResumeExportView(props: { readonly resumeId: string }) {
+  const { t } = useTranslation();
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<ExportState>({ kind: "loading" });
   const printTimer = useRef<number | undefined>(undefined);
@@ -40,8 +42,7 @@ export function ResumeExportView(props: { readonly resumeId: string }) {
         });
         setState({
           kind: "error",
-          message:
-            "PDF preparation took too long. Your resume is unchanged. Please try again.",
+          message: t("resume.export.error.safe"),
         });
       }
     }, exportPreparationTimeoutMs);
@@ -86,8 +87,8 @@ export function ResumeExportView(props: { readonly resumeId: string }) {
   if (state.kind === "loading") {
     return (
       <section className="import-card" aria-busy="true">
-        <h1>Preparing your PDF</h1>
-        <p role="status">Loading your resume for PDF export.</p>
+        <h1>{t("resume.export.loading.title")}</h1>
+        <p role="status">{t("resume.export.loading.status")}</p>
       </section>
     );
   }
@@ -95,16 +96,16 @@ export function ResumeExportView(props: { readonly resumeId: string }) {
   if (state.kind === "error") {
     return (
       <section className="import-card" aria-labelledby="export-error-title">
-        <h1 id="export-error-title">PDF export unavailable</h1>
-        <p role="alert">{state.message}</p>
+        <h1 id="export-error-title">{t("resume.export.error.title")}</h1>
+        <p role="alert">{t("resume.export.error.safe")}</p>
         <div className="resume-actions">
           <button
             type="button"
             onClick={() => setAttempt((value) => value + 1)}
           >
-            Try again
+            {t("resume.export.retry")}
           </button>
-          <Link href={`/resumes/${props.resumeId}`}>Back to resume</Link>
+          <Link href={`/resumes/${props.resumeId}`}>{t("resume.export.back")}</Link>
         </div>
       </section>
     );
@@ -130,7 +131,7 @@ export function ResumeExportView(props: { readonly resumeId: string }) {
         });
         setState({
           kind: "error",
-          message: "The print dialog could not be opened. Please try again.",
+          message: t("resume.export.error.safe"),
         });
       }
     }, 0);
@@ -139,28 +140,27 @@ export function ResumeExportView(props: { readonly resumeId: string }) {
   return (
     <section className="resume-export-view" aria-labelledby="export-title">
       <div className="export-controls">
-        <p className="eyebrow">PDF export</p>
-        <h1 id="export-title">Your PDF is ready to save</h1>
-        <p>
-          Choose <strong>Save as PDF</strong> in the print dialog. Text remains
-          selectable and follows the preview&apos;s reading order.
-        </p>
+        <p className="eyebrow">{t("resume.export.eyebrow")}</p>
+        <h1 id="export-title">{t("resume.export.title")}</h1>
+        <p>{t("resume.export.instructions")}</p>
         <div className="resume-actions">
           <button
             type="button"
             onClick={openPrintDialog}
             disabled={state.printStatus === "opening"}
           >
-            {state.printStatus === "opening" ? "Opening…" : "Save as PDF"}
+            {state.printStatus === "opening"
+              ? t("resume.export.opening")
+              : t("resume.export.save")}
           </button>
-          <Link href={`/resumes/${props.resumeId}`}>Back to resume</Link>
+          <Link href={`/resumes/${props.resumeId}`}>{t("resume.export.back")}</Link>
         </div>
         <p role="status" aria-live="polite">
           {state.printStatus === "idle"
-            ? "PDF export is ready."
+            ? t("resume.export.status.ready")
             : state.printStatus === "opening"
-              ? "Opening the print dialog."
-              : "The print dialog closed. Your resume remains unchanged."}
+              ? t("resume.export.status.opening")
+              : t("resume.export.status.complete")}
         </p>
       </div>
       <ProfessionalResume

@@ -1,4 +1,10 @@
-import { catalogs, en, type AppLocale, type MessageKey } from "./messages";
+import {
+  catalogs,
+  en,
+  exportMessages,
+  type AppLocale,
+  type MessageKey,
+} from "./messages";
 
 export const localeCookie = "nuvitae-app-locale";
 
@@ -38,10 +44,13 @@ export function resolveAppLocale(
 }
 
 export function translate(locale: AppLocale, key: MessageKey): string {
-  const translated = catalogs[locale][key];
+  const translated =
+    key in exportMessages.en
+      ? exportMessages[locale][key as keyof typeof exportMessages.en]
+      : catalogs[locale][key as keyof typeof en];
   if (translated) return translated;
   if (process.env.NODE_ENV !== "production") {
     throw new Error(`Missing application translation: ${locale}:${key}`);
   }
-  return en[key] ?? key;
+  return en[key as keyof typeof en] ?? key;
 }
