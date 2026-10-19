@@ -272,8 +272,10 @@ export const en = {
   "review.update.linkedWarningFailed":
     "Your confirmation was saved, but one related review item still needs attention.",
   "review.update.error.heading": "The review change could not be saved",
-  "review.update.error.authentication": "Sign in to continue reviewing this import.",
-  "review.update.error.notFound": "This import is unavailable or no longer accessible.",
+  "review.update.error.authentication":
+    "Sign in to continue reviewing this import.",
+  "review.update.error.notFound":
+    "This import is unavailable or no longer accessible.",
   "review.update.error.notReady": "This import is not ready for review yet.",
   "review.update.error.expired": "This import has expired.",
   "review.update.error.rateLimited":
@@ -1165,7 +1167,8 @@ const ar: Messages = {
   "review.update.error.heading": "تعذّر حفظ التغيير",
   "review.update.error.authentication":
     "سجّل الدخول لمتابعة مراجعة هذا الاستيراد.",
-  "review.update.error.notFound": "هذا الاستيراد غير متاح أو لم يعد الوصول إليه ممكنًا.",
+  "review.update.error.notFound":
+    "هذا الاستيراد غير متاح أو لم يعد الوصول إليه ممكنًا.",
   "review.update.error.notReady": "هذا الاستيراد غير جاهز للمراجعة بعد.",
   "review.update.error.expired": "انتهت صلاحية هذا الاستيراد.",
   "review.update.error.rateLimited":
@@ -1175,7 +1178,8 @@ const ar: Messages = {
   "review.update.error.malformed":
     "تعذّرت قراءة استجابة المراجعة بأمان. حاول مجددًا لاحقًا.",
   "review.update.error.cancelled": "تم إيقاف طلب المراجعة.",
-  "review.update.error.generic": "تعذّر إكمال طلب المراجعة. حاول مجددًا لاحقًا.",
+  "review.update.error.generic":
+    "تعذّر إكمال طلب المراجعة. حاول مجددًا لاحقًا.",
   "review.finalized.openResume": "افتح سيرتي الذاتية",
   "review.finalized.newImport": "ابدأ استيرادًا جديدًا",
   "review.finalized.manual": "تابع يدويًا",
