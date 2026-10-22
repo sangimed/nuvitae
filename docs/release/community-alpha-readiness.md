@@ -4,6 +4,72 @@ This is the execution record and reproducible checklist for issue #61. It is a
 final integration gate, not a substitute for completing its dependencies. A
 passing subset must never be reported as **READY**.
 
+## Revalidation record — 22 September 2026
+
+**Verdict: NOT READY.** The candidate available in the validation environment
+was `550cc8dcf5c16f02aabce2610938751053dbf471`. The working tree was clean and
+the candidate includes the previously integrated #54–#60, #40, #44, and #45
+work described below. However, this environment had neither a configured Git
+remote/GitHub credential nor a Docker executable. Consequently the validator
+could not itself fetch `origin/main` or execute the repository-required Docker
+workflow. Subsequent repository-side verification for PR #130 confirms that
+`550cc8dcf5c16f02aabce2610938751053dbf471` was the `main` tip used as its base.
+No provider credential suitable for a Nuvitae device authorization was
+available.
+
+### Commands and results
+
+| Check                                      | Result  | Privacy-safe evidence                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Recoverable pre-work snapshot              | PASS    | A complete filesystem copy was created outside the repository before branch or file changes.                                                                                                                                                                                                                                                                                |
+| Candidate provenance                       | PASS    | `git rev-parse HEAD` identified the SHA above. The Codex environment could not fetch because it had no `origin`, but subsequent GitHub-side verification confirms the same SHA was the `main` tip and PR #130 base.                                                                                                                                                         |
+| Working-tree baseline                      | PASS    | `git status --short --branch` contained only the branch header before validation changes.                                                                                                                                                                                                                                                                                   |
+| Dependency review                          | PASS    | Local history and the prior integration record show the import/PDF, persistence, contextual proposal, deletion, onboarding, Community guide, upload-hardening, supply-chain, and response-policy work integrated.                                                                                                                                                           |
+| Workflow/gate inspection                   | PASS    | Quality, documentation, design, secret scanning, CodeQL, Compose configuration, Dockerfile, and runtime-image jobs were inspected. On the private repository, a green Security analysis workflow does not mean CodeQL ran: its job is skipped by `if: github.event.repository.private == false`. Issue #118 tracks enabling Code Scanning when repository setup permits it. |
+| Deterministic combined gate                | BLOCKED | The one permitted execution of `scripts/community-alpha-deterministic-gate.sh` stopped before phase A with `Docker Compose is required.` because `docker` is not installed. It was not retried.                                                                                                                                                                             |
+| Clean Community installation and readiness | BLOCKED | Docker absence prevented a fresh Compose project, migrations, five-service health, network-exposure checks, and restart persistence.                                                                                                                                                                                                                                        |
+| Owner session and authorization            | BLOCKED | No Community runtime was available for signed-out, sign-in, refresh, cookie, logout/revocation, wrong-owner, or response-header checks.                                                                                                                                                                                                                                     |
+| Deterministic import-to-PDF journey        | BLOCKED | Unit, integration, persistence, browser, PDF, source-deletion, security, and Local Play suites are present, but repository policy requires executing them through Compose and that was impossible.                                                                                                                                                                          |
+| Non-technical rendered UX                  | BLOCKED | Desktop/mobile onboarding, review, editor, preview, persistence, export, recovery, and privacy controls could not be exercised in a browser.                                                                                                                                                                                                                                |
+| Security and repository controls           | BLOCKED | Local `actionlint`, `gitleaks`, and `trivy` were unavailable. GitHub reports `main` as `protected: false`, with no classic branch protection. Repository rulesets are unavailable under the current private repository/account plan rather than merely unverified. Security analysis is green, but CodeQL is skipped by design on the private repository; see #118.         |
+| Real-provider smoke                        | NOT RUN | No provider authorization was started and invocation count was zero. No tokens, device codes, prompts, resume data, source fragments, or provider responses were captured.                                                                                                                                                                                                  |
+
+Host-installed Node/pnpm commands were not substituted for the Docker-backed
+release workflow. A later corrective pass used the pinned pnpm/Prettier only to
+format this Markdown record and check repository formatting; that is not
+runtime, clean-install, or lockfile evidence.
+
+### Current blockers and required closure evidence
+
+1. **All Docker-backed release evidence remains absent.** On a Docker-capable
+   machine, run `scripts/community-alpha-deterministic-gate.sh` once and retain
+   only phase names, exit codes, aggregate scanner results, and the candidate
+   SHA. Every phase must pass, including locked install, format, lint, types,
+   tests, persistence, audit, build, parser isolation, and browser journeys.
+2. **The clean normal-Community journey remains unverified.** Execute phases B
+   through E below with a previously unused Compose project and without deleting
+   volumes. Verify production owner authentication, recovery, editor/preview,
+   ATS PDF, save/reopen, deletion, privacy-safe logs, security behavior, and the
+   desktop/mobile journey. Local Play alone does not close this blocker.
+3. **The bounded provider demonstration remains unverified.** A maintainer with
+   a Docker-capable environment and valid Codex access must follow phase D
+   exactly: at most one authorization, one upload/semantic attempt, and one
+   contextual proposal, with no retry and content-free evidence. A failure is a
+   recorded failure, not permission to repeat the invocation.
+4. **Relevant repository and release-owner controls are not satisfied.** GitHub
+   reports no classic protection on `main`; rulesets are unavailable for the
+   current private repository/account setup. The release owner must establish
+   enforceable required quality/security checks and CODEOWNERS review, confirm
+   the private vulnerability intake, and review applicable scanner runs. A
+   green Security analysis workflow must not be recorded as a CodeQL pass while
+   the private-repository condition skips that job. Issue #118 remains the
+   long-term Code Scanning/CodeQL follow-up.
+
+No new product defect was established: the observed failures are validation
+environment/release-evidence blockers, so no speculative product bug was filed.
+Issue #61 must remain open. The exact manual commands and privacy constraints
+for closing these blockers are the phase A–E procedures below.
+
 ## Final execution record — 5 September 2026
 
 **Verdict: NOT READY.** The integrated implementation is materially more
