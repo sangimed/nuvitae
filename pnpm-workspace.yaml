@@ -3,7 +3,9 @@ packages:
   - "packages/*"
 overrides:
   brace-expansion@^2.0.0: 2.1.4
-  multer: 2.3.0
+  # GHSA-q7qp-rjg7-q26m: Nest 12.2.0 pins affected Multer 2.4.0.
+  # Revisit when Nest pins a patched version; keep this within Multer 2.x.
+  multer@^2.0.0: 2.5.0
   nanoid: 3.3.18
   source-map-js: 1.2.2
 allowBuilds:
