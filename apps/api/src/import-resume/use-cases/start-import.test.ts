@@ -278,6 +278,65 @@ describe("StartImportService", () => {
     });
   });
 
+  it("keeps queued state when validation starts before publication returns", async () => {
+    const harness = createHarness({ withQueue: true });
+    let persisted: ImportedDocument | undefined;
+    let validationSnapshot: ImportedDocument | undefined;
+    harness.repository.findImportByOwner.mockImplementation(async () => ({
+      document: persisted ?? createdDocument(harness),
+      artifacts: [],
+    }));
+    harness.repository.saveImportLifecycle.mockImplementation(
+      async (document: ImportedDocument) => {
+        persisted = document;
+        return document;
+      },
+    );
+    harness.queuePublisher.addBulk.mockImplementationOnce(async () => {
+      const aggregate = await harness.repository.findImportByOwner(
+        importId,
+        ownerUserId,
+      );
+      // A validator can read the committed document as soon as BullMQ accepts
+      // the job, before addBulk returns to the API. Its later lifecycle write
+      // must not restore the pre-queue processing status from that snapshot.
+      validationSnapshot = {
+        ...aggregate.document,
+        validationStatus: "accepted",
+      };
+    });
+
+    await startPdf(harness.service);
+    expect(validationSnapshot).toBeDefined();
+    if (validationSnapshot === undefined) throw new Error("missing delivery");
+    await harness.repository.saveImportLifecycle(validationSnapshot);
+    expect(persisted).toMatchObject({
+      processingStatus: "queued",
+      validationStatus: "accepted",
+    });
+  });
+
+  it("marks a failed queue publication failed and releases its reservation", async () => {
+    const harness = createHarness({ withQueue: true });
+    harness.queuePublisher.addBulk.mockRejectedValueOnce(
+      new Error("unavailable"),
+    );
+
+    await expect(startPdf(harness.service)).rejects.toMatchObject({
+      status: 503,
+      code: "persistence_unavailable",
+    });
+    expect(harness.repository.saveImportLifecycle).toHaveBeenCalledWith(
+      expect.objectContaining({ processingStatus: "failed" }),
+    );
+    expect(harness.limits.releaseReservation).toHaveBeenCalledWith(
+      ownerUserId,
+      reservation.id,
+      reservation.attemptedAt,
+    );
+    expect(harness.storage.deleteObject).not.toHaveBeenCalled();
+  });
+
   it("rolls back without persistence when private storage fails", async () => {
     const harness = createHarness({ storageFailure: "private/root secret" });
     await expect(startPdf(harness.service)).rejects.toMatchObject({
