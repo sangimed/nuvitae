@@ -36,6 +36,12 @@ export interface VerticalSliceImportInvariants {
   readonly processingStatus: string | null;
   readonly draftCount: number;
   readonly structuredResumeCount: number;
+  readonly warnings: readonly {
+    readonly warningId: string;
+    readonly warningType: string;
+    readonly reviewStatus: string;
+    readonly requiresResolution: boolean;
+  }[];
 }
 
 export async function readImportInvariants(
@@ -70,6 +76,14 @@ export async function readImportInvariants(
           AND d.owner_user_id = $2`,
       [importId, ownerUserId],
     );
+    const warningResult = await client.query(
+      `SELECT w.id, w.warning_type, w.review_status, w.requires_resolution
+         FROM import_warnings w
+         JOIN import_drafts d
+           ON d.id = w.import_draft_id AND d.owner_user_id = w.owner_user_id
+        WHERE d.imported_document_id = $1 AND d.owner_user_id = $2`,
+      [importId, ownerUserId],
+    );
     const processingStatus =
       documentResult.rows[0]?.processing_status === undefined
         ? null
@@ -78,6 +92,12 @@ export async function readImportInvariants(
       processingStatus,
       draftCount: Number(draftResult.rows[0]?.n ?? 0),
       structuredResumeCount: Number(resumeResult.rows[0]?.n ?? 0),
+      warnings: warningResult.rows.map((warning) => ({
+        warningId: String(warning.id),
+        warningType: String(warning.warning_type),
+        reviewStatus: String(warning.review_status),
+        requiresResolution: warning.requires_resolution === true,
+      })),
     };
   } finally {
     await client.end();
