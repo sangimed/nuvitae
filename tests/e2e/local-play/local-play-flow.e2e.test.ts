@@ -1,3 +1,9 @@
+import { DataSource } from "typeorm";
+import {
+  expandReviewSections,
+  reviewAndCreateResume,
+  verifyPdfProvenance,
+} from "./review-journey";
 import { createRequire } from "node:module";
 import { createWriteStream } from "node:fs";
 import { mkdtemp, writeFile } from "node:fs/promises";
@@ -67,10 +73,12 @@ test("manual, PDF, DOCX, same-origin, and local security flows use the real loca
 async function verifyLocalModeBanner(page: Page): Promise<void> {
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "Create your resume" }),
+    page.getByRole("heading", {
+      name: "Build a resume you feel good sending.",
+    }),
   ).toBeVisible();
-  await expect(page.getByRole("status")).toContainText("Local play mode");
-  await expect(page.getByRole("status")).toContainText(
+  await expect(page.locator(".local-banner")).toContainText("Local play mode");
+  await expect(page.locator(".local-banner")).toContainText(
     "not production authentication",
   );
 }
@@ -81,7 +89,10 @@ async function completeManualFlow(page: Page, runId: string): Promise<void> {
   const employer = `Manual Systems ${runId}`;
   const skill = `Manual Skill ${runId}`;
 
-  await page.getByRole("link", { name: "Create a resume manually" }).click();
+  await page
+    .getByRole("main")
+    .getByRole("link", { name: "Create a resume", exact: true })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Manual resume draft" }),
   ).toBeVisible();
@@ -105,10 +116,10 @@ async function completeManualFlow(page: Page, runId: string): Promise<void> {
     .getByRole("textbox", { name: "Role title", exact: true })
     .fill("Browser Test Engineer");
   await page
-    .getByRole("textbox", { name: "Start year", exact: true })
+    .getByRole("textbox", { name: "Start date", exact: true })
     .fill("2022");
   await page
-    .getByRole("textbox", { name: "End year", exact: true })
+    .getByRole("textbox", { name: "End date", exact: true })
     .fill("2026");
   await page.getByRole("button", { name: "Add responsibility" }).click();
   await page
@@ -164,40 +175,51 @@ async function completePdfFlow(page: Page, runId: string): Promise<void> {
       /Current step: checking the document|Current step: reading the content|Current step: organizing resume sections|Current step: preparing review/,
     ),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Review imported resume" })
-    .click({ timeout: 90_000 });
+  await expect(
+    page.getByRole("heading", {
+      name: "Check the information Nuvitae needs you to confirm",
+    }),
+  ).toBeVisible({ timeout: 90_000 });
   await expect(page).toHaveURL(/\/import-resume\/[0-9a-f-]+\/review/);
   await expect(
-    page.getByRole("heading", { name: "Review imported resume" }),
+    page.getByRole("heading", {
+      name: "Check the information Nuvitae needs you to confirm",
+    }),
   ).toBeVisible();
+  await expandReviewSections(page);
+  await page
+    .locator("article.review-field details")
+    .first()
+    .locator("summary")
+    .click();
   await expect(page.getByText("Imported from page 1").first()).toBeVisible();
 
-  await confirmAllUnreviewedFields(page);
-  await resolveAllVisibleWarnings(page);
-  await expect(
-    page.getByRole("button", { name: "Create structured resume" }),
-  ).toBeEnabled();
-  await page.getByRole("button", { name: "Create structured resume" }).click();
-  await expect(
-    page.getByRole("dialog", { name: "Confirm resume creation" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Confirm and create resume" }).click();
+  await reviewAndCreateResume(page);
   await expect(page).toHaveURL(/\/resumes\/[0-9a-f-]+/);
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Confirmed structured resume" }),
+    page.getByRole("heading", { name: "Edit your resume" }),
   ).toBeVisible();
-  await expect(page.getByText(headline)).toBeVisible();
-  await expect(page.getByText(skill)).toBeVisible();
+  await page.getByRole("button", { name: "Skills", exact: true }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Name", exact: true }).first(),
+  ).toHaveValue(skill);
+  await page.getByRole("button", { name: "Basics", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Professional headline" })
+    .fill(headline);
+  await page.getByRole("button", { name: "Save resume", exact: true }).click();
+  await expect(page.locator(".save-status")).toHaveText("Saved");
+  await page.reload();
+  await expect(
+    page.getByRole("textbox", { name: "Professional headline" }),
+  ).toHaveValue(headline);
   await expect(
     page.getByText("Created from your reviewed initial resume", {
       exact: true,
     }),
   ).toBeVisible();
-  await expect(
-    page.getByText("Originally imported from page 1").first(),
-  ).toBeVisible();
+  await verifyPdfProvenance(page);
   await expect(
     page.getByText(
       /users\/|imports\/|source\/|parser-input|parser-output|PdfJs|Ooxml|LibreOffice|storage/i,
@@ -223,17 +245,29 @@ async function completeDocxFlow(page: Page, runId: string): Promise<void> {
   await expect(
     page.getByRole("heading", { name: "Preparing your resume for review" }),
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Review imported resume" })
-    .click({ timeout: 90_000 });
+  await expect(
+    page.getByRole("heading", {
+      name: "Check the information Nuvitae needs you to confirm",
+    }),
+  ).toBeVisible({ timeout: 90_000 });
   await expect(page).toHaveURL(/\/import-resume\/[0-9a-f-]+\/review/);
   await expect(
-    page.getByRole("heading", { name: "Review imported resume" }),
+    page.getByRole("heading", {
+      name: "Check the information Nuvitae needs you to confirm",
+    }),
   ).toBeVisible();
+  await expandReviewSections(page);
+  await page
+    .locator("article.review-field details")
+    .first()
+    .locator("summary")
+    .click();
   await expect(
     page.getByText("Imported from the document body").first(),
   ).toBeVisible();
-  await expect(page.getByText(headline)).toBeVisible();
+  await expect(
+    page.getByText(`DOCX Skill ${suffix}`, { exact: true }),
+  ).toBeVisible();
 }
 
 function uniqueSuffix(runId: string): string {
@@ -244,37 +278,13 @@ async function uploadDocument(page: Page, filePath: string): Promise<void> {
   await page.goto("/import-resume");
   await page.getByRole("button", { name: "Import my resume" }).click();
   await page.locator('input[type="file"]').setInputFiles(filePath);
+  const started = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/api/import-resume",
+  );
   await page.getByRole("button", { name: "Upload and start import" }).click();
-}
-
-async function confirmAllUnreviewedFields(page: Page): Promise<void> {
-  const unreviewed = page.locator("article.review-field").filter({
-    hasText: "Review state: unreviewed",
-  });
-  while ((await unreviewed.count()) > 0) {
-    await unreviewed
-      .first()
-      .getByRole("button", { name: "Confirm field" })
-      .click();
-    await expect(page.getByRole("status").first()).not.toContainText(
-      "Saving review change.",
-    );
-  }
-}
-
-async function resolveAllVisibleWarnings(page: Page): Promise<void> {
-  const unresolved = page.locator("article.review-warning").filter({
-    hasText: "Review state: needs review",
-  });
-  while ((await unresolved.count()) > 0) {
-    await unresolved
-      .first()
-      .getByRole("button", { name: "Intentionally leave" })
-      .click();
-    await expect(page.getByRole("status").first()).not.toContainText(
-      "Saving review change.",
-    );
-  }
+  expect((await started).status()).toBe(201);
 }
 
 async function verifySameOrigin(
@@ -300,6 +310,32 @@ async function verifyLocalAuthenticationBoundary(
   const createdBody = (await created.json()) as {
     readonly draft: { readonly draftId: string };
   };
+  const database = new DataSource({
+    type: "postgres",
+    host: process.env.POSTGRES_HOST ?? "postgres",
+    port: Number(process.env.POSTGRES_PORT ?? "5432"),
+    username: process.env.POSTGRES_USER ?? "nuvitae",
+    password: process.env.POSTGRES_PASSWORD ?? "nuvitae_dev_password",
+    database: process.env.POSTGRES_DB ?? "nuvitae",
+    synchronize: false,
+  });
+  await database.initialize();
+  try {
+    const rows = await database.query<{ owner_user_id: string }[]>(
+      "SELECT owner_user_id FROM manual_structured_resume_drafts WHERE id = $1",
+      [createdBody.draft.draftId],
+    );
+    expect(rows).toEqual([
+      {
+        owner_user_id:
+          process.env.LOCAL_PLAY_USER_ID ??
+          "00000000-0000-4000-8000-000000000101",
+      },
+    ]);
+    expect(rows[0]?.owner_user_id).not.toBe(attackerUserId);
+  } finally {
+    await database.destroy();
+  }
   const readBack = await request.get(
     `/api/manual-resume-drafts/${createdBody.draft.draftId}`,
   );
