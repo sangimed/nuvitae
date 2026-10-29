@@ -86,6 +86,15 @@ assert_worker_mode() {
   fi
 }
 
+isolate_test_owner() {
+  # Host-controlled synthetic identity, fixed for the entire API lifetime.
+  # Recreate to apply that principal, not to reset persisted admission history.
+  # Keep data and production admission limits intact between batches.
+  export NUVITAE_LOCAL_PLAY_USER_ID="$1"
+  run_phase "select isolated test owner" compose up -d --force-recreate api
+  run_phase "wait for isolated owner API" compose up --wait --no-recreate api
+}
+
 trap cleanup EXIT INT TERM
 
 mkdir -p "$artifact_dir"
@@ -109,6 +118,7 @@ run_phase "run migrations" compose run --rm workspace pnpm db:migration:run
 run_phase "prepare private storage volume" \
   compose run --rm --user root --entrypoint /bin/sh api \
   -c "mkdir -p /var/lib/nuvitae/private && chown -R 10001:10001 /var/lib/nuvitae/private"
+export NUVITAE_LOCAL_PLAY_USER_ID="00000000-0000-4000-8000-000000000101"
 run_phase "start local stack" \
   env NUVITAE_SEMANTIC_PROVIDER_MODE=production \
     docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
@@ -186,6 +196,7 @@ run_phase "semantic vertical slice: real PDF and DOCX" \
         tests/browser/import-resume/semantic-import-vertical-slice.spec.ts \
         -g "real"
 
+isolate_test_owner "00000000-0000-4000-8000-000000000102"
 run_phase "deterministic import-to-PDF fidelity journeys" \
   env NUVITAE_SEMANTIC_PROVIDER_MODE=deterministic-e2e-test \
     docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
@@ -206,6 +217,7 @@ run_phase "wait for production worker health" \
     docker compose -f "${repo_root}/compose.yml" -f "${repo_root}/compose.local.yml" \
     up --wait --no-recreate worker
 
+isolate_test_owner "00000000-0000-4000-8000-000000000103"
 phase="playwright regression"
 playwright_args=(
   pnpm exec playwright test
