@@ -327,11 +327,12 @@ foreach ($spec in $specs) {
     if (-not (Test-ProjectViewMatches -View $view -Spec $spec)) {
         $expectedFilter = Normalize-ProjectViewFilter -Value $spec.Filter
         $actualFilter = Normalize-ProjectViewFilter -Value $view.filter
-        throw ("Verification de '{0}' : configuration differente. " +
+        $message = ("Verification de '{0}' : configuration differente. " +
             "Layout attendu='{1}', recu='{2}'. " +
             "Filter attendu='{3}', recu='{4}'. " +
             "Aucune suppression ni recreation automatique.") -f
             $spec.Name, $spec.Layout, $view.layout, $expectedFilter, $actualFilter
+        throw $message
     }
     Write-Host "VERIFIE : $($spec.Name) [$($view.layout)] / $($view.filter)"
 }
