@@ -1,0 +1,39 @@
+name: Validate GitHub Project automation script
+
+on:
+  pull_request:
+    paths:
+      - scripts/sync-github-project.ps1
+      - .github/workflows/validate-project-sync.yml
+  push:
+    branches:
+      - main
+    paths:
+      - scripts/sync-github-project.ps1
+      - .github/workflows/validate-project-sync.yml
+
+permissions:
+  contents: read
+
+jobs:
+  powershell-syntax:
+    name: PowerShell syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Parse setup script without executing it
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          $path = Join-Path $env:GITHUB_WORKSPACE "scripts/sync-github-project.ps1"
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            $path,
+            [ref] $tokens,
+            [ref] $parseErrors
+          ) | Out-Null
+          if ($parseErrors.Count -gt 0) {
+            $parseErrors | ForEach-Object { Write-Host $_.Message }
+            throw "Invalid PowerShell syntax"
+          }
+          Write-Host "PowerShell syntax OK"
