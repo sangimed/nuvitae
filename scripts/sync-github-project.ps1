@@ -286,6 +286,7 @@ foreach ($spec in $specs) {
         }
         else {
             Write-Host "METTRE A JOUR : $($spec.Name) [$($spec.Layout)] / $($spec.Filter)"
+            Write-Host "  Configuration GitHub actuelle : [$($current.layout)] / $($current.filter)"
             if ($Apply) {
                 $null = Invoke-GhJson -CliArgs @(
                     'api', 'graphql', '-f', "query=$updateMutation",
