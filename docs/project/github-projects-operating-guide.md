@@ -1,175 +1,100 @@
 # Nuvitae — GitHub Projects operating guide
 
-> **Project Reset — étape 3/4, configuration partielle vérifiée le 6 novembre 2026.**
->
-> Ce fichier décrit l'organisation déjà appliquée aux issues/PR GitHub et la
-> configuration souhaitée du **GitHub Project existant**. Il ne prétend pas que
-> les vues ou champs Projects V2 sont déjà créés : l'intégration GitHub employée
-> pour cette passe n'expose pas leur lecture ni leur mutation.
->
-> La stratégie produit reste définie dans
-> [product-roadmap.md](product-roadmap.md). Les preuves et le gate de publication
-> restent dans la [checklist alpha](../release/community-alpha-readiness.md) et
-> [#61](https://github.com/sangimed/nuvitae/issues/61).
+Project Reset, étape 3/4. État vérifié le 6 novembre 2026.
 
-## Ce qui a été réellement appliqué
+Ce guide décrit la classification réellement appliquée aux issues et PR GitHub et les vues à configurer dans le GitHub Project existant. Les vues Projects V2 et leurs cartes ne sont pas encore vérifiées ou modifiées : le connecteur disponible ne permet pas leur administration.
 
-- Les **17 issues ouvertes** de Nuvitae ont le label `roadmap`. L'ancien
-  workflow d'ajout automatique est censé filtrer
-  `is:issue is:open label:roadmap`, mais sa configuration active et son
-  résultat dans le Project n'ont **pas pu être relus directement**.
-- Chaque issue ouverte a **exactement un** horizon :
-  `horizon:now`, `horizon:next` ou `horizon:later`.
-- Les **8 PR** du candidat alpha portent `release:community-alpha` ;
-  #133/#157 portent `queue:dependency-updates` et #130
-  `record:historical`.
-- Les éléments nécessitant un arbitrage immédiat portent
-  `needs:decision` : issues #61, #158, #118, #126 et PR #130, #133, #157.
-- Aucun état d'issue ou de PR n'a été changé ; aucune branche, PR, worktree,
-  donnée Docker ou pièce jointe n'a été supprimée ou fusionnée.
+Références : [roadmap produit](product-roadmap.md), [état de référence](status-baseline-2026-11-06.md) et [checklist Community](../release/community-alpha-readiness.md).
 
-## Correspondance des horizons
+## Modifications réellement appliquées
 
-### NOW — une seule priorité produit
+- Les 17 issues ouvertes portent `roadmap` et exactement un des labels `horizon:now`, `horizon:next` ou `horizon:later`.
+- Les huit PR alpha #152 et #159 à #165 portent `release:community-alpha`.
+- Les PR #133 et #157 portent `queue:dependency-updates`.
+- La PR #130 porte `record:historical`.
+- Les issues #61, #158, #118, #126 et les PR #130, #133, #157 portent `needs:decision`.
+- Un commentaire de cadrage a été publié sur #61.
+- Aucun statut, contenu, historique, merge, donnée ou ressource Docker n'a été modifié ou supprimé.
 
-- [#61](https://github.com/sangimed/nuvitae/issues/61) : **objectif principal**,
-  qualifier Community alpha pour un verdict documenté.
-- [#158](https://github.com/sangimed/nuvitae/issues/158) : **support du gate**,
-  phase A vérifiée sur un candidat combiné ; disposition humaine et vérification
-  de l'intégration à `main` encore nécessaires.
-- [#118](https://github.com/sangimed/nuvitae/issues/118) : **décision de
-  sécurité/administration**, contexte historique à requalifier depuis le passage
-  du dépôt en public.
-- [#126](https://github.com/sangimed/nuvitae/issues/126) : **décision de
-  signalement de vulnérabilités**, niveau de préparation à établir.
+## Horizon NOW
 
-**Important :** quatre tickets NOW ne signifient pas quatre chantiers
-fonctionnels en parallèle. Les trois derniers soutiennent ou conditionnent
-l'objectif #61. La limitation de WIP porte sur les initiatives actives, pas
-sur le nombre de décisions à résoudre.
+- [#61](https://github.com/sangimed/nuvitae/issues/61) : **seul objectif produit NOW**, conclure la qualification alpha par READY ou NOT READY documenté.
+- [#158](https://github.com/sangimed/nuvitae/issues/158) : support de qualification, phase A déterministe validée sur un candidat combiné, disposition humaine encore nécessaire.
+- [#118](https://github.com/sangimed/nuvitae/issues/118) : décision de sécurité, requalifier l'ancien blocage CodeQL depuis le passage du dépôt en public.
+- [#126](https://github.com/sangimed/nuvitae/issues/126) : décision de sécurité, vérifier la voie de signalement privé de vulnérabilités.
 
-### NEXT — premiers essais utilisateurs et valeur
+Quatre issues NOW ne sont pas quatre développements parallèles : #158, #118 et #126 servent le seul objectif #61.
 
-- [#26](https://github.com/sangimed/nuvitae/issues/26) : tranche UX ciblée
-  à choisir après observations, pas refonte générale non justifiée.
-- [#43](https://github.com/sangimed/nuvitae/issues/43) : proposition de valeur.
-- [#42](https://github.com/sangimed/nuvitae/issues/42) : étude des usages et
-  coûts IA, sans facturation prématurée.
-- [#28](https://github.com/sangimed/nuvitae/issues/28) : compléter la
-  documentation réellement nécessaire aux utilisateurs/opérateurs.
+## Horizon NEXT
 
-### LATER — expansion et prérequis conditionnels
+- [#26](https://github.com/sangimed/nuvitae/issues/26) : une amélioration UX issue d'observations réelles, pas de refonte générale sans preuve.
+- [#43](https://github.com/sangimed/nuvitae/issues/43) : tester la proposition de valeur.
+- [#42](https://github.com/sangimed/nuvitae/issues/42) : mesurer usages et coûts IA avant de fixer un modèle commercial.
+- [#28](https://github.com/sangimed/nuvitae/issues/28) : compléter en priorité la documentation révélée nécessaire par les essais.
 
-- [#156](https://github.com/sangimed/nuvitae/issues/156) : essai borné des
-  nouvelles méthodes agentiques ;
-- [#127](https://github.com/sangimed/nuvitae/issues/127) : SBOM/provenance
-  lors d'une chaîne de publication effective ;
-- [#77](https://github.com/sangimed/nuvitae/issues/77) et
-  [#78](https://github.com/sangimed/nuvitae/issues/78) : durcissement
-  infrastructure et identité Hosted ;
-- [#41](https://github.com/sangimed/nuvitae/issues/41) : cadre légal
-  à conclure avant les premiers revenus ;
-- [#39](https://github.com/sangimed/nuvitae/issues/39) : EventStorming
-  seulement sur ambiguïté de domaine démontrée ;
-- [#31](https://github.com/sangimed/nuvitae/issues/31) et
-  [#30](https://github.com/sangimed/nuvitae/issues/30) : i18n interface
-  et multilingue des CV, à distinguer ;
-- [#24](https://github.com/sangimed/nuvitae/issues/24) : POC observabilité
-  lorsque les difficultés opérationnelles le justifient.
+## Horizon LATER
 
-## Vues recommandées dans le Project existant
+- [#156](https://github.com/sangimed/nuvitae/issues/156) : expérimentation bornée du workflow agentique.
+- [#127](https://github.com/sangimed/nuvitae/issues/127) : SBOM et provenance lors d'une publication effective d'images.
+- [#77](https://github.com/sangimed/nuvitae/issues/77) et [#78](https://github.com/sangimed/nuvitae/issues/78) : architecture de sécurité et d'identité Hosted.
+- [#41](https://github.com/sangimed/nuvitae/issues/41) : cadre juridique à clarifier avant les premiers revenus.
+- [#39](https://github.com/sangimed/nuvitae/issues/39) : EventStorming si une ambiguïté du domaine le justifie.
+- [#30](https://github.com/sangimed/nuvitae/issues/30) et [#31](https://github.com/sangimed/nuvitae/issues/31) : langues des CV et langue de l'interface, sujets distincts.
+- [#24](https://github.com/sangimed/nuvitae/issues/24) : POC de supervision motivé par les besoins opérationnels.
 
-Les filtres ci-dessous ciblent les **éléments présents dans le Project**.
-Les labels sont déjà présents sur GitHub, mais les vues **restent à configurer
-dans l'interface Projects V2**. Ne pas créer de nouveau Project.
+## Vue Cockpit
 
-### 1. Cockpit (table)
+- Disposition proposée : Table.
+- Filtre Projects : `repo:sangimed/nuvitae is:issue is:open label:roadmap`.
+- Champs utiles : titre, statut Projects existant, responsable, labels et PR associées si disponibles.
+- Pour isoler les arbitrages : `is:open label:"needs:decision"`.
+- Ne pas mettre toutes les issues NOW en cours : une priorité principale reste #61.
 
-- Objectif : distinguer les horizons et les décisions à arbitrer.
-- Filtre de base : `repo:sangimed/nuvitae is:issue is:open label:roadmap`.
-- Colonnes utiles : Title, Status natif, Assignees, Labels, Linked PRs (si
-  disponible). Éviter les champs supplémentaires sans usage concret.
-- Filtre temporaire de décision : `is:open label:"needs:decision"`.
-- Ordre opérationnel : examiner NOW puis les décisions ; les NEXT/LATER ne
-  deviennent pas automatiquement « In progress ».
+## Vue Current Cycle
 
-### 2. Current Cycle (board)
+- Disposition proposée : Board, avec les colonnes de statut Projects déjà existantes.
+- Filtre Projects : `repo:sangimed/nuvitae is:issue is:open label:"horizon:now"`.
+- Limite de travail : #61 comme initiative principale ; au plus deux flux techniques indépendants si nécessaire.
+- Un test PASS sur une branche ou une PR ouverte n'est pas un ticket Done ni un verdict de release.
 
-- Filtre : `repo:sangimed/nuvitae is:issue is:open label:"horizon:now"`.
-- Grouper par le **Status natif existant** si le tableau le permet ; ne pas
-  remplacer une colonne active sans vérifier sa signification.
-- Une seule initiative principale : #61. Au plus deux flux techniques
-  indépendants, si leur coordination et leurs preuves le permettent.
-- Ne pas affecter des statuts « Done » ou « In progress » sur la seule base
-  d'une PR ouverte ou d'une exécution de test historique.
+## Vue Release Readiness
 
-### 3. Release Readiness (table)
+- Disposition proposée : Table.
+- Après ajout des PR au Project, filtre : `repo:sangimed/nuvitae is:open label:"horizon:now","release:community-alpha"`.
+- Les huit PR ont déjà le label `release:community-alpha`, mais leur présence dans le Project n'a pas été vérifiée.
+- Le workflow auto-add historique basé sur `is:issue` n'ajoute pas les PR.
+- Suivre les phases A, B, C, D et E, le candidat Git exact, l'intégration, les risques et le verdict.
+- Le succès de la phase A sur `0ee8780` ne constitue pas READY pour Community.
 
-- Filtre possible **après ajout des PR au Project** :
-  `repo:sangimed/nuvitae is:open label:"horizon:now","release:community-alpha"`.
-- Les huit PR #152/#159–#165 sont **labellisées**, mais leur présence
-  dans Projects V2 n'a pas été vérifiée. L'ancien auto-add basé sur
-  `is:issue` ne les ajoute pas.
-- Suivre par liens directs : candidat exact, résultat du gate A, intégration
-  finale, B (installation), C (sessions), D (vrai fournisseur sous
-  autorisation), E (sécurité/qualité) et verdict final.
-- Pour l'instant, le statut produit est **NOT READY** ; ne pas le faire
-  passer en READY automatiquement dès qu'une CI de PR est verte.
+## Vue Backlog / Later
 
-### 4. Backlog / Later (table)
+- Disposition proposée : Table.
+- Filtre Projects : `repo:sangimed/nuvitae is:issue is:open label:"horizon:next","horizon:later"`.
+- Les valeurs multiples d'un même champ sont combinées en OU ; les champs différents sont combinés en ET.
+- Faire passer une issue en NOW seulement avec un résultat attendu, un déclencheur et un arbitrage explicite.
 
-- Filtre : `repo:sangimed/nuvitae is:issue is:open label:"horizon:next","horizon:later"`.
-- Trier ou filtrer par label d'horizon selon les possibilités de la vue ;
-  ne pas inventer de date ou de priorité P0 sans preuve.
-- Faire remonter un ticket vers NOW seulement en documentant le résultat
-  produit attendu, son déclencheur et le travail qu'il déplace.
+## Vérifications Projects V2 restantes
 
-Les valeurs multiples d'un même champ de filtre sont traitées en **OU** dans
-GitHub Projects, tandis que des champs différents se combinent en **ET**.
-Une vue doit être **enregistrée** après modification.
+- [ ] Identifier l'URL et le propriétaire du Project existant.
+- [ ] Confirmer que son workflow auto-add est actif et cible `sangimed/nuvitae`.
+- [ ] Vérifier la présence réelle des 17 issues après les modifications de labels.
+- [ ] Préserver les statuts Projects actuels et créer ou adapter les quatre vues.
+- [ ] Ajouter les huit PR alpha à la vue Release Readiness sans les merger.
+- [ ] Enregistrer les filtres et vérifier les cartes et regroupements dans chaque vue.
+- [ ] Confirmer qu'aucun élément n'a reçu un statut artificiellement plus avancé.
 
-## Vérification encore requise dans GitHub Projects V2
+L'auto-add historique était configuré sur `is:issue is:open label:roadmap`, mais sa configuration effective ne peut pas être vérifiée par le connecteur actuel. Les modifications de labels rendent les issues éligibles ; elles ne prouvent pas leur présence dans le Project.
 
-- [ ] Identifier l'URL et le propriétaire du Project existant ;
-- [ ] Vérifier que l'automatisation d'ajout est encore activée et cible bien
-  `sangimed/nuvitae` ;
-- [ ] Vérifier que les 17 issues labellisées sont réellement des cartes du
-  Project ; ajouter uniquement celles qui manquent ;
-- [ ] Vérifier les colonnes Status et les statuts existants, sans les écraser ;
-- [ ] Créer ou adapter les quatre vues et enregistrer chaque filtre ;
-- [ ] Ajouter les huit PR alpha à la vue Release Readiness, sans changer leur
-  statut de merge ;
-- [ ] Confirmer en lecture le nombre de cartes, les horizons affichés et la
-  cohérence entre les filtres et les labels ;
-- [ ] Renseigner les décisions #118/#126/#158 et les PR différées sans
-  transformer une proposition en clôture.
+## Règles de maintenance
 
-**Limite d'outillage de cette passe :** l'application GitHub connectée donne
-accès à la lecture et aux modifications d'issues/PR, mais ne propose pas
-l'administration de Projects V2 (champs, vues, items). Les actions ci-dessus
-nécessitent l'interface GitHub Projects ou un outil GraphQL disposant de
-`read:project` et `project` adaptés.
+- Toute issue appartenant à la roadmap reçoit `roadmap` et exactement un label d'horizon.
+- Les labels expriment la priorité temporelle ; le champ Status exprime l'exécution. Ne pas les confondre.
+- La roadmap décrit les objectifs, les issues précisent les critères, #61 et sa checklist gouvernent la release.
+- Ne pas ajouter de nouvelle grosse initiative NOW sans justifier le déplacement de la précédente.
+- Conserver les PR, branches, historiques et éléments non conclus. Ne jamais déclencher une action destructive ou un appel fournisseur réel à partir d'une simple opération de triage.
 
-## Règles pour les prochaines mises à jour
+## Documentation GitHub
 
-- Chaque nouvelle issue de roadmap a `roadmap` et un **unique** horizon.
-- Tout changement d'horizon doit être explicite et justifié par une décision
-  de produit, pas par la simple disponibilité d'un agent.
-- Les PR de qualifications sont identifiées par
-  `release:community-alpha` ; une PR ouverte n'est pas un objectif livrable.
-- Le champ Status du Project reflète le travail en cours, les labels
-  reflètent l'horizon de priorité. Les deux ne sont **pas synonymes**.
-- Garder la description et les critères d'acceptation dans l'issue ;
-  le statut release dans #61 ; les choix produits dans la roadmap.
-- Limiter les commentaires de synchronisation au contexte utile, éviter de
-  copier des tableaux d'état sur chaque issue.
-- À la clôture d'une issue, préserver les preuves et vérifier sa sortie
-  des vues ouvertes ; ne pas supprimer son historique.
-
-## Sources
-
-- [Roadmap produit](product-roadmap.md)
-- [État de référence](status-baseline-2026-11-06.md)
-- [GitHub Docs — filtering Projects](https://docs.github.com/en/issues/planning-and-tracking-with-projects/customizing-views-in-your-project/filtering-projects)
-- [GitHub Docs — saved views](https://docs.github.com/en/issues/planning-and-tracking-with-projects/customizing-views-in-your-project/managing-your-views)
-- [GitHub Docs — auto-add](https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/adding-items-automatically)
+- [Filtrage des Projects](https://docs.github.com/en/issues/planning-and-tracking-with-projects/customizing-views-in-your-project/filtering-projects)
+- [Gestion et sauvegarde des vues](https://docs.github.com/en/issues/planning-and-tracking-with-projects/customizing-views-in-your-project/managing-your-views)
+- [Ajout automatique d'éléments](https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/adding-items-automatically)
