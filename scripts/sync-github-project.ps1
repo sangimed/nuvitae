@@ -24,11 +24,60 @@ param(
     [string] $Repo = 'sangimed/nuvitae',
     [int] $ProjectNumber = 0,
     [switch] $Apply,
-    [switch] $SkipItems
+    [switch] $SkipItems,
+    [switch] $SelfTest
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+
+function Normalize-ProjectViewFilter {
+    param([AllowNull()][string] $Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) { return '' }
+
+    # GitHub may omit optional quotes around single-token label values.
+    # Keep quotes around values containing spaces or commas.
+    $withoutOptionalQuotes = $Value.Trim() -replace '"([^"\s,]+)"', '$1'
+    return ($withoutOptionalQuotes -replace '\s+', ' ').Trim()
+}
+
+function Test-ProjectViewMatches {
+    param([object] $View, [object] $Spec)
+
+    if ($null -eq $View) { return $false }
+    $sameLayout = ([string] $View.layout -eq [string] $Spec.Layout)
+    $sameFilter = ((Normalize-ProjectViewFilter -Value $View.filter) -ceq
+                   (Normalize-ProjectViewFilter -Value $Spec.Filter))
+    return ($sameLayout -and $sameFilter)
+}
+
+if ($SelfTest) {
+    $tests = @(
+        @{ Actual = 'repo:sangimed/nuvitae is:issue is:open label:horizon:now'
+           Expected = 'repo:sangimed/nuvitae is:issue is:open label:"horizon:now"'
+           Match = $true },
+        @{ Actual = 'repo:sangimed/nuvitae  is:issue    is:open  label:"horizon:now"'
+           Expected = 'repo:sangimed/nuvitae is:issue is:open label:horizon:now'
+           Match = $true },
+        @{ Actual = 'repo:sangimed/nuvitae is:issue is:open label:horizon:later'
+           Expected = 'repo:sangimed/nuvitae is:issue is:open label:horizon:now'
+           Match = $false },
+        @{ Actual = 'repo:sangimed/nuvitae is:issue is:open label:horizon:now'
+           Expected = 'repo:sangimed/nuvitae is:issue is:open label:horizon:now is:pr'
+           Match = $false }
+    )
+    foreach ($test in $tests) {
+        $actual = [pscustomobject] @{ layout = 'BOARD_LAYOUT'; filter = $test.Actual }
+        $expected = [pscustomobject] @{ Layout = 'BOARD_LAYOUT'; Filter = $test.Expected }
+        $match = Test-ProjectViewMatches -View $actual -Spec $expected
+        if ($match -ne $test.Match) {
+            throw "Echec autotest : attendu=$($test.Match), obtenu=$match."
+        }
+    }
+    Write-Host "Autotests OK : $($tests.Count) cas pour la comparaison des vues."
+    exit 0
+}
 
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
     throw 'GitHub CLI (gh) est introuvable. Installer https://cli.github.com/ puis executer gh auth login -s project.'
@@ -155,7 +204,11 @@ if (-not $SkipItems) {
     $issues = @(Invoke-GhJson -CliArgs @('issue', 'list', '--repo', $Repo, '--state', 'open', '--label', 'roadmap', '--json', 'number,url', '--limit', '1000'))
     $prs = @(Invoke-GhJson -CliArgs @('pr', 'list', '--repo', $Repo, '--state', 'open', '--label', 'release:community-alpha', '--json', 'number,url', '--limit', '1000'))
 
-    $desiredUrls = @(@($issues | ForEach-Object { $_.url }) + @($prs | ForEach-Object { $_.url }) | Sort-Object -Unique)
+    # ConvertFrom-Json -InputObject may return an array as one pipeline object.
+    # Count the extracted URLs, not the wrapped PowerShell array.
+    $issueUrls = @($issues | ForEach-Object { $_.url })
+    $prUrls = @($prs | ForEach-Object { $_.url })
+    $desiredUrls = @(@($issueUrls) + @($prUrls) | Sort-Object -Unique)
     if ($desiredUrls.Count -eq 0) {
         throw 'Aucune issue/PR cible trouvee. Arret preventif.'
     }
@@ -181,7 +234,7 @@ if (-not $SkipItems) {
         -not $known.ContainsKey(([string] $_).TrimEnd('/').ToLowerInvariant())
     })
 
-    Write-Host "Issues roadmap : $($issues.Count) ; PR alpha : $($prs.Count)."
+    Write-Host "Issues roadmap : $($issueUrls.Count) ; PR alpha : $($prUrls.Count)."
     Write-Host "Cartes absentes du Project : $($missingUrls.Count) / $($desiredUrls.Count)."
 }
 
@@ -228,11 +281,12 @@ foreach ($spec in $specs) {
     }
     else {
         $current = $matchesForName[0]
-        if ($current.layout -eq $spec.Layout -and $current.filter -eq $spec.Filter) {
+        if (Test-ProjectViewMatches -View $current -Spec $spec) {
             Write-Host "OK : $($spec.Name) deja conforme."
         }
         else {
             Write-Host "METTRE A JOUR : $($spec.Name) [$($spec.Layout)] / $($spec.Filter)"
+            Write-Host "  Configuration GitHub actuelle : [$($current.layout)] / $($current.filter)"
             if ($Apply) {
                 $null = Invoke-GhJson -CliArgs @(
                     'api', 'graphql', '-f', "query=$updateMutation",
@@ -261,15 +315,27 @@ if (-not $Apply) {
     exit 0
 }
 
-# Verification post-ecriture : les 4 vues doivent avoir le layout et filtre attendus.
+# GitHub may normalize filter quoting. Verify the effective meaning, and
+# display the exact values returned by GitHub on any mismatch.
 $after = Get-ProjectSnapshot -Id $project.id
 foreach ($spec in $specs) {
-    $found = @($after.views.nodes | Where-Object {
-        $_.name -eq $spec.Name -and $_.layout -eq $spec.Layout -and $_.filter -eq $spec.Filter
-    })
-    if ($found.Count -ne 1) {
-        throw "Verification finale de la vue '$($spec.Name)' echouee."
+    $views = @($after.views.nodes | Where-Object { $_.name -eq $spec.Name })
+    if ($views.Count -ne 1) {
+        throw "Verification de '$($spec.Name)' : $($views.Count) vues avec ce nom, 1 attendue."
     }
+
+    $view = $views[0]
+    if (-not (Test-ProjectViewMatches -View $view -Spec $spec)) {
+        $expectedFilter = Normalize-ProjectViewFilter -Value $spec.Filter
+        $actualFilter = Normalize-ProjectViewFilter -Value $view.filter
+        $message = ("Verification de '{0}' : configuration differente. " +
+            "Layout attendu='{1}', recu='{2}'. " +
+            "Filter attendu='{3}', recu='{4}'. " +
+            "Aucune suppression ni recreation automatique.") -f
+            $spec.Name, $spec.Layout, $view.layout, $expectedFilter, $actualFilter
+        throw $message
+    }
+    Write-Host "VERIFIE : $($spec.Name) [$($view.layout)] / $($view.filter)"
 }
 
 if (-not $SkipItems) {
