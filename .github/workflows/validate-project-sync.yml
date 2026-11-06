@@ -37,3 +37,7 @@ jobs:
             throw "Invalid PowerShell syntax"
           }
           Write-Host "PowerShell syntax OK"
+      - name: Test view filter normalization without GitHub credentials
+        shell: pwsh
+        run: |
+          ./scripts/sync-github-project.ps1 -SelfTest
