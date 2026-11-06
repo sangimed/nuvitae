@@ -26,58 +26,52 @@ Le succès du gate du 29 octobre établit le premier état pour le lot combiné,
 
 ## Travaux réalisés et travaux restants
 
-| Domaine | Travaux et preuves | État factuel |
-| --- | --- | --- |
-| Parcours CV | #54, #55, #56, #57, #58, #60 et #40 clôturées ; import/review/édition/preview/PDF et persistance couverts par des tests déterministes | Fondations présentes, non assimilables à une validation utilisateur réelle |
-| Contrôles de sécurité | #75 et #76 clôturées ; contrôles intégrés au gate | Fondations livrées, autres éléments de release à confirmer |
-| Corrections alpha | #152 et #159 à #165 | Qualifiées **ensemble** sur un candidat, non mergées |
-| Gate déterministe | #158 et #61, rapport du 29 octobre | **PASS sur candidat 0ee8780** ; #158 reste ouverte pour disposition humaine |
-| Installation + session normales | Phases B et C de #61 | **NOT RUN** dans les preuves du dernier gate |
-| Fournisseur IA réel | Phase D de #61 | **NOT RUN**, autorisation et budget spécifique requis |
-| Contrôles de release complémentaires | Phase E de #61 | **INCOMPLET**, ne pas inférer PASS depuis la phase A |
-| Documentation développeur | Fondation MkDocs livrée via #104 ; [coverage ledger](../site/coverage.md) | #28 reste un epic partiellement achevé |
-| Observabilité | [Évaluation #24](../observability/issue-24-evaluation.md) et frontière opt-in de télémétrie | Évaluation/contrat technique partiels ; aucune expérience de monitoring déployée démontrée |
-| Expérience UI | Sous-travaux #50, #52, #58, #71 clos | Epic UX #26 toujours partiellement ouvert |
+- **Parcours CV** — Travaux et preuves : #54, #55, #56, #57, #58, #60 et #40 clôturées ; import/review/édition/preview/PDF et persistance couverts par des tests déterministes ; État factuel : Fondations présentes, non assimilables à une validation utilisateur réelle
+- **Contrôles de sécurité** — Travaux et preuves : #75 et #76 clôturées ; contrôles intégrés au gate ; État factuel : Fondations livrées, autres éléments de release à confirmer
+- **Corrections alpha** — Travaux et preuves : #152 et #159 à #165 ; État factuel : Qualifiées **ensemble** sur un candidat, non mergées
+- **Gate déterministe** — Travaux et preuves : #158 et #61, rapport du 29 octobre ; État factuel : **PASS sur candidat 0ee8780** ; #158 reste ouverte pour disposition humaine
+- **Installation + session normales** — Travaux et preuves : Phases B et C de #61 ; État factuel : **NOT RUN** dans les preuves du dernier gate
+- **Fournisseur IA réel** — Travaux et preuves : Phase D de #61 ; État factuel : **NOT RUN**, autorisation et budget spécifique requis
+- **Contrôles de release complémentaires** — Travaux et preuves : Phase E de #61 ; État factuel : **INCOMPLET**, ne pas inférer PASS depuis la phase A
+- **Documentation développeur** — Travaux et preuves : Fondation MkDocs livrée via #104 ; [coverage ledger](../site/coverage.md) ; État factuel : #28 reste un epic partiellement achevé
+- **Observabilité** — Travaux et preuves : [Évaluation #24](../observability/issue-24-evaluation.md) et frontière opt-in de télémétrie ; État factuel : Évaluation/contrat technique partiels ; aucune expérience de monitoring déployée démontrée
+- **Expérience UI** — Travaux et preuves : Sous-travaux #50, #52, #58, #71 clos ; État factuel : Epic UX #26 toujours partiellement ouvert
 
 ## Les 11 PR ouvertes : inventaire et disposition proposée
 
-| PR | Changement | Disposition **proposée**, non effectuée |
-| --- | --- | --- |
-| [#152](https://github.com/sangimed/nuvitae/pull/152) | Dépendances de production, audit vulnérabilités | Lot alpha qualifié ; préparer intégration contrôlée |
-| [#159](https://github.com/sangimed/nuvitae/pull/159) | Attente d'erreur PDF localisée | Lot alpha qualifié |
-| [#160](https://github.com/sangimed/nuvitae/pull/160) | Fallback explicite sans fournisseur | Lot alpha qualifié |
-| [#161](https://github.com/sangimed/nuvitae/pull/161) | Correctif produit : état queued persisté avant publication du job | Lot alpha qualifié ; **véritable correction fonctionnelle** |
-| [#162](https://github.com/sangimed/nuvitae/pull/162) | Sérialisation de création des bases de test | Lot alpha qualifié |
-| [#163](https://github.com/sangimed/nuvitae/pull/163) | Assertion avertissement DOCX et confirmation | Lot alpha qualifié |
-| [#164](https://github.com/sangimed/nuvitae/pull/164) | Isolation des budgets d'uploads par batch serveur | Lot alpha qualifié |
-| [#165](https://github.com/sangimed/nuvitae/pull/165) | Tests de navigation/review alignés sur l'UX actuelle | Lot alpha qualifié |
-| [#133](https://github.com/sangimed/nuvitae/pull/133) | Dependabot GitHub CodeQL actions | Hors lot alpha ; réévaluer après stabilisation CI |
-| [#157](https://github.com/sangimed/nuvitae/pull/157) | Dependabot dépendances de développement | Hors lot alpha ; chevauche #152 sur lockfile et manifests |
-| [#130](https://github.com/sangimed/nuvitae/pull/130) | Compte rendu de revalidation du 22 septembre | Historique daté ; requalifier ou archiver, sans écraser la chronologie |
+- **[#152](https://github.com/sangimed/nuvitae/pull/152)** — Changement : Dépendances de production, audit vulnérabilités ; Disposition **proposée**, non effectuée : Lot alpha qualifié ; préparer intégration contrôlée
+- **[#159](https://github.com/sangimed/nuvitae/pull/159)** — Changement : Attente d'erreur PDF localisée ; Disposition **proposée**, non effectuée : Lot alpha qualifié
+- **[#160](https://github.com/sangimed/nuvitae/pull/160)** — Changement : Fallback explicite sans fournisseur ; Disposition **proposée**, non effectuée : Lot alpha qualifié
+- **[#161](https://github.com/sangimed/nuvitae/pull/161)** — Changement : Correctif produit : état queued persisté avant publication du job ; Disposition **proposée**, non effectuée : Lot alpha qualifié ; **véritable correction fonctionnelle**
+- **[#162](https://github.com/sangimed/nuvitae/pull/162)** — Changement : Sérialisation de création des bases de test ; Disposition **proposée**, non effectuée : Lot alpha qualifié
+- **[#163](https://github.com/sangimed/nuvitae/pull/163)** — Changement : Assertion avertissement DOCX et confirmation ; Disposition **proposée**, non effectuée : Lot alpha qualifié
+- **[#164](https://github.com/sangimed/nuvitae/pull/164)** — Changement : Isolation des budgets d'uploads par batch serveur ; Disposition **proposée**, non effectuée : Lot alpha qualifié
+- **[#165](https://github.com/sangimed/nuvitae/pull/165)** — Changement : Tests de navigation/review alignés sur l'UX actuelle ; Disposition **proposée**, non effectuée : Lot alpha qualifié
+- **[#133](https://github.com/sangimed/nuvitae/pull/133)** — Changement : Dependabot GitHub CodeQL actions ; Disposition **proposée**, non effectuée : Hors lot alpha ; réévaluer après stabilisation CI
+- **[#157](https://github.com/sangimed/nuvitae/pull/157)** — Changement : Dependabot dépendances de développement ; Disposition **proposée**, non effectuée : Hors lot alpha ; chevauche #152 sur lockfile et manifests
+- **[#130](https://github.com/sangimed/nuvitae/pull/130)** — Changement : Compte rendu de revalidation du 22 septembre ; Disposition **proposée**, non effectuée : Historique daté ; requalifier ou archiver, sans écraser la chronologie
 
 **Précaution :** l'ordre de recomposition démontré (#152, #159, #160, #161, #162, #163, #164, #165) n'est pas la preuve d'une dépendance métier stricte entre chaque PR. Aucune fusion automatique n'est décidée ici.
 
 ## Les 17 issues ouvertes : état et orientation proposée
 
-| Issue | Situation connue | Orientation **proposée** |
-| --- | --- | --- |
-| [#61](https://github.com/sangimed/nuvitae/issues/61) | P0, qualification alpha ; non READY | **NOW**, objectif parent jusqu'à décision finale |
-| [#158](https://github.com/sangimed/nuvitae/issues/158) | Phase A réussie sur candidat, issue encore ouverte | **NOW**, statuer sur sa clôture avec l'intégration |
-| [#118](https://github.com/sangimed/nuvitae/issues/118) | Ancien contexte CodeQL sur dépôt privé | **REQUALIFIER**, dépôt public et job CodeQL réussi sur #165 |
-| [#126](https://github.com/sangimed/nuvitae/issues/126) | Canal privé de signalement non prouvé ; SECURITY.md absent de main | **VÉRIFIER**, avant distribution publique de l'offre |
-| [#26](https://github.com/sangimed/nuvitae/issues/26) | Epic UX ; plusieurs sous-issues déjà closes | **NEXT**, redéfinir le restant à partir d'usage réel |
-| [#156](https://github.com/sangimed/nuvitae/issues/156) | Expérience skills Codex/Orca sans preuve de valeur finale | **LATER**, pilote borné après release |
-| [#28](https://github.com/sangimed/nuvitae/issues/28) | Fondation MkDocs présente ; lacunes documentées | **NEXT**, scinder les lacunes utiles, garder epic |
-| [#24](https://github.com/sangimed/nuvitae/issues/24) | Étude et frontière de télémétrie présentes | **NEXT/LATER**, choisir un POC utile plutôt qu'un nouvel APM |
-| [#43](https://github.com/sangimed/nuvitae/issues/43) | Proposition de valeur/landing non validée | **NEXT**, découvrir et tester les messages |
-| [#42](https://github.com/sangimed/nuvitae/issues/42) | Économie Community/Hosted non validée | **NEXT**, coût unitaire et usages avant facturation |
-| [#41](https://github.com/sangimed/nuvitae/issues/41) | Étude légale CDI/monétisation non conclue | **AVANT PREMIER REVENU**, pas un blocage de Community gratuite |
-| [#39](https://github.com/sangimed/nuvitae/issues/39) | EventStorming proposé, sans résultat démontré | **LATER**, à activer sur ambiguïté réelle du domaine |
-| [#30](https://github.com/sangimed/nuvitae/issues/30) | Langue des CV importés au-delà FR/EN | **LATER**, distinct de la langue UI |
-| [#31](https://github.com/sangimed/nuvitae/issues/31) | Internationalisation de l'interface | **LATER**, distinct de #30 |
-| [#77](https://github.com/sangimed/nuvitae/issues/77) | Hardening infrastructure hosted | **LATER**, prérequis Cloud, pas Community loopback |
-| [#78](https://github.com/sangimed/nuvitae/issues/78) | Identité et sessions hosted multi-utilisateur | **LATER**, prérequis Cloud |
-| [#127](https://github.com/sangimed/nuvitae/issues/127) | SBOM/provenance d'images publiées | **LATER**, dépend du vrai pipeline de publication |
+- **[#61](https://github.com/sangimed/nuvitae/issues/61)** — Situation connue : P0, qualification alpha ; non READY ; Orientation **proposée** : **NOW**, objectif parent jusqu'à décision finale
+- **[#158](https://github.com/sangimed/nuvitae/issues/158)** — Situation connue : Phase A réussie sur candidat, issue encore ouverte ; Orientation **proposée** : **NOW**, statuer sur sa clôture avec l'intégration
+- **[#118](https://github.com/sangimed/nuvitae/issues/118)** — Situation connue : Ancien contexte CodeQL sur dépôt privé ; Orientation **proposée** : **REQUALIFIER**, dépôt public et job CodeQL réussi sur #165
+- **[#126](https://github.com/sangimed/nuvitae/issues/126)** — Situation connue : Canal privé de signalement non prouvé ; SECURITY.md absent de main ; Orientation **proposée** : **VÉRIFIER**, avant distribution publique de l'offre
+- **[#26](https://github.com/sangimed/nuvitae/issues/26)** — Situation connue : Epic UX ; plusieurs sous-issues déjà closes ; Orientation **proposée** : **NEXT**, redéfinir le restant à partir d'usage réel
+- **[#156](https://github.com/sangimed/nuvitae/issues/156)** — Situation connue : Expérience skills Codex/Orca sans preuve de valeur finale ; Orientation **proposée** : **LATER**, pilote borné après release
+- **[#28](https://github.com/sangimed/nuvitae/issues/28)** — Situation connue : Fondation MkDocs présente ; lacunes documentées ; Orientation **proposée** : **NEXT**, scinder les lacunes utiles, garder epic
+- **[#24](https://github.com/sangimed/nuvitae/issues/24)** — Situation connue : Étude et frontière de télémétrie présentes ; Orientation **proposée** : **NEXT/LATER**, choisir un POC utile plutôt qu'un nouvel APM
+- **[#43](https://github.com/sangimed/nuvitae/issues/43)** — Situation connue : Proposition de valeur/landing non validée ; Orientation **proposée** : **NEXT**, découvrir et tester les messages
+- **[#42](https://github.com/sangimed/nuvitae/issues/42)** — Situation connue : Économie Community/Hosted non validée ; Orientation **proposée** : **NEXT**, coût unitaire et usages avant facturation
+- **[#41](https://github.com/sangimed/nuvitae/issues/41)** — Situation connue : Étude légale CDI/monétisation non conclue ; Orientation **proposée** : **AVANT PREMIER REVENU**, pas un blocage de Community gratuite
+- **[#39](https://github.com/sangimed/nuvitae/issues/39)** — Situation connue : EventStorming proposé, sans résultat démontré ; Orientation **proposée** : **LATER**, à activer sur ambiguïté réelle du domaine
+- **[#30](https://github.com/sangimed/nuvitae/issues/30)** — Situation connue : Langue des CV importés au-delà FR/EN ; Orientation **proposée** : **LATER**, distinct de la langue UI
+- **[#31](https://github.com/sangimed/nuvitae/issues/31)** — Situation connue : Internationalisation de l'interface ; Orientation **proposée** : **LATER**, distinct de #30
+- **[#77](https://github.com/sangimed/nuvitae/issues/77)** — Situation connue : Hardening infrastructure hosted ; Orientation **proposée** : **LATER**, prérequis Cloud, pas Community loopback
+- **[#78](https://github.com/sangimed/nuvitae/issues/78)** — Situation connue : Identité et sessions hosted multi-utilisateur ; Orientation **proposée** : **LATER**, prérequis Cloud
+- **[#127](https://github.com/sangimed/nuvitae/issues/127)** — Situation connue : SBOM/provenance d'images publiées ; Orientation **proposée** : **LATER**, dépend du vrai pipeline de publication
 
 ### Chevauchements, doublons et état obsolète
 
@@ -104,17 +98,15 @@ Dépendances hors alpha : #42 et #41 avant la première vente ; #77/#78 avant la
 
 ## Registre des décisions **en attente**
 
-| ID | Priorité | Décision à prendre par le fondateur | Recommandation de l'audit |
-| --- | --- | --- | --- |
-| D1 | P0 | Gel temporaire des nouveaux grands chantiers | Oui, jusqu'à stabilisation de la trajectoire alpha |
-| D2 | P0 | Fusion des huit PR du candidat validé | Préparer ordre et garde-fous, contrôler SHA final ; aucune fusion implicite |
-| D3 | P0 | Exécution des phases B et C | Utiliser environnement isolé, préflight ressources, aucune suppression implicite |
-| D4 | P0 | Autorisation phase D avec vrai fournisseur | Décision séparée, CV autorisé non sensible, budget strict documenté |
-| D5 | P0 | Quels contrôles de sécurité sont bloquants pour Community ? | Séparer Community loopback et Hosted ; ne pas lever une exigence sans preuve |
-| D6 | P1 | Disposition de #118 et #126 | Requalifier à partir de la visibilité actuelle et des contrôles effectivement activés |
-| D7 | P1 | Disposition de #130 | Archiver ou actualiser sans réécrire les anciens verdicts |
-| D8 | P1 | Traitement de #133 et #157 | Hors lot alpha ; validation spécifique après intégration |
-| D9 | P1 | Source d'autorité durable roadmap/status/scorecard | Étapes 2–4 du Project Reset, pas décidée dans cet audit |
+- **D1** — Priorité : P0 ; Décision à prendre par le fondateur : Gel temporaire des nouveaux grands chantiers ; Recommandation de l'audit : Oui, jusqu'à stabilisation de la trajectoire alpha
+- **D2** — Priorité : P0 ; Décision à prendre par le fondateur : Fusion des huit PR du candidat validé ; Recommandation de l'audit : Préparer ordre et garde-fous, contrôler SHA final ; aucune fusion implicite
+- **D3** — Priorité : P0 ; Décision à prendre par le fondateur : Exécution des phases B et C ; Recommandation de l'audit : Utiliser environnement isolé, préflight ressources, aucune suppression implicite
+- **D4** — Priorité : P0 ; Décision à prendre par le fondateur : Autorisation phase D avec vrai fournisseur ; Recommandation de l'audit : Décision séparée, CV autorisé non sensible, budget strict documenté
+- **D5** — Priorité : P0 ; Décision à prendre par le fondateur : Quels contrôles de sécurité sont bloquants pour Community ? ; Recommandation de l'audit : Séparer Community loopback et Hosted ; ne pas lever une exigence sans preuve
+- **D6** — Priorité : P1 ; Décision à prendre par le fondateur : Disposition de #118 et #126 ; Recommandation de l'audit : Requalifier à partir de la visibilité actuelle et des contrôles effectivement activés
+- **D7** — Priorité : P1 ; Décision à prendre par le fondateur : Disposition de #130 ; Recommandation de l'audit : Archiver ou actualiser sans réécrire les anciens verdicts
+- **D8** — Priorité : P1 ; Décision à prendre par le fondateur : Traitement de #133 et #157 ; Recommandation de l'audit : Hors lot alpha ; validation spécifique après intégration
+- **D9** — Priorité : P1 ; Décision à prendre par le fondateur : Source d'autorité durable roadmap/status/scorecard ; Recommandation de l'audit : Étapes 2–4 du Project Reset, pas décidée dans cet audit
 
 ## Limites et méthode
 
