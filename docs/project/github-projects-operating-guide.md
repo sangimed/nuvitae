@@ -1,8 +1,8 @@
 # Nuvitae — GitHub Projects operating guide
 
-Project Reset, étape 3/4. État vérifié le 6 novembre 2026.
+Project Reset, étape 3/4. Classification appliquée le 6 novembre 2026, configuration Projects V2 **validée par l'exécution du propriétaire communiquée le 7 novembre 2026**.
 
-Ce guide décrit la classification réellement appliquée aux issues et PR GitHub et les vues à configurer dans le GitHub Project existant. Les vues Projects V2 et leurs cartes ne sont pas encore vérifiées ou modifiées : le connecteur disponible ne permet pas leur administration.
+Ce guide décrit la classification réellement appliquée aux issues et PR et les quatre vues actives du [Project Nuvitae Roadmap #2](https://github.com/users/sangimed/projects/2). L'application GitHub connectée ne permet pas de lire les vues Projects V2, mais la sortie fournie par le propriétaire du script `sync-github-project.ps1 -ProjectNumber 2 -Apply` confirme la lecture finale des quatre vues et des cartes.
 
 Références : [roadmap produit](product-roadmap.md), [état de référence](status-baseline-2026-11-06.md) et [checklist Community](../release/community-alpha-readiness.md).
 
@@ -40,11 +40,7 @@ et champs visibles, mais pas l'ensemble des réglages de présentation
 (groupement/sort par colonnes). Le Board « Current Cycle » peut demander une
 vérification finale de son regroupement par le champ Status dans l'interface.
 
-**Statut de cette automatisation :** script publié et documenté ; tant qu'il
-n'a pas été exécuté avec les permissions Projects du propriétaire et que les
-quatre vues n'ont pas été relues en réel, l'étape 3 reste partiellement terminée.
-Cette procédure n'est ni un workflow GitHub Actions automatiquement déclenché,
-ni une mise à jour silencieuse du board.
+**Statut de cette automatisation :** exécutée avec les permissions Projects du propriétaire et vérifiée dans la sortie de la commande `-Apply` ; les quatre vues et 25 cartes attendues sont présentes. Le regroupement visuel du Kanban et l'état effectif du workflow d'auto-ajout restent des points d'entretien facultatifs à vérifier dans l'interface. Cette procédure n'est pas un workflow GitHub Actions automatiquement déclenché.
 
 ## Modifications réellement appliquées
 
@@ -100,8 +96,8 @@ Quatre issues NOW ne sont pas quatre développements parallèles : #158, #118 et
 ## Vue Release Readiness
 
 - Disposition proposée : Table.
-- Après ajout des PR au Project, filtre : `repo:sangimed/nuvitae is:open label:"horizon:now","release:community-alpha"`.
-- Les huit PR ont déjà le label `release:community-alpha`, mais leur présence dans le Project n'a pas été vérifiée.
+- Filtre actif : `repo:sangimed/nuvitae is:open label:"horizon:now","release:community-alpha"`.
+- Les huit PR avec le label `release:community-alpha` figurent dans les 25 cartes vérifiées du Project (résultat de la synchronisation exécutée par le propriétaire).
 - Le workflow auto-add historique basé sur `is:issue` n'ajoute pas les PR.
 - Suivre les phases A, B, C, D et E, le candidat Git exact, l'intégration, les risques et le verdict.
 - Le succès de la phase A sur `0ee8780` ne constitue pas READY pour Community.
@@ -113,17 +109,27 @@ Quatre issues NOW ne sont pas quatre développements parallèles : #158, #118 et
 - Les valeurs multiples d'un même champ sont combinées en OU ; les champs différents sont combinés en ET.
 - Faire passer une issue en NOW seulement avec un résultat attendu, un déclencheur et un arbitrage explicite.
 
-## Vérifications Projects V2 restantes
+## Preuve de validation du Project — étape 3 terminée
 
-- [ ] Identifier l'URL et le propriétaire du Project existant.
-- [ ] Confirmer que son workflow auto-add est actif et cible `sangimed/nuvitae`.
-- [ ] Vérifier la présence réelle des 17 issues après les modifications de labels.
-- [ ] Exécuter le script de synchronisation ci-dessus, en prévisualisation puis avec `-Apply`, et vérifier les quatre vues sans modifier les statuts Projects actuels.
-- [ ] Ajouter les huit PR alpha à la vue Release Readiness sans les merger.
-- [ ] Enregistrer les filtres et vérifier les cartes et regroupements dans chaque vue.
-- [ ] Confirmer qu'aucun élément n'a reçu un statut artificiellement plus avancé.
+Le propriétaire a exécuté en PowerShell la version corrigée du script et a communiqué les résultats suivants :
 
-L'auto-add historique était configuré sur `is:issue is:open label:roadmap`, mais sa configuration effective ne peut pas être vérifiée par le connecteur actuel. Les modifications de labels rendent les issues éligibles ; elles ne prouvent pas leur présence dans le Project.
+- Project : [Nuvitae Roadmap #2](https://github.com/users/sangimed/projects/2) ; mode `APPLY`.
+- **17 issues roadmap + 8 PR alpha = 25 cartes** ; `Cartes absentes du Project : 0 / 25`.
+- **Cockpit** : `TABLE_LAYOUT` ; filtre `repo:sangimed/nuvitae is:issue is:open label:roadmap`.
+- **Current Cycle** : `BOARD_LAYOUT` ; filtre `repo:sangimed/nuvitae is:issue is:open label:horizon:now`.
+- **Release Readiness** : `TABLE_LAYOUT` ; filtre `repo:sangimed/nuvitae is:open label:horizon:now,release:community-alpha`.
+- **Backlog / Later** : `TABLE_LAYOUT` ; filtre `repo:sangimed/nuvitae is:issue is:open label:horizon:next,horizon:later`.
+- Les quatre vues sont marquées `VERIFIE`, puis `SUCCES : les 4 vues et les cartes cibles sont verifiees` par le script.
+
+Les filtres affichés ci-dessus sont ceux **retournés par GitHub et normalisés**, et non des descriptions approximatives. Ces preuves permettent de **clôturer l'étape 3/4 du Project Reset** sur son périmètre : organisation des issues et PR, quatre vues filtrées et présence des cartes.
+
+### Maintenance et réserves non bloquantes
+
+- [ ] Vérifier visuellement le **regroupement des colonnes par Status** dans Current Cycle : l'API ne configure pas intégralement cette présentation.
+- [ ] Vérifier l'état du workflow **auto-add** historique : la synchronisation manuelle des 25 cartes est démontrée, mais l'activation future du workflow n'est pas prouvée.
+- [ ] Examiner l'organisation des colonnes et l'affichage en conditions réelles si un problème d'ergonomie apparaît.
+
+Aucun nouveau Project, merge de PR alpha, changement de statut produit ni appel fournisseur réel n'a été déclenché par cette synchronisation.
 
 ## Règles de maintenance
 
