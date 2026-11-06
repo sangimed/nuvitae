@@ -6,6 +6,46 @@ Ce guide décrit la classification réellement appliquée aux issues et PR GitHu
 
 Références : [roadmap produit](product-roadmap.md), [état de référence](status-baseline-2026-11-06.md) et [checklist Community](../release/community-alpha-readiness.md).
 
+## Automatiser la création et la synchronisation des vues
+
+GitHub GraphQL expose désormais les mutations `createProjectV2View` et
+`updateProjectV2View`. Le connecteur GitHub de cette conversation ne donne
+pas accès à ces mutations, mais **GitHub CLI peut les appeler avec
+`gh api graphql`**. Le script du dépôt effectue cette opération dans le
+Project existant, sans en créer d'autre :
+
+```powershell
+# Prérequis : GitHub CLI authentifié, avec accès aux Projects.
+gh auth status
+gh auth refresh -s project
+
+# Depuis la racine du dépôt Nuvitae :
+.\scripts\sync-github-project.ps1           # Prévisualisation sans écriture
+.\scripts\sync-github-project.ps1 -Apply    # Appliquer et vérifier
+```
+
+Si plusieurs Projects contenant « Nuvitae » existent sous `sangimed`,
+le script s'arrête au lieu d'en choisir un arbitrairement. Il faut alors
+indiquer explicitement son numéro, par exemple
+`-Owner sangimed -ProjectNumber 2 -Apply` (le numéro `2` est illustratif).
+Le script accepte `-SkipItems` pour ne traiter que les vues.
+
+Il crée ou actualise les quatre vues par **nom, disposition et filtre**,
+ajoute les issues ouvertes `roadmap` et les PR ouvertes
+`release:community-alpha` seulement lorsqu'elles manquent, puis vérifie
+le résultat par relecture. Une seconde exécution n'ajoute pas de doublons.
+
+**Limite confirmée :** l'API GraphQL utilisée permet les dispositions, filtres
+et champs visibles, mais pas l'ensemble des réglages de présentation
+(groupement/sort par colonnes). Le Board « Current Cycle » peut demander une
+vérification finale de son regroupement par le champ Status dans l'interface.
+
+**Statut de cette automatisation :** script publié et documenté ; tant qu'il
+n'a pas été exécuté avec les permissions Projects du propriétaire et que les
+quatre vues n'ont pas été relues en réel, l'étape 3 reste partiellement terminée.
+Cette procédure n'est ni un workflow GitHub Actions automatiquement déclenché,
+ni une mise à jour silencieuse du board.
+
 ## Modifications réellement appliquées
 
 - Les 17 issues ouvertes portent `roadmap` et exactement un des labels `horizon:now`, `horizon:next` ou `horizon:later`.
@@ -78,7 +118,7 @@ Quatre issues NOW ne sont pas quatre développements parallèles : #158, #118 et
 - [ ] Identifier l'URL et le propriétaire du Project existant.
 - [ ] Confirmer que son workflow auto-add est actif et cible `sangimed/nuvitae`.
 - [ ] Vérifier la présence réelle des 17 issues après les modifications de labels.
-- [ ] Préserver les statuts Projects actuels et créer ou adapter les quatre vues.
+- [ ] Exécuter le script de synchronisation ci-dessus, en prévisualisation puis avec `-Apply`, et vérifier les quatre vues sans modifier les statuts Projects actuels.
 - [ ] Ajouter les huit PR alpha à la vue Release Readiness sans les merger.
 - [ ] Enregistrer les filtres et vérifier les cartes et regroupements dans chaque vue.
 - [ ] Confirmer qu'aucun élément n'a reçu un statut artificiellement plus avancé.
@@ -95,6 +135,8 @@ L'auto-add historique était configuré sur `is:issue is:open label:roadmap`, ma
 
 ## Documentation GitHub
 
+- [Mutations de vues dans l'API GraphQL](https://docs.github.com/en/graphql/reference/projects)
+- [Commandes GitHub CLI Projects](https://cli.github.com/manual/gh_project)
 - [Filtrage des Projects](https://docs.github.com/en/issues/planning-and-tracking-with-projects/customizing-views-in-your-project/filtering-projects)
 - [Gestion et sauvegarde des vues](https://docs.github.com/en/issues/planning-and-tracking-with-projects/customizing-views-in-your-project/managing-your-views)
 - [Ajout automatique d'éléments](https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/adding-items-automatically)
