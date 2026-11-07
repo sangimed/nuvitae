@@ -1029,7 +1029,11 @@ function isPhone(value: string): boolean {
 }
 
 function singleUrlValue(value: string): string | undefined {
-  const stripped = value.replace(/[.,;]+$/u, "");
+  // Walk the suffix once: an unanchored suffix regex retries long nonmatches
+  // before the accepted-value length check can reject them.
+  let end = value.length;
+  while (end > 0 && ".,;".includes(value.charAt(end - 1))) end -= 1;
+  const stripped = value.slice(0, end);
   if (stripped.length === 0 || stripped.length > maxAcceptedValueLength) {
     return undefined;
   }
