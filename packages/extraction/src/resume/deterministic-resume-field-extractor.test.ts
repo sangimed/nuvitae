@@ -18,6 +18,46 @@ const fragments = (texts: readonly string[]): ResumeSourceFragment[] =>
   }));
 
 describe("DeterministicResumeFieldExtractor", () => {
+  it.each([
+    ["a@b..", true],
+    ["a@..b", true],
+    ["a@.b.", false],
+    ["a@b.", false],
+    ["a@.b", false],
+    ["a@b.c@d.e", false],
+    ["a@b.c d", false],
+  ])("preserves historical email acceptance for %s", (value, accepted) => {
+    const result = new DeterministicResumeFieldExtractor().extract(
+      fragments([`Email: ${value}`]),
+      "english",
+      "pdf",
+    );
+    expect(result.fields.length > 0).toBe(accepted);
+  });
+  it("rejects bounded synthetic malformed email text without repeated suffix searches", () => {
+    const started = performance.now();
+    const result = new DeterministicResumeFieldExtractor().extract(
+      fragments(["a@" + ".".repeat(60_000) + "@"]),
+      "english",
+      "pdf",
+    );
+    expect(result.fields).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(1_000);
+  }, 10_000);
+
+  it("keeps permissive historical email recognition and URL punctuation behavior", () => {
+    const result = new DeterministicResumeFieldExtractor().extract(
+      fragments(["Email: a@b..", "a@b.c", "https://example.invalid/path.,;"]),
+      "english",
+      "pdf",
+    );
+    expect(result.fields.map((field) => field.value)).toEqual([
+      { kind: "text", value: "a@b.." },
+      { kind: "text", value: "a@b.c" },
+      { kind: "link", url: "https://example.invalid/path" },
+    ]);
+  });
+
   it("extracts explicit contact, links, and headed sections with provenance", () => {
     const result = new DeterministicResumeFieldExtractor().extract(
       fragments([

@@ -92,7 +92,19 @@ const labels: readonly [DeterministicResumeSection, string, string][] = [
   ["headline", "titre", "headline"],
 ];
 
-const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/u;
+function isEmail(value: string): boolean {
+  const at = value.indexOf("@");
+  if (at <= 0 || at !== value.lastIndexOf("@") || /\s/u.test(value))
+    return false;
+  const dot = value.indexOf(".", at + 2);
+  return dot >= 0 && dot < value.length - 1;
+}
+
+function trimUrlPunctuation(value: string): string {
+  let end = value.length;
+  while (end > 0 && ".,;".includes(value.charAt(end - 1))) end -= 1;
+  return value.slice(0, end);
+}
 const phone = /^(?:\+?[0-9][0-9 ()./-]{6,}[0-9])$/u;
 const url = /https?:\/\/[^\s<>()]+/giu;
 
@@ -134,7 +146,7 @@ export class DeterministicResumeFieldExtractor {
       }
       const links = [...raw.matchAll(url)];
       for (const match of links) {
-        const value = match[0].replace(/[.,;]+$/u, "");
+        const value = trimUrlPunctuation(match[0]);
         fields.push(
           candidate(
             "professional_links",
@@ -144,8 +156,8 @@ export class DeterministicResumeFieldExtractor {
           ),
         );
       }
-      if (email.test(raw)) {
-        const value = raw.match(/[^\s@]+@[^\s@]+\.[^\s@]+/u)?.[0];
+      if (isEmail(raw)) {
+        const value = raw;
         if (value)
           fields.push(
             candidate(
@@ -215,7 +227,7 @@ function addLabelValue(
   value: string,
   fragment: ResumeSourceFragment,
 ): void {
-  if (path === "contact.email" && !email.test(value)) return;
+  if (path === "contact.email" && !isEmail(value)) return;
   if (path === "contact.phone" && !phone.test(value)) return;
   fields.push(candidate(section, path, { kind: "text", value }, fragment));
 }

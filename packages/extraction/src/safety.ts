@@ -159,10 +159,7 @@ export function scanTextForHostileContent(
   if (/\bembedded\s*?file\b/i.test(lower) || /\/embedfile\b/i.test(text)) {
     found.push("embedded_file");
   }
-  if (
-    /\/filespec\b/i.test(text) ||
-    /attachment\s*=\s*["'].+\.[a-z]{2,4}["']/i.test(lower)
-  ) {
+  if (/\/filespec\b/i.test(text) || hasAttachment(lower)) {
     found.push("file_attachment");
   }
   if (
@@ -208,10 +205,7 @@ export function scanTextForHostileContent(
   ) {
     found.push("ole_object");
   }
-  if (
-    /targetmode\s*=\s*["']external["']/i.test(lower) ||
-    /<relationship[^>]*targetmode\s*=\s*["']external/i.test(lower)
-  ) {
+  if (hasExternalRelationship(lower)) {
     found.push("external_relationship");
   }
   if (
@@ -235,7 +229,7 @@ export function scanTextForHostileContent(
     found.push("entity_expansion");
   }
   if (
-    /(?:\/[^\s"'<>]*\.\.\/[^\s"'<>]+)|(?:\.\.\\)/i.test(text) ||
+    hasTraversal(text) ||
     /\b[A-Za-z]:\\(?:Windows|Program\sFiles|Users|Temp|Windows\\System32)/i.test(
       text,
     )
@@ -568,9 +562,72 @@ export async function validateWorkspaceClean(
 export function maskSensitiveOutput(text: string): string {
   return text
     .replace(/[A-Za-z0-9+/=]{40,}/g, "[redacted-base64]")
-    .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, "[redacted-email]")
+    .replace(/[\w.+@-]+/g, maskEmailToken)
     .replace(/\b(?:https?:\/\/)[^\s"'<>]+\b/g, (match) =>
       hostnamePattern.test(new URL(match).hostname) ? "[redacted-url]" : match,
     )
     .replace(/\b(?:\d{1,3}\.){3}\d{1,3}\b/g, "[redacted-ip]");
+}
+
+// The first attachment opener on a line dominates any later opener: the
+// historical rule permits arbitrary characters between it and the extension.
+function hasAttachment(text: string): boolean {
+  let checkedUntil = -1;
+  for (const opening of text.matchAll(/attachment\s*=\s*["']/giu)) {
+    const start = opening.index + opening[0].length;
+    if (start <= checkedUntil) continue;
+    let end = start;
+    while (end < text.length && !/[\r\n\u2028\u2029]/u.test(text.charAt(end)))
+      end += 1;
+    checkedUntil = end;
+    if (/\.[a-z]{2,4}["']/i.test(text.slice(start + 1, end))) return true;
+  }
+  return false;
+}
+
+function hasExternalRelationship(text: string): boolean {
+  if (/targetmode\s*=\s*["']external["']/i.test(text)) return true;
+  for (const tag of text.split(">")) {
+    const start = tag.indexOf("<relationship");
+    if (
+      start >= 0 &&
+      /targetmode\s*=\s*["']external/i.test(tag.slice(start + 13))
+    )
+      return true;
+  }
+  return false;
+}
+
+function hasTraversal(text: string): boolean {
+  if (text.includes("..\\")) return true;
+  for (const match of text.matchAll(/[^\s"'<>]+/gu)) {
+    const token = match[0];
+    const slash = token.indexOf("/");
+    if (slash < 0) continue;
+    const parent = token.indexOf("../", slash + 1);
+    if (parent >= 0 && parent + 3 < token.length) return true;
+  }
+  return false;
+}
+
+function maskEmailToken(token: string): string {
+  const parts: string[] = [];
+  let cursor = 0;
+  while (cursor < token.length) {
+    const at = token.indexOf("@", cursor);
+    if (at < 0) break;
+    const nextAt = token.indexOf("@", at + 1);
+    const domain = token.slice(at + 1, nextAt < 0 ? token.length : nextAt);
+    // Anchored, and the first character class excludes the separating dot.
+    const match = /^[\w-]+\.[\w.-]+/.exec(domain);
+    if (at > cursor && match) {
+      parts.push("[redacted-email]");
+      cursor = at + 1 + match[0].length;
+    } else {
+      parts.push(token.slice(cursor, at + 1));
+      cursor = at + 1;
+    }
+  }
+  parts.push(token.slice(cursor));
+  return parts.join("");
 }
