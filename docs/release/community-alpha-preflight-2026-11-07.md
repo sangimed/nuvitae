@@ -40,18 +40,18 @@ sur une branche et un worktree neufs issus du SHA ci-dessus.
 Aucun service applicatif ni gate démarré ; des conteneurs workspace isolés ont
 ensuite servi aux contrôles documentaires :
 
-| Contrôle                                                                                                    | Statut / sortie                                                                                                           |
-| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `docker version`                                                                                            | PASS, exit 0 : client/Engine 29.9.2, Docker Desktop 4.98.0, linux/amd64                                                   |
-| `docker compose version`                                                                                    | PASS, exit 0 : v5.6.1 ; support des overlays `!override` vérifié par config                                               |
-| `docker info`                                                                                               | PASS, daemon accessible ; 16 CPU, 16 727 072 768 octets RAM                                                               |
-| `command -v bash`                                                                                           | PASS, `/usr/bin/bash`                                                                                                     |
-| `df -h .`, `free -h`                                                                                        | PASS, exit 0 : 909 GiB disque, environ 13 GiB RAM disponibles côté hôte ; disponibilité réelle pendant build non garantie |
-| Ports 3000/3001 (`ss -ltn`)                                                                                 | PASS, exit 0 : aucune écoute au préflight ; revérifier avant exécution                                                    |
-| Config canonique puis overlay local avec interpolation synthétique et environnement filtré                  | PASS, exit 0 pour les deux ; aucun secret lu ou imprimé                                                                   |
-| `bash -n scripts/community-alpha-deterministic-gate.sh scripts/local-play-e2e.sh scripts/local-play-env.sh` | PASS, exit 0, syntaxe uniquement                                                                                          |
-| Installation verrouillée, Prettier final et `git diff --check`                                              | PASS, exit 0 ; projet `alpha-preflight-20261107`, cinq conteneurs workspace et volumes conservés                          |
-| Gate / builds / tests applicatifs                                                                           | NOT RUN par ce chantier ; autorisation de nettoyage absente                                                               |
+| Contrôle                                                                                                    | Statut / sortie                                                                                                                 |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `docker version`                                                                                            | PASS, exit 0 : client/Engine 29.9.2, Docker Desktop 4.98.0, linux/amd64                                                         |
+| `docker compose version`                                                                                    | PASS, exit 0 : v5.6.1 ; support des overlays `!override` vérifié par config                                                     |
+| `docker info`                                                                                               | PASS, daemon accessible ; 16 CPU, 16 727 072 768 octets RAM                                                                     |
+| `command -v bash`                                                                                           | PASS, `/usr/bin/bash`                                                                                                           |
+| `df -h .`, `free -h`                                                                                        | PASS, exit 0 : 909 GiB disque, environ 13 GiB RAM disponibles côté hôte ; disponibilité réelle pendant build non garantie       |
+| Ports 3000/3001 (`ss -ltn`)                                                                                 | PASS, exit 0 : aucune écoute au préflight ; revérifier avant exécution                                                          |
+| Config canonique puis overlay local avec interpolation synthétique et environnement filtré                  | PASS, exit 0 pour les deux ; aucun secret lu ou imprimé                                                                         |
+| `bash -n scripts/community-alpha-deterministic-gate.sh scripts/local-play-e2e.sh scripts/local-play-env.sh` | PASS, exit 0, syntaxe uniquement                                                                                                |
+| Installation verrouillée, Prettier final et `git diff --check`                                              | PASS, exit 0 ; projet `alpha-preflight-20261107`, six conteneurs workspace (dont le contrôle de précision) et volumes conservés |
+| Gate / builds / tests applicatifs                                                                           | NOT RUN par ce chantier ; autorisation de nettoyage absente                                                                     |
 
 Le daemon est **partagé**, avec un PostgreSQL sain du projet d'intégration
 précédent, des conteneurs de checks conservés et de nombreux volumes existants.
