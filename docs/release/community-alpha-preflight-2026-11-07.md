@@ -37,7 +37,8 @@ Snapshot privé effectué et vérifié avant les modifications par le responsabl
 de mission. Le lanceur `scripts/run-agent-safe.sh` est absent. Rapport rédigé
 sur une branche et un worktree neufs issus du SHA ci-dessus.
 
-Préflight en lecture seule, aucun service applicatif démarré par ce chantier :
+Aucun service applicatif ni gate démarré ; des conteneurs workspace isolés ont
+ensuite servi aux contrôles documentaires :
 
 | Contrôle                                                                                                    | Statut / sortie                                                                                                           |
 | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -49,6 +50,7 @@ Préflight en lecture seule, aucun service applicatif démarré par ce chantier 
 | Ports 3000/3001 (`ss -ltn`)                                                                                 | PASS, exit 0 : aucune écoute au préflight ; revérifier avant exécution                                                    |
 | Config canonique puis overlay local avec interpolation synthétique et environnement filtré                  | PASS, exit 0 pour les deux ; aucun secret lu ou imprimé                                                                   |
 | `bash -n scripts/community-alpha-deterministic-gate.sh scripts/local-play-e2e.sh scripts/local-play-env.sh` | PASS, exit 0, syntaxe uniquement                                                                                          |
+| Installation verrouillée, Prettier final et `git diff --check`                                              | PASS, exit 0 ; projet `alpha-preflight-20261107`, cinq conteneurs workspace et volumes conservés                          |
 | Gate / builds / tests applicatifs                                                                           | NOT RUN par ce chantier ; autorisation de nettoyage absente                                                               |
 
 Le daemon est **partagé**, avec un PostgreSQL sain du projet d'intégration
