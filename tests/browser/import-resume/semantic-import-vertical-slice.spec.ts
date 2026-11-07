@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { reviewDraftReadResponseSchema } from "@nuvitae/contracts";
 import { readImportInvariants } from "./test-support/vertical-slice-persistence";
 
 /**
@@ -56,11 +57,46 @@ test("no production semantic provider is configured recovers the existing fallba
   const acceptSuggestions = page.getByRole("button", {
     name: /Accept all \d+ suggested details/,
   });
-  await expect(acceptSuggestions).toBeVisible();
-  await acceptSuggestions.click();
+  // The limited fallback copies explicit source evidence, so these fields
+  // are unreviewed imports, not inferred suggestions awaiting bulk acceptance.
+  const readFallbackReview = async () => {
+    const response = await page.request.get(
+      `/api/import-resume/${importId}/review`,
+    );
+    expect(response.ok()).toBe(true);
+    const draft = reviewDraftReadResponseSchema.parse(await response.json());
+    const fields = draft.sections.flatMap((section) => section.fields);
+    expect(fields.length).toBeGreaterThan(0);
+    for (const field of fields) {
+      expect(field.inferenceStatus).toBe("not_inferred");
+      expect(field.reviewStatus).toBe("unreviewed");
+      expect(field.sourceStatus).toBe("explicit_source");
+    }
+    expect(draft.readyToConfirm).toBe(false);
+    return draft;
+  };
+  const readyHeading = page.getByRole("heading", {
+    name: "Your imported information is ready",
+  });
+  await expect(readyHeading).toBeVisible();
+  const reviewBeforeRefresh = await readFallbackReview();
   await expect(acceptSuggestions).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Create my resume" }),
+  ).toHaveCount(0);
   await page.reload();
+  await expect(readyHeading).toBeVisible();
+  const reviewAfterRefresh = await readFallbackReview();
+  expect(reviewAfterRefresh.draftId).toBe(reviewBeforeRefresh.draftId);
+  expect(reviewAfterRefresh.reviewRevision).toBe(
+    reviewBeforeRefresh.reviewRevision,
+  );
+  expect(reviewAfterRefresh.sections).toEqual(reviewBeforeRefresh.sections);
   await expect(acceptSuggestions).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Create my resume" }),
+  ).toHaveCount(0);
+  expect(importStarts()).toBe(1);
 
   // The bounded fallback creates one review draft after one semantic attempt;
   // refreshing never creates another attempt or structured resume.
@@ -209,11 +245,47 @@ test("real DOCX vertical slice proves OOXML extraction and review-required ambig
   await expect(page.getByText("Acme Studio").first()).toBeVisible();
   await expect(page.getByText("Bright Labs").first()).toBeVisible();
 
-  // The T210 DOCX profile carries one ambiguity diagnostic that must be
-  // visibly review-required and block confirmation.
+  // The diagnostic survives persistence and the owner-scoped API; the UI uses
+  // localized type-based copy instead of rendering provider-authored prose.
+  const response = await page.request.get(
+    `/api/import-resume/${importId}/review`,
+  );
+  expect(response.ok()).toBe(true);
+  const draft = reviewDraftReadResponseSchema.parse(await response.json());
+  const warnings = draft.sections.flatMap((section) => section.warnings);
+  expect(warnings).toHaveLength(1);
+  const warning = warnings[0]!;
+  expect(warning).toMatchObject({
+    warningType: "ambiguous",
+    message: "The end date could be read as a range or a single year.",
+    reviewStatus: "needs_review",
+    requiresResolution: true,
+  });
+  expect(draft.unresolvedWarningCount).toBe(1);
+  expect(draft.readyToConfirm).toBe(false);
+  const beforeConfirmation = await readImportInvariants(importId);
+  expect(beforeConfirmation.processingStatus).toBe("ready_for_review");
+  expect(beforeConfirmation.draftCount).toBe(1);
+  expect(beforeConfirmation.structuredResumeCount).toBe(0);
+  expect(beforeConfirmation.warnings).toEqual([
+    {
+      warningId: warning.warningId,
+      warningType: "ambiguous",
+      reviewStatus: "needs_review",
+      requiresResolution: true,
+    },
+  ]);
   await expect(
-    page.getByText("The end date could be read as a range or a single year."),
+    page.getByRole("heading", {
+      name: "Please choose how to use this information",
+    }),
   ).toBeVisible();
+  await expect(
+    page.getByText(
+      "This information may have more than one meaning. Review it and choose what belongs in your resume.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByText(warning.message, { exact: true })).toHaveCount(0);
   await expect(
     page.getByText("1 detail still needs your attention.", { exact: false }),
   ).toBeVisible();
@@ -221,8 +293,15 @@ test("real DOCX vertical slice proves OOXML extraction and review-required ambig
     page.getByRole("heading", { name: "Review remaining details" }),
   ).toBeVisible();
 
-  await confirmAllWarnings(page);
   await reviewOneImportedField(page);
+  await expect(
+    page.getByRole("button", { name: "Create my resume" }),
+  ).toHaveCount(0);
+  expect((await readImportInvariants(importId)).structuredResumeCount).toBe(0);
+  expect(await page.locator("body").innerText()).not.toMatch(
+    technicalDiagnosticPattern,
+  );
+  await confirmAllWarnings(page);
   await expect(
     page.getByRole("button", { name: "Create my resume" }),
   ).toBeEnabled();
@@ -232,6 +311,9 @@ test("real DOCX vertical slice proves OOXML extraction and review-required ambig
   const invariants = await readImportInvariants(importId);
   expect(invariants.draftCount).toBe(1);
   expect(invariants.structuredResumeCount).toBe(1);
+  expect(invariants.warnings).toEqual([
+    { ...beforeConfirmation.warnings[0], reviewStatus: "confirmed" },
+  ]);
 
   await page.reload();
   await expect(
@@ -301,9 +383,8 @@ async function confirmAllWarnings(page: Page): Promise<void> {
     exact: true,
   });
   while ((await confirmations.count()) > 0) {
+    const remaining = await confirmations.count();
     await confirmations.first().click();
-    await expect(page.getByRole("status").first()).not.toContainText(
-      "Saving review change.",
-    );
+    await expect(confirmations).toHaveCount(remaining - 1);
   }
 }

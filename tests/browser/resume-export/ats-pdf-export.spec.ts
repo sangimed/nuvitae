@@ -116,7 +116,7 @@ test("failed owner-scoped read stays recoverable and does not expose diagnostics
     page.getByRole("heading", { name: "PDF export unavailable" }),
   ).toBeVisible();
   await expect(page.locator('p[role="alert"]')).toHaveText(
-    "Resume creation is temporarily unavailable.",
+    "PDF export is temporarily unavailable. Please try again.",
   );
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
   await expect(page.getByText("database diagnostics")).toHaveCount(0);

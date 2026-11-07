@@ -32,10 +32,10 @@
     "@nuvitae/contracts": "workspace:*",
     "@nuvitae/domain": "workspace:*",
     "@nuvitae/import-application": "workspace:*",
-    "@nestjs/typeorm": "12.0.1",
+    "@nestjs/typeorm": "12.0.2",
     "ioredis": "6.0.0",
-    "pg": "8.23.0",
+    "pg": "8.23.1",
     "reflect-metadata": "0.2.2",
-    "typeorm": "1.1.1"
+    "typeorm": "1.1.2"
   }
 }

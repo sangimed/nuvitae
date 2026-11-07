@@ -25,7 +25,15 @@ As audited on 31 August 2026:
 - Community is a loopback-only, single-installation-owner deployment. Its
   high-entropy access secret creates a server-side, hashed-reference session.
 - Local Play is development-only, uses one server-configured identity, and
-  refuses `NODE_ENV=production`.
+  refuses `NODE_ENV=production`. Its Compose override accepts the server-side
+  `NUVITAE_LOCAL_PLAY_USER_ID`; browser headers, query parameters and bodies
+  cannot select that identity. The deterministic acceptance runner selects
+  separate synthetic owners for semantic imports, fidelity, and final browser
+  regressions, recreating the Local Play API at those batch boundaries. Stored
+  data and PostgreSQL admission history are retained; the five-attempt/600-second
+  per-owner admission limit and its 429/Retry-After behavior remain enforced
+  within each batch. This is test orchestration, not a production identity or
+  quota override.
 - Hosted multi-user production authentication, account recovery, billing, and
   public deployment infrastructure do not exist. Their controls are future
   requirements, not implemented posture.

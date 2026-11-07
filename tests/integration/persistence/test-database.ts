@@ -29,17 +29,37 @@ async function ensureTestDatabase(database: string): Promise<void> {
   const developmentDatabase = process.env.POSTGRES_DB ?? "nuvitae";
   const admin = dataSourceFor(developmentDatabase);
   await admin.initialize();
+  const session = admin.createQueryRunner();
   try {
-    const exists = await admin.query<{ exists: boolean }[]>(
-      "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1) AS exists",
-      [database],
-    );
-    if (!exists[0]?.exists) {
-      // The identifier is constrained above; PostgreSQL cannot parameterize it.
-      await admin.query(`CREATE DATABASE "${database}"`);
+    await session.connect();
+    // CREATE DATABASE cannot run in a transaction. Keep a session lock on one
+    // connection so separate suites/processes serialize the existence check and
+    // creation. The namespace is reserved for test-database bootstrap.
+    await session.query("SELECT pg_advisory_lock(1314280514, hashtext($1))", [
+      database,
+    ]);
+    try {
+      const exists = await session.query(
+        "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1) AS exists",
+        [database],
+        true,
+      );
+      if (!exists.records[0]?.exists) {
+        // The identifier is constrained above; PostgreSQL cannot parameterize it.
+        await session.query(`CREATE DATABASE "${database}"`);
+      }
+    } finally {
+      await session.query(
+        "SELECT pg_advisory_unlock(1314280514, hashtext($1))",
+        [database],
+      );
     }
   } finally {
-    await admin.destroy();
+    try {
+      await session.release();
+    } finally {
+      await admin.destroy();
+    }
   }
 }
 

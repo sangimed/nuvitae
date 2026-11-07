@@ -1,3 +1,8 @@
+import {
+  expandReviewSections,
+  reviewAndCreateResume,
+  verifyPdfProvenance,
+} from "./review-journey";
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
@@ -36,9 +41,10 @@ test("fresh manual draft persists through browser save and reload", async ({
   );
   await page.goto("/resumes/new/manual");
   expect((await created).status()).toBe(201);
-  await expect(page).toHaveURL(/\/resumes\/new\/manual\?draftId=/u);
+  await expect(page).toHaveURL(/\/resumes\/drafts\/[0-9a-f-]+$/u);
   const url = new URL(page.url());
-  expect(url.searchParams.get("draftId")).toMatch(validDraftId);
+  expect(url.pathname.split("/").at(-1)).toMatch(validDraftId);
+  expect(url.search).toBe("");
   expect(url.searchParams.has("creationKey")).toBe(false);
 
   await fillManualDraft(page, { fullName, headline, employer, skill });
@@ -76,7 +82,7 @@ test("stale manual draft shows not found and recovers with a new draft", async (
       response.request().method() === "GET",
   );
 
-  await page.goto(`/resumes/new/manual?draftId=${staleDraftId}`);
+  await page.goto(`/resumes/drafts/${staleDraftId}`);
   expect((await missing).status()).toBe(404);
   await expect(page.getByText("Draft not found.")).toBeVisible();
   await expect(
@@ -94,10 +100,11 @@ test("stale manual draft shows not found and recovers with a new draft", async (
   await expect(
     page.getByRole("button", { name: "Add personal detail" }),
   ).toBeEnabled();
+  await expect(page).toHaveURL(/\/resumes\/drafts\/[0-9a-f-]+$/u);
   const recoveredUrl = new URL(page.url());
-  expect(recoveredUrl.searchParams.get("draftId")).toMatch(validDraftId);
-  expect(recoveredUrl.searchParams.get("draftId")).not.toBe(staleDraftId);
-  expect(recoveredUrl.searchParams.has("creationKey")).toBe(false);
+  expect(recoveredUrl.pathname.split("/").at(-1)).toMatch(validDraftId);
+  expect(recoveredUrl.pathname.split("/").at(-1)).not.toBe(staleDraftId);
+  expect(recoveredUrl.search).toBe("");
 
   const fullName = `Recovered ${Date.now()}`;
   await fillManualDraft(page, {
@@ -121,9 +128,7 @@ test("anonymous PDF import reaches review, confirmation, and persisted resume", 
   const telemetry = watchBrowser(page);
   await page.goto("/import-resume");
   await page.getByRole("button", { name: "Import my resume" }).click();
-  await page
-    .getByRole("button", { name: "Resume file" })
-    .setInputFiles(anonymousPdf);
+  await page.locator('input[type="file"]').setInputFiles(anonymousPdf);
 
   const started = page.waitForResponse(
     (response) =>
@@ -141,42 +146,42 @@ test("anonymous PDF import reaches review, confirmation, and persisted resume", 
   ).toBeVisible();
   await expect(page.getByText(/Current step:/u)).toBeVisible();
 
-  await page
-    .getByRole("button", { name: "Review imported resume" })
-    .click({ timeout: 120_000 });
+  await expect(
+    page.getByRole("heading", {
+      name: "Check the information Nuvitae needs you to confirm",
+    }),
+  ).toBeVisible({ timeout: 90_000 });
   await expect(page).toHaveURL(/\/import-resume\/[0-9a-f-]+\/review/u);
   await expect(
-    page.getByRole("heading", { name: "Review imported resume" }),
+    page.getByRole("heading", {
+      name: "Check the information Nuvitae needs you to confirm",
+    }),
   ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Personal" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Contact" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Education" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Skills" })).toBeVisible();
-  await expect(page.getByText("Active fields")).toBeVisible();
+  await expandReviewSections(page);
+  await expect(
+    page.getByRole("heading", { name: /^Personal details/u }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /^Contact details/u }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: /^Education/u }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^Skills/u })).toBeVisible();
+  await expect(page.locator("article.review-field").first()).toBeVisible();
 
-  await resolveVisibleWarnings(page);
-  await page.getByRole("button", { name: "Confirm field" }).first().click();
-  await expect(
-    page.getByRole("button", { name: "Create structured resume" }),
-  ).toBeEnabled();
-  await page.getByRole("button", { name: "Create structured resume" }).click();
-  await expect(
-    page.getByRole("dialog", { name: "Confirm resume creation" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Confirm and create resume" }).click();
+  await reviewAndCreateResume(page);
   await expect(page).toHaveURL(/\/resumes\/[0-9a-f-]+/u);
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Confirmed structured resume" }),
+    page.getByRole("heading", { name: "Edit your resume" }),
   ).toBeVisible();
   await expect(
     page.getByText("Created from your reviewed initial resume", {
       exact: true,
     }),
   ).toBeVisible();
-  await expect(
-    page.getByText("Originally imported from page 1").first(),
-  ).toBeVisible();
+  await verifyPdfProvenance(page);
   await expect(page.getByText(forbiddenPublicText())).toHaveCount(0);
   assertSameOrigin(telemetry);
 });
@@ -187,18 +192,24 @@ test("unsupported upload keeps specific public recovery message", async ({
   const telemetry = watchBrowser(page);
   await page.goto("/import-resume");
   await page.getByRole("button", { name: "Import my resume" }).click();
-  await page
-    .getByRole("button", { name: "Resume file" })
-    .setInputFiles(invalidFixture);
+  await page.locator('input[type="file"]').setInputFiles(invalidFixture);
 
+  await expect(
+    page.getByRole("link", {
+      name: "Resume file: Choose a PDF or DOCX resume file.",
+      exact: true,
+    }),
+  ).toBeVisible();
   const apiPostCountBefore = telemetry.productRequests.filter(
     (url) => url.pathname === "/api/import-resume",
   ).length;
+  expect(apiPostCountBefore).toBe(0);
   await page.getByRole("button", { name: "Upload and start import" }).click();
   await expect(
-    page
-      .getByText("Choose a PDF or DOCX resume file.")
-      .or(page.getByText("Choose a resume file before starting the import.")),
+    page.getByRole("link", {
+      name: "Resume file: Choose a resume file before starting the import.",
+      exact: true,
+    }),
   ).toBeVisible();
   await expect(
     page.getByText("The resume import could not be started."),
@@ -208,6 +219,8 @@ test("unsupported upload keeps specific public recovery message", async ({
   ).length;
   expect(apiPostCountAfter).toBe(apiPostCountBefore);
   expect(page.url()).not.toContain("api:3001");
+  await expect(page.getByText(forbiddenPublicText())).toHaveCount(0);
+  assertSameOrigin(telemetry);
 });
 
 async function fillManualDraft(
@@ -237,10 +250,10 @@ async function fillManualDraft(
     .getByRole("textbox", { name: "Role title", exact: true })
     .fill("Browser Test Engineer");
   await page
-    .getByRole("textbox", { name: "Start year", exact: true })
+    .getByRole("textbox", { name: "Start date", exact: true })
     .fill("2022");
   await page
-    .getByRole("textbox", { name: "End year", exact: true })
+    .getByRole("textbox", { name: "End date", exact: true })
     .fill("2026");
   await page.getByRole("button", { name: "Add responsibility" }).click();
   await page
@@ -251,21 +264,6 @@ async function fillManualDraft(
   await page
     .getByRole("textbox", { name: "Name", exact: true })
     .fill(input.skill);
-}
-
-async function resolveVisibleWarnings(page: Page): Promise<void> {
-  while (
-    (await page.getByRole("button", { name: "Intentionally leave" }).count()) >
-    0
-  ) {
-    await page
-      .getByRole("button", { name: "Intentionally leave" })
-      .first()
-      .click();
-    await expect(page.getByRole("status").first()).not.toContainText(
-      "Saving review change.",
-    );
-  }
 }
 
 function watchBrowser(page: Page) {
