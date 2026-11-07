@@ -155,7 +155,10 @@ export class StartImportService {
       storageKey,
       uploadStatus: "uploaded",
       validationStatus: "not_started",
-      processingStatus: "not_started",
+      // Workers may run before addBulk returns. Commit their queued
+      // prerequisite with the document, before making any job deliverable.
+      processingStatus:
+        this.queuePublisher === undefined ? "not_started" : "queued",
       deletionStatus: "not_scheduled",
       createdAt,
       retentionExpiresAt,
@@ -295,21 +298,6 @@ export class StartImportService {
           at: enqueuedAt,
           durationMs: enqueuedAt.getTime() - persistedAt.getTime(),
           uploadReceivedAt: createdAt,
-        });
-        await this.repository.transaction(async (repository) => {
-          const current = await repository.findImportByOwner(
-            importId,
-            input.ownerUserId,
-          );
-          if (
-            current !== null &&
-            current.document.processingStatus === "not_started"
-          ) {
-            await repository.saveImportLifecycle({
-              ...current.document,
-              processingStatus: "queued",
-            });
-          }
         });
       } catch {
         await this.markPublicationFailure(importId, input.ownerUserId);
