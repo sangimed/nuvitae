@@ -15,7 +15,7 @@
     "yauzl": "3.4.0"
   },
   "devDependencies": {
-    "@types/pdfkit": "0.17.6",
+    "@types/pdfkit": "0.17.7",
     "@types/yauzl": "3.4.0",
     "@types/yazl": "3.3.1",
     "pdfkit": "0.20.2",
