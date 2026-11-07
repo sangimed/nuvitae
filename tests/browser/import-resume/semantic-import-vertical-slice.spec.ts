@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { reviewDraftReadResponseSchema } from "@nuvitae/contracts";
 import { readImportInvariants } from "./test-support/vertical-slice-persistence";
 
 /**
@@ -56,11 +57,46 @@ test("no production semantic provider is configured recovers the existing fallba
   const acceptSuggestions = page.getByRole("button", {
     name: /Accept all \d+ suggested details/,
   });
-  await expect(acceptSuggestions).toBeVisible();
-  await acceptSuggestions.click();
+  // The limited fallback copies explicit source evidence, so these fields
+  // are unreviewed imports, not inferred suggestions awaiting bulk acceptance.
+  const readFallbackReview = async () => {
+    const response = await page.request.get(
+      `/api/import-resume/${importId}/review`,
+    );
+    expect(response.ok()).toBe(true);
+    const draft = reviewDraftReadResponseSchema.parse(await response.json());
+    const fields = draft.sections.flatMap((section) => section.fields);
+    expect(fields.length).toBeGreaterThan(0);
+    for (const field of fields) {
+      expect(field.inferenceStatus).toBe("not_inferred");
+      expect(field.reviewStatus).toBe("unreviewed");
+      expect(field.sourceStatus).toBe("explicit_source");
+    }
+    expect(draft.readyToConfirm).toBe(false);
+    return draft;
+  };
+  const readyHeading = page.getByRole("heading", {
+    name: "Your imported information is ready",
+  });
+  await expect(readyHeading).toBeVisible();
+  const reviewBeforeRefresh = await readFallbackReview();
   await expect(acceptSuggestions).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Create my resume" }),
+  ).toHaveCount(0);
   await page.reload();
+  await expect(readyHeading).toBeVisible();
+  const reviewAfterRefresh = await readFallbackReview();
+  expect(reviewAfterRefresh.draftId).toBe(reviewBeforeRefresh.draftId);
+  expect(reviewAfterRefresh.reviewRevision).toBe(
+    reviewBeforeRefresh.reviewRevision,
+  );
+  expect(reviewAfterRefresh.sections).toEqual(reviewBeforeRefresh.sections);
   await expect(acceptSuggestions).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Create my resume" }),
+  ).toHaveCount(0);
+  expect(importStarts()).toBe(1);
 
   // The bounded fallback creates one review draft after one semantic attempt;
   // refreshing never creates another attempt or structured resume.
