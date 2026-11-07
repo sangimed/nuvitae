@@ -199,10 +199,9 @@ async function confirmAllWarnings(page: Page): Promise<void> {
     exact: true,
   });
   while ((await confirmations.count()) > 0) {
+    const remaining = await confirmations.count();
     await confirmations.first().click();
-    await expect(page.getByRole("status").first()).not.toContainText(
-      "Saving review change.",
-    );
+    await expect(confirmations).toHaveCount(remaining - 1);
   }
 }
 
