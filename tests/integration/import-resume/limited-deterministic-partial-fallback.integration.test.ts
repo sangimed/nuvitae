@@ -667,6 +667,27 @@ it("accepts explicit email, phone, and website values", () => {
   ]);
 });
 
+it("keeps URL punctuation handling bounded for synthetic long non-URLs", () => {
+  const started = performance.now();
+  const outcome = runFallback([";".repeat(60_000) + "X"]);
+  expect(outcome.acceptedCandidates).toEqual([]);
+  // A generous resource ceiling, not a microbenchmark: ordinary processing is
+  // far below this, while retrying a suffix match at every offset is not.
+  expect(performance.now() - started).toBeLessThan(1_000);
+}, 10_000);
+
+it("preserves URL suffix trimming and the accepted-value limit", () => {
+  const url = "https://example.invalid/profile";
+  const outcome = runFallback([`${url}.,;`]);
+  expect(
+    outcome.acceptedCandidates.map((candidate) => candidate.value),
+  ).toEqual([url]);
+  expect(
+    runFallback(["https://example.invalid/" + "x".repeat(240)])
+      .acceptedCandidates,
+  ).toEqual([]);
+});
+
 it("accepts explicitly delimited skills and languages with provable boundaries", () => {
   const outcome = runFallback([
     "Compétences: TypeScript, Go, PostgreSQL",
